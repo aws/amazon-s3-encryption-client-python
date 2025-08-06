@@ -19,6 +19,3 @@ jobs:
     with:
       python-version: ${{ inputs.python-version || '3.11' }}
     secrets: inherit
-    env:
-      CI_KMS_KEY_ALIAS: ${{ vars.CI_KMS_KEY_ALIAS }}
-      CI_S3_BUCKET: ${{ vars.CI_S3_BUCKET }}

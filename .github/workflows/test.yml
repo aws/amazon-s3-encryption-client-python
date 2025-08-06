@@ -48,5 +48,5 @@ jobs:
       - name: Run integration tests
         run: poetry run pytest test/integration/ --verbose
         env:
-          CI_S3_BUCKET: ${{ secrets.CI_S3_BUCKET }}
-          CI_KMS_KEY_ALIAS: ${{ secrets.CI_KMS_KEY_ALIAS }}
+          CI_S3_BUCKET: ${{ vars.CI_S3_BUCKET }}
+          CI_KMS_KEY_ALIAS: ${{ vars.CI_KMS_KEY_ALIAS }}
