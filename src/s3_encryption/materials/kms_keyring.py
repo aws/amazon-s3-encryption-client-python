@@ -2,9 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 from .keyring import S3Keyring
 from .encrypted_data_key import EncryptedDataKey
-from .materials import EncryptionMaterials
+from .materials import EncryptionMaterials, DecryptionMaterials
 from ..exceptions import S3EncryptionClientError
 from attrs import define, field
+from typing import List, Optional
 
 KMS_CONTEXT_DEFAULT_KEY = "aws:x-amz-cek-alg"
 KMS_V1_DEFAULT_KEY = "kms_cmk_id"
@@ -55,18 +56,18 @@ class KmsKeyring(S3Keyring):
         Decrypt one of the encrypted data keys and update decMaterials.
         
         Args:
-            decMaterials (dict): A dictionary containing decryption materials
+            decMaterials (DecryptionMaterials): A DecryptionMaterials instance containing decryption materials
             encrypted_data_keys (List[EncryptedDataKey], optional): A list of encrypted data keys to try.
                 
         Returns:
-            dict: The updated decMaterials with the plaintext data key (PDK)
+            DecryptionMaterials: The updated decMaterials with the plaintext data key (PDK)
         """
         try:
             # Call parent class validation
             decMaterials = super().onDecrypt(decMaterials, encrypted_data_keys)
             
-            # Handle both single EDK (backward compatibility) and list of EDKs
-            edks = encrypted_data_keys
+            # Use encrypted_data_keys from parameters if provided, otherwise use from decMaterials
+            edks = encrypted_data_keys if encrypted_data_keys is not None else decMaterials.encrypted_data_keys
             
             # Try to decrypt each EDK until one succeeds
             # TODO: probably just enforce |EDKs| == 1 and remove loop
@@ -75,8 +76,8 @@ class KmsKeyring(S3Keyring):
                 try:
                     edk_bytes = edk.encrypted_data_key
                     if edk.key_provider_info == "kms+context":
-                        encryption_context_from_request = decMaterials.get('encryption_context_from_request', {})
-                        encryption_context_stored = decMaterials.get('encryption_context_stored', {})
+                        encryption_context_from_request = decMaterials.encryption_context_from_request
+                        encryption_context_stored = decMaterials.encryption_context_stored
 
                         # Default EC MUST NOT be passed in via request
                         if KMS_CONTEXT_DEFAULT_KEY in encryption_context_from_request:
@@ -100,9 +101,9 @@ class KmsKeyring(S3Keyring):
                     response = self.kms_client.decrypt(
                         KeyId = self.kms_key_id,
                         CiphertextBlob = edk_bytes,
-                        EncryptionContext = decMaterials['encryption_context_stored']
+                        EncryptionContext = decMaterials.encryption_context_stored
                     )
-                    decMaterials['PDK'] = response['Plaintext']
+                    decMaterials.plaintext_data_key = response['Plaintext']
                     return decMaterials
                 except Exception as e:
                     last_exception = e

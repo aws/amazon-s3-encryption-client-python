@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 from attrs import define
 from .keyring import AbstractKeyring
-from .materials import EncryptionMaterials
-from typing import List, Dict, Any
+from .materials import EncryptionMaterials, DecryptionMaterials
+from typing import List, Dict, Any, Union
 
 # API Stub for CMM
 class AbstractCryptoMaterialsManager():
@@ -24,10 +24,10 @@ class AbstractCryptoMaterialsManager():
         Decrypt materials using the keyring.
         
         Args:
-            decMatsRequest (Dict[str, Any]): Request containing decryption parameters
+            decMatsRequest (Dict[str, Any] or DecryptionMaterials): Request containing decryption parameters
                 
         Returns:
-            Dict[str, Any]: The decryption materials
+            DecryptionMaterials: The decryption materials
         """
         raise NotImplementedError
 
@@ -56,7 +56,20 @@ class DefaultCryptoMaterialsManager(AbstractCryptoMaterialsManager):
         return self.keyring.onEncrypt(materials)
     
     def decryptMaterials(self, decMatsRequest):
-        # TODO: Fill with defaults + stuff from decMatsRequest
-        materials = {**decMatsRequest}
-        encrypted_data_keys = decMatsRequest.get('encrypted_data_keys')
+        """
+        Decrypt materials using the keyring.
+        
+        Args:
+            decMatsRequest (Dict[str, Any] or DecryptionMaterials): Request containing decryption parameters
+                
+        Returns:
+            DecryptionMaterials: The decryption materials
+        """
+        # Convert dictionary to DecryptionMaterials if needed
+        if isinstance(decMatsRequest, dict):
+            materials = DecryptionMaterials.from_dict(decMatsRequest)
+        else:
+            materials = decMatsRequest
+            
+        encrypted_data_keys = materials.encrypted_data_keys
         return self.keyring.onDecrypt(materials, encrypted_data_keys)

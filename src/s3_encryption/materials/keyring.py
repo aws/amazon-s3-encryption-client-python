@@ -3,7 +3,8 @@
 
 from attrs import define, field
 from ..exceptions import S3EncryptionClientError
-from .materials import EncryptionMaterials
+from .materials import EncryptionMaterials, DecryptionMaterials
+from typing import List, Optional
 
 @define
 class AbstractKeyring():
@@ -30,11 +31,11 @@ class AbstractKeyring():
         Decrypt one of the encrypted data keys and update decMaterials.
         
         Args:
-            decMaterials (dict): A dictionary containing decryption materials
+            decMaterials (DecryptionMaterials): A DecryptionMaterials instance containing decryption materials
             encrypted_data_keys (List[EncryptedDataKey], optional): A list of encrypted data keys to try.
                 
         Returns:
-            dict: The updated decMaterials with the plaintext data key (PDK)
+            DecryptionMaterials: The updated decMaterials with the plaintext data key (PDK)
         """
         raise NotImplementedError
 
@@ -76,25 +77,28 @@ class S3Keyring(AbstractKeyring):
         Validate decryption materials before decryption.
         
         Args:
-            decMaterials (dict): A dictionary containing decryption materials
+            decMaterials (DecryptionMaterials): A DecryptionMaterials instance containing decryption materials
             encrypted_data_keys (List[EncryptedDataKey], optional): A list of encrypted data keys to try.
                 
         Returns:
-            dict: The validated decryption materials
+            DecryptionMaterials: The validated decryption materials
         """
         # Validate decryption materials
-        if not isinstance(decMaterials, dict):
-            raise S3EncryptionClientError("Decryption materials must be a dictionary")
+        if not isinstance(decMaterials, DecryptionMaterials):
+            raise S3EncryptionClientError("Decryption materials must be a DecryptionMaterials instance")
+        
+        # Use encrypted_data_keys from parameters if provided, otherwise use from decMaterials
+        edks = encrypted_data_keys if encrypted_data_keys is not None else decMaterials.encrypted_data_keys
         
         # Validate encrypted_data_keys
-        if encrypted_data_keys is None or len(encrypted_data_keys) == 0:
+        if edks is None or len(edks) == 0:
             raise S3EncryptionClientError("No encrypted data keys provided")
             
-        # Ensure encryption contexts are dictionaries if present
-        if 'encryption_context_from_request' in decMaterials and not isinstance(decMaterials['encryption_context_from_request'], dict):
+        # Ensure encryption contexts are dictionaries
+        if not isinstance(decMaterials.encryption_context_from_request, dict):
             raise S3EncryptionClientError("Encryption context from request must be a dictionary")
             
-        if 'encryption_context_stored' in decMaterials and not isinstance(decMaterials['encryption_context_stored'], dict):
+        if not isinstance(decMaterials.encryption_context_stored, dict):
             raise S3EncryptionClientError("Stored encryption context must be a dictionary")
             
         return decMaterials

@@ -1,0 +1,89 @@
+# Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+import unittest
+from src.s3_encryption.materials.materials import DecryptionMaterials
+from src.s3_encryption.materials.encrypted_data_key import EncryptedDataKey
+
+class TestDecryptionMaterials(unittest.TestCase):
+    def test_create_decryption_materials(self):
+        """Test creating a DecryptionMaterials instance."""
+        materials = DecryptionMaterials()
+        self.assertEqual(materials.encrypted_data_keys, [])
+        self.assertEqual(materials.encryption_context_stored, {})
+        self.assertEqual(materials.encryption_context_from_request, {})
+        self.assertIsNone(materials.iv)
+        self.assertIsNone(materials.plaintext_data_key)
+        
+    def test_create_with_parameters(self):
+        """Test creating a DecryptionMaterials instance with parameters."""
+        iv = b'initialization-vector'
+        encrypted_data_keys = [
+            EncryptedDataKey(
+                key_provider_id=b'S3Keyring',
+                key_provider_info="kms+context",
+                encrypted_data_key=b'encrypted-data-key'
+            )
+        ]
+        encryption_context_stored = {"key1": "value1"}
+        encryption_context_from_request = {"key2": "value2"}
+        plaintext_data_key = b'plaintext-data-key'
+        
+        materials = DecryptionMaterials(
+            iv=iv,
+            encrypted_data_keys=encrypted_data_keys,
+            encryption_context_stored=encryption_context_stored,
+            encryption_context_from_request=encryption_context_from_request,
+            plaintext_data_key=plaintext_data_key
+        )
+        
+        self.assertEqual(materials.iv, iv)
+        self.assertEqual(materials.encrypted_data_keys, encrypted_data_keys)
+        self.assertEqual(materials.encryption_context_stored, encryption_context_stored)
+        self.assertEqual(materials.encryption_context_from_request, encryption_context_from_request)
+        self.assertEqual(materials.plaintext_data_key, plaintext_data_key)
+        
+    def test_from_dict(self):
+        """Test creating a DecryptionMaterials instance from a dictionary."""
+        edk = EncryptedDataKey(
+            key_provider_id=b'S3Keyring',
+            key_provider_info="kms+context",
+            encrypted_data_key=b'encrypted-data-key'
+        )
+        materials_dict = {
+            'iv': b'initialization-vector',
+            'encrypted_data_keys': [edk],
+            'encryption_context_stored': {"key1": "value1"},
+            'encryption_context_from_request': {"key2": "value2"},
+            'PDK': b'plaintext-data-key'
+        }
+        materials = DecryptionMaterials.from_dict(materials_dict)
+        self.assertEqual(materials.iv, b'initialization-vector')
+        self.assertEqual(materials.encrypted_data_keys, [edk])
+        self.assertEqual(materials.encryption_context_stored, {"key1": "value1"})
+        self.assertEqual(materials.encryption_context_from_request, {"key2": "value2"})
+        self.assertEqual(materials.plaintext_data_key, b'plaintext-data-key')
+        
+    def test_to_dict(self):
+        """Test converting a DecryptionMaterials instance to a dictionary."""
+        edk = EncryptedDataKey(
+            key_provider_id=b'S3Keyring',
+            key_provider_info="kms+context",
+            encrypted_data_key=b'encrypted-data-key'
+        )
+        materials = DecryptionMaterials(
+            iv=b'initialization-vector',
+            encrypted_data_keys=[edk],
+            encryption_context_stored={"key1": "value1"},
+            encryption_context_from_request={"key2": "value2"},
+            plaintext_data_key=b'plaintext-data-key'
+        )
+        materials_dict = materials.to_dict()
+        self.assertEqual(materials_dict['iv'], b'initialization-vector')
+        self.assertEqual(materials_dict['encrypted_data_keys'], [edk])
+        self.assertEqual(materials_dict['encryption_context_stored'], {"key1": "value1"})
+        self.assertEqual(materials_dict['encryption_context_from_request'], {"key2": "value2"})
+        self.assertEqual(materials_dict['PDK'], b'plaintext-data-key')
+
+if __name__ == '__main__':
+    unittest.main()

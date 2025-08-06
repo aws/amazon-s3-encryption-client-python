@@ -5,9 +5,10 @@ import os
 import base64
 from .materials.crypto_materials_manager import AbstractCryptoMaterialsManager
 from .materials.encrypted_data_key import EncryptedDataKey
-from .materials.materials import EncryptionMaterials
+from .materials.materials import EncryptionMaterials, DecryptionMaterials
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from .metadata import ObjectMetadata
+from typing import Dict, Any, Optional, List, Union
 
 @define
 class PutEncryptedObjectPipeline:
@@ -92,11 +93,11 @@ class GetEncryptedObjectPipeline:
         Decrypt the data after it is retrieved from S3.
         
         Args:
-            encrypted_data (bytes): The encrypted data retrieved from S3
-            encryption_metadata (dict, optional): Metadata about the encryption
+            response (dict): The response from S3 containing the encrypted data and metadata
+            encryption_context (dict, optional): Additional context for decryption
             
         Returns:
-            bytes or str: The decrypted data
+            bytes: The decrypted data
         """
         # Convert the metadata dictionary to an ObjectMetadata instance
         encrypted_data = response.get('Body').read()
@@ -131,15 +132,18 @@ class GetEncryptedObjectPipeline:
             )
             encrypted_data_keys.append(legacy_encrypted_data_key)
         
-        dec_mat_req = {
-            "iv": iv_bytes,
-            "encrypted_data_keys": encrypted_data_keys,
-            "encryption_context_stored": metadata.encrypted_data_key_context,
-            "encryption_context_from_request": encryption_context
-        }
-        dec_mats = self.cmm.decryptMaterials(dec_mat_req)
+        # Create a DecryptionMaterials instance
+        dec_materials = DecryptionMaterials(
+            iv=iv_bytes,
+            encrypted_data_keys=encrypted_data_keys,
+            encryption_context_stored=metadata.encrypted_data_key_context or {},
+            encryption_context_from_request=encryption_context
+        )
         
-        aesgcm = AESGCM(dec_mats['PDK'])
+        # Get decryption materials from the crypto materials manager
+        dec_materials = self.cmm.decryptMaterials(dec_materials)
+        
+        aesgcm = AESGCM(dec_materials.plaintext_data_key)
 
         plaintext = aesgcm.decrypt(
             nonce=iv_bytes,
