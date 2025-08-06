@@ -137,7 +137,7 @@ class GetEncryptedObjectPipeline:
             iv=iv_bytes,
             encrypted_data_keys=encrypted_data_keys,
             encryption_context_stored=metadata.encrypted_data_key_context or {},
-            encryption_context_from_request=encryption_context
+            encryption_context_from_request=encryption_context or {}
         )
         
         # Get decryption materials from the crypto materials manager
