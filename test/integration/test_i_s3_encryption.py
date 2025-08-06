@@ -18,6 +18,7 @@ def test_simple_roundtrip():
 
     kms_client = boto3.client("kms", region_name=region)
 
+    print("KMS Key: " + kms_key_id)
     keyring = KmsKeyring(kms_client, kms_key_id)
 
     wrapped_client = boto3.client("s3")
