@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "amazon-s3-encryption-client-python"
+version = "0.1.0"
+description = "This library provides an S3 client that supports client-side encryption."
+authors = ["AWS Crypto Tools <aws-crypto-tools@amazon.com>"]
+license = "Apache-2.0"
+readme = "README.md"
+packages = [{include = "s3_encryption", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+boto3 = "^1.37.2"
+# There is a newer version, but MPL wants this one.
+cryptography = "^43.0.1"
+aws-cryptographic-material-providers = "^1.7.4"
+attrs = "^25.1.0"
+pytest = "^8.4.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
