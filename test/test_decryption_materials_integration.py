@@ -41,6 +41,38 @@ class TestDecryptionMaterialsIntegration(unittest.TestCase):
             self.assertEqual(result.encryption_context_stored, {"key1": "value1"})
             self.assertEqual(result.encryption_context_from_request, {"key2": "value2"})
         
+    def test_keyring_onDecrypt_default_EC(self):
+        """Test that S3Keyring.onDecrypt properly handles DecryptionMaterials."""
+        # Create a keyring
+        keyring = S3Keyring()
+        
+        # Create an encrypted data key
+        edk = EncryptedDataKey(
+            key_provider_id=b'S3Keyring',
+            key_provider_info="kms+context",
+            encrypted_data_key=b'encrypted-data-key'
+        )
+        
+        # Create decryption materials
+        materials = DecryptionMaterials(
+            iv=b'initialization-vector',
+            encrypted_data_keys=[edk],
+            encryption_context_stored={},
+            encryption_context_from_request={}
+        )
+        
+        # Mock the validation method to return the materials
+        with patch.object(S3Keyring, 'onDecrypt', return_value=materials) as mock_onDecrypt:
+            # Call onDecrypt
+            result = keyring.onDecrypt(materials, [edk])
+            
+            # Verify the result is a DecryptionMaterials instance
+            self.assertIsInstance(result, DecryptionMaterials)
+            self.assertEqual(result.iv, b'initialization-vector')
+            self.assertEqual(result.encrypted_data_keys, [edk])
+            self.assertEqual(result.encryption_context_stored, {})
+            self.assertEqual(result.encryption_context_from_request, {})
+        
     def test_cmm_decryptMaterials_with_dict(self):
         """Test that DefaultCryptoMaterialsManager.decryptMaterials properly handles dictionary input."""
         # Create a mock keyring
