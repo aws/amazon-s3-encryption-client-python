@@ -1,0 +1,49 @@
+name: Run Tests
+
+on:
+  workflow_call:
+    # Optional inputs that can be provided when calling this workflow
+    inputs:
+      python-version:
+        description: 'Python version to use'
+        default: '3.11'
+        required: false
+        type: string
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version || '3.11' }}
+          
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: 1.7.1
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          
+      - name: Install dependencies
+        run: poetry install
+        
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::370957321024:role/S3EC-Python-Github-test-role
+          aws-region: us-west-2
+          
+      - name: Run unit tests
+        run: poetry run pytest test/ --verbose
+        
+      - name: Run integration tests
+        run: poetry run pytest test/integration/ --verbose
+        env:
+          CI_S3_BUCKET: ${{ secrets.CI_S3_BUCKET }}
+          CI_KMS_KEY_ALIAS: ${{ secrets.CI_KMS_KEY_ALIAS }}

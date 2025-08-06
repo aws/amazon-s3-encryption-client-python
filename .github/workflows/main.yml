@@ -1,0 +1,21 @@
+name: Main Workflow
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      python-version:
+        description: 'Python version to use'
+        default: '3.11'
+        required: false
+        type: string
+
+jobs:
+  run-tests:
+    name: Run Tests
+    uses: ./.github/workflows/test.yml
+    with:
+      python-version: ${{ inputs.python-version || '3.11' }}
+    secrets: inherit
