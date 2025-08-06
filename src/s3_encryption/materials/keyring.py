@@ -96,9 +96,6 @@ class S3Keyring(AbstractKeyring):
             
         # Ensure encryption contexts are dictionaries
         if not isinstance(decMaterials.encryption_context_from_request, dict):
-            print("EC from req: ")
-            print(decMaterials.encryption_context_from_request)
-            print("now raising..")
             raise S3EncryptionClientError("Encryption context from request must be a dictionary")
             
         if not isinstance(decMaterials.encryption_context_stored, dict):

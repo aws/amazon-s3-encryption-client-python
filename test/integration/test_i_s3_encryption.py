@@ -18,27 +18,24 @@ def test_simple_roundtrip():
 
     kms_client = boto3.client("kms", region_name=region)
 
-    print("KMS Key: " + kms_key_id)
     keyring = KmsKeyring(kms_client, kms_key_id)
 
     wrapped_client = boto3.client("s3")
     config = S3EncryptionClientConfig(keyring)
     s3ec = S3EncryptionClient(wrapped_client, config)
     s3ec.put_object(Bucket=bucket, Key=key, Data=data)
-    print("put object success!")
     get_req = {
         'Bucket': bucket,
         'Key': key
     }
     response = s3ec.get_object(**get_req)
     output = response['Body'].read().decode('utf-8')
-    print("get succeeded!")
-    print(response)
     if output != data:
         print("Uh oh! Input and output don't match!")
         print("Input:")
         print(input)
         print("Output:")
         print(output)
+        raise RuntimeError
     else: 
         print("Success!")
