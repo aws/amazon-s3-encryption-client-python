@@ -1,18 +1,19 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 import json
+from typing import Any, Dict, Optional
+
 from attrs import define, field
-from typing import Optional, Dict, Any
 
 
 @define
 class ObjectMetadata:
     """
     Class representing metadata for encrypted S3 objects.
-    
+
     This class provides a structured way to handle encryption metadata
     with fields corresponding to standard S3 encryption headers.
-    
+
     All fields are optional and correspond to the following S3 encryption headers:
     - encrypted_data_key_v1: The encrypted data key (legacy format)
     - encrypted_data_key_v2: The encrypted data key (current format)
@@ -23,6 +24,7 @@ class ObjectMetadata:
     - content_cipher_tag_length: The length of the authentication tag
     - instruction_file: Marker for instruction files
     """
+
     # The encrypted data key (legacy format)
     encrypted_data_key_v1: Optional[str] = field(default=None)
     # The encrypted data key (current format)
@@ -51,13 +53,13 @@ class ObjectMetadata:
     INSTRUCTION_FILE = "x-amz-crypto-instr-file"
 
     @classmethod
-    def from_dict(cls, metadata_dict: Dict[str, Any]) -> 'ObjectMetadata':
+    def from_dict(cls, metadata_dict: Dict[str, Any]) -> "ObjectMetadata":
         """
         Create an ObjectMetadata instance from a dictionary.
-        
+
         Args:
             metadata_dict (Dict[str, Any]): Dictionary containing metadata keys and values
-            
+
         Returns:
             ObjectMetadata: A new instance with fields populated from the dictionary
         """
@@ -67,7 +69,7 @@ class ObjectMetadata:
             context_str = metadata_dict.get(cls.ENCRYPTED_DATA_KEY_CONTEXT)
             if context_str is not None:
                 encryption_context = json.loads(context_str)
-        
+
         return cls(
             encrypted_data_key_v1=metadata_dict.get(cls.ENCRYPTED_DATA_KEY_V1),
             encrypted_data_key_v2=metadata_dict.get(cls.ENCRYPTED_DATA_KEY_V2),
@@ -76,40 +78,40 @@ class ObjectMetadata:
             content_iv=metadata_dict.get(cls.CONTENT_IV),
             content_cipher=metadata_dict.get(cls.CONTENT_CIPHER),
             content_cipher_tag_length=metadata_dict.get(cls.CONTENT_CIPHER_TAG_LENGTH),
-            instruction_file=metadata_dict.get(cls.INSTRUCTION_FILE)
+            instruction_file=metadata_dict.get(cls.INSTRUCTION_FILE),
         )
 
     def to_dict(self) -> Dict[str, str]:
         """
         Convert the ObjectMetadata instance to a dictionary.
-        
+
         Returns:
             Dict[str, str]: Dictionary containing non-None metadata values
         """
         result = {}
-        
+
         if self.encrypted_data_key_v1 is not None:
             result[self.ENCRYPTED_DATA_KEY_V1] = self.encrypted_data_key_v1
-            
+
         if self.encrypted_data_key_v2 is not None:
             result[self.ENCRYPTED_DATA_KEY_V2] = self.encrypted_data_key_v2
-            
+
         if self.encrypted_data_key_algorithm is not None:
             result[self.ENCRYPTED_DATA_KEY_ALGORITHM] = self.encrypted_data_key_algorithm
-            
+
         if self.encrypted_data_key_context is not None:
             result[self.ENCRYPTED_DATA_KEY_CONTEXT] = json.dumps(self.encrypted_data_key_context)
-            
+
         if self.content_iv is not None:
             result[self.CONTENT_IV] = self.content_iv
-            
+
         if self.content_cipher is not None:
             result[self.CONTENT_CIPHER] = self.content_cipher
-            
+
         if self.content_cipher_tag_length is not None:
             result[self.CONTENT_CIPHER_TAG_LENGTH] = self.content_cipher_tag_length
-            
+
         if self.instruction_file is not None:
             result[self.INSTRUCTION_FILE] = self.instruction_file
-            
+
         return result

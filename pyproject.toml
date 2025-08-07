@@ -14,9 +14,32 @@ boto3 = "^1.37.2"
 cryptography = "^43.0.1"
 aws-cryptographic-material-providers = "^1.7.4"
 attrs = "^25.1.0"
+
+[tool.poetry.group.dev.dependencies]
 pytest = "^8.4.1"
+black = "^24.3.0"
+flake8 = "^7.0.0"
+flake8-docstrings = "^1.7.0"
+isort = "^5.13.2"
 
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+include = '\.pyi?$'
+
+[tool.flake8]
+max-line-length = 100
+exclude = [".git", "__pycache__", "build", "dist"]
+max-complexity = 10
+ignore = ["E203", "W503"]  # E203 and W503 conflict with Black
+docstring-convention = "google"
+
+[tool.isort]
+profile = "black"
+line_length = 100
+known_first_party = ["s3_encryption"]
