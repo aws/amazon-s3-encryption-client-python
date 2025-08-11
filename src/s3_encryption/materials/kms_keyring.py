@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from attrs import define, field
+from botocore import client
 
 from ..exceptions import S3EncryptionClientError
 from .encrypted_data_key import EncryptedDataKey
@@ -13,7 +14,7 @@ KMS_V1_DEFAULT_KEY = "kms_cmk_id"
 
 @define
 class KmsKeyring(S3Keyring):
-    kms_client = field()
+    kms_client = client.BaseClient
     kms_key_id: str = field()
     enable_legacy_wrapping_algorithms: bool = field(default=False)
 

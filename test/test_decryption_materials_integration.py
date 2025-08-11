@@ -43,7 +43,7 @@ class TestDecryptionMaterialsIntegration(unittest.TestCase):
             self.assertEqual(result.encryption_context_stored, {"key1": "value1"})
             self.assertEqual(result.encryption_context_from_request, {"key2": "value2"})
 
-    def test_keyring_on_decrypt_default_EC(self):
+    def test_keyring_on_decrypt_default_enc_ctx(self):
         """Test that S3Keyring.on_decrypt properly handles DecryptionMaterials."""
         # Create a keyring
         keyring = S3Keyring()

@@ -1,6 +1,6 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
-from attrs import define, field
+from attrs import define
 
 
 @define
@@ -16,6 +16,6 @@ class EncryptedDataKey:
         encrypted_data_key (bytes): The encrypted data key
     """
 
-    key_provider_info: str = field()
-    key_provider_id: bytes = field()
-    encrypted_data_key: bytes = field()
+    key_provider_info: str
+    key_provider_id: bytes
+    encrypted_data_key: bytes
