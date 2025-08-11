@@ -14,7 +14,7 @@ KMS_V1_DEFAULT_KEY = "kms_cmk_id"
 
 @define
 class KmsKeyring(S3Keyring):
-    kms_client = client.BaseClient
+    kms_client = field()
     kms_key_id: str = field()
     enable_legacy_wrapping_algorithms: bool = field(default=False)
 
