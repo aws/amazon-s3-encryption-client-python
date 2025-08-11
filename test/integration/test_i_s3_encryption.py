@@ -39,5 +39,4 @@ def test_simple_roundtrip():
         print("Output:")
         print(output)
         raise RuntimeError
-    else:
-        print("Success!")
+    print("Success!")

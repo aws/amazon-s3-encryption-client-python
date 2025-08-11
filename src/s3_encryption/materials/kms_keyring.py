@@ -123,7 +123,6 @@ class KmsKeyring(S3Keyring):
             # If we get here, none of the EDKs could be decrypted
             if last_exception:
                 raise last_exception
-            else:
-                raise S3EncryptionClientError("Failed to decrypt any of the encrypted data keys")
+            raise S3EncryptionClientError("Failed to decrypt any of the encrypted data keys")
         except Exception:
             raise
