@@ -24,7 +24,7 @@ test: test-unit test-integration
 
 # Run unit tests
 test-unit:
-	uv run pytest test/ --verbose
+	uv run pytest test/ --ignore=test/integration/ --verbose
 
 # Run integration tests
 test-integration:
