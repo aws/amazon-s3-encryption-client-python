@@ -1,9 +1,8 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import List, Optional
 
-from attrs import define, field
+from attrs import define
 
 from ..exceptions import S3EncryptionClientError
 from .materials import DecryptionMaterials, EncryptionMaterials
@@ -18,8 +17,7 @@ class AbstractKeyring:
     # enableLegacyWrappingAlgorithms: bool = field(default=False)
 
     def onEncrypt(self, encMaterials):
-        """
-        Process encryption materials.
+        """Process encryption materials.
 
         Args:
             encMaterials (EncryptionMaterials): Encryption materials to process
@@ -30,8 +28,7 @@ class AbstractKeyring:
         raise NotImplementedError
 
     def onDecrypt(self, decMaterials, encrypted_data_keys=None):
-        """
-        Decrypt one of the encrypted data keys and update decMaterials.
+        """Decrypt one of the encrypted data keys and update decMaterials.
 
         Args:
             decMaterials (DecryptionMaterials): A DecryptionMaterials instance containing decryption materials
@@ -45,16 +42,14 @@ class AbstractKeyring:
 
 @define
 class S3Keyring(AbstractKeyring):
-    """
-    Base class for S3 encryption keyrings that provides common validation logic.
+    """Base class for S3 encryption keyrings that provides common validation logic.
     """
 
     # Ideally this would be set, but attrs doesn't play nice
     # enable_legacy_wrapping_algorithms: bool = field(default=False)
 
     def onEncrypt(self, encMaterials):
-        """
-        Validate encryption materials before encryption.
+        """Validate encryption materials before encryption.
 
         Args:
             encMaterials (EncryptionMaterials or dict): Encryption materials
@@ -79,8 +74,7 @@ class S3Keyring(AbstractKeyring):
         return encMaterials
 
     def onDecrypt(self, decMaterials, encrypted_data_keys=None):
-        """
-        Validate decryption materials before decryption.
+        """Validate decryption materials before decryption.
 
         Args:
             decMaterials (DecryptionMaterials): A DecryptionMaterials instance containing decryption materials

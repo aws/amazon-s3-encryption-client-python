@@ -1,6 +1,6 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from attrs import define, field
 
@@ -9,8 +9,7 @@ from .encrypted_data_key import EncryptedDataKey
 
 @define
 class EncryptionMaterials:
-    """
-    Class representing encryption materials for S3 encryption.
+    """Class representing encryption materials for S3 encryption.
 
     This class provides a structured way to handle encryption materials
     with fields corresponding to the data needed for encryption operations.
@@ -21,14 +20,13 @@ class EncryptionMaterials:
         plaintext_data_key (Optional[bytes]): The plaintext data key (PDK)
     """
 
-    encryption_context: Dict[str, str] = field(factory=dict)
-    encrypted_data_key: Optional[EncryptedDataKey] = field(default=None)
-    plaintext_data_key: Optional[bytes] = field(default=None)
+    encryption_context: dict[str, str] = field(factory=dict)
+    encrypted_data_key: EncryptedDataKey | None = field(default=None)
+    plaintext_data_key: bytes | None = field(default=None)
 
     @classmethod
-    def from_dict(cls, materials_dict: Dict[str, Any]) -> "EncryptionMaterials":
-        """
-        Create an EncryptionMaterials instance from a dictionary.
+    def from_dict(cls, materials_dict: dict[str, Any]) -> "EncryptionMaterials":
+        """Create an EncryptionMaterials instance from a dictionary.
 
         Args:
             materials_dict (Dict[str, Any]): Dictionary containing encryption materials
@@ -42,9 +40,8 @@ class EncryptionMaterials:
             plaintext_data_key=materials_dict.get("PDK"),
         )
 
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Convert the EncryptionMaterials instance to a dictionary.
+    def to_dict(self) -> dict[str, Any]:
+        """Convert the EncryptionMaterials instance to a dictionary.
 
         Returns:
             Dict[str, Any]: Dictionary containing encryption materials
@@ -65,8 +62,7 @@ class EncryptionMaterials:
 
 @define
 class DecryptionMaterials:
-    """
-    Class representing decryption materials for S3 encryption.
+    """Class representing decryption materials for S3 encryption.
 
     This class provides a structured way to handle decryption materials
     with fields corresponding to the data needed for decryption operations.
@@ -79,16 +75,15 @@ class DecryptionMaterials:
         plaintext_data_key (Optional[bytes]): The plaintext data key (PDK)
     """
 
-    iv: Optional[bytes] = field(default=None)
-    encrypted_data_keys: List[EncryptedDataKey] = field(factory=list)
-    encryption_context_stored: Dict[str, str] = field(factory=dict)
-    encryption_context_from_request: Dict[str, str] = field(factory=dict)
-    plaintext_data_key: Optional[bytes] = field(default=None)
+    iv: bytes | None = field(default=None)
+    encrypted_data_keys: list[EncryptedDataKey] = field(factory=list)
+    encryption_context_stored: dict[str, str] = field(factory=dict)
+    encryption_context_from_request: dict[str, str] = field(factory=dict)
+    plaintext_data_key: bytes | None = field(default=None)
 
     @classmethod
-    def from_dict(cls, materials_dict: Dict[str, Any]) -> "DecryptionMaterials":
-        """
-        Create a DecryptionMaterials instance from a dictionary.
+    def from_dict(cls, materials_dict: dict[str, Any]) -> "DecryptionMaterials":
+        """Create a DecryptionMaterials instance from a dictionary.
 
         Args:
             materials_dict (Dict[str, Any]): Dictionary containing decryption materials
@@ -106,9 +101,8 @@ class DecryptionMaterials:
             plaintext_data_key=materials_dict.get("PDK"),
         )
 
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Convert the DecryptionMaterials instance to a dictionary.
+    def to_dict(self) -> dict[str, Any]:
+        """Convert the DecryptionMaterials instance to a dictionary.
 
         Returns:
             Dict[str, Any]: Dictionary containing decryption materials

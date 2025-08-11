@@ -4,7 +4,6 @@ import os
 from datetime import datetime
 
 import boto3
-
 from s3_encryption import S3EncryptionClient, S3EncryptionClientConfig
 from s3_encryption.materials.kms_keyring import KmsKeyring
 

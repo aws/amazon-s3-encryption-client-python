@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 import base64
 import os
-from typing import Any, Dict, List, Optional, Union
 
 from attrs import define, field
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -15,8 +14,7 @@ from .metadata import ObjectMetadata
 
 @define
 class PutEncryptedObjectPipeline:
-    """
-    Pipeline for encrypting objects before they are put into S3.
+    """Pipeline for encrypting objects before they are put into S3.
 
     This pipeline handles only the encryption process for S3 objects.
     The actual S3 API calls are handled by the S3EncryptionClient.
@@ -25,8 +23,7 @@ class PutEncryptedObjectPipeline:
     cmm: AbstractCryptoMaterialsManager = field()
 
     def encrypt(self, plaintext, encryption_context=None):
-        """
-        Encrypt the data before it is stored in S3.
+        """Encrypt the data before it is stored in S3.
 
         Args:
             data (bytes or str): The data to be encrypted
@@ -80,8 +77,7 @@ class PutEncryptedObjectPipeline:
 
 @define
 class GetEncryptedObjectPipeline:
-    """
-    Pipeline for decrypting objects after they are retrieved from S3.
+    """Pipeline for decrypting objects after they are retrieved from S3.
 
     This pipeline handles only the decryption process for S3 objects.
     The actual S3 API calls are handled by the S3EncryptionClient.
@@ -90,8 +86,7 @@ class GetEncryptedObjectPipeline:
     cmm: AbstractCryptoMaterialsManager = field()
 
     def decrypt(self, response, encryption_context={}):
-        """
-        Decrypt the data after it is retrieved from S3.
+        """Decrypt the data after it is retrieved from S3.
 
         Args:
             response (dict): The response from S3 containing the encrypted data and metadata

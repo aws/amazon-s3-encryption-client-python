@@ -1,13 +1,11 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
-from typing import List, Optional
 
 from attrs import define, field
 
 from ..exceptions import S3EncryptionClientError
 from .encrypted_data_key import EncryptedDataKey
 from .keyring import S3Keyring
-from .materials import DecryptionMaterials, EncryptionMaterials
 
 KMS_CONTEXT_DEFAULT_KEY = "aws:x-amz-cek-alg"
 KMS_V1_DEFAULT_KEY = "kms_cmk_id"
@@ -20,8 +18,7 @@ class KmsKeyring(S3Keyring):
     enable_legacy_wrapping_algorithms: bool = field(default=False)
 
     def onEncrypt(self, encMaterials):
-        """
-        Process encryption materials using KMS.
+        """Process encryption materials using KMS.
 
         Args:
             encMaterials (EncryptionMaterials): Encryption materials to process
@@ -49,12 +46,11 @@ class KmsKeyring(S3Keyring):
             encMaterials.encrypted_data_key = encrypted_data_key
             encMaterials.plaintext_data_key = response["Plaintext"]
             return encMaterials
-        except Exception as e:
+        except Exception:
             raise
 
     def onDecrypt(self, decMaterials, encrypted_data_keys=None):
-        """
-        Decrypt one of the encrypted data keys and update decMaterials.
+        """Decrypt one of the encrypted data keys and update decMaterials.
 
         Args:
             decMaterials (DecryptionMaterials): A DecryptionMaterials instance containing decryption materials
@@ -129,5 +125,5 @@ class KmsKeyring(S3Keyring):
                 raise last_exception
             else:
                 raise S3EncryptionClientError("Failed to decrypt any of the encrypted data keys")
-        except Exception as e:
+        except Exception:
             raise

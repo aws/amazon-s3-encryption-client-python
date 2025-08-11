@@ -16,8 +16,7 @@ from .pipelines import GetEncryptedObjectPipeline, PutEncryptedObjectPipeline
 
 @define
 class S3EncryptionClientConfig:
-    """
-    Configuration object for the S3 Encryption Client
+    """Configuration object for the S3 Encryption Client
     """
 
     keyring: AbstractKeyring

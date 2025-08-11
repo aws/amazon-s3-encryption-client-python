@@ -1,6 +1,5 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
-from typing import Any, Dict, List, Union
 
 from attrs import define
 
@@ -11,8 +10,7 @@ from .materials import DecryptionMaterials, EncryptionMaterials
 # API Stub for CMM
 class AbstractCryptoMaterialsManager:
     def getEncryptionMaterials(self, encMatsRequest):
-        """
-        Get encryption materials from the keyring.
+        """Get encryption materials from the keyring.
 
         Args:
             encMatsRequest (Dict[str, Any] or EncryptionMaterials): Request containing encryption parameters
@@ -23,8 +21,7 @@ class AbstractCryptoMaterialsManager:
         raise NotImplementedError
 
     def decryptMaterials(self, decMatsRequest):
-        """
-        Decrypt materials using the keyring.
+        """Decrypt materials using the keyring.
 
         Args:
             decMatsRequest (Dict[str, Any] or DecryptionMaterials): Request containing decryption parameters
@@ -40,8 +37,7 @@ class DefaultCryptoMaterialsManager(AbstractCryptoMaterialsManager):
     keyring: AbstractKeyring
 
     def getEncryptionMaterials(self, encMatsRequest):
-        """
-        Get encryption materials from the keyring.
+        """Get encryption materials from the keyring.
 
         Args:
             encMatsRequest (Dict[str, Any]): Request containing encryption parameters
@@ -60,8 +56,7 @@ class DefaultCryptoMaterialsManager(AbstractCryptoMaterialsManager):
         return self.keyring.onEncrypt(materials)
 
     def decryptMaterials(self, decMatsRequest):
-        """
-        Decrypt materials using the keyring.
+        """Decrypt materials using the keyring.
 
         Args:
             decMatsRequest (Dict[str, Any] or DecryptionMaterials): Request containing decryption parameters

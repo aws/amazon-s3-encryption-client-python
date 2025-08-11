@@ -5,8 +5,7 @@ from attrs import define, field
 
 @define
 class EncryptedDataKey:
-    """
-    Class representing an encrypted data key.
+    """Class representing an encrypted data key.
 
     An encrypted data key contains information about the key provider
     and the encrypted data key itself.

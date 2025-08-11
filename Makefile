@@ -5,30 +5,31 @@ all: lint test
 
 # Install dependencies
 install:
-	poetry install
+	uv pip install -e ".[dev,test]"
 
 # Run linting checks
 lint:
-	poetry run black --check .
-	poetry run isort --check .
-	# Allow flake8 to fail for now as we're gradually adopting linting standards
-	poetry run flake8 src/ test/ || true
+	uv run black --check .
+	uv run isort --check .
+	# Allow ruff to fail for now as we're gradually adopting linting standards
+	uv run ruff check src/ test/ || true
 
-# Format code with Black and isort
+# Format code with Black, isort, and Ruff
 format:
-	poetry run black .
-	poetry run isort .
+	uv run black .
+	uv run isort .
+	uv run ruff check --fix src/ test/
 
 # Run all tests
 test: test-unit test-integration
 
 # Run unit tests
 test-unit:
-	poetry run pytest test/ --verbose
+	uv run pytest test/ --verbose
 
 # Run integration tests
 test-integration:
-	poetry run pytest test/integration/ --verbose
+	uv run pytest test/integration/ --verbose
 
 # Clean up cache files
 clean:

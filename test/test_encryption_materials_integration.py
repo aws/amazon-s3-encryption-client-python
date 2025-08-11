@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from src.s3_encryption.materials.crypto_materials_manager import DefaultCryptoMaterialsManager
 from src.s3_encryption.materials.encrypted_data_key import EncryptedDataKey

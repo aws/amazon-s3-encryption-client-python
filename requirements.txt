@@ -1,0 +1,12 @@
+# Main dependencies
+boto3>=1.37.2
+cryptography>=45.0.6
+attrs>=25.1.0
+
+# Test dependencies
+pytest>=8.4.1
+
+# Development dependencies
+black>=24.3.0
+ruff>=0.3.0
+isort>=5.13.2

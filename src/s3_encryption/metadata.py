@@ -1,15 +1,14 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 import json
-from typing import Any, Dict, Optional
+from typing import Any
 
 from attrs import define, field
 
 
 @define
 class ObjectMetadata:
-    """
-    Class representing metadata for encrypted S3 objects.
+    """Class representing metadata for encrypted S3 objects.
 
     This class provides a structured way to handle encryption metadata
     with fields corresponding to standard S3 encryption headers.
@@ -26,21 +25,21 @@ class ObjectMetadata:
     """
 
     # The encrypted data key (legacy format)
-    encrypted_data_key_v1: Optional[str] = field(default=None)
+    encrypted_data_key_v1: str | None = field(default=None)
     # The encrypted data key (current format)
-    encrypted_data_key_v2: Optional[str] = field(default=None)
+    encrypted_data_key_v2: str | None = field(default=None)
     # The algorithm used to encrypt the data key (e.g. AES/GCM or kms+context)
-    encrypted_data_key_algorithm: Optional[str] = field(default=None)
+    encrypted_data_key_algorithm: str | None = field(default=None)
     # The encryption context used for the data key
-    encrypted_data_key_context: Optional[dict] = field(default=None)
+    encrypted_data_key_context: dict | None = field(default=None)
     # The initialization vector used for content encryption
-    content_iv: Optional[str] = field(default=None)
+    content_iv: str | None = field(default=None)
     # The cipher algorithm used for content encryption (e.g. AES/GCM/NoPadding)
-    content_cipher: Optional[str] = field(default=None)
+    content_cipher: str | None = field(default=None)
     # The length of the authentication tag
-    content_cipher_tag_length: Optional[str] = field(default="128")
+    content_cipher_tag_length: str | None = field(default="128")
     # Marker for instruction files
-    instruction_file: Optional[str] = field(default=None)
+    instruction_file: str | None = field(default=None)
 
     # Constants for metadata keys
     ENCRYPTED_DATA_KEY_V1 = "x-amz-key"
@@ -53,9 +52,8 @@ class ObjectMetadata:
     INSTRUCTION_FILE = "x-amz-crypto-instr-file"
 
     @classmethod
-    def from_dict(cls, metadata_dict: Dict[str, Any]) -> "ObjectMetadata":
-        """
-        Create an ObjectMetadata instance from a dictionary.
+    def from_dict(cls, metadata_dict: dict[str, Any]) -> "ObjectMetadata":
+        """Create an ObjectMetadata instance from a dictionary.
 
         Args:
             metadata_dict (Dict[str, Any]): Dictionary containing metadata keys and values
@@ -81,9 +79,8 @@ class ObjectMetadata:
             instruction_file=metadata_dict.get(cls.INSTRUCTION_FILE),
         )
 
-    def to_dict(self) -> Dict[str, str]:
-        """
-        Convert the ObjectMetadata instance to a dictionary.
+    def to_dict(self) -> dict[str, str]:
+        """Convert the ObjectMetadata instance to a dictionary.
 
         Returns:
             Dict[str, str]: Dictionary containing non-None metadata values
