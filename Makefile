@@ -5,6 +5,7 @@ all: lint test
 
 # Install dependencies
 install:
+	uv venv
 	uv pip install -e ".[dev,test]"
 
 # Run linting checks
