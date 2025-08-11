@@ -66,7 +66,7 @@ class S3EncryptionClient:
     def get_object(self, **kwargs):
         # Extract encryption context if provided
         encryption_context = kwargs.pop("EncryptionContext", None)
-        
+
         # Create params for the S3 client
         params = {**kwargs}
 

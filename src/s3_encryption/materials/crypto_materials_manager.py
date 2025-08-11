@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import abc
+
 from attrs import define
 
 from .keyring import AbstractKeyring
@@ -11,11 +12,11 @@ from .materials import DecryptionMaterials, EncryptionMaterials
 # API Stub for CMM
 class AbstractCryptoMaterialsManager(abc.ABC):
     @abc.abstractmethod
-    def getEncryptionMaterials(self, encMatsRequest):
+    def get_encryption_materials(self, enc_mats_request):
         """Get encryption materials from the keyring.
 
         Args:
-            encMatsRequest (Dict[str, Any] or EncryptionMaterials): Request containing encryption parameters
+            enc_mats_request (Dict[str, Any] or EncryptionMaterials): Request containing encryption parameters
 
         Returns:
             EncryptionMaterials: The encryption materials
@@ -23,11 +24,11 @@ class AbstractCryptoMaterialsManager(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def decryptMaterials(self, decMatsRequest):
+    def decrypt_materials(self, dec_mats_request):
         """Decrypt materials using the keyring.
 
         Args:
-            decMatsRequest (Dict[str, Any] or DecryptionMaterials): Request containing decryption parameters
+            dec_mats_request (Dict[str, Any] or DecryptionMaterials): Request containing decryption parameters
 
         Returns:
             DecryptionMaterials: The decryption materials
@@ -39,39 +40,39 @@ class AbstractCryptoMaterialsManager(abc.ABC):
 class DefaultCryptoMaterialsManager(AbstractCryptoMaterialsManager):
     keyring: AbstractKeyring
 
-    def getEncryptionMaterials(self, encMatsRequest):
+    def get_encryption_materials(self, enc_mats_request):
         """Get encryption materials from the keyring.
 
         Args:
-            encMatsRequest (Dict[str, Any]): Request containing encryption parameters
+            enc_mats_request (Dict[str, Any]): Request containing encryption parameters
 
         Returns:
             EncryptionMaterials: The encryption materials
         """
         # Convert dictionary to EncryptionMaterials if needed
-        if isinstance(encMatsRequest, dict):
+        if isinstance(enc_mats_request, dict):
             materials = EncryptionMaterials(
-                encryption_context=encMatsRequest.get("encryption_context", {})
+                encryption_context=enc_mats_request.get("encryption_context", {})
             )
         else:
-            materials = encMatsRequest
+            materials = enc_mats_request
 
-        return self.keyring.onEncrypt(materials)
+        return self.keyring.on_encrypt(materials)
 
-    def decryptMaterials(self, decMatsRequest):
+    def decrypt_materials(self, dec_mats_request):
         """Decrypt materials using the keyring.
 
         Args:
-            decMatsRequest (Dict[str, Any] or DecryptionMaterials): Request containing decryption parameters
+            dec_mats_request (Dict[str, Any] or DecryptionMaterials): Request containing decryption parameters
 
         Returns:
             DecryptionMaterials: The decryption materials
         """
         # Convert dictionary to DecryptionMaterials if needed
-        if isinstance(decMatsRequest, dict):
-            materials = DecryptionMaterials.from_dict(decMatsRequest)
+        if isinstance(dec_mats_request, dict):
+            materials = DecryptionMaterials.from_dict(dec_mats_request)
         else:
-            materials = decMatsRequest
+            materials = dec_mats_request
 
         encrypted_data_keys = materials.encrypted_data_keys
-        return self.keyring.onDecrypt(materials, encrypted_data_keys)
+        return self.keyring.on_decrypt(materials, encrypted_data_keys)

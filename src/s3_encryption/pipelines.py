@@ -39,7 +39,7 @@ class PutEncryptedObjectPipeline:
         )
 
         # Get encryption materials from the crypto materials manager
-        enc_mats = self.cmm.getEncryptionMaterials(enc_mats_request)
+        enc_mats = self.cmm.get_encryption_materials(enc_mats_request)
 
         # Generate initialization vector
         iv = os.urandom(12)
@@ -137,7 +137,7 @@ class GetEncryptedObjectPipeline:
         )
 
         # Get decryption materials from the crypto materials manager
-        dec_materials = self.cmm.decryptMaterials(dec_materials)
+        dec_materials = self.cmm.decrypt_materials(dec_materials)
 
         aesgcm = AESGCM(dec_materials.plaintext_data_key)
 
