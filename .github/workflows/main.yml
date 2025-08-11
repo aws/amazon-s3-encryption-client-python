@@ -13,6 +13,10 @@ on:
         type: string
 
 jobs:
+  lint:
+    name: Lint
+    uses: ./.github/workflows/lint.yml
+
   run-tests:
     name: Run Tests
     uses: ./.github/workflows/test.yml
