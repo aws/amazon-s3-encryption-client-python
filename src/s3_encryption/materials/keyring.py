@@ -42,8 +42,7 @@ class AbstractKeyring:
 
 @define
 class S3Keyring(AbstractKeyring):
-    """Base class for S3 encryption keyrings that provides common validation logic.
-    """
+    """Base class for S3 encryption keyrings that provides common validation logic."""
 
     # Ideally this would be set, but attrs doesn't play nice
     # enable_legacy_wrapping_algorithms: bool = field(default=False)
