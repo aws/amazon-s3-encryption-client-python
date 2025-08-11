@@ -22,18 +22,7 @@ jobs:
       - name: Install Uv
         run: pip install uv
           
-      - name: Create virtual environment
-        run: uv venv
-          
-      - name: Install dependencies
-        run: uv pip install -e ".[dev,test]"
-        
-      - name: Run Black
-        run: uv run black --check .
-        
-      - name: Run isort
-        run: uv run isort --check .
-        
-      - name: Run Ruff
-        # Allow ruff to fail for now as we're gradually adopting linting standards
-        run: uv run ruff check src/ test/ || true
+      - name: Install dependencies and run linting
+        run: |
+          make install
+          make lint
