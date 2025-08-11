@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
+import abc
 from attrs import define
 
 from ..exceptions import S3EncryptionClientError
@@ -9,13 +10,14 @@ from .materials import DecryptionMaterials, EncryptionMaterials
 
 
 @define
-class AbstractKeyring:
+class AbstractKeyring(abc.ABC):
     # Ideally, all keyrings would inherit this field.
     # However, attrs doesn't allow us to set a default here,
     # when inheriting keyrings have optional fields.
     # Even without a default it doesn't seem to play nice with attrs.
     # enableLegacyWrappingAlgorithms: bool = field(default=False)
 
+    @abc.abstractmethod
     def onEncrypt(self, encMaterials):
         """Process encryption materials.
 
@@ -25,8 +27,9 @@ class AbstractKeyring:
         Returns:
             EncryptionMaterials: The processed encryption materials
         """
-        raise NotImplementedError
+        pass
 
+    @abc.abstractmethod
     def onDecrypt(self, decMaterials, encrypted_data_keys=None):
         """Decrypt one of the encrypted data keys and update decMaterials.
 
@@ -37,7 +40,7 @@ class AbstractKeyring:
         Returns:
             DecryptionMaterials: The updated decMaterials with the plaintext data key (PDK)
         """
-        raise NotImplementedError
+        pass
 
 
 @define

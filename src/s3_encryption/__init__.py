@@ -31,23 +31,28 @@ class S3EncryptionClient:
     wrapped_s3_client = field()
     config: S3EncryptionClientConfig = field()
 
-    # TODO: rename Data-> Body to match boto
-    def put_object(self, Bucket, Key, Data, EncryptionContext=None, **kwargs):
+    def put_object(self, **kwargs):
+        # Extract required parameters from kwargs
+        bucket = kwargs.pop("Bucket")
+        key = kwargs.pop("Key")
+        body = kwargs.pop("Body")
+        encryption_context = kwargs.pop("EncryptionContext", None)
+
         # Create a pipeline for this operation
         pipeline = PutEncryptedObjectPipeline(self.config.cmm)
 
         # Encrypt the data using the pipeline
-        data_bytes = Data
+        data_bytes = body
         # We probably just shouldn't support strings, use utf8 for now
         # TODO: look deeper into this, what does normal boto3 do?
-        if type(Data) == str:
-            data_bytes = Data.encode("utf-8")
+        if type(body) == str:
+            data_bytes = body.encode("utf-8")
         encrypted_data, encryption_metadata = pipeline.encrypt(
-            data_bytes, encryption_context=EncryptionContext
+            data_bytes, encryption_context=encryption_context
         )
 
         # Add encryption metadata to the request parameters
-        params = {"Bucket": Bucket, "Key": Key, "Body": encrypted_data, **kwargs}
+        params = {"Bucket": bucket, "Key": key, "Body": encrypted_data, **kwargs}
 
         # Add encryption metadata to the parameters
         if encryption_metadata:
@@ -58,8 +63,11 @@ class S3EncryptionClient:
 
         return self.wrapped_s3_client.put_object(**params)
 
-    def get_object(self, EncryptionContext=None, **kwargs):
-        # try just straight kwargs
+    def get_object(self, **kwargs):
+        # Extract encryption context if provided
+        encryption_context = kwargs.pop("EncryptionContext", None)
+        
+        # Create params for the S3 client
         params = {**kwargs}
 
         # Get the encrypted object from S3
@@ -70,7 +78,7 @@ class S3EncryptionClient:
 
         # Decrypt the data using the pipeline
         decrypted_data = pipeline.decrypt(
-            response, EncryptionContext
+            response, encryption_context
         )  # encrypted_data, encryption_metadata)
 
         # Create a new streaming body with the decrypted data

@@ -28,7 +28,7 @@ def test_simple_roundtrip():
     wrapped_client = boto3.client("s3")
     config = S3EncryptionClientConfig(keyring)
     s3ec = S3EncryptionClient(wrapped_client, config)
-    s3ec.put_object(Bucket=bucket, Key=key, Data=data)
+    s3ec.put_object(Bucket=bucket, Key=key, Body=data)
     get_req = {"Bucket": bucket, "Key": key}
     response = s3ec.get_object(**get_req)
     output = response["Body"].read().decode("utf-8")

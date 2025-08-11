@@ -1,6 +1,7 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import abc
 from attrs import define
 
 from .keyring import AbstractKeyring
@@ -8,7 +9,8 @@ from .materials import DecryptionMaterials, EncryptionMaterials
 
 
 # API Stub for CMM
-class AbstractCryptoMaterialsManager:
+class AbstractCryptoMaterialsManager(abc.ABC):
+    @abc.abstractmethod
     def getEncryptionMaterials(self, encMatsRequest):
         """Get encryption materials from the keyring.
 
@@ -18,8 +20,9 @@ class AbstractCryptoMaterialsManager:
         Returns:
             EncryptionMaterials: The encryption materials
         """
-        raise NotImplementedError
+        pass
 
+    @abc.abstractmethod
     def decryptMaterials(self, decMatsRequest):
         """Decrypt materials using the keyring.
 
@@ -29,7 +32,7 @@ class AbstractCryptoMaterialsManager:
         Returns:
             DecryptionMaterials: The decryption materials
         """
-        raise NotImplementedError
+        pass
 
 
 @define
