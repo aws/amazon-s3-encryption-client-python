@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import os
 import sys
-import unittest
+import pytest
 
 # Add the src directory to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../s
 from s3_encryption.metadata import ObjectMetadata
 
 
-class TestObjectMetadata(unittest.TestCase):
+class TestObjectMetadata:
     def test_from_dict(self):
         # Create a metadata dictionary
         metadata_dict = {
@@ -24,17 +24,17 @@ class TestObjectMetadata(unittest.TestCase):
         metadata = ObjectMetadata.from_dict(metadata_dict)
 
         # Verify that the fields were populated correctly
-        self.assertEqual(metadata.encrypted_data_key_v2, "encrypted-key-data")
-        self.assertEqual(metadata.encrypted_data_key_algorithm, "kms+context")
-        self.assertEqual(metadata.content_iv, "base64-encoded-iv")
-        self.assertEqual(metadata.content_cipher, "AES/GCM/NoPadding")
+        assert metadata.encrypted_data_key_v2 == "encrypted-key-data"
+        assert metadata.encrypted_data_key_algorithm == "kms+context"
+        assert metadata.content_iv == "base64-encoded-iv"
+        assert metadata.content_cipher == "AES/GCM/NoPadding"
 
         # Verify that fields not in the dictionary are None
-        self.assertIsNone(metadata.encrypted_data_key_v1)
-        self.assertIsNone(metadata.encrypted_data_key_context)
+        assert metadata.encrypted_data_key_v1 is None
+        assert metadata.encrypted_data_key_context is None
         # Note: content_cipher_tag_length is None because it's not in the input dictionary
-        self.assertIsNone(metadata.content_cipher_tag_length)
-        self.assertIsNone(metadata.instruction_file)
+        assert metadata.content_cipher_tag_length is None
+        assert metadata.instruction_file is None
 
     def test_to_dict(self):
         # Create an ObjectMetadata instance with some fields set
@@ -49,17 +49,17 @@ class TestObjectMetadata(unittest.TestCase):
         metadata_dict = metadata.to_dict()
 
         # Verify that the dictionary contains the expected keys and values
-        self.assertEqual(metadata_dict["x-amz-key-v2"], "encrypted-key-data")
-        self.assertEqual(metadata_dict["x-amz-wrap-alg"], "kms+context")
-        self.assertEqual(metadata_dict["x-amz-iv"], "base64-encoded-iv")
-        self.assertEqual(metadata_dict["x-amz-cek-alg"], "AES/GCM/NoPadding")
+        assert metadata_dict["x-amz-key-v2"] == "encrypted-key-data"
+        assert metadata_dict["x-amz-wrap-alg"] == "kms+context"
+        assert metadata_dict["x-amz-iv"] == "base64-encoded-iv"
+        assert metadata_dict["x-amz-cek-alg"] == "AES/GCM/NoPadding"
 
         # Verify that fields that are None are not included in the dictionary
-        self.assertNotIn("x-amz-key", metadata_dict)
-        self.assertNotIn("x-amz-matdesc", metadata_dict)
+        assert "x-amz-key" not in metadata_dict
+        assert "x-amz-matdesc" not in metadata_dict
         # Note: content_cipher_tag_length has a default value of "128"
-        self.assertEqual(metadata_dict.get("x-amz-tag-len"), "128")
-        self.assertNotIn("x-amz-crypto-instr-file", metadata_dict)
+        assert metadata_dict.get("x-amz-tag-len") == "128"
+        assert "x-amz-crypto-instr-file" not in metadata_dict
 
     def test_roundtrip(self):
         # Create a metadata dictionary
@@ -79,8 +79,4 @@ class TestObjectMetadata(unittest.TestCase):
             result_dict.pop("x-amz-tag-len")
 
         # Verify that the result matches the original
-        self.assertEqual(result_dict, original_dict)
-
-
-if __name__ == "__main__":
-    unittest.main()
+        assert result_dict == original_dict

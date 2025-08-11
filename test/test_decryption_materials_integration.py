@@ -1,7 +1,7 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-import unittest
+import pytest
 from unittest.mock import MagicMock, patch
 
 from src.s3_encryption.materials.crypto_materials_manager import DefaultCryptoMaterialsManager
@@ -10,7 +10,7 @@ from src.s3_encryption.materials.keyring import S3Keyring
 from src.s3_encryption.materials.materials import DecryptionMaterials
 
 
-class TestDecryptionMaterialsIntegration(unittest.TestCase):
+class TestDecryptionMaterialsIntegration:
     def test_keyring_on_decrypt(self):
         """Test that S3Keyring.on_decrypt properly handles DecryptionMaterials."""
         # Create a keyring
@@ -37,11 +37,11 @@ class TestDecryptionMaterialsIntegration(unittest.TestCase):
             result = keyring.on_decrypt(materials, [edk])
 
             # Verify the result is a DecryptionMaterials instance
-            self.assertIsInstance(result, DecryptionMaterials)
-            self.assertEqual(result.iv, b"initialization-vector")
-            self.assertEqual(result.encrypted_data_keys, [edk])
-            self.assertEqual(result.encryption_context_stored, {"key1": "value1"})
-            self.assertEqual(result.encryption_context_from_request, {"key2": "value2"})
+            assert isinstance(result, DecryptionMaterials)
+            assert result.iv == b"initialization-vector"
+            assert result.encrypted_data_keys == [edk]
+            assert result.encryption_context_stored == {"key1": "value1"}
+            assert result.encryption_context_from_request == {"key2": "value2"}
 
     def test_keyring_on_decrypt_default_enc_ctx(self):
         """Test that S3Keyring.on_decrypt properly handles DecryptionMaterials."""
@@ -69,11 +69,11 @@ class TestDecryptionMaterialsIntegration(unittest.TestCase):
             result = keyring.on_decrypt(materials, [edk])
 
             # Verify the result is a DecryptionMaterials instance
-            self.assertIsInstance(result, DecryptionMaterials)
-            self.assertEqual(result.iv, b"initialization-vector")
-            self.assertEqual(result.encrypted_data_keys, [edk])
-            self.assertEqual(result.encryption_context_stored, {})
-            self.assertEqual(result.encryption_context_from_request, {})
+            assert isinstance(result, DecryptionMaterials)
+            assert result.iv == b"initialization-vector"
+            assert result.encrypted_data_keys == [edk]
+            assert result.encryption_context_stored == {}
+            assert result.encryption_context_from_request == {}
 
     def test_cmm_decrypt_materials_with_dict(self):
         """Test that DefaultCryptoMaterialsManager.decrypt_materials properly handles dictionary input."""
@@ -106,12 +106,12 @@ class TestDecryptionMaterialsIntegration(unittest.TestCase):
         )
 
         # Verify the result is a DecryptionMaterials instance
-        self.assertIsInstance(result, DecryptionMaterials)
-        self.assertEqual(result.iv, b"initialization-vector")
-        self.assertEqual(result.encrypted_data_keys, [edk])
-        self.assertEqual(result.encryption_context_stored, {"key1": "value1"})
-        self.assertEqual(result.encryption_context_from_request, {"key2": "value2"})
-        self.assertEqual(result.plaintext_data_key, b"plaintext-data-key")
+        assert isinstance(result, DecryptionMaterials)
+        assert result.iv == b"initialization-vector"
+        assert result.encrypted_data_keys == [edk]
+        assert result.encryption_context_stored == {"key1": "value1"}
+        assert result.encryption_context_from_request == {"key2": "value2"}
+        assert result.plaintext_data_key == b"plaintext-data-key"
 
     def test_cmm_decrypt_materials_with_materials(self):
         """Test that DefaultCryptoMaterialsManager.decrypt_materials properly handles DecryptionMaterials input."""
@@ -143,13 +143,9 @@ class TestDecryptionMaterialsIntegration(unittest.TestCase):
         result = cmm.decrypt_materials(materials)
 
         # Verify the result is a DecryptionMaterials instance
-        self.assertIsInstance(result, DecryptionMaterials)
-        self.assertEqual(result.iv, b"initialization-vector")
-        self.assertEqual(result.encrypted_data_keys, [edk])
-        self.assertEqual(result.encryption_context_stored, {"key1": "value1"})
-        self.assertEqual(result.encryption_context_from_request, {"key2": "value2"})
-        self.assertEqual(result.plaintext_data_key, b"plaintext-data-key")
-
-
-if __name__ == "__main__":
-    unittest.main()
+        assert isinstance(result, DecryptionMaterials)
+        assert result.iv == b"initialization-vector"
+        assert result.encrypted_data_keys == [edk]
+        assert result.encryption_context_stored == {"key1": "value1"}
+        assert result.encryption_context_from_request == {"key2": "value2"}
+        assert result.plaintext_data_key == b"plaintext-data-key"
