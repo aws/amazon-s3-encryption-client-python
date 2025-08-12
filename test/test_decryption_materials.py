@@ -1,7 +1,6 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-import pytest
 
 from src.s3_encryption.materials.encrypted_data_key import EncryptedDataKey
 from src.s3_encryption.materials.materials import DecryptionMaterials

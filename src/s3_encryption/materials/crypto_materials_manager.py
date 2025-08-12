@@ -21,6 +21,7 @@ class AbstractCryptoMaterialsManager(abc.ABC):
     A crypto materials manager is responsible for generating encryption materials
     and processing decryption materials using a keyring.
     """
+
     @abc.abstractmethod
     def get_encryption_materials(self, enc_mats_request):
         """Get encryption materials from the keyring.
@@ -57,6 +58,7 @@ class DefaultCryptoMaterialsManager(AbstractCryptoMaterialsManager):
     Attributes:
         keyring (AbstractKeyring): The keyring to use for cryptographic operations
     """
+
     keyring: AbstractKeyring
 
     def get_encryption_materials(self, enc_mats_request):

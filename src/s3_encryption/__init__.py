@@ -33,6 +33,7 @@ class S3EncryptionClient:
     This client wraps a boto3 S3 client and provides encryption and decryption
     capabilities for S3 objects using the configured keyring and crypto materials manager.
     """
+
     wrapped_s3_client = field()
     config: S3EncryptionClientConfig = field()
 

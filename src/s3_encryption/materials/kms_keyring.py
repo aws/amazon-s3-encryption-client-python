@@ -27,6 +27,7 @@ class KmsKeyring(S3Keyring):
         kms_key_id (str): The KMS key ID to use
         enable_legacy_wrapping_algorithms (bool): Whether to enable legacy wrapping algorithms
     """
+
     kms_client = field()
     kms_key_id: str = field()
     enable_legacy_wrapping_algorithms: bool = field(default=False)
