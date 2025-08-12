@@ -1,0 +1,48 @@
+name: Run Tests
+
+on:
+  workflow_call:
+    # Optional inputs that can be provided when calling this workflow
+    inputs:
+      python-version:
+        description: 'Python version to use'
+        default: '3.11'
+        required: false
+        type: string
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version || '3.11' }}
+          
+      - name: Install Uv
+        run: pip install uv
+          
+      - name: Install dependencies
+        run: make install
+        
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::370957321024:role/S3EC-Python-Github-test-role
+          aws-region: us-west-2
+          
+      - name: Run unit tests
+        run: make test-unit
+        
+      - name: Run integration tests
+        run: make test-integration
+        env:
+          CI_S3_BUCKET: ${{ vars.CI_S3_BUCKET }}
+          CI_KMS_KEY_ALIAS: ${{ vars.CI_KMS_KEY_ALIAS }}

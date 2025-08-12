@@ -1,0 +1,16 @@
+.idea
+.vscode
+# Exclude all pycache directories and bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Uv
+.uv/
+uv.lock
