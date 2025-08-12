@@ -7,6 +7,7 @@ to generate and decrypt data keys for S3 object encryption.
 """
 
 from attrs import define, field
+from botocore import client
 
 from ..exceptions import S3EncryptionClientError
 from .encrypted_data_key import EncryptedDataKey
@@ -23,12 +24,12 @@ class KmsKeyring(S3Keyring):
     This keyring uses AWS KMS to generate and decrypt data keys.
 
     Attributes:
-        kms_client: The boto3 KMS client
+        kms_client (client.BaseClient): The boto3 KMS client
         kms_key_id (str): The KMS key ID to use
         enable_legacy_wrapping_algorithms (bool): Whether to enable legacy wrapping algorithms
     """
 
-    kms_client = field()
+    kms_client: client.BaseClient = field()
     kms_key_id: str = field()
     enable_legacy_wrapping_algorithms: bool = field(default=False)
 
