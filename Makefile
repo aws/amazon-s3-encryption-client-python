@@ -11,8 +11,9 @@ install:
 # Run linting checks
 lint:
 	uv run black --check .
-	# Allow ruff to fail for now as we're gradually adopting linting standards
-	uv run ruff check src/ test/ || true
+	# Enforce ruff checks on src/ but allow test/ to fail
+	uv run ruff check src/
+	uv run ruff check test/ || true
 
 # Format code with Black and Ruff
 format:
