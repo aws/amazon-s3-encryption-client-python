@@ -45,7 +45,8 @@ class S3EncryptionClient:
 
         Args:
             **kwargs: Arguments to pass to the S3 client's put_object method.
-                      Must include Bucket, Key, and Body parameters.
+                      Must include Bucket and Key parameters.
+                      Body parameter is optional; if not provided, an empty object is uploaded.
                       May include EncryptionContext for additional authenticated data.
 
         Returns:
@@ -54,7 +55,7 @@ class S3EncryptionClient:
         # Extract required parameters from kwargs
         bucket = kwargs.pop("Bucket")
         key = kwargs.pop("Key")
-        body = kwargs.pop("Body")
+        body = kwargs.pop("Body", b"")  # Default to empty bytes when Body is not provided
         encryption_context = kwargs.pop("EncryptionContext", None)
 
         # Create a pipeline for this operation
