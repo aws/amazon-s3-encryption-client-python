@@ -45,7 +45,7 @@ class AbstractKeyring(abc.ABC):
                 keys to try.
 
         Returns:
-            DecryptionMaterials: The updated dec_materials with the plaintext data key (PDK)
+            DecryptionMaterials: The updated dec_materials with the plaintext data key
         """
         pass
 

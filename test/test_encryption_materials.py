@@ -30,7 +30,7 @@ class TestEncryptionMaterials:
         materials_dict = {
             "encryption_context": {"key1": "value1"},
             "encrypted_data_key": edk,
-            "PDK": b"plaintext-data-key",
+            "plaintext_data_key": b"plaintext-data-key",
         }
         materials = EncryptionMaterials.from_dict(materials_dict)
         assert materials.encryption_context == {"key1": "value1"}
@@ -52,4 +52,4 @@ class TestEncryptionMaterials:
         materials_dict = materials.to_dict()
         assert materials_dict["encryption_context"] == {"key1": "value1"}
         assert materials_dict["encrypted_data_key"] == edk
-        assert materials_dict["PDK"] == b"plaintext-data-key"
+        assert materials_dict["plaintext_data_key"] == b"plaintext-data-key"

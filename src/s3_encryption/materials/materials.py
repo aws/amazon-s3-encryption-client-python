@@ -23,7 +23,7 @@ class EncryptionMaterials:
     Attributes:
         encryption_context (Dict[str, str]): Context information for encryption
         encrypted_data_key (Optional[EncryptedDataKey]): The encrypted data key
-        plaintext_data_key (Optional[bytes]): The plaintext data key (PDK)
+        plaintext_data_key (Optional[bytes]): The plaintext data key
     """
 
     encryption_context: dict[str, str] = field(factory=dict)
@@ -43,7 +43,7 @@ class EncryptionMaterials:
         return cls(
             encryption_context=materials_dict.get("encryption_context", {}),
             encrypted_data_key=materials_dict.get("encrypted_data_key"),
-            plaintext_data_key=materials_dict.get("PDK"),
+            plaintext_data_key=materials_dict.get("plaintext_data_key"),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -61,7 +61,7 @@ class EncryptionMaterials:
             result["encrypted_data_key"] = self.encrypted_data_key
 
         if self.plaintext_data_key is not None:
-            result["PDK"] = self.plaintext_data_key
+            result["plaintext_data_key"] = self.plaintext_data_key
 
         return result
 
@@ -78,7 +78,7 @@ class DecryptionMaterials:
         encrypted_data_keys (List[EncryptedDataKey]): List of encrypted data keys to try
         encryption_context_stored (Dict[str, str]): Encryption context stored with the object
         encryption_context_from_request (Dict[str, str]): Encryption context provided in the request
-        plaintext_data_key (Optional[bytes]): The plaintext data key (PDK)
+        plaintext_data_key (Optional[bytes]): The plaintext data key
     """
 
     iv: bytes | None = field(default=None)
@@ -104,7 +104,7 @@ class DecryptionMaterials:
             encryption_context_from_request=materials_dict.get(
                 "encryption_context_from_request", {}
             ),
-            plaintext_data_key=materials_dict.get("PDK"),
+            plaintext_data_key=materials_dict.get("plaintext_data_key"),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -128,6 +128,6 @@ class DecryptionMaterials:
             result["encryption_context_from_request"] = self.encryption_context_from_request
 
         if self.plaintext_data_key is not None:
-            result["PDK"] = self.plaintext_data_key
+            result["plaintext_data_key"] = self.plaintext_data_key
 
         return result

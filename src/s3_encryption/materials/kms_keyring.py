@@ -75,7 +75,7 @@ class KmsKeyring(S3Keyring):
                 keys to try.
 
         Returns:
-            DecryptionMaterials: The updated dec_materials with the plaintext data key (PDK)
+            DecryptionMaterials: The updated dec_materials with the plaintext data key
         """
         try:
             # Call parent class validation

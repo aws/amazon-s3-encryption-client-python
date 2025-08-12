@@ -56,7 +56,7 @@ class TestDecryptionMaterials:
             "encrypted_data_keys": [edk],
             "encryption_context_stored": {"key1": "value1"},
             "encryption_context_from_request": {"key2": "value2"},
-            "PDK": b"plaintext-data-key",
+            "plaintext_data_key": b"plaintext-data-key",
         }
         materials = DecryptionMaterials.from_dict(materials_dict)
         assert materials.iv == b"initialization-vector"
@@ -84,4 +84,4 @@ class TestDecryptionMaterials:
         assert materials_dict["encrypted_data_keys"] == [edk]
         assert materials_dict["encryption_context_stored"] == {"key1": "value1"}
         assert materials_dict["encryption_context_from_request"] == {"key2": "value2"}
-        assert materials_dict["PDK"] == b"plaintext-data-key"
+        assert materials_dict["plaintext_data_key"] == b"plaintext-data-key"
