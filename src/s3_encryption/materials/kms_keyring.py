@@ -36,7 +36,7 @@ class KmsKeyring(S3Keyring):
         """Process encryption materials using KMS.
 
         Args:
-            enc_materials (EncryptionMaterials): Encryption materials to process
+            enc_materials (EncryptionMaterials or dict): Encryption materials to process
 
         Returns:
             EncryptionMaterials: The processed encryption materials with KMS-generated keys

@@ -65,7 +65,8 @@ class DefaultCryptoMaterialsManager(AbstractCryptoMaterialsManager):
         """Get encryption materials from the keyring.
 
         Args:
-            enc_mats_request (Dict[str, Any]): Request containing encryption parameters
+            enc_mats_request (Dict[str, Any] or EncryptionMaterials): Request containing encryption
+                parameters
 
         Returns:
             EncryptionMaterials: The encryption materials

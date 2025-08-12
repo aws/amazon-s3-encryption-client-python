@@ -27,7 +27,7 @@ class AbstractKeyring(abc.ABC):
         """Process encryption materials.
 
         Args:
-            enc_materials (EncryptionMaterials): Encryption materials to process
+            enc_materials (EncryptionMaterials or dict): Encryption materials to process
 
         Returns:
             EncryptionMaterials: The processed encryption materials
