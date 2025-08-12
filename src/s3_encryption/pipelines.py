@@ -1,5 +1,10 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
+"""Encryption and decryption pipelines for S3 Encryption Client.
+
+This module provides pipelines for encrypting objects before they are put into S3
+and decrypting objects after they are retrieved from S3.
+"""
 import base64
 import os
 
@@ -26,7 +31,7 @@ class PutEncryptedObjectPipeline:
         """Encrypt the data before it is stored in S3.
 
         Args:
-            data (bytes or str): The data to be encrypted
+            plaintext (bytes or str): The data to be encrypted
             encryption_context (dict, optional): Additional context for encryption
 
         Returns:
@@ -85,7 +90,7 @@ class GetEncryptedObjectPipeline:
 
     cmm: AbstractCryptoMaterialsManager = field()
 
-    def decrypt(self, response, encryption_context={}):
+    def decrypt(self, response, encryption_context=None):
         """Decrypt the data after it is retrieved from S3.
 
         Args:
@@ -99,6 +104,10 @@ class GetEncryptedObjectPipeline:
         encrypted_data = response.get("Body").read()
         encryption_metadata = response.get("Metadata", {})
         metadata = ObjectMetadata.from_dict(encryption_metadata)
+
+        # Use empty dict if encryption_context is None
+        if encryption_context is None:
+            encryption_context = {}
 
         iv_b64 = metadata.content_iv
         edk_b64 = metadata.encrypted_data_key_v2
@@ -141,6 +150,4 @@ class GetEncryptedObjectPipeline:
 
         aesgcm = AESGCM(dec_materials.plaintext_data_key)
 
-        plaintext = aesgcm.decrypt(nonce=iv_bytes, data=encrypted_data, associated_data=None)
-
-        return plaintext
+        return aesgcm.decrypt(nonce=iv_bytes, data=encrypted_data, associated_data=None)

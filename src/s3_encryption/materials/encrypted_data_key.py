@@ -1,5 +1,10 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
+"""Encrypted data key module for S3 Encryption Client.
+
+This module provides the EncryptedDataKey class which represents an encrypted
+data key used in the S3 encryption process.
+"""
 from attrs import define
 
 

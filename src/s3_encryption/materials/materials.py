@@ -1,5 +1,11 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
+"""Materials module for S3 Encryption Client.
+
+This module provides classes for encryption and decryption materials,
+which contain the cryptographic materials needed for S3 object encryption
+and decryption operations.
+"""
 from typing import Any
 
 from attrs import define, field

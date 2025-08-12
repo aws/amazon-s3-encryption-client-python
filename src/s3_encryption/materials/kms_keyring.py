@@ -1,8 +1,12 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
+"""KMS keyring module for S3 Encryption Client.
+
+This module provides a KMS-based keyring implementation that uses AWS KMS
+to generate and decrypt data keys for S3 object encryption.
+"""
 
 from attrs import define, field
-from botocore import client
 
 from ..exceptions import S3EncryptionClientError
 from .encrypted_data_key import EncryptedDataKey
@@ -14,6 +18,15 @@ KMS_V1_DEFAULT_KEY = "kms_cmk_id"
 
 @define
 class KmsKeyring(S3Keyring):
+    """KMS implementation of the S3 keyring.
+
+    This keyring uses AWS KMS to generate and decrypt data keys.
+
+    Attributes:
+        kms_client: The boto3 KMS client
+        kms_key_id (str): The KMS key ID to use
+        enable_legacy_wrapping_algorithms (bool): Whether to enable legacy wrapping algorithms
+    """
     kms_client = field()
     kms_key_id: str = field()
     enable_legacy_wrapping_algorithms: bool = field(default=False)
@@ -54,8 +67,10 @@ class KmsKeyring(S3Keyring):
         """Decrypt one of the encrypted data keys and update dec_materials.
 
         Args:
-            dec_materials (DecryptionMaterials): A DecryptionMaterials instance containing decryption materials
-            encrypted_data_keys (List[EncryptedDataKey], optional): A list of encrypted data keys to try.
+            dec_materials (DecryptionMaterials): A DecryptionMaterials instance containing
+                decryption materials
+            encrypted_data_keys (List[EncryptedDataKey], optional): A list of encrypted data
+                keys to try.
 
         Returns:
             DecryptionMaterials: The updated dec_materials with the plaintext data key (PDK)
@@ -86,7 +101,8 @@ class KmsKeyring(S3Keyring):
                         # Default EC MUST NOT be passed in via request
                         if KMS_CONTEXT_DEFAULT_KEY in encryption_context_from_request:
                             raise S3EncryptionClientError(
-                                f"{KMS_CONTEXT_DEFAULT_KEY} is a reserved key for the S3 encryption client"
+                                f"{KMS_CONTEXT_DEFAULT_KEY} is a reserved key for the "
+                                f"S3 encryption client"
                             )
 
                         # The stored EC, minus default key/values, MUST match provided EC
@@ -96,14 +112,16 @@ class KmsKeyring(S3Keyring):
                         if encryption_context_stored_copy != encryption_context_from_request:
                             # TODO: modeled error
                             raise S3EncryptionClientError(
-                                "Provided encryption context does not match information retrieved from S3"
+                                "Provided encryption context does not match information "
+                                "retrieved from S3"
                             )
 
                         # Update decMaterials with the modified encryption context
                     elif edk.key_provider_info == "kms":
                         if not self.enable_legacy_wrapping_algorithms:
                             raise S3EncryptionClientError(
-                                f"Enable legacy wrapping algorithms to use legacy key wrapping algorithm: {edk.key_provider_info}"
+                                f"Enable legacy wrapping algorithms to use legacy key wrapping "
+                                f"algorithm: {edk.key_provider_info}"
                             )
                     else:
                         raise S3EncryptionClientError(

@@ -1,5 +1,6 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
+"""Top-level S3 Encryption Client v3 for Python package."""
 import io
 
 from attrs import define, field
@@ -10,13 +11,12 @@ from .materials.crypto_materials_manager import (
     DefaultCryptoMaterialsManager,
 )
 from .materials.keyring import AbstractKeyring
-from .metadata import ObjectMetadata
 from .pipelines import GetEncryptedObjectPipeline, PutEncryptedObjectPipeline
 
 
 @define
 class S3EncryptionClientConfig:
-    """Configuration object for the S3 Encryption Client"""
+    """Configuration object for the S3 Encryption Client."""
 
     keyring: AbstractKeyring
     cmm: AbstractCryptoMaterialsManager = field()
@@ -28,10 +28,28 @@ class S3EncryptionClientConfig:
 
 @define
 class S3EncryptionClient:
+    """Client for encrypting and decrypting S3 objects.
+
+    This client wraps a boto3 S3 client and provides encryption and decryption
+    capabilities for S3 objects using the configured keyring and crypto materials manager.
+    """
     wrapped_s3_client = field()
     config: S3EncryptionClientConfig = field()
 
     def put_object(self, **kwargs):
+        """Encrypt and upload an object to S3.
+
+        This method encrypts the provided object body before uploading it to S3.
+        It handles the encryption process using the configured crypto materials manager.
+
+        Args:
+            **kwargs: Arguments to pass to the S3 client's put_object method.
+                      Must include Bucket, Key, and Body parameters.
+                      May include EncryptionContext for additional authenticated data.
+
+        Returns:
+            The response from the S3 client's put_object method.
+        """
         # Extract required parameters from kwargs
         bucket = kwargs.pop("Bucket")
         key = kwargs.pop("Key")
@@ -45,7 +63,7 @@ class S3EncryptionClient:
         data_bytes = body
         # We probably just shouldn't support strings, use utf8 for now
         # TODO: look deeper into this, what does normal boto3 do?
-        if type(body) == str:
+        if isinstance(body, str):
             data_bytes = body.encode("utf-8")
         encrypted_data, encryption_metadata = pipeline.encrypt(
             data_bytes, encryption_context=encryption_context
@@ -64,6 +82,19 @@ class S3EncryptionClient:
         return self.wrapped_s3_client.put_object(**params)
 
     def get_object(self, **kwargs):
+        """Download and decrypt an object from S3.
+
+        This method downloads an encrypted object from S3 and decrypts it
+        using the configured crypto materials manager.
+
+        Args:
+            **kwargs: Arguments to pass to the S3 client's get_object method.
+                      May include EncryptionContext if it was used during encryption.
+
+        Returns:
+            The response from the S3 client's get_object method with the Body
+            replaced with a StreamingBody containing the decrypted data.
+        """
         # Extract encryption context if provided
         encryption_context = kwargs.pop("EncryptionContext", None)
 

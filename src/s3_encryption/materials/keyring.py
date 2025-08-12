@@ -1,6 +1,10 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
+"""Keyring module for S3 Encryption Client.
 
+This module provides interfaces and implementations for keyrings, which are
+responsible for encrypting and decrypting data keys used in the S3 encryption process.
+"""
 
 import abc
 
@@ -12,11 +16,11 @@ from .materials import DecryptionMaterials, EncryptionMaterials
 
 @define
 class AbstractKeyring(abc.ABC):
-    # Ideally, all keyrings would inherit this field.
-    # However, attrs doesn't allow us to set a default here,
-    # when inheriting keyrings have optional fields.
-    # Even without a default it doesn't seem to play nice with attrs.
-    # enableLegacyWrappingAlgorithms: bool = field(default=False)
+    """Abstract base class for keyrings.
+
+    A keyring is responsible for encrypting and decrypting data keys.
+    Concrete implementations handle specific key providers like KMS.
+    """
 
     @abc.abstractmethod
     def on_encrypt(self, enc_materials):
@@ -35,8 +39,10 @@ class AbstractKeyring(abc.ABC):
         """Decrypt one of the encrypted data keys and update dec_materials.
 
         Args:
-            dec_materials (DecryptionMaterials): A DecryptionMaterials instance containing decryption materials
-            encrypted_data_keys (List[EncryptedDataKey], optional): A list of encrypted data keys to try.
+            dec_materials (DecryptionMaterials): A DecryptionMaterials instance containing
+                decryption materials
+            encrypted_data_keys (List[EncryptedDataKey], optional): A list of encrypted data
+                keys to try.
 
         Returns:
             DecryptionMaterials: The updated dec_materials with the plaintext data key (PDK)
@@ -47,9 +53,6 @@ class AbstractKeyring(abc.ABC):
 @define
 class S3Keyring(AbstractKeyring):
     """Base class for S3 encryption keyrings that provides common validation logic."""
-
-    # Ideally this would be set, but attrs doesn't play nice
-    # enable_legacy_wrapping_algorithms: bool = field(default=False)
 
     def on_encrypt(self, enc_materials):
         """Validate encryption materials before encryption.
@@ -80,8 +83,10 @@ class S3Keyring(AbstractKeyring):
         """Validate decryption materials before decryption.
 
         Args:
-            dec_materials (DecryptionMaterials): A DecryptionMaterials instance containing decryption materials
-            encrypted_data_keys (List[EncryptedDataKey], optional): A list of encrypted data keys to try.
+            dec_materials (DecryptionMaterials): A DecryptionMaterials instance containing
+                decryption materials
+            encrypted_data_keys (List[EncryptedDataKey], optional): A list of encrypted data
+                keys to try.
 
         Returns:
             DecryptionMaterials: The validated decryption materials

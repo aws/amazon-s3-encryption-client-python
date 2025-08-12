@@ -1,5 +1,10 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
+"""Metadata handling for S3 Encryption Client.
+
+This module provides classes and utilities for managing encryption metadata
+for S3 objects, including serialization and deserialization of metadata.
+"""
 import json
 from typing import Any
 
@@ -16,7 +21,8 @@ class ObjectMetadata:
     All fields are optional and correspond to the following S3 encryption headers:
     - encrypted_data_key_v1: The encrypted data key (legacy format)
     - encrypted_data_key_v2: The encrypted data key (current format)
-    - encrypted_data_key_algorithm: The algorithm used to encrypt the data key (e.g. AES/GCM or kms+context)
+    - encrypted_data_key_algorithm: The algorithm used to encrypt the data key
+      (e.g. AES/GCM or kms+context)
     - encrypted_data_key_context: The encryption context used for the data key
     - content_iv: The initialization vector used for content encryption
     - content_cipher: The cipher algorithm used for content encryption (e.g. AES/GCM/NoPadding)
