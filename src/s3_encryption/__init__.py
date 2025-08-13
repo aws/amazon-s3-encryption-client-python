@@ -4,14 +4,18 @@
 import io
 
 from attrs import define, field
+from botocore import serialize
 from botocore.response import StreamingBody
 
+from .exceptions import S3EncryptionClientError
 from .materials.crypto_materials_manager import (
     AbstractCryptoMaterialsManager,
     DefaultCryptoMaterialsManager,
 )
 from .materials.keyring import AbstractKeyring
 from .pipelines import GetEncryptedObjectPipeline, PutEncryptedObjectPipeline
+
+DEFAULT_ENCODING = "utf-8"
 
 
 @define
@@ -37,6 +41,21 @@ class S3EncryptionClient:
     wrapped_s3_client = field()
     config: S3EncryptionClientConfig = field()
 
+    def __attrs_post_init__(self):
+        """Validate serialization encoding after initialization.
+
+        Ensures boto3 serializers are using the expected default encoding.
+        """
+        # Sanity check that boto3 serialization are ONLY using the default encoding (utf-8)
+        # This should always be the case, but changes in encoding would break the assumption that
+        # the decrypted plaintext adheres to the non-utf8 encoding scheme. So we avoid that.
+        for sz_name, sz in serialize.SERIALIZERS.items():
+            if sz.DEFAULT_ENCODING != DEFAULT_ENCODING:
+                raise S3EncryptionClientError(
+                    f"All Serializers MUST only support utf-8 encoding, but {sz_name} is using "
+                    f"{sz.DEFAULT_ENCODING}!"
+                )
+
     def put_object(self, **kwargs):
         """Encrypt and upload an object to S3.
 
@@ -61,12 +80,27 @@ class S3EncryptionClient:
         # Create a pipeline for this operation
         pipeline = PutEncryptedObjectPipeline(self.config.cmm)
 
-        # Encrypt the data using the pipeline
-        data_bytes = body
-        # We probably just shouldn't support strings, use utf8 for now
-        # TODO: look deeper into this, what does normal boto3 do?
+        # The documentation for boto3 asks for bytes or a file-like object,
+        # but in reality, it is possible to pass strings.
+        # Strings will be encoded using DEFAULT_ENCODING,
+        # which MUST match the default encoding defined int the Serializer class in botocore.
         if isinstance(body, str):
-            data_bytes = body.encode("utf-8")
+            data_bytes = body.encode(DEFAULT_ENCODING)
+        elif isinstance(body, bytes):
+            data_bytes = body
+        elif isinstance(body, io.IOBase):
+            # TODO: Streaming support
+            raise S3EncryptionClientError(
+                f"Body parameter of type {type(body)} is not an acceptable type! "
+                f"Streaming operations are not yet supported."
+            )
+        else:
+            raise S3EncryptionClientError(
+                f"Body parameter of type {type(body)} is not an acceptable type! "
+                f"Use bytes or a file-like object."
+            )
+
+        # Now encrypt the bytes/file-like IOBase object
         encrypted_data, encryption_metadata = pipeline.encrypt(
             data_bytes, encryption_context=encryption_context
         )
