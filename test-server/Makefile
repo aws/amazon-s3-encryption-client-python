@@ -37,11 +37,11 @@ start-servers:
 			echo "Both servers are ready!"; \
 			break; \
 		fi; \
-		if [ $$i -eq 60 ]; then \
+		if [ $$i -eq 360 ]; then \
 			echo "Timeout waiting for servers to start"; \
 			exit 1; \
 		fi; \
-		echo "Waiting for servers to start ($$i/60)..."; \
+		echo "Waiting for servers to start ($$i/360)..."; \
 		sleep 1; \
 	done
 
