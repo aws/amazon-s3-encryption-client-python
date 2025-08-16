@@ -30,7 +30,7 @@ start-servers:
 	AWS_REGION="us-west-2" \
 	./gradlew run & echo $$! > ../java-server.pid
 	@echo "Waiting for servers to be ready..."
-	@for i in $$(seq 1 60); do \
+	@for i in $$(seq 1 360); do \
 		if nc -z localhost 8080 && nc -z localhost 8081; then \
 			echo "Ports are open, waiting for servers to initialize..."; \
 			sleep 5; \
