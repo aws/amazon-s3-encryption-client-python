@@ -1,0 +1,110 @@
+package software.amazon.encryption.s3;
+
+import software.amazon.awssdk.core.traits.Trait;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.encryption.s3.S3EncryptionClient;
+import software.amazon.encryption.s3.materials.AesKeyring;
+import software.amazon.encryption.s3.materials.Keyring;
+import software.amazon.encryption.s3.materials.KmsKeyring;
+import software.amazon.encryption.s3.materials.PartialRsaKeyPair;
+import software.amazon.encryption.s3.materials.RsaKeyring;
+import software.amazon.smithy.java.core.schema.Schema;
+import software.amazon.smithy.java.server.RequestContext;
+import software.amazon.encryption.s3.model.CreateClientInput;
+import software.amazon.encryption.s3.model.CreateClientOutput;
+import software.amazon.encryption.s3.model.GenericServerError;
+import software.amazon.encryption.s3.model.KeyMaterial;
+import software.amazon.encryption.s3.service.CreateClientOperation;
+
+import javax.crypto.spec.SecretKeySpec;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+
+public class CreateClientOperationImpl implements CreateClientOperation {
+  private Map<String, S3Client> clientCache_;
+
+  public CreateClientOperationImpl(Map<String, S3Client> clientCache) {
+    clientCache_ = clientCache;
+  }
+
+  // Copied from S3EC.
+  private boolean onlyOneNonNull(Object... values) {
+    boolean haveOneNonNull = false;
+    for (Object o : values) {
+      if (o != null) {
+        if (haveOneNonNull) {
+          return false;
+        }
+
+        haveOneNonNull = true;
+      }
+    }
+
+    return haveOneNonNull;
+  }
+
+  @Override
+  public CreateClientOutput createClient(CreateClientInput input, RequestContext context) {
+    System.out.println("createClient called!");
+    try {
+      KeyMaterial key = input.config().keyMaterial();
+      if (!onlyOneNonNull(key.aesKey(), key.kmsKeyId(), key.rsaKey())) {
+        throw new RuntimeException("KeyMaterial must be only one, non-null input!");
+      }
+      Keyring keyring;
+      if (key.aesKey() != null) {
+        byte[] keyBytes = new byte[key.aesKey().remaining()];
+        key.aesKey().get(keyBytes);
+        keyring = AesKeyring.builder()
+          .wrappingKey(new SecretKeySpec(keyBytes, "AES"))
+          .enableLegacyWrappingAlgorithms(input.config().enableLegacyWrappingAlgorithms())
+          .build();
+      } else if (key.rsaKey() != null) {
+        try {
+          byte[] keyBytes = new byte[key.rsaKey().remaining()];
+          key.rsaKey().get(keyBytes);
+          PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(keyBytes);
+          KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+          keyring = RsaKeyring.builder()
+            .enableLegacyWrappingAlgorithms(input.config().enableLegacyWrappingAlgorithms())
+            .wrappingKeyPair(PartialRsaKeyPair.builder()
+              .privateKey(keyFactory.generatePrivate(keySpec)).build())
+            .build();
+        } catch (NoSuchAlgorithmException | InvalidKeySpecException nse) {
+          throw new RuntimeException(nse);
+        }
+      } else if (key.kmsKeyId() != null) {
+        keyring = KmsKeyring.builder()
+          .enableLegacyWrappingAlgorithms(input.config().enableLegacyWrappingAlgorithms())
+          .wrappingKeyId(key.kmsKeyId())
+          .build();
+      } else {
+        throw new RuntimeException("No KeyMaterial found!");
+      }
+      S3Client s3Client = S3EncryptionClient.builder()
+        .keyring(keyring)
+        .build();
+      UUID uuid = UUID.randomUUID();
+      String uuidString = uuid.toString();
+      clientCache_.put(uuidString, s3Client);
+      return CreateClientOutput.builder()
+        .clientId(uuidString)
+        .build();
+    } catch (Exception e) {
+      StringWriter sw = new StringWriter();
+      e.printStackTrace(new PrintWriter(sw));
+      String stackTrace = sw.toString();
+      throw GenericServerError.builder()
+        .message(stackTrace)
+        .build();
+    }
+  }
+}

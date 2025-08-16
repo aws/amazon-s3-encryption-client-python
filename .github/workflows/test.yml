@@ -46,3 +46,10 @@ jobs:
         env:
           CI_S3_BUCKET: ${{ vars.CI_S3_BUCKET }}
           CI_KMS_KEY_ALIAS: ${{ vars.CI_KMS_KEY_ALIAS }}
+          
+      - name: Run test-server tests
+        run: cd test-server && make ci
+        env:
+          AWS_REGION: us-west-2
+          TEST_SERVER_S3_BUCKET: ${{ vars.TEST_SERVER_S3_BUCKET }}
+          TEST_SERVER_KMS_KEY_ARN: ${{ vars.TEST_SERVER_KMS_KEY_ARN }}
