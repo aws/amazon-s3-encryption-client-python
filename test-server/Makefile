@@ -21,14 +21,14 @@ start-servers:
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
-	poetry run python src/main.py
+	poetry run python src/main.py & echo $$! > ../python-server.pid
 	@echo "Starting Java server..."
 	cd java-server && \
 	AWS_ACCESS_KEY_ID="$$AWS_ACCESS_KEY_ID" \
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
-	./gradlew run
+	./gradlew run & echo $$! > ../java-server.pid
 	@echo "Waiting for servers to be ready..."
 	@for i in $$(seq 1 60); do \
 		if nc -z localhost 8080 && nc -z localhost 8081; then \
