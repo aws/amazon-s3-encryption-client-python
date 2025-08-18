@@ -76,8 +76,8 @@ jobs:
           CI_S3_BUCKET: ${{ vars.CI_S3_BUCKET }}
           CI_KMS_KEY_ALIAS: ${{ vars.CI_KMS_KEY_ALIAS }}
           
-      - name: Run test-server tests (optimized)
-        run: cd test-server && make ci-fast
+      - name: Run test-server tests
+        run: cd test-server && make ci
         env:
           AWS_REGION: us-west-2
           TEST_SERVER_S3_BUCKET: ${{ vars.TEST_SERVER_S3_BUCKET }}

@@ -10,8 +10,8 @@ The test-server CI process involves starting both Python and Java servers, then 
 
 ### 1. Parallel Server Startup
 
-- Added a new `start-servers-parallel` target in the Makefile that starts both Python and Java servers concurrently
-- Created a new `ci-fast` target that uses parallel server startup
+- Updated the `start-servers` target in the Makefile to start both Python and Java servers concurrently
+- Updated the `ci` target to use parallel server startup
 
 ### 2. Gradle Performance Optimizations
 
@@ -44,11 +44,11 @@ The following files were modified or created:
 For local development and testing, you can use the optimized targets:
 
 ```bash
-# Run the optimized CI process
-cd test-server && make ci-fast
+# Run the CI process (now optimized by default)
+cd test-server && make ci
 
 # Start servers in parallel
-cd test-server && make start-servers-parallel
+cd test-server && make start-servers
 
 # Run tests with optimized Gradle settings
 cd test-server/java-tests && ./gradlew --build-cache --parallel integ
@@ -69,8 +69,8 @@ The optimizations are expected to significantly reduce the CI execution time by:
 
 ## Troubleshooting
 
-If you encounter issues with the optimized CI process:
+If you encounter issues with the CI process:
 
-1. Try running the original `ci` target: `make ci`
-2. Check Gradle daemon logs: `cat ~/.gradle/daemon/*/daemon-*.out.log`
-3. Disable specific optimizations by modifying the relevant configuration files
+1. Check Gradle daemon logs: `cat ~/.gradle/daemon/*/daemon-*.out.log`
+2. Disable specific optimizations by modifying the relevant configuration files
+3. Try running the servers sequentially by modifying the Makefile

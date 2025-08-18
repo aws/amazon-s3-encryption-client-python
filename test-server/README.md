@@ -22,17 +22,11 @@ A Makefile is provided to simplify running the servers and tests. The Makefile h
 # Start servers and run tests (default)
 make
 
-# Run in CI mode (start servers, run tests, stop servers)
+# Run in CI mode (start servers in parallel, run tests, stop servers)
 make ci
 
-# Run in optimized CI mode (start servers in parallel, run tests, stop servers)
-make ci-fast
-
-# Start Python and Java servers sequentially
-make start-servers
-
 # Start Python and Java servers in parallel
-make start-servers-parallel
+make start-servers
 
 # Start only the Python server
 make start-python-server
@@ -53,9 +47,7 @@ make clean
 make help
 ```
 
-The `ci` target is specifically designed for GitHub Actions workflows, ensuring that servers are properly started, tests are run, and resources are cleaned up afterward.
-
-The `ci-fast` target is an optimized version that starts servers in parallel and uses various performance optimizations to speed up the CI process.
+The `ci` target is specifically designed for GitHub Actions workflows, ensuring that servers are properly started in parallel, tests are run, and resources are cleaned up afterward.
 
 ## Performance Optimizations
 
