@@ -1,12 +1,15 @@
 # Makefile for S3 Encryption Client Testing
 
-.PHONY: all start-servers run-tests stop-servers clean ci check-env help
+.PHONY: all start-servers start-python-server start-java-server run-tests stop-servers clean ci check-env help
 
 # Default target
 all: start-servers run-tests
 
 # CI target for GitHub Actions
 ci: start-servers run-tests stop-servers
+
+# Optimized CI target for GitHub Actions
+ci-fast: start-servers-parallel run-tests stop-servers
 
 # Start both servers in background with output to stdout (default for debugging)
 start-servers:
@@ -28,7 +31,54 @@ start-servers:
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
-	./gradlew run & echo $$! > ../java-server.pid
+	./gradlew --build-cache --parallel run & echo $$! > ../java-server.pid
+	@echo "Waiting for servers to be ready..."
+	@for i in $$(seq 1 360); do \
+		if nc -z localhost 8080 && nc -z localhost 8081; then \
+			echo "Ports are open, waiting for servers to initialize..."; \
+			sleep 5; \
+			echo "Both servers are ready!"; \
+			break; \
+		fi; \
+		if [ $$i -eq 360 ]; then \
+			echo "Timeout waiting for servers to start"; \
+			exit 1; \
+		fi; \
+		echo "Waiting for servers to start ($$i/360)..."; \
+		sleep 1; \
+	done
+
+# Start Python server in background
+start-python-server:
+	@echo "Starting Python server..."
+	cd python-server && \
+	AWS_ACCESS_KEY_ID="$$AWS_ACCESS_KEY_ID" \
+	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
+	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
+	AWS_REGION="us-west-2" \
+	poetry install --no-interaction && \
+	AWS_ACCESS_KEY_ID="$$AWS_ACCESS_KEY_ID" \
+	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
+	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
+	AWS_REGION="us-west-2" \
+	poetry run python src/main.py & echo $$! > ../python-server.pid
+	@echo "Python server starting..."
+
+# Start Java server in background
+start-java-server:
+	@echo "Starting Java server..."
+	cd java-server && \
+	AWS_ACCESS_KEY_ID="$$AWS_ACCESS_KEY_ID" \
+	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
+	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
+	AWS_REGION="us-west-2" \
+	./gradlew --build-cache --parallel run & echo $$! > ../java-server.pid
+	@echo "Java server starting..."
+
+# Start both servers in parallel
+start-servers-parallel:
+	@echo "Starting servers in parallel..."
+	@$(MAKE) -j2 start-python-server start-java-server
 	@echo "Waiting for servers to be ready..."
 	@for i in $$(seq 1 360); do \
 		if nc -z localhost 8080 && nc -z localhost 8081; then \
@@ -56,7 +106,7 @@ run-tests:
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
-	./gradlew integ
+	./gradlew --build-cache --parallel integ
 	@echo "Tests completed successfully"
 
 # Stop the servers
@@ -81,14 +131,18 @@ clean: stop-servers
 # Help target
 help:
 	@echo "Available targets:"
-	@echo "  all          : Start servers and run tests (default, output to stdout)"
-	@echo "  ci           : Run in CI mode (start servers, run tests, stop servers)"
-	@echo "  start-servers: Start Python and Java servers (output to stdout)"
-	@echo "  run-tests    : Run Java tests"
-	@echo "  stop-servers : Stop running servers"
-	@echo "  clean        : Stop servers and clean up logs"
-	@echo "  check-env    : Check if required environment variables are set"
-	@echo "  help         : Show this help message"
+	@echo "  all                : Start servers and run tests (default, output to stdout)"
+	@echo "  ci                 : Run in CI mode (start servers, run tests, stop servers)"
+	@echo "  ci-fast            : Run in optimized CI mode (start servers in parallel, run tests, stop servers)"
+	@echo "  start-servers      : Start Python and Java servers sequentially (output to stdout)"
+	@echo "  start-servers-parallel: Start Python and Java servers in parallel (output to stdout)"
+	@echo "  start-python-server: Start only the Python server"
+	@echo "  start-java-server  : Start only the Java server"
+	@echo "  run-tests          : Run Java tests"
+	@echo "  stop-servers       : Stop running servers"
+	@echo "  clean              : Stop servers and clean up logs"
+	@echo "  check-env          : Check if required environment variables are set"
+	@echo "  help               : Show this help message"
 
 # Check if required environment variables are set
 check-env:

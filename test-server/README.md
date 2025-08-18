@@ -25,8 +25,20 @@ make
 # Run in CI mode (start servers, run tests, stop servers)
 make ci
 
-# Start Python and Java servers
+# Run in optimized CI mode (start servers in parallel, run tests, stop servers)
+make ci-fast
+
+# Start Python and Java servers sequentially
 make start-servers
+
+# Start Python and Java servers in parallel
+make start-servers-parallel
+
+# Start only the Python server
+make start-python-server
+
+# Start only the Java server
+make start-java-server
 
 # Run Java tests
 make run-tests
@@ -42,3 +54,16 @@ make help
 ```
 
 The `ci` target is specifically designed for GitHub Actions workflows, ensuring that servers are properly started, tests are run, and resources are cleaned up afterward.
+
+The `ci-fast` target is an optimized version that starts servers in parallel and uses various performance optimizations to speed up the CI process.
+
+## Performance Optimizations
+
+Performance optimizations have been implemented to speed up the test-server CI process, which was previously taking over 5 minutes to run. These optimizations include:
+
+- Parallel server startup
+- Gradle build caching and parallel execution
+- Dependency caching in CI
+- JVM optimizations
+
+For detailed information about the optimizations, see [OPTIMIZATION.md](./OPTIMIZATION.md).

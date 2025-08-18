@@ -1,0 +1,57 @@
+// Global initialization script for Gradle
+// This applies to all Gradle builds in subdirectories
+
+gradle.projectsLoaded {
+    rootProject.allprojects {
+        buildscript {
+            // Configure build script classpath repositories
+            repositories {
+                mavenLocal()
+                mavenCentral()
+                gradlePluginPortal()
+            }
+        }
+    }
+}
+
+// Apply common settings to all projects
+allprojects {
+    // Configure project repositories
+    repositories {
+        mavenLocal()
+        mavenCentral()
+    }
+    
+    // Configure tasks
+    tasks.withType(JavaCompile) {
+        options.incremental = true
+        options.fork = true
+    }
+    
+    // Configure test tasks
+    tasks.withType(Test) {
+        maxParallelForks = Runtime.runtime.availableProcessors().intdiv(2) ?: 1
+        testLogging {
+            events "passed", "skipped", "failed"
+            exceptionFormat = 'full'
+        }
+    }
+}
+
+// Initialize Gradle with optimized settings if not already set
+startParameter.with {
+    if (!systemPropertiesDefined('org.gradle.parallel')) {
+        systemProperties['org.gradle.parallel'] = 'true'
+    }
+    if (!systemPropertiesDefined('org.gradle.caching')) {
+        systemProperties['org.gradle.caching'] = 'true'
+    }
+    if (!systemPropertiesDefined('org.gradle.daemon')) {
+        systemProperties['org.gradle.daemon'] = 'true'
+    }
+}
+
+// Helper method to check if a system property is defined
+boolean systemPropertiesDefined(String property) {
+    return System.properties.containsKey(property) || startParameter.systemPropertiesArgs.containsKey(property)
+}
