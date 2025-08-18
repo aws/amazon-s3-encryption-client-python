@@ -75,8 +75,6 @@ async def put_object(bucket: str, key: str, request: Request):
     """
     client_id = request.headers.get("ClientID")
     body = await request.body()
-    print(f"PUT object request - Bucket: {bucket}, Key: {key}")
-    print(f"ClientID from header: {client_id}")
 
     if not client_id:
         return create_generic_server_error(
@@ -99,8 +97,6 @@ async def put_object(bucket: str, key: str, request: Request):
             **{"Bucket": bucket, "Key": key, "Body": body, "EncryptionContext": enc_ctx}
         )
 
-        print(f"PutObject response: {response}")
-
         # Return the appropriate response
         return {
             "bucket": bucket,
@@ -108,7 +104,6 @@ async def put_object(bucket: str, key: str, request: Request):
             "metadata": metadata if isinstance(metadata, list) else [],
         }
     except Exception as e:
-        print(f"Error making PutObject request: {e}")
         return create_s3_encryption_client_error(f"Failed to put object: {str(e)}")
 
 
@@ -119,8 +114,6 @@ async def get_object(bucket: str, key: str, request: Request):
     to make a GetObject request to S3.
     """
     client_id = request.headers.get("ClientID")
-    print(f"GET object request - Bucket: {bucket}, Key: {key}")
-    print(f"ClientID from header: {client_id}")
 
     if not client_id:
         return create_generic_server_error(
@@ -139,16 +132,11 @@ async def get_object(bucket: str, key: str, request: Request):
 
     try:
         # Use the client to make a GetObject request to S3
-        print("making Get for " + key)
         response = client.get_object(**{"Bucket": bucket, "Key": key, "EncryptionContext": enc_ctx})
-
-        print(f"GetObject response: {response}")
 
         # Extract the body and metadata from the response
         body = response.get("Body").read() if response.get("Body") else b""
-        # print(f"body:" + body)
         metadata = response.get("Metadata", [])
-        print(f"md: {metadata}")
 
         # Convert metadata dictionary to a list of key-value pairs if it's a dict
         if isinstance(metadata, dict):
@@ -160,15 +148,12 @@ async def get_object(bucket: str, key: str, request: Request):
         # Convert metadata_list to a comma-separated string
         metadata_str = ",".join(metadata_list) if metadata_list else ""
         headers = {"Content-Metadata": metadata_str}
-        print(f"headers: {headers}")
 
         # Return the body as the response payload
         return Response(content=body, headers=headers)
     except S3EncryptionClientError as ex:
-        print(f"Modeled Error making GetObject request: {ex}")
         return create_s3_encryption_client_error(str(ex))
     except Exception as e:
-        print(f"Generic Error making GetObject request: {e}")
         return create_generic_server_error(e)
 
 
@@ -178,22 +163,16 @@ async def client_endpoint(request: Request):
     Handle POST requests to /client by creating an S3EncryptionClient.
     """
     body = await request.body()
-    print(f"Received client request with body: {body}")
 
     # Parse the bytes object as JSON
     try:
         # Decode bytes to string and parse as JSON
         parsed_data = json.loads(body.decode("utf-8"))
-        print(f"Parsed JSON data: {parsed_data}")
 
         # Extract config from the parsed data
         config_data = parsed_data.get("config", {})
         # Extract key material if provided
         key_material = config_data.get("keyMaterial", {})
-        if key_material:
-            # Note: This is a placeholder. The actual implementation would depend on how
-            # the S3EncryptionClient handles key material
-            print(f"Key material provided: {key_material}")
 
         enable_legacy_wrapping_algorithms = config_data.get("enableLegacyWrappingAlgorithms", False)
 
@@ -217,23 +196,19 @@ async def client_endpoint(request: Request):
 
         # Create S3EncryptionClient
         client = S3EncryptionClient(wrapped_client, client_config)
-        print(f"Created S3EncryptionClient: {client}")
 
         # Generate a client ID using UUID
         client_id = str(uuid.uuid4())
 
         # Add the client to the client_cache dictionary
         client_cache[client_id] = client
-        print(f"Added client to cache with ID: {client_id}")
 
         return {"clientId": client_id}
     except json.JSONDecodeError as e:
-        print(f"Error parsing JSON: {e}")
         return create_generic_server_error(
             "Invalid JSON in request body", status.HTTP_400_BAD_REQUEST
         )
     except Exception as e:
-        print(f"Error creating S3EncryptionClient: {e}")
         return create_s3_encryption_client_error(f"Failed to create client: {str(e)}")
 
 

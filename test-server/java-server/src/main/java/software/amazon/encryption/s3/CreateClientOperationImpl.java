@@ -53,7 +53,6 @@ public class CreateClientOperationImpl implements CreateClientOperation {
 
   @Override
   public CreateClientOutput createClient(CreateClientInput input, RequestContext context) {
-    System.out.println("createClient called!");
     try {
       KeyMaterial key = input.config().keyMaterial();
       if (!onlyOneNonNull(key.aesKey(), key.kmsKeyId(), key.rsaKey())) {

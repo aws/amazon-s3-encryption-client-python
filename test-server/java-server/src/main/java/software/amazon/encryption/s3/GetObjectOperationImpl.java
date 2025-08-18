@@ -30,7 +30,6 @@ public class GetObjectOperationImpl implements GetObjectOperation {
   @Override
   public GetObjectOutput getObject(GetObjectInput input, RequestContext context) {
     try {
-      System.out.println("Getting object with ClientId: " + input.clientID());
       S3Client s3Client = clientCache_.get(input.clientID());
       Map<String, String> ecMap = metadataListToMap(input.metadata());
 
@@ -47,7 +46,6 @@ public class GetObjectOperationImpl implements GetObjectOperation {
           .body(bb)
           .metadata(mdAsList)
           .build();
-        System.out.println("returning");
         return output;
       } catch (S3EncryptionClientException s3EncryptionClientException) {
         // Modeled exceptions MUST be returned as such

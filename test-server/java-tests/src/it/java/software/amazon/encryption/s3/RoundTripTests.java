@@ -206,7 +206,6 @@ public class RoundTripTests {
           .build());
 
         if (!input.equals(StandardCharsets.UTF_8.decode(output.body()).toString())) {
-            System.out.println(String.format("Encryption in %s failed to decrpyt in %s!", encLang, decLang));
             fail(String.format("Encryption in %s failed to decrpyt in %s!", encLang, decLang));
         }
     }
@@ -251,7 +250,6 @@ public class RoundTripTests {
           .build());
 
         if (!input.equals(StandardCharsets.UTF_8.decode(output.body()).toString())) {
-            System.out.println(String.format("Encryption in %s failed to decrpyt in %s!", encLang, decLang));
             fail(String.format("Encryption in %s failed to decrpyt in %s!", encLang, decLang));
         }
     }

@@ -29,8 +29,6 @@ public class PutObjectOperationImpl implements PutObjectOperation {
   @Override
   public PutObjectOutput putObject(PutObjectInput input, RequestContext context) {
     try {
-      System.out.println("Putting object with ClientId: " + input.clientID());
-      System.out.println("putting " + input.key() + " in bucket " + input.bucket() + " with content: " + input.body());
       final Map<String, String> metadata = metadataListToMap(input.metadata());
       S3Client s3Client = clientCache_.get(input.clientID());
       s3Client.putObject(builder -> builder
@@ -39,7 +37,6 @@ public class PutObjectOperationImpl implements PutObjectOperation {
           .overrideConfiguration(withAdditionalConfiguration(metadata)),
         RequestBody.fromByteBuffer(input.body())
       );
-      System.out.println("Success!");
       // The real S3 doesn't provide bucket/key/metadata, so Test doesn't need to either, but we do anyway
       return PutObjectOutput.builder()
         .bucket(input.bucket())
