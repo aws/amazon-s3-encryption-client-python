@@ -13,16 +13,15 @@ ci: start-servers run-tests stop-servers
 start-python-server:
 	@echo "Starting Python server..."
 	cd python-server && \
+	python -m venv .venv && \
+	.venv/bin/python -m ensurepip && \
+	.venv/bin/python -m pip install -e . && \
+	.venv/bin/python -m pip install -e ../.. && \
 	AWS_ACCESS_KEY_ID="$$AWS_ACCESS_KEY_ID" \
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
-	poetry install --no-interaction && \
-	AWS_ACCESS_KEY_ID="$$AWS_ACCESS_KEY_ID" \
-	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
-	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
-	AWS_REGION="us-west-2" \
-	poetry run python src/main.py & echo $$! > ../python-server.pid
+	.venv/bin/python src/main.py & echo $$! > ../python-server.pid
 	@echo "Python server starting..."
 
 # Start Java server in background

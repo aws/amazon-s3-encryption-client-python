@@ -25,7 +25,7 @@ The test-server CI process involves starting both Python and Java servers, then 
 ### 3. CI Workflow Optimizations
 
 - Added caching for Gradle dependencies and build outputs
-- Added caching for Poetry dependencies
+- Added caching for uv dependencies
 - Set environment variables to ensure Gradle optimizations are used
 
 ## Configuration Files
@@ -63,7 +63,7 @@ The GitHub Actions workflow has been updated to use the optimized CI process aut
 The optimizations are expected to significantly reduce the CI execution time by:
 
 1. Running server startup in parallel (saves time equal to the slower of the two servers)
-2. Caching Gradle and Poetry dependencies (saves download and resolution time)
+2. Caching Gradle and uv dependencies (saves download and resolution time)
 3. Optimizing Gradle execution (reduces build time)
 4. Enabling incremental compilation (reduces compilation time on subsequent runs)
 

@@ -1,22 +1,24 @@
-[tool.poetry]
+[project]
 name = "python-server"
 version = "0.1.0"
 description = "A Python server implementation"
-authors = ["Your Name"]
+authors = [
+    {name = "Your Name"}
+]
 readme = "README.md"
-package-mode = false
+requires-python = ">=3.11"
+dependencies = [
+    "boto3>=1.37.2",
+    "pytest>=8.4.1,<9.0.0",
+    "fastapi>=0.115.12",
+    "uvicorn>=0.34.2",
+]
 
-[tool.poetry.dependencies]
-python = "^3.11"
-boto3 = "^1.37.2"
-pytest = ">=8.4.1,<9.0.0"
-fastapi = "^0.115.12"
-uvicorn = "^0.34.2"
-amazon-s3-encryption-client-python = { path = "../..", develop = true }
-
-[tool.poetry.group.dev.dependencies]
-pytest-cov = "^6.1.1"
+[project.optional-dependencies]
+dev = [
+    "pytest-cov>=6.1.1",
+]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"

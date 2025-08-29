@@ -186,7 +186,7 @@ public class RoundTripTests {
           .config(S3ECConfig.builder()
             .keyMaterial(kmsKeyArn).build())
           .build());
-        String encS3ECId = encClientOutput.clientId();
+        String encS3ECId = encClientOutput.getClientId();
         encClient.putObject(PutObjectInput.builder()
           .clientID(encS3ECId)
           .key(objectKey)
@@ -198,14 +198,14 @@ public class RoundTripTests {
           .config(S3ECConfig.builder()
             .keyMaterial(kmsKeyArn).build())
           .build());
-        String decS3ECId = decClientOutput.clientId();
+        String decS3ECId = decClientOutput.getClientId();
         GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
           .clientID(decS3ECId)
           .bucket(BUCKET)
           .key(objectKey)
           .build());
 
-        if (!input.equals(StandardCharsets.UTF_8.decode(output.body()).toString())) {
+        if (!input.equals(StandardCharsets.UTF_8.decode(output.getBody()).toString())) {
             fail(String.format("Encryption in %s failed to decrpyt in %s!", encLang, decLang));
         }
     }
@@ -227,7 +227,7 @@ public class RoundTripTests {
           .config(S3ECConfig.builder()
             .keyMaterial(kmsKeyArn).build())
           .build());
-        String encS3ECId = encClientOutput.clientId();
+        String encS3ECId = encClientOutput.getClientId();
 
         encClient.putObject(PutObjectInput.builder()
           .clientID(encS3ECId)
@@ -241,7 +241,7 @@ public class RoundTripTests {
           .config(S3ECConfig.builder()
             .keyMaterial(kmsKeyArn).build())
           .build());
-        String decS3ECId = decClientOutput.clientId();
+        String decS3ECId = decClientOutput.getClientId();
         GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
           .clientID(decS3ECId)
           .bucket(BUCKET)
@@ -249,7 +249,7 @@ public class RoundTripTests {
           .metadata(mdAsList)
           .build());
 
-        if (!input.equals(StandardCharsets.UTF_8.decode(output.body()).toString())) {
+        if (!input.equals(StandardCharsets.UTF_8.decode(output.getBody()).toString())) {
             fail(String.format("Encryption in %s failed to decrpyt in %s!", encLang, decLang));
         }
     }
@@ -271,7 +271,7 @@ public class RoundTripTests {
           .config(S3ECConfig.builder()
             .keyMaterial(kmsKeyArn).build())
           .build());
-        String encS3ECId = encClientOutput.clientId();
+        String encS3ECId = encClientOutput.getClientId();
 
         encClient.putObject(PutObjectInput.builder()
           .clientID(encS3ECId)
@@ -285,7 +285,7 @@ public class RoundTripTests {
           .config(S3ECConfig.builder()
             .keyMaterial(kmsKeyArn).build())
           .build());
-        String decS3ECId = decClientOutput.clientId();
+        String decS3ECId = decClientOutput.getClientId();
         try {
             decClient.getObject(GetObjectInput.builder()
               .clientID(decS3ECId)
@@ -313,7 +313,7 @@ public class RoundTripTests {
             .keyMaterial(kmsKeyArn)
             .build())
           .build());
-        String s3ECId = output1.clientId();
+        String s3ECId = output1.getClientId();
 
         // Create the object using the old client
         // V1 Client
@@ -337,7 +337,7 @@ public class RoundTripTests {
           .key(objectKey)
           .build());
 
-        assertEquals(input, new String(output.body().array()));
+        assertEquals(input, new String(output.getBody().array()));
     }
 
     @ParameterizedTest(name = "{displayName} for Encrypt: Java, Decrypt: {0}")
@@ -355,7 +355,7 @@ public class RoundTripTests {
             .keyMaterial(kmsKeyArn)
             .build())
           .build());
-        String s3ECId = output1.clientId();
+        String s3ECId = output1.getClientId();
 
         // Create the object using the old client
         // V1 Client
@@ -386,7 +386,7 @@ public class RoundTripTests {
           .metadata(metadataMapToList(encCtx))
           .build());
 
-        assertEquals(input, new String(output.body().array()));
+        assertEquals(input, new String(output.getBody().array()));
     }
 
     @ParameterizedTest(name = "{displayName} for Encrypt: Java, Decrypt: {0}")
@@ -404,7 +404,7 @@ public class RoundTripTests {
             .keyMaterial(kmsKeyArn)
             .build())
           .build());
-        String s3ECId = output1.clientId();
+        String s3ECId = output1.getClientId();
 
         // Create the object using the old client
         // V1 Client

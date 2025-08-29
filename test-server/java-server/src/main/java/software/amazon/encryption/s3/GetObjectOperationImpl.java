@@ -30,13 +30,13 @@ public class GetObjectOperationImpl implements GetObjectOperation {
   @Override
   public GetObjectOutput getObject(GetObjectInput input, RequestContext context) {
     try {
-      S3Client s3Client = clientCache_.get(input.clientID());
-      Map<String, String> ecMap = metadataListToMap(input.metadata());
+      S3Client s3Client = clientCache_.get(input.getClientID());
+      Map<String, String> ecMap = metadataListToMap(input.getMetadata());
 
       try {
         ResponseBytes<GetObjectResponse> resp = s3Client.getObjectAsBytes(builder -> builder
-          .bucket(input.bucket())
-          .key(input.key())
+          .bucket(input.getBucket())
+          .key(input.getKey())
           .overrideConfiguration(withAdditionalConfiguration(ecMap)));
 
         List<String> mdAsList = metadataMapToList(resp.response().metadata());

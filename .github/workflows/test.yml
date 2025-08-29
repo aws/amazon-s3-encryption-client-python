@@ -26,24 +26,17 @@ jobs:
         with:
           python-version: ${{ inputs.python-version || '3.11' }}
       
-      # Cache Poetry dependencies
-      - name: Cache Poetry dependencies
+      # Cache uv dependencies
+      - name: Cache uv dependencies
         uses: actions/cache@v3
         with:
-          path: ~/.cache/pypoetry
-          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
           restore-keys: |
-            ${{ runner.os }}-poetry-
+            ${{ runner.os }}-uv-
           
       - name: Install Uv
         run: pip install uv
-          
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: latest
-          virtualenvs-create: true
-          virtualenvs-in-project: true
       
       # Cache Gradle dependencies and build outputs
       - name: Cache Gradle packages

@@ -29,19 +29,19 @@ public class PutObjectOperationImpl implements PutObjectOperation {
   @Override
   public PutObjectOutput putObject(PutObjectInput input, RequestContext context) {
     try {
-      final Map<String, String> metadata = metadataListToMap(input.metadata());
-      S3Client s3Client = clientCache_.get(input.clientID());
+      final Map<String, String> metadata = metadataListToMap(input.getMetadata());
+      S3Client s3Client = clientCache_.get(input.getClientID());
       s3Client.putObject(builder -> builder
-          .bucket(input.bucket())
-          .key(input.key())
+          .bucket(input.getBucket())
+          .key(input.getKey())
           .overrideConfiguration(withAdditionalConfiguration(metadata)),
-        RequestBody.fromByteBuffer(input.body())
+        RequestBody.fromByteBuffer(input.getBody())
       );
       // The real S3 doesn't provide bucket/key/metadata, so Test doesn't need to either, but we do anyway
       return PutObjectOutput.builder()
-        .bucket(input.bucket())
-        .key(input.key())
-        .metadata(input.metadata())
+        .bucket(input.getBucket())
+        .key(input.getKey())
+        .metadata(input.getMetadata())
         .build();
     } catch (Exception e) {
       StringWriter sw = new StringWriter();

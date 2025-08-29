@@ -16,4 +16,4 @@ pluginManagement {
     }
 }
 
-rootProject.name = "BasicSmithyJavaServer"
+rootProject.name = "S3ECJavaTestServer"

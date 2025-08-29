@@ -54,36 +54,36 @@ public class CreateClientOperationImpl implements CreateClientOperation {
   @Override
   public CreateClientOutput createClient(CreateClientInput input, RequestContext context) {
     try {
-      KeyMaterial key = input.config().keyMaterial();
-      if (!onlyOneNonNull(key.aesKey(), key.kmsKeyId(), key.rsaKey())) {
+      KeyMaterial key = input.getConfig().getKeyMaterial();
+      if (!onlyOneNonNull(key.getAesKey(), key.getKmsKeyId(), key.getRsaKey())) {
         throw new RuntimeException("KeyMaterial must be only one, non-null input!");
       }
       Keyring keyring;
-      if (key.aesKey() != null) {
-        byte[] keyBytes = new byte[key.aesKey().remaining()];
-        key.aesKey().get(keyBytes);
+      if (key.getAesKey() != null) {
+        byte[] keyBytes = new byte[key.getAesKey().remaining()];
+        key.getAesKey().get(keyBytes);
         keyring = AesKeyring.builder()
           .wrappingKey(new SecretKeySpec(keyBytes, "AES"))
-          .enableLegacyWrappingAlgorithms(input.config().enableLegacyWrappingAlgorithms())
+          .enableLegacyWrappingAlgorithms(input.getConfig().isEnableLegacyWrappingAlgorithms())
           .build();
-      } else if (key.rsaKey() != null) {
+      } else if (key.getRsaKey() != null) {
         try {
-          byte[] keyBytes = new byte[key.rsaKey().remaining()];
-          key.rsaKey().get(keyBytes);
+          byte[] keyBytes = new byte[key.getRsaKey().remaining()];
+          key.getRsaKey().get(keyBytes);
           PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(keyBytes);
           KeyFactory keyFactory = KeyFactory.getInstance("RSA");
           keyring = RsaKeyring.builder()
-            .enableLegacyWrappingAlgorithms(input.config().enableLegacyWrappingAlgorithms())
+            .enableLegacyWrappingAlgorithms(input.getConfig().isEnableLegacyWrappingAlgorithms())
             .wrappingKeyPair(PartialRsaKeyPair.builder()
               .privateKey(keyFactory.generatePrivate(keySpec)).build())
             .build();
         } catch (NoSuchAlgorithmException | InvalidKeySpecException nse) {
           throw new RuntimeException(nse);
         }
-      } else if (key.kmsKeyId() != null) {
+      } else if (key.getKmsKeyId() != null) {
         keyring = KmsKeyring.builder()
-          .enableLegacyWrappingAlgorithms(input.config().enableLegacyWrappingAlgorithms())
-          .wrappingKeyId(key.kmsKeyId())
+          .enableLegacyWrappingAlgorithms(input.getConfig().isEnableLegacyWrappingAlgorithms())
+          .wrappingKeyId(key.getKmsKeyId())
           .build();
       } else {
         throw new RuntimeException("No KeyMaterial found!");

@@ -4,28 +4,31 @@ A FastAPI-based Python server implementation.
 
 ## Setup
 
-1. Install Poetry (if not already installed):
+1. Install uv (if not already installed):
 ```bash
-curl -sSL https://install.python-poetry.org | python3 -
+pip install uv
 ```
 
-2. Install dependencies:
+2. Create a virtual environment and install dependencies:
 ```bash
-poetry install
+uv venv
+source .venv/bin/activate
+uv pip install -e .
+uv pip install -e ../..
 ```
 
 ## Development
 
 - Source code is in the `src` directory
 - Tests are in the `tests` directory
-- Use `poetry shell` to activate the virtual environment
-- Use `poetry add {package}` to add new dependencies
-- Use `poetry add -D {package}` to add new development dependencies
+- Use `source .venv/bin/activate` to activate the virtual environment
+- Use `uv pip install {package}` to add new dependencies
+- Use `uv pip install {package} --dev` to add new development dependencies
 
 ## Running the Server
 
 ```bash
-poetry run python src/main.py
+.venv/bin/python src/main.py
 ```
 
 The server will start on `http://localhost:8080` with the following endpoints:
@@ -39,4 +42,5 @@ The server will start on `http://localhost:8080` with the following endpoints:
 ## Running Tests
 
 ```bash
-poetry run pytest
+.venv/bin/python -m pytest
+```
