@@ -6,7 +6,6 @@
 package software.amazon.encryption.s3;
 
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.encryption.s3.S3EncryptionClient;
 
 import java.net.URI;
 import java.util.Map;

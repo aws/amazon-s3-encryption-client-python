@@ -31,13 +31,7 @@ uv pip install -e ../..
 .venv/bin/python src/main.py
 ```
 
-The server will start on `http://localhost:8080` with the following endpoints:
-- `GET /` - Welcome message
-- `POST /get-beer` - Get a beer with specified ID
-  - Request body: `{"Id": "string"}`
-  - Response: `{"beer": "beer{Id}"}`
-- `GET /docs` - Interactive API documentation (provided by Swagger UI)
-- `GET /redoc` - Alternative API documentation (provided by ReDoc)
+The server will start on `http://localhost:8081`.
 
 ## Running Tests
 

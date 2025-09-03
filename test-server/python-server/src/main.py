@@ -154,7 +154,7 @@ async def get_object(bucket: str, key: str, request: Request):
     except S3EncryptionClientError as ex:
         return create_s3_encryption_client_error(str(ex))
     except Exception as e:
-        return create_generic_server_error(e)
+        return create_generic_server_error(str(e))
 
 
 @app.post("/client")
@@ -186,13 +186,6 @@ async def client_endpoint(request: Request):
         )
         wrapped_client = boto3.client("s3")
         client_config = S3EncryptionClientConfig(keyring)
-        # Create S3EncryptionClientConfig
-        # client_config = S3EncryptionClientConfig(
-        # enable_legacy_unauthenticated_modes=config_data.get("enableLegacyUnauthenticatedModes", False),
-        # enable_delayed_authentication_mode=config_data.get("enableDelayedAuthenticationMode", False),
-        # enable_legacy_wrapping_algorithms=config_data.get("enableLegacyWrappingAlgorithms", False),
-        # buffer_size=config_data.get("setBufferSize", 0)
-        # )
 
         # Create S3EncryptionClient
         client = S3EncryptionClient(wrapped_client, client_config)

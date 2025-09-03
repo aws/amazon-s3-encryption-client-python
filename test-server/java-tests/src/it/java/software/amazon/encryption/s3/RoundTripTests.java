@@ -73,8 +73,8 @@ public class RoundTripTests {
     }
 
     static public class LanguageServerTarget {
-        public String getLangaugeName() {
-            return langaugeName;
+        public String getLanguageName() {
+            return languageName;
         }
 
         public URI getServerURI() {
@@ -82,7 +82,7 @@ public class RoundTripTests {
         }
 
         private final String baseURI = "http://localhost";
-        private String langaugeName;
+        private String languageName;
         private URI serverURI;
 
         @Override
@@ -92,22 +92,22 @@ public class RoundTripTests {
             if (o == null || getClass() != o.getClass())
                 return false;
             LanguageServerTarget that = (LanguageServerTarget) o;
-            return Objects.equals(langaugeName, that.langaugeName) && Objects.equals(serverURI, that.serverURI);
+            return Objects.equals(languageName, that.languageName) && Objects.equals(serverURI, that.serverURI);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(langaugeName, serverURI);
+            return Objects.hash(languageName, serverURI);
         }
 
         LanguageServerTarget(String language, String port) {
-            langaugeName = language;
+            languageName = language;
             serverURI = URI.create(baseURI+ ":" + port);
         }
 
         @Override
         public String toString() {
-            return langaugeName;
+            return languageName;
         }
     }
 
@@ -116,7 +116,7 @@ public class RoundTripTests {
         // Wait for servers to start
         for (LanguageServerTarget server : serverList) {
             if (!serverListening(server.getServerURI())) {
-                throw new RuntimeException(String.format("Test Server for %s is not running at endpoint: %s", server.getLangaugeName(), server.getServerURI()));
+                throw new RuntimeException(String.format("Test Server for %s is not running at endpoint: %s", server.getLanguageName(), server.getServerURI()));
             }
         }
     }
@@ -145,14 +145,13 @@ public class RoundTripTests {
 
     static Stream<Arguments> clientsForTest() {
         return serverList.stream()
-          .map(LanguageServerTarget::getLangaugeName)
+          .map(LanguageServerTarget::getLanguageName)
           .map(Arguments::of);
     }
 
     static Stream<Arguments> crossLanguageClients() {
         return serverList.stream()
           .flatMap(t1 -> serverList.stream()
-//            .filter(t2 -> !t1.equals(t2))
             .flatMap(t2 -> Stream.of(
               Arguments.of(t1, t2)
             )));

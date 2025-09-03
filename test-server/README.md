@@ -4,7 +4,7 @@ Or G-RTFM. Or something.
 
 ## What?
 
-This is an attempt at writing a write-once, run-multiple test server. 
+This is a write-once, run-multiple test server. 
 
 ## How? 
 
