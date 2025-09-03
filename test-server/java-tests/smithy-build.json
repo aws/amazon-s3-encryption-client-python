@@ -1,0 +1,12 @@
+{
+  "version": "1.0",
+  "plugins": {
+    "java-client-codegen": {
+      "service": "software.amazon.encryption.s3#S3ECTestServer",
+      "namespace": "software.amazon.encryption.s3",
+      "headerFile": "license.txt",
+      "protocol": "aws.protocols#restJson1"
+    }
+  },
+  "sources": ["../model"]
+}

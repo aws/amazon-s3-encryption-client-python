@@ -22,7 +22,7 @@ export class S3ECPythonGithub extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
     
-    // KMS Key - default policy is fine,
+    // KMS Keys - default policy is fine,
     // we use IAM to manage key permissions
     const S3ECGithubKMSKey = new Key(
       this,
@@ -42,8 +42,28 @@ export class S3ECPythonGithub extends cdk.Stack {
         targetKey: S3ECGithubKMSKey
       }
     )
+    
+    // KMS Key for test-server
+    const S3ECTestServerKMSKey = new Key(
+      this,
+      "S3ECTestServerKMSKey",
+      {
+        enableKeyRotation: true,
+        description: "KMS Key for Test Server GitHub Action Workflow",
+      }
+    )
 
-    // S3 bucket
+    // KMS alias for test-server
+    const S3ECTestServerKMSKeyAlias = new Alias(
+      this,
+      "S3ECTestServerKMSKeyAlias",
+      {
+        aliasName: "alias/S3EC-Test-Server-Github-KMS-Key",
+        targetKey: S3ECTestServerKMSKey
+      }
+    )
+
+    // S3 buckets
     const AccessConfiguration: BlockPublicAccessOptions = {
       blockPublicAcls: false,
       blockPublicPolicy: false,
@@ -55,6 +75,16 @@ export class S3ECPythonGithub extends cdk.Stack {
       "S3ECGithubTestS3Bucket",
       {
         bucketName: "s3ec-python-github-test-bucket",
+        blockPublicAccess: new BlockPublicAccess(AccessConfiguration)
+      }
+    )
+    
+    // New bucket for test-server
+    const S3ECTestServerGithubBucket = new Bucket(
+      this,
+      "S3ECTestServerGithubBucket",
+      {
+        bucketName: "s3ec-test-server-github-bucket",
         blockPublicAccess: new BlockPublicAccess(AccessConfiguration)
       }
     )
@@ -75,6 +105,7 @@ export class S3ECPythonGithub extends cdk.Stack {
               ],
               resources: [
                 S3ECGithubTestS3Bucket.bucketArn + "/*", // object-level permissions need this extra path
+                S3ECTestServerGithubBucket.bucketArn + "/*", // Add permissions for the new test-server bucket
               ],
             }),
             new PolicyStatement({
@@ -83,7 +114,8 @@ export class S3ECPythonGithub extends cdk.Stack {
                 "s3:ListBucket",
               ],
               resources: [
-                S3ECGithubTestS3Bucket.bucketArn
+                S3ECGithubTestS3Bucket.bucketArn,
+                S3ECTestServerGithubBucket.bucketArn, // Add permissions for the new test-server bucket
               ],
             }),
           ]
@@ -107,6 +139,7 @@ export class S3ECPythonGithub extends cdk.Stack {
               ],
               resources: [
                 S3ECGithubKMSKey.keyArn,
+                S3ECTestServerKMSKey.keyArn, // Add access to the test-server KMS key
               ]
             })
           ]
