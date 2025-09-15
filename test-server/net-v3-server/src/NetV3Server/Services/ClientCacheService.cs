@@ -1,0 +1,29 @@
+using Amazon.S3;
+using Amazon.Extensions.S3.Encryption;
+using System.Collections.Concurrent;
+
+namespace NetV3Server.Services;
+
+public interface IClientCacheService
+{
+    string AddClient(AmazonS3EncryptionClientV2 client);
+    AmazonS3EncryptionClientV2? GetClient(string clientId);
+}
+
+public class ClientCacheService : IClientCacheService
+{
+    private readonly ConcurrentDictionary<string, AmazonS3EncryptionClientV2> _clients = new();
+
+    public string AddClient(AmazonS3EncryptionClientV2 client)
+    {
+        var clientId = Guid.NewGuid().ToString();
+        _clients[clientId] = client;
+        return clientId;
+    }
+
+    public AmazonS3EncryptionClientV2? GetClient(string clientId)
+    {
+        _clients.TryGetValue(clientId, out var client);
+        return client;
+    }
+}
