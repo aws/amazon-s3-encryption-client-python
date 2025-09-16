@@ -23,21 +23,16 @@ public class ClientController : ControllerBase
         try
         {
             var kmsKeyId = request.Config.KeyMaterial.KmsKeyId;
-            var enableLegacyWrappingAlgorithms = request.Config.EnableLegacyUnauthenticatedModes;
-
-
+            var enableLegacyMode = request.Config.EnableLegacyMode;
             var encryptionContext = new Dictionary<string, string>();
-
-            // Create encryption materials
             var encryptionMaterial = new EncryptionMaterialsV2(kmsKeyId, KmsType.KmsContext, encryptionContext);
-
+            // SecurityProfile V2AndLegacy can decrypt from legacy S3EC version while V2 cannot
+            var securityProfile = enableLegacyMode ? SecurityProfile.V2AndLegacy : SecurityProfile.V2;
+            var configuration = new AmazonS3CryptoConfigurationV2(securityProfile);
             // Create S3 encryption client
-            var configuration = new AmazonS3CryptoConfigurationV2(SecurityProfile.V2);
             var encryptionClient = new AmazonS3EncryptionClientV2(configuration, encryptionMaterial);
-
             // Add to cache and return client ID
             var clientId = _clientCacheService.AddClient(encryptionClient);
-
             return Ok(new ClientResponse { ClientId = clientId });
         }
         catch (Exception ex)
