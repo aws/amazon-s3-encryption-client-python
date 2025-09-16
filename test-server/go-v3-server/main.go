@@ -80,7 +80,7 @@ func NewServer() (*Server, error) {
 // createGenericServerError creates a generic server error response
 func (s *Server) createGenericServerError(w http.ResponseWriter, message string, statusCode int) {
 	// Echo error to console
-	log.Printf("GenericServerError: %s (Status: %d)", message, statusCode)
+	log.Printf("[Go V3] GenericServerError: %s (Status: %d)", message, statusCode)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
@@ -93,7 +93,7 @@ func (s *Server) createGenericServerError(w http.ResponseWriter, message string,
 // createS3EncryptionClientError creates an S3 encryption client error response
 func (s *Server) createS3EncryptionClientError(w http.ResponseWriter, message string, statusCode int) {
 	// Echo error to console
-	log.Printf("S3EncryptionClientError: %s (Status: %d)", message, statusCode)
+	log.Printf("[Go V3] S3EncryptionClientError: %s (Status: %d)", message, statusCode)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
@@ -128,8 +128,6 @@ func metadataStringToMap(mdString string) (map[string]string, error) {
 
 // createClient handles POST /client
 func (s *Server) createClient(w http.ResponseWriter, r *http.Request) {
-	log.Printf("CreateClient: Received POST /client request")
-
 	// Read body
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -143,9 +141,6 @@ func (s *Server) createClient(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("CreateClient: Parsed config - KMSKeyID: %s, EnableLegacyWrappingAlgorithms: %t",
-		input.Config.KeyMaterial.KMSKeyID, input.Config.EnableLegacyWrappingAlgorithms)
-
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-west-2"))
 	if err != nil {
 		s.createS3EncryptionClientError(w, fmt.Sprintf("Failed to load AWS config: %v", err), http.StatusInternalServerError)
@@ -153,7 +148,6 @@ func (s *Server) createClient(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create KMS keyring
-	log.Printf("CreateClient: Creating KMS keyring with key ID: %s", input.Config.KeyMaterial.KMSKeyID)
 	kmsClient := kms.NewFromConfig(cfg)
 	keyring := materials.NewKmsKeyring(kmsClient, input.Config.KeyMaterial.KMSKeyID, func(options *materials.KeyringOptions) {
 		options.EnableLegacyWrappingAlgorithms = input.Config.EnableLegacyWrappingAlgorithms
@@ -166,7 +160,6 @@ func (s *Server) createClient(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create S3 encryption client
-	log.Printf("CreateClient: Creating S3 encryption client")
 	var s3EncryptionClient *client.S3EncryptionClientV3
 	s3PlaintextClient := s3.NewFromConfig(cfg)
 	s3EncryptionClient, err = client.New(s3PlaintextClient, cmm)
@@ -178,18 +171,15 @@ func (s *Server) createClient(w http.ResponseWriter, r *http.Request) {
 
 	// Generate client ID
 	clientID := uuid.New().String()
-	log.Printf("CreateClient: Generated client ID: %s", clientID)
 
 	// Store client in cache
 	s.clientCache[clientID] = s3EncryptionClient
-	log.Printf("CreateClient: Stored client in cache. Total clients: %d", len(s.clientCache))
 
 	// Return response
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(CreateClientOutput{
 		ClientID: clientID,
 	})
-	log.Printf("CreateClient: Successfully created client %s", clientID)
 }
 
 // putObject handles PUT /object/{bucket}/{key}
@@ -198,15 +188,11 @@ func (s *Server) putObject(w http.ResponseWriter, r *http.Request) {
 	bucket := vars["bucket"]
 	key := vars["key"]
 
-	log.Printf("PutObject: Received PUT /object/%s/%s request", bucket, key)
-
 	clientID := r.Header.Get("ClientID")
 	if clientID == "" {
 		s.createGenericServerError(w, "ClientID header is required", http.StatusBadRequest)
 		return
 	}
-
-	log.Printf("PutObject: Using client ID: %s", clientID)
 
 	// Get client from cache
 	client, exists := s.clientCache[clientID]
@@ -223,8 +209,6 @@ func (s *Server) putObject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("PutObject: Read body of size: %d bytes", len(body))
-
 	// Get metadata from header
 	metadataHeader := r.Header.Get("Content-Metadata")
 	encCtx, err := metadataStringToMap(metadataHeader)
@@ -235,13 +219,6 @@ func (s *Server) putObject(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.createS3EncryptionClientError(w, fmt.Sprintf("Failed to parse metadata: %v", err), http.StatusBadRequest)
 		return
-	}
-
-	if len(encCtx) > 0 {
-		metadataJSON, _ := json.Marshal(encCtx)
-		log.Printf("PutObject: Using encryption context: %s", string(metadataJSON))
-	} else {
-		log.Printf("PutObject: No encryption context provided")
 	}
 
 	// Create put object input
@@ -256,7 +233,6 @@ func (s *Server) putObject(w http.ResponseWriter, r *http.Request) {
 		putInput.Metadata = encCtx
 	}
 
-	log.Printf("PutObject: Making S3 PutObject request")
 	// Make the put object request using the encryption client
 	_, err = client.PutObject(encryptionContext, putInput)
 	if err != nil {
@@ -264,7 +240,7 @@ func (s *Server) putObject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("PutObject SUCCESS: Bucket=%s, Key=%s", bucket, key)
+	log.Printf("[Go V3] PutObject SUCCESS: Bucket=%s, Key=%s", bucket, key)
 
 	// Return response
 	w.Header().Set("Content-Type", "application/json")
@@ -274,7 +250,6 @@ func (s *Server) putObject(w http.ResponseWriter, r *http.Request) {
 		Metadata: []string{}, // Return empty metadata list as per the model
 	}
 	json.NewEncoder(w).Encode(response)
-	log.Printf("PutObject: Response sent successfully")
 }
 
 // getObject handles GET /object/{bucket}/{key}
@@ -283,15 +258,11 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request) {
 	bucket := vars["bucket"]
 	key := vars["key"]
 
-	log.Printf("GetObject: Received GET /object/%s/%s request", bucket, key)
-
 	clientID := r.Header.Get("ClientID")
 	if clientID == "" {
 		s.createGenericServerError(w, "ClientID header is required", http.StatusBadRequest)
 		return
 	}
-
-	log.Printf("GetObject: Using client ID: %s", clientID)
 
 	// Get client from cache
 	client, exists := s.clientCache[clientID]
@@ -315,20 +286,12 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(encCtx) > 0 {
-		metadataJSON, _ := json.Marshal(encCtx)
-		log.Printf("GetObject: Using encryption context: %s", string(metadataJSON))
-	} else {
-		log.Printf("GetObject: No encryption context provided")
-	}
-
 	// Create get object input
 	getInput := &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	}
 
-	log.Printf("GetObject: Making S3 GetObject request")
 	// Make the get object request using the encryption client
 	result, err := client.GetObject(encryptionContext, getInput)
 	if err != nil {
@@ -352,8 +315,6 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("GetObject: Read body of size: %d bytes", len(body))
-
 	// Convert metadata to string format
 	var metadataList []string
 	if result.Metadata != nil {
@@ -364,27 +325,19 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request) {
 
 	metadataStr := strings.Join(metadataList, ",")
 
-	if len(metadataList) > 0 {
-		log.Printf("GetObject: Retrieved metadata: %s", metadataStr)
-	} else {
-		log.Printf("GetObject: No metadata found in object")
-	}
-
-	log.Printf("GetObject SUCCESS: Bucket=%s, Key=%s", bucket, key)
-	log.Printf("GetObject: Body content: %s", string(body))
+	log.Printf("[Go V3] GetObject SUCCESS: Bucket=%s, Key=%s", bucket, key)
 
 	// Set response headers
 	w.Header().Set("Content-Metadata", metadataStr)
 
 	// Return the body as response
 	w.Write(body)
-	log.Printf("GetObject: Response sent successfully")
 }
 
 func main() {
 	server, err := NewServer()
 	if err != nil {
-		log.Fatalf("Failed to create server: %v", err)
+		log.Fatalf("[Go V3] Failed to create Go V3 server: %v", err)
 	}
 
 	r := mux.NewRouter()
@@ -394,6 +347,6 @@ func main() {
 	r.HandleFunc("/object/{bucket}/{key}", server.putObject).Methods("PUT")
 	r.HandleFunc("/object/{bucket}/{key}", server.getObject).Methods("GET")
 
-	fmt.Println("Starting Go server on :8082...")
+	fmt.Println("[Go V3] Starting Go V3 server on :8082...")
 	log.Fatal(http.ListenAndServe(":8082", r))
 }
