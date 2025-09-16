@@ -75,10 +75,10 @@ public class RoundTripTests {
         serverMap.put("Go-V3", new LanguageServerTarget("Go-V3", "8082"));
     }
 
-    // These languages' S3EC implementations do not validate encryption context provided to getObject.
-    // If the encryption context provided to getObject does not match the encryption context provided to putObject,
-    // these languages' implementations will not raise an error as expected.
-    // For now, skip tests that require this validation behavior.
+    // These S3EC implementations do not validate encryption context provided to getObject (i.e. on decrypt).
+    // If the encryption context provided to getObject does not match the encryption context on the stored object,
+    // these implementations will not raise an error as expected.
+    // For now, skip tests that expect encryption context validation on decrypt.
     private static final Set<String> ENCRYPTION_CONTEXT_ON_DECRYPT_UNSUPPORTED =
         Set.of("Go-V3");
 

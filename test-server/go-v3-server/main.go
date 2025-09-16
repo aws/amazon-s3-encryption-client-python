@@ -130,6 +130,7 @@ func metadataStringToMap(mdString string) (map[string]string, error) {
 func (s *Server) createClient(w http.ResponseWriter, r *http.Request) {
 	log.Printf("CreateClient: Received POST /client request")
 
+	// Read body
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		s.createGenericServerError(w, "Failed to read request body", http.StatusBadRequest)
@@ -145,14 +146,13 @@ func (s *Server) createClient(w http.ResponseWriter, r *http.Request) {
 	log.Printf("CreateClient: Parsed config - KMSKeyID: %s, EnableLegacyWrappingAlgorithms: %t",
 		input.Config.KeyMaterial.KMSKeyID, input.Config.EnableLegacyWrappingAlgorithms)
 
-	// Load AWS config
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-west-2"))
 	if err != nil {
 		s.createS3EncryptionClientError(w, fmt.Sprintf("Failed to load AWS config: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	// Create KMS keyring based on the provided KMS key ID if available
+	// Create KMS keyring
 	log.Printf("CreateClient: Creating KMS keyring with key ID: %s", input.Config.KeyMaterial.KMSKeyID)
 	kmsClient := kms.NewFromConfig(cfg)
 	keyring := materials.NewKmsKeyring(kmsClient, input.Config.KeyMaterial.KMSKeyID, func(options *materials.KeyringOptions) {
@@ -306,6 +306,8 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request) {
 	encCtx, err := metadataStringToMap(metadataHeader)
 
 	// Create context with encryption context
+	// Note: S3EC Go V3 does not validate encryption context on decrypt, so the value provided here
+	// will not be validated against the encryption context stored on the object.
 	ctx := context.Background()
 	encryptionContext := context.WithValue(ctx, "EncryptionContext", encCtx)
 	if err != nil {
@@ -331,7 +333,9 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request) {
 	result, err := client.GetObject(encryptionContext, getInput)
 	if err != nil {
 		errMsg := err.Error()
-		// Shim the S3EC error message to the error message expected by the test server
+		// Shim the S3EC error message to the error message expected by the test server.
+		// We don't want to change the S3EC error message but the test server expects a specific error message;
+		// This is the appropriate place to rewrite the error message.
 		if strings.Contains(errMsg, "to decrypt x-amz-cek-alg value `kms` you must enable legacyWrappingAlgorithms on the keyring") {
 			s.createS3EncryptionClientError(w, "Enable legacy wrapping algorithms to use legacy key wrapping algorithm: kms", http.StatusInternalServerError)
 			return

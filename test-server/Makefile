@@ -1,6 +1,6 @@
 # Makefile for S3 Encryption Client Testing
 
-.PHONY: all start-servers start-python-server start-java-server start-go-server run-tests stop-servers clean ci check-env help
+.PHONY: all start-servers start-python-v3-server start-java-v3-server start-go-v3-server run-tests stop-servers clean ci check-env help
 
 # Default target
 all: start-servers run-tests
@@ -10,9 +10,9 @@ ci: start-servers run-tests stop-servers
 
 
 # Start Python server in background
-start-python-server:
-	@echo "Starting Python server..."
-	cd python-server && \
+start-python-v3-server:
+	@echo "Starting Python V3 server..."
+	cd python-v3-server && \
 	python -m venv .venv && \
 	.venv/bin/python -m ensurepip && \
 	.venv/bin/python -m pip install -e . && \
@@ -21,36 +21,36 @@ start-python-server:
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
-	.venv/bin/python src/main.py & echo $$! > ../python-server.pid
+	.venv/bin/python src/main.py & echo $$! > ../python-v3-server.pid
 	@echo "Python server starting..."
 
 # Start Java server in background
-start-java-server:
-	@echo "Starting Java server..."
-	cd java-server && \
+start-java-v3-server:
+	@echo "Starting Java V3 server..."
+	cd java-v3-server && \
 	AWS_ACCESS_KEY_ID="$$AWS_ACCESS_KEY_ID" \
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
-	./gradlew --build-cache --parallel run & echo $$! > ../java-server.pid
+	./gradlew --build-cache --parallel run & echo $$! > ../java-v3-server.pid
 	@echo "Java server starting..."
 
 # Start Go server in background
-start-go-server:
-	@echo "Starting Go server..."
-	cd go-server && \
+start-go-v3-server:
+	@echo "Starting Go V3 server..."
+	cd go-v3-server && \
 	go mod tidy && \
 	AWS_ACCESS_KEY_ID="$$AWS_ACCESS_KEY_ID" \
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
-	go run . & echo $$! > ../go-server.pid
+	go run . & echo $$! > ../go-v3-server.pid
 	@echo "Go server starting..."
 
 # Start all servers in parallel
 start-servers:
 	@echo "Starting servers in parallel..."
-	@$(MAKE) -j3 start-python-server start-java-server start-go-server
+	@$(MAKE) -j3 start-python-v3-server start-java-v3-server start-go-v3-server
 	@echo "Waiting for servers to be ready..."
 	@for i in $$(seq 1 360); do \
 		if nc -z localhost 8080 && nc -z localhost 8081 && nc -z localhost 8082; then \
@@ -78,46 +78,46 @@ run-tests:
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
-	./gradlew --build-cache --parallel -i integ
+	./gradlew --build-cache --rerun-tasks --parallel integ
 	@echo "Tests completed successfully"
 
 # Stop the servers
 stop-servers:
 	@echo "Stopping servers..."
-	@if [ -f python-server.pid ]; then \
-		kill $$(cat python-server.pid) 2>/dev/null || true; \
-		rm python-server.pid; \
+	@if [ -f python-v3-server.pid ]; then \
+		kill $$(cat python-v3-server.pid) 2>/dev/null || true; \
+		rm python-v3-server.pid; \
 	fi
-	@if [ -f java-server.pid ]; then \
-		kill $$(cat java-server.pid) 2>/dev/null || true; \
-		rm java-server.pid; \
+	@if [ -f java-v3-server.pid ]; then \
+		kill $$(cat java-v3-server.pid) 2>/dev/null || true; \
+		rm java-v3-server.pid; \
 	fi
-	@if [ -f go-server.pid ]; then \
-		kill $$(cat go-server.pid) 2>/dev/null || true; \
-		rm go-server.pid; \
+	@if [ -f go-v3-server.pid ]; then \
+		kill $$(cat go-v3-server.pid) 2>/dev/null || true; \
+		rm go-v3-server.pid; \
 	fi
 	@echo "Servers stopped"
 
 # Clean up logs and pid files
 clean: stop-servers
 	@echo "Cleaning up..."
-	@rm -f python-server.log java-server.log go-server.log
+	@rm -f python-v3-server.log java-v3-server.log go-v3-server.log
 	@echo "Cleanup complete"
 
 # Help target
 help:
 	@echo "Available targets:"
-	@echo "  all                : Start servers and run tests (default, output to stdout)"
-	@echo "  ci                 : Run in CI mode (start servers, run tests, stop servers)"
-	@echo "  start-servers      : Start Python, Java, and Go servers in parallel (output to stdout)"
-	@echo "  start-python-server: Start only the Python server"
-	@echo "  start-java-server  : Start only the Java server"
-	@echo "  start-go-server    : Start only the Go server"
-	@echo "  run-tests          : Run Java tests"
-	@echo "  stop-servers       : Stop running servers"
-	@echo "  clean              : Stop servers and clean up logs"
-	@echo "  check-env          : Check if required environment variables are set"
-	@echo "  help               : Show this help message"
+	@echo "  all                     : Start servers and run tests (default, output to stdout)"
+	@echo "  ci                      : Run in CI mode (start servers, run tests, stop servers)"
+	@echo "  start-servers           : Start all servers in parallel"
+	@echo "  start-python-v3-server  : Start only the Python V3 server"
+	@echo "  start-java-v3-server    : Start only the Java V3 server"
+	@echo "  start-go-v3-server      : Start only the Go V3 server"
+	@echo "  run-tests               : Run Java tests"
+	@echo "  stop-servers            : Stop running servers"
+	@echo "  clean                   : Stop servers and clean up logs"
+	@echo "  check-env               : Check if required environment variables are set"
+	@echo "  help                    : Show this help message"
 
 # Check if required environment variables are set
 check-env:
