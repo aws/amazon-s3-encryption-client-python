@@ -26,7 +26,7 @@ public class ClientController : ControllerBase
             var enableLegacyMode = request.Config.EnableLegacyMode;
             var encryptionContext = new Dictionary<string, string>();
             var encryptionMaterial = new EncryptionMaterialsV2(kmsKeyId, KmsType.KmsContext, encryptionContext);
-            // SecurityProfile V2AndLegacy can decrypt from legacy S3EC version while V2 cannot
+            // SecurityProfile V2AndLegacy can decrypt from legacy S3EC while V2 cannot
             var securityProfile = enableLegacyMode ? SecurityProfile.V2AndLegacy : SecurityProfile.V2;
             var configuration = new AmazonS3CryptoConfigurationV2(securityProfile);
             // Create S3 encryption client

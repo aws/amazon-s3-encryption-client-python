@@ -7,7 +7,7 @@ public class ClientRequest
 
 public class ClientConfig
 {
-    public bool EnableLegacyUnauthenticatedModes { get; set; }
+    public bool EnableLegacyMode { get; set; }
     public KeyMaterial KeyMaterial { get; set; } = new();
 }
 
