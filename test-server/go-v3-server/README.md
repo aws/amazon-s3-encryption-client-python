@@ -24,7 +24,7 @@ The server is built using:
 To run the server:
 
 ```console
-gradle run
+go run .
 ```
 
 This will start the server running on port `8082`.
