@@ -69,7 +69,7 @@ public class RoundTripTests {
         serverList.add(new LanguageServerTarget("Python-V3", "8081"));
         serverList.add(new LanguageServerTarget("Go-V3", "8082"));
 
-        serverMap = new HashMap<>(2);
+        serverMap = new HashMap<>(14);
         serverMap.put("Java-V3", new LanguageServerTarget("Java-V3", "8080"));
         serverMap.put("Python-V3", new LanguageServerTarget("Python-V3", "8081"));
         serverMap.put("Go-V3", new LanguageServerTarget("Go-V3", "8082"));
