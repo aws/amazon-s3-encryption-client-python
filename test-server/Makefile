@@ -10,26 +10,35 @@ ci: start-servers run-tests stop-servers
 
 SERVER_DIRS := $(shell find . -maxdepth 1 -type d -name '*-server' | sed 's|^\./||' | sort)
 
-SERVER_TARGETS := $(addprefix start-, $(SERVER_DIRS))
+START_SERVER_TARGETS := $(addprefix start-, $(SERVER_DIRS))
+WAIT_SERVER_TARGETS := $(addprefix wait-, $(SERVER_DIRS))
 
 # Start all servers in parallel
 start-servers:
 	@echo "Starting all servers..."
 	$(MAKE) start-all-servers
 	@echo "Waiting for servers to start..."
-	@for dir in $(SERVER_DIRS); do \
-		echo "Waiting for server in $$dir..."; \
-		$(MAKE) -C $$dir wait-for-server; \
-	done
+	$(MAKE) wait-all-servers
 
-start-all-servers: $(SERVER_TARGETS)
+start-all-servers: $(START_SERVER_TARGETS)
 
-$(SERVER_TARGETS): start-%:
+$(START_SERVER_TARGETS): start-%:
 	@if [ -f $*/Makefile ]; then \
 		echo "Starting server in $*..."; \
 		$(MAKE) -C $* start-server; \
 	else \
-		echo "❌ Error: no Makefile found in $$dir"; \
+		echo "❌ Error: no Makefile found in $*"; \
+		exit 1; \
+	fi; \
+
+wait-all-servers: $(WAIT_SERVER_TARGETS)
+
+$(WAIT_SERVER_TARGETS): wait-%:
+	@if [ -f $*/Makefile ]; then \
+		echo "Waiting server in $*..."; \
+		$(MAKE) -C $* wait-for-server; \
+	else \
+		echo "❌ Error: no Makefile found in $*"; \
 		exit 1; \
 	fi; \
 
@@ -44,7 +53,7 @@ run-tests:
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
-	./gradlew --build-cache --rerun-tasks --parallel integ
+	./gradlew --build-cache --parallel integ
 	@echo "Tests completed successfully"
 
 # Stop the servers

@@ -61,6 +61,10 @@ public class RoundTripTests {
     private static final String NET_V3 = "NET-V3";
     private static final String PHP_V2 = "PHP-V2";
     private static final String PHP_V3 = "PHP-V3";
+    private static final String RUBY_V2 = "Ruby-V2";
+    private static final String RUBY_V3 = "Ruby-V3";
+
+
     
     private static final List<LanguageServerTarget> serverList;
     private static final Map<String, LanguageServerTarget> serverMap;
@@ -80,6 +84,8 @@ public class RoundTripTests {
         serverList.add(new LanguageServerTarget(NET_V3, "8084"));
         serverList.add(new LanguageServerTarget(PHP_V2, "8087"));
         serverList.add(new LanguageServerTarget(PHP_V3, "8093"));
+        serverList.add(new LanguageServerTarget(RUBY_V2, "8086"));
+        serverList.add(new LanguageServerTarget(RUBY_V3, "8092"));
 
         serverMap = new HashMap<>(14);
         serverMap.put(JAVA_V3, new LanguageServerTarget(JAVA_V3, "8080"));
@@ -89,6 +95,8 @@ public class RoundTripTests {
         serverMap.put(NET_V3, new LanguageServerTarget(NET_V3, "8084"));
         serverMap.put(PHP_V2, new LanguageServerTarget(PHP_V2, "8087"));
         serverMap.put(PHP_V3, new LanguageServerTarget(PHP_V3, "8093"));
+        serverMap.put(RUBY_V2, new LanguageServerTarget(RUBY_V2, "8086"));
+        serverMap.put(RUBY_V3, new LanguageServerTarget(RUBY_V3, "8092"));
     }
 
     // Encryption context validation behavior varies by implementation:
@@ -337,7 +345,13 @@ public class RoundTripTests {
                     .build());
             fail("Expected exception!");
         } catch (S3EncryptionClientError e) {
-            assertTrue(e.getMessage().contains("Provided encryption context does not match information retrieved from S3"));
+            assertTrue(
+              e.getMessage().contains("Provided encryption context does not match information retrieved from S3") ||
+              // Ruby error message
+              (e.getMessage().contains("Value of encryption context from envelope does not match the provided encryption context")
+                && decLang.languageName.startsWith("ruby-v")
+              )
+            );
         }
     }
 
@@ -389,7 +403,11 @@ public class RoundTripTests {
               .build());
             fail("Expected exception!");
         } catch (S3EncryptionClientError e) {
-            assertTrue(e.getMessage().contains("Provided encryption context does not match information retrieved from S3"));
+            if (decLang.languageName.equals(RUBY_V3) || decLang.languageName.equals(RUBY_V2)) {
+              assertTrue(e.getMessage().contains("Value of encryption context from envelope does not match the provided encryption context"));
+            } else {
+              assertTrue(e.getMessage().contains("Provided encryption context does not match information retrieved from S3"));
+            }
         }
     }
 
@@ -529,6 +547,8 @@ public class RoundTripTests {
               assertTrue(e.getMessage().contains(
                 "The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration V2."
               ));
+            } else if (language.equals(RUBY_V3) || language.equals(RUBY_V2)) {
+              assertTrue(e.getMessage().contains("The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration security_profile = :v2. Retry with :v2_and_legacy or re-encrypt the object."));
             } else {
               assertTrue(e.getMessage().contains("Enable legacy wrapping algorithms to use legacy key wrapping algorithm: kms"));
             }
