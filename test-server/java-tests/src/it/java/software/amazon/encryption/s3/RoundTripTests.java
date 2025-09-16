@@ -64,12 +64,12 @@ public class RoundTripTests {
         System.getenv("TEST_SERVER_S3_BUCKET") : "s3ec-test-server-github-bucket";
 
     static {
-        serverList = new ArrayList<>(2);
+        serverList = new ArrayList<>(14);
         serverList.add(new LanguageServerTarget("Java-V3", "8080"));
         serverList.add(new LanguageServerTarget("Python-V3", "8081"));
         serverList.add(new LanguageServerTarget("Go-V3", "8082"));
 
-        serverMap = new HashMap<>(2);
+        serverMap = new HashMap<>(14);
         serverMap.put("Java-V3", new LanguageServerTarget("Java-V3", "8080"));
         serverMap.put("Python-V3", new LanguageServerTarget("Python-V3", "8081"));
         serverMap.put("Go-V3", new LanguageServerTarget("Go-V3", "8082"));
