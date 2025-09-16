@@ -1,6 +1,6 @@
 # Makefile for S3 Encryption Client Testing
 
-.PHONY: all start-servers start-python-server start-java-server run-tests stop-servers clean ci check-env help
+.PHONY: all start-servers start-python-server start-java-server start-go-server run-tests stop-servers clean ci check-env help
 
 # Default target
 all: start-servers run-tests
@@ -35,16 +35,28 @@ start-java-server:
 	./gradlew --build-cache --parallel run & echo $$! > ../java-server.pid
 	@echo "Java server starting..."
 
-# Start both servers in parallel
+# Start Go server in background
+start-go-server:
+	@echo "Starting Go server..."
+	cd go-server && \
+	go mod tidy && \
+	AWS_ACCESS_KEY_ID="$$AWS_ACCESS_KEY_ID" \
+	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
+	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
+	AWS_REGION="us-west-2" \
+	go run . & echo $$! > ../go-server.pid
+	@echo "Go server starting..."
+
+# Start all servers in parallel
 start-servers:
 	@echo "Starting servers in parallel..."
-	@$(MAKE) -j2 start-python-server start-java-server
+	@$(MAKE) -j3 start-python-server start-java-server start-go-server
 	@echo "Waiting for servers to be ready..."
 	@for i in $$(seq 1 360); do \
-		if nc -z localhost 8080 && nc -z localhost 8081; then \
+		if nc -z localhost 8080 && nc -z localhost 8081 && nc -z localhost 8082; then \
 			echo "Ports are open, waiting for servers to initialize..."; \
 			sleep 5; \
-			echo "Both servers are ready!"; \
+			echo "All servers are ready!"; \
 			break; \
 		fi; \
 		if [ $$i -eq 360 ]; then \
@@ -66,7 +78,7 @@ run-tests:
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
-	./gradlew --build-cache --parallel integ
+	./gradlew --build-cache --parallel -i integ
 	@echo "Tests completed successfully"
 
 # Stop the servers
@@ -80,12 +92,16 @@ stop-servers:
 		kill $$(cat java-server.pid) 2>/dev/null || true; \
 		rm java-server.pid; \
 	fi
+	@if [ -f go-server.pid ]; then \
+		kill $$(cat go-server.pid) 2>/dev/null || true; \
+		rm go-server.pid; \
+	fi
 	@echo "Servers stopped"
 
 # Clean up logs and pid files
 clean: stop-servers
 	@echo "Cleaning up..."
-	@rm -f python-server.log java-server.log
+	@rm -f python-server.log java-server.log go-server.log
 	@echo "Cleanup complete"
 
 # Help target
@@ -93,9 +109,10 @@ help:
 	@echo "Available targets:"
 	@echo "  all                : Start servers and run tests (default, output to stdout)"
 	@echo "  ci                 : Run in CI mode (start servers, run tests, stop servers)"
-	@echo "  start-servers      : Start Python and Java servers in parallel (output to stdout)"
+	@echo "  start-servers      : Start Python, Java, and Go servers in parallel (output to stdout)"
 	@echo "  start-python-server: Start only the Python server"
 	@echo "  start-java-server  : Start only the Java server"
+	@echo "  start-go-server    : Start only the Go server"
 	@echo "  run-tests          : Run Java tests"
 	@echo "  stop-servers       : Stop running servers"
 	@echo "  clean              : Stop servers and clean up logs"
