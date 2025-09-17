@@ -7,6 +7,7 @@ public class ClientRequest
 
 public class ClientConfig
 {
+    public Dictionary<string, string> EncryptionContext { get; set; } = new();
     public bool EnableLegacyMode { get; set; }
     public KeyMaterial KeyMaterial { get; set; } = new();
 }
