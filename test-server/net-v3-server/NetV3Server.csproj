@@ -10,6 +10,14 @@
         <UseSharedCompilation>false</UseSharedCompilation>
     </PropertyGroup>
 
+    <PropertyGroup Condition="'$(S3EncryptionVersion)' == 'v2'">
+        <DefineConstants>S3EC_V2</DefineConstants>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(S3EncryptionVersion)' == 'v3'">
+        <DefineConstants>S3EC_V3</DefineConstants>
+    </PropertyGroup>
+
     <ItemGroup Condition="'$(S3EncryptionVersion)' == 'v2'">
         <PackageReference Include="Amazon.Extensions.S3.Encryption" Version="2.2.1"/>
     </ItemGroup>
