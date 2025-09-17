@@ -9,7 +9,7 @@ all: start-servers run-tests
 ci: start-servers run-tests stop-servers
 
 
-# Start Python server in background
+# Start Python V3 server in background
 start-python-v3-server:
 	@echo "Starting Python V3 server..."
 	cd python-v3-server && \
@@ -22,9 +22,9 @@ start-python-v3-server:
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
 	.venv/bin/python src/main.py & echo $$! > ../python-v3-server.pid
-	@echo "Python server starting..."
+	@echo "Python V3 server starting..."
 
-# Start Java server in background
+# Start Java V3 server in background
 start-java-v3-server:
 	@echo "Starting Java V3 server..."
 	cd java-v3-server && \
@@ -33,9 +33,9 @@ start-java-v3-server:
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
 	./gradlew --build-cache --parallel run & echo $$! > ../java-v3-server.pid
-	@echo "Java server starting..."
+	@echo "Java V3 server starting..."
 
-# Start Go server in background
+# Start Go V3 server in background
 start-go-v3-server:
 	@echo "Starting Go V3 server..."
 	cd go-v3-server && \
@@ -45,7 +45,19 @@ start-go-v3-server:
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
 	go run . & echo $$! > ../go-v3-server.pid
-	@echo "Go server starting..."
+	@echo "Go V3 server starting..."
+
+# Start Go V4 server in background
+start-go-v4-server:
+	@echo "Starting Go V4 server..."
+	cd go-v4-server && \
+	go mod tidy && \
+	AWS_ACCESS_KEY_ID="$$AWS_ACCESS_KEY_ID" \
+	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
+	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
+	AWS_REGION="us-west-2" \
+	go run . & echo $$! > ../go-v4-server.pid
+	@echo "Go V4 server starting..."
 
 # Start all servers in parallel
 start-servers:

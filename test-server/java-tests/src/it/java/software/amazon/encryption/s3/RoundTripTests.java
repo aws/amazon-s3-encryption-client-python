@@ -68,11 +68,13 @@ public class RoundTripTests {
         serverList.add(new LanguageServerTarget("Java-V3", "8080"));
         serverList.add(new LanguageServerTarget("Python-V3", "8081"));
         serverList.add(new LanguageServerTarget("Go-V3", "8082"));
+        serverList.add(new LanguageServerTarget("Go-V4", "8089"));
 
         serverMap = new HashMap<>(14);
         serverMap.put("Java-V3", new LanguageServerTarget("Java-V3", "8080"));
         serverMap.put("Python-V3", new LanguageServerTarget("Python-V3", "8081"));
         serverMap.put("Go-V3", new LanguageServerTarget("Go-V3", "8082"));
+        serverMap.put("Go-V4", new LanguageServerTarget("Go-V4", "8089"));
     }
 
     // These S3EC implementations do not validate encryption context provided to getObject (i.e. on decrypt).
