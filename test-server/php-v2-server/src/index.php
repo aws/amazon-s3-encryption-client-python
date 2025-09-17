@@ -8,6 +8,7 @@ use Aws\S3\S3Client;
 use Aws\Kms\KmsClient;
 
 use Ramsey\Uuid\Uuid;
+use GuzzleHttp\Psr7\Response;
 
 // Start session to persist cache across requests
 session_start();
@@ -146,6 +147,23 @@ function metadataStringToMap($metadata): array
 
     return $md;
 }
+function formatMetadataForResponse($metadata)
+{
+    $metadataList = [];
+    // Handle different metadata input types
+    if (is_array($metadata)) {
+        // If it's an associative array (like Python dict)
+        foreach ($metadata as $key => $value) {
+            $metadataList[] = $key . '=' . $value;
+        }
+    } elseif (is_string($metadata) && !empty($metadata)) {
+        // If it's already a string, assume it's in the correct format
+        return $metadata;
+    }
+
+    // Convert array to comma-separated string
+    return implode(',', $metadataList);
+}
 
 // Initialize router
 $router = new SimpleRouter();
@@ -236,7 +254,7 @@ $router->addRoute('GET', '/object/{bucket}/{key}', function ($params) {
 
     $metadata = $_SERVER['HTTP_CONTENT_METADATA'] ?? '';
     $encryptionContext = metadataStringToMap($metadata);
-    error_log("encryption context: " . json_encode($encryptionContext));
+    // error_log("encryption context: " . json_encode($encryptionContext));
 
     // Extract bucket and key from URL parameters
     $bucket = $params['bucket'] ?? null;
@@ -250,13 +268,17 @@ $router->addRoute('GET', '/object/{bucket}/{key}', function ($params) {
             '@KmsAllowDecryptWithAnyCmk' => true,
             '@SecurityProfile' => 'V2',
             '@MaterialsProvider' => $materialProvider,
+            '@KmsEncryptionContext' => $encryptionContext,
             'Bucket' => $bucket,
             'Key' => $key,
         ]);
 
         $body = $result['Body']->getContents();
-        header("Content-Metadata:" . json_encode($result["Metadata"]));
-        // header("Content-Type: application/octet-stream");
+        $formattedMetadata = formatMetadataForResponse($result["Metadata"]);
+        error_log("Response Object: " . $body);
+        header("Content-Metadata: " . $formattedMetadata);
+        header("Content-Type: application/octet-stream");
+        header("Content-Length: " . strlen($body));
         return $body;
     } catch (InvalidArgumentException $e) {
         http_response_code(400);
@@ -298,16 +320,22 @@ $router->addRoute('PUT', '/object/{bucket}/{key}', function ($params) {
 
     $s3ec = $s3ecClientTuple["encryptionClient"];
     $materialProvider = $s3ecClientTuple["materialsProvider"];
+    $cipherOptions = [
+        'Cipher' => 'gcm',
+        'KeySize' => 256,
+    ];
 
     try {
         $result = $s3ec->putObject([
             '@MaterialsProvider' => $materialProvider,
             '@KmsEncryptionContext' => $encryptionContext,
+            '@CipherOptions' => $cipherOptions,
             'Bucket' => $bucket,
             'Key' => $key,
             'Body' => $rawBody,
         ]);
 
+        header("Content-Type: application/json");
         return json_encode([
             "bucket" => $bucket,
             "key" => $key,
@@ -323,4 +351,7 @@ $router->addRoute('PUT', '/object/{bucket}/{key}', function ($params) {
     }
 });
 // Handle the request and output response
-echo $router->handleRequest();
+$result = $router->handleRequest();
+if ($result !== false) {
+    echo $result;
+}

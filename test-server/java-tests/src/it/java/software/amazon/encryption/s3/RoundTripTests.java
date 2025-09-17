@@ -66,12 +66,12 @@ public class RoundTripTests {
         serverList = new ArrayList<>(2);
         serverList.add(new LanguageServerTarget("Java", "8080"));
         serverList.add(new LanguageServerTarget("Python", "8081"));
-        serverList.add(new LanguageServerTarget("PHP-V2", "8087"));
+        serverList.add(new LanguageServerTarget("PHP", "8087"));
 
         serverMap = new HashMap<>(2);
         serverMap.put("Java", new LanguageServerTarget("Java", "8080"));
         serverMap.put("Python", new LanguageServerTarget("Python", "8081"));
-        serverMap.put("PHP-V2", new LanguageServerTarget("PHP-V2", "8087"));
+        serverMap.put("PHP", new LanguageServerTarget("PHP", "8087"));
     }
 
     static public class LanguageServerTarget {
@@ -207,7 +207,8 @@ public class RoundTripTests {
           .build());
 
         if (!input.equals(StandardCharsets.UTF_8.decode(output.getBody()).toString())) {
-            fail(String.format("Actual: %s", StandardCharsets.UTF_8.decode(output.getBody()).toString()));
+            System.out.println(String.format("Response body Length: %s", StandardCharsets.UTF_8.decode(output.getBody()).toString().length()));
+            System.out.println(String.format("Response body: %s", StandardCharsets.UTF_8.decode(output.getBody()).toString()));
             fail(String.format("Encryption in %s failed to decrpyt in %s!", encLang, decLang));
         }
     }
