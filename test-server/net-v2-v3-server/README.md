@@ -1,4 +1,4 @@
-# NetV2V3Server
+# Net-V2-V3-Server
 
 A .NET test server for Amazon S3 encryption client .NET v2 and v3.
 
