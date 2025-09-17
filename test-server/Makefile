@@ -109,3 +109,27 @@ check-env:
 	@if [ -z "$$AWS_SECRET_ACCESS_KEY" ]; then echo "AWS_SECRET_ACCESS_KEY is not set"; else echo "AWS_SECRET_ACCESS_KEY is set"; fi
 	@if [ -z "$$AWS_SESSION_TOKEN" ]; then echo "AWS_SESSION_TOKEN is not set"; else echo "AWS_SESSION_TOKEN is set"; fi
 	@if [ -z "$$AWS_REGION" ]; then echo "AWS_REGION is not set (will use us-west-2 as default)"; else echo "AWS_REGION is set to $$AWS_REGION"; fi
+
+# Here are some helpful curl commands
+# that you can use to test specific test servers:
+test-create-client:
+	echo $$PORT
+	@curl -X POST \
+		-H "Content-Type: application/json" \
+		-H "User-Agent: smithy-java/0.0.3 ua/2.1 os/macos#15.5 lang/java#23.0.2" \
+		-d '{"config":{"enableLegacyUnauthenticatedModes":false,"enableDelayedAuthenticationMode":false,"enableLegacyWrappingAlgorithms":false,"keyMaterial":{"kmsKeyId":"arn:aws:kms:us-west-2:370957321024:alias/S3EC-Test-Server-Github-KMS-Key"}}}' \
+		http://localhost:$$PORT/client
+
+test-put-object:
+# In case you want to add some metadata
+# -H "CONTENT_METADATA: [key]:[value]"
+	@curl --http1.1 -X PUT \
+		-H "Content-Type: application/octet-stream" \
+		-H "ClientID: $$CLIENT" \
+		-d "test-data-content" \
+		http://localhost:$$PORT/object/s3ec-test-server-github-bucket/test-key
+
+test-get-object:
+	@curl -X GET \
+		-H "ClientID: $$CLIENT" \
+		http://localhost:$$PORT/object/s3ec-test-server-github-bucket/test-key
