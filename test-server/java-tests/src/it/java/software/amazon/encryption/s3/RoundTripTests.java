@@ -13,7 +13,12 @@ import java.net.Socket;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import com.amazonaws.services.s3.model.KMSEncryptionMaterials;
@@ -94,13 +99,15 @@ public class RoundTripTests {
     private static final String PHP_V3 = "PHP-V3";
 
     static {
-        serverList = new ArrayList<>(2);
-        serverList.add(new LanguageServerTarget("Java", "8080"));
-        serverList.add(new LanguageServerTarget("Python", "8081"));
+        serverList = new ArrayList<>(14);
+        serverList.add(new LanguageServerTarget("Java-V3", "8080"));
+        serverList.add(new LanguageServerTarget("Python-V3", "8081"));
+        serverList.add(new LanguageServerTarget("Go-V3", "8082"));
 
-        serverMap = new HashMap<>(2);
-        serverMap.put("Java", new LanguageServerTarget("Java", "8080"));
-        serverMap.put("Python", new LanguageServerTarget("Python", "8081"));
+        serverMap = new HashMap<>(14);
+        serverMap.put("Java-V3", new LanguageServerTarget("Java-V3", "8080"));
+        serverMap.put("Python-V3", new LanguageServerTarget("Python-V3", "8081"));
+        serverMap.put("Go-V3", new LanguageServerTarget("Go-V3", "8082"));
     }
 
     // These S3EC implementations do not validate encryption context provided to getObject (i.e. on decrypt).
@@ -324,9 +331,59 @@ public class RoundTripTests {
 
     @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
     @MethodSource("crossLanguageClients")
-    public void crossLanguageTestKmsWithEncCtxMismatchFails(LanguageServerTarget encLang, LanguageServerTarget decLang) {
+    public void crossLanguageTestKmsWithSubsetEncCtxFails(LanguageServerTarget encLang, LanguageServerTarget decLang) {
+        if (ENCRYPTION_CONTEXT_ON_DECRYPT_UNSUPPORTED.contains(decLang.getLanguageName())) {
+            return;
+        }
         S3ECTestServerClient encClient = testServerClientFor(encLang);
-        final String objectKey = "cross-lang-test-key-kms-ec-mismatch-fails" + encLang;
+        final String objectKey = "cross-lang-test-key-kms-ec-subset-fails" + encLang;
+        final String input = "simple-test-input";
+        final Map<String, String> encCtx = new HashMap<>();
+        encCtx.put("user-defined-enc-ctx-key", "user-defined-enc-ctx-value");
+        encCtx.put("user-defined-enc-ctx-key-2", "user-defined-enc-ctx-value-2");
+        final List<String> mdAsList = metadataMapToList(encCtx);
+        KeyMaterial kmsKeyArn = KeyMaterial.builder()
+                .kmsKeyId(KMS_KEY_ARN)
+                .build();
+        CreateClientOutput encClientOutput = encClient.createClient(CreateClientInput.builder()
+                .config(S3ECConfig.builder()
+                        .keyMaterial(kmsKeyArn).build())
+                .build());
+        String encS3ECId = encClientOutput.getClientId();
+
+        encClient.putObject(PutObjectInput.builder()
+                .clientID(encS3ECId)
+                .key(objectKey)
+                .bucket(BUCKET)
+                .metadata(mdAsList)
+                .body(ByteBuffer.wrap(input.getBytes(StandardCharsets.UTF_8)))
+                .build());
+        S3ECTestServerClient decClient = testServerClientFor(decLang);
+        CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
+                .config(S3ECConfig.builder()
+                        .keyMaterial(kmsKeyArn).build())
+                .build());
+        String decS3ECId = decClientOutput.getClientId();
+        try {
+            decClient.getObject(GetObjectInput.builder()
+                    .clientID(decS3ECId)
+                    .bucket(BUCKET)
+                    .key(objectKey)
+                    .build());
+            fail("Expected exception!");
+        } catch (S3EncryptionClientError e) {
+            assertTrue(e.getMessage().contains("Provided encryption context does not match information retrieved from S3"));
+        }
+    }
+
+    @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
+    @MethodSource("crossLanguageClients")
+    public void crossLanguageTestKmsWithIncorrectEncCtxFails(LanguageServerTarget encLang, LanguageServerTarget decLang) {
+        if (ENCRYPTION_CONTEXT_ON_DECRYPT_UNSUPPORTED.contains(decLang.getLanguageName())) {
+            return;
+        }
+        S3ECTestServerClient encClient = testServerClientFor(encLang);
+        final String objectKey = "cross-lang-test-key-kms-ec-incorrect-fails" + encLang;
         final String input = "simple-test-input";
         final Map<String, String> encCtx = new HashMap<>();
         encCtx.put("user-defined-enc-ctx-key", "user-defined-enc-ctx-value");
@@ -354,11 +411,16 @@ public class RoundTripTests {
             .keyMaterial(kmsKeyArn).build())
           .build());
         String decS3ECId = decClientOutput.getClientId();
+
+        final Map<String, String> incorrectEncCtx = new HashMap<>();
+        incorrectEncCtx.put("this-is-wrong-ec-key", "bad-value");
+        var incorrectMdAsList = metadataMapToList(incorrectEncCtx);
         try {
             decClient.getObject(GetObjectInput.builder()
               .clientID(decS3ECId)
               .bucket(BUCKET)
               .key(objectKey)
+              .metadata(incorrectMdAsList)
               .build());
             fail("Expected exception!");
         } catch (S3EncryptionClientError e) {
