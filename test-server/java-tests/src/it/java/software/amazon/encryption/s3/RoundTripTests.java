@@ -13,11 +13,7 @@ import java.net.Socket;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Stream;
 
 import com.amazonaws.services.s3.model.KMSEncryptionMaterials;
@@ -62,6 +58,41 @@ public class RoundTripTests {
     private static final String BUCKET = System.getenv("TEST_SERVER_S3_BUCKET") != null ? 
         System.getenv("TEST_SERVER_S3_BUCKET") : "s3ec-test-server-github-bucket";
 
+    // Strings for naming each version
+    // Each language can have up to 3 versions:
+    // vN-Current: Currently released version. Does not support setting commitment policy.
+    // vN-Transition: Proposed patch/feature release version with a new client class.
+    //      Supports setting commitment policy; no default policy; MUST be explicitly configured on constructor.
+    // vN+1: Proposed breaking release version.
+    //      Supports setting commitment policy; defaults to `RequireEncryptRequireDecrypt`.
+
+    private static final String JAVA_V3_CURRENT = "Java-V3-Current";
+    private static final String JAVA_V3_TRANSITION = "Java-V3-Transition";
+    private static final String JAVA_V4 = "Java-V4";
+
+    // No Python S3EC versions are released. Only test V3 as the "vN+1" version.
+    private static final String PYTHON_V3 = "Python-V3";
+
+    private static final String GO_V3_CURRENT = "Go-V3-Current";
+    private static final String GO_V3_TRANSITION = "Go-V3-Transition";
+    private static final String GO_V4 = "Go-V4";
+
+    private static final String NET_V2_CURRENT = "Net-V2-Current";
+    private static final String NET_V2_TRANSITION = "Net-V2-Transition";
+    private static final String NET_V3 = "Net-V3";
+
+    private static final String CPP_V2_CURRENT = "Cpp-V2-Current";
+    private static final String CPP_V2_TRANSITION = "Cpp-V2-Transition";
+    private static final String CPP_V3 = "Cpp-V3";
+
+    private static final String RUBY_V2_CURRENT = "Ruby-V2-Current";
+    private static final String RUBY_V2_TRANSITION = "Ruby-V2-Transition";
+    private static final String RUBY_V3 = "Ruby-V3";
+
+    private static final String PHP_V2_CURRENT = "PHP-V2-Current";
+    private static final String PHP_V2_TRANSITION = "PHP-V2-Transition";
+    private static final String PHP_V3 = "PHP-V3";
+
     static {
         serverList = new ArrayList<>(2);
         serverList.add(new LanguageServerTarget("Java", "8080"));
@@ -71,6 +102,44 @@ public class RoundTripTests {
         serverMap.put("Java", new LanguageServerTarget("Java", "8080"));
         serverMap.put("Python", new LanguageServerTarget("Python", "8081"));
     }
+
+    // These S3EC implementations do not validate encryption context provided to getObject (i.e. on decrypt).
+    // If the encryption context provided to getObject does not match the encryption context on the stored object,
+    // these implementations will not raise an error as expected.
+    // For now, skip tests that expect encryption context validation on decrypt.
+    private static final Set<String> ENCRYPTION_CONTEXT_ON_DECRYPT_UNSUPPORTED =
+        Set.of("Go-V3");
+
+    private static final Set<String> CURRENT_VERSIONS =
+        Set.of(
+            JAVA_V3_CURRENT,
+            GO_V3_CURRENT,
+            NET_V2_CURRENT,
+            CPP_V2_CURRENT,
+            RUBY_V2_CURRENT,
+            PHP_V2_CURRENT
+        );
+
+    private static final Set<String> TRANSITION_VERSIONS =
+        Set.of(
+            JAVA_V3_TRANSITION,
+            GO_V3_TRANSITION,
+            NET_V2_TRANSITION,
+            CPP_V2_TRANSITION,
+            RUBY_V2_TRANSITION,
+            PHP_V2_TRANSITION
+        );
+
+    private static final Set<String> IMPROVED_VERSIONS =
+        Set.of(
+            JAVA_V4,
+            PYTHON_V3,
+            GO_V4,
+            NET_V3,
+            CPP_V3,
+            RUBY_V3,
+            PHP_V3
+        );
 
     static public class LanguageServerTarget {
         public String getLanguageName() {
@@ -431,6 +500,56 @@ public class RoundTripTests {
         } catch (S3EncryptionClientError e) {
             assertTrue(e.getMessage().contains("Enable legacy wrapping algorithms to use legacy key wrapping algorithm: kms"));
         }
+    }
+
+    // Exhaustive test 1
+    @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
+    @MethodSource("crossLanguageClients")
+    public void GIVEN_EncryptWithKeyCommitment_WHEN_DecryptWithCurrentVersion_THEN_Fail(LanguageServerTarget encLang, LanguageServerTarget decLang) {
+        // Given: encrypt language is either an improved version or a transition version
+        if (!IMPROVED_VERSIONS.contains(encLang.getLanguageName()) || !TRANSITION_VERSIONS.contains(encLang.getLanguageName())) {
+            return;
+        }
+
+        // Given: decrypt language is a current version
+        if (!CURRENT_VERSIONS.contains(decLang.getLanguageName())) {
+            return;
+        }
+
+        S3ECTestServerClient encClient = testServerClientFor(encLang);
+        final String objectKey = "encrypt-kc-decrypt-current-test-key-" + encLang;
+        final String input = "simple-test-input";
+        KeyMaterial kmsKeyArn = KeyMaterial.builder()
+          .kmsKeyId(KMS_KEY_ARN)
+          .build();
+        CreateClientOutput encClientOutput = encClient.createClient(CreateClientInput.builder()
+          .config(S3ECConfig.builder()
+            .keyMaterial(kmsKeyArn).build())
+          .build());
+        String encS3ECId = encClientOutput.getClientId();
+        encClient.putObject(PutObjectInput.builder()
+          .clientID(encS3ECId)
+          .key(objectKey)
+          .bucket(BUCKET)
+          .body(ByteBuffer.wrap(input.getBytes(StandardCharsets.UTF_8)))
+          .build());
+        S3ECTestServerClient decClient = testServerClientFor(decLang);
+        CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
+          .config(S3ECConfig.builder()
+            .keyMaterial(kmsKeyArn).build())
+          .build());
+        String decS3ECId = decClientOutput.getClientId();
+        GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
+          .clientID(decS3ECId)
+          .bucket(BUCKET)
+          .key(objectKey)
+          .build());
+
+        if (!input.equals(StandardCharsets.UTF_8.decode(output.getBody()).toString())) {
+            fail(String.format("Encryption in %s failed to decrpyt in %s!", encLang, decLang));
+        }
+
+
     }
 
 }
