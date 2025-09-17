@@ -1,6 +1,6 @@
-# S3EC Java Test Server
+# S3EC Java V3 Test Server
 
-This is the Java implementation of the S3ECTestServer framework. It provides a server implementation for testing S3 Encryption Client functionality.
+This is the Java implementation of the S3ECTestServer framework for S3EC Java V3. It provides a server implementation for testing Java S3 Encryption Client V3 functionality.
 
 ## Overview
 
