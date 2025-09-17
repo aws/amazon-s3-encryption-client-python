@@ -8,11 +8,12 @@ namespace NetV3Server.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-public class ObjectController(IClientCacheService clientCacheService) : ControllerBase
+public class ObjectController(IClientCacheService clientCacheService, ILogger<ClientController> logger) : ControllerBase
 {
     [HttpPut("{bucket}/{key}")]
     public async Task<IActionResult> PutObject(string bucket, string key)
     {
+        logger.LogInformation("Starting PutObject");
         var clientId = Request.Headers["clientId"].FirstOrDefault();
         if (string.IsNullOrEmpty(clientId))
             return BadRequest(new GenericServerError { Message = "ClientID header is required" });
@@ -39,7 +40,10 @@ public class ObjectController(IClientCacheService clientCacheService) : Controll
             await client.PutObjectAsync(putRequest);
 
             var response = new { bucket, key };
-
+            
+            logger.LogInformation(
+                "Put object succeeded for bucket={bucket}, key={key} and clientId = {clientId}", 
+                bucket, key, clientId);
             return new ContentResult
             {
                 Content = JsonSerializer.Serialize(response),
@@ -56,6 +60,7 @@ public class ObjectController(IClientCacheService clientCacheService) : Controll
     [HttpGet("{bucket}/{key}")]
     public async Task<IActionResult> GetObject(string bucket, string key)
     {
+        logger.LogInformation("Starting GetObject");
         var clientId = Request.Headers["clientId"].FirstOrDefault();
         if (string.IsNullOrEmpty(clientId))
             return BadRequest(new GenericServerError { Message = "ClientID header is required" });
@@ -72,6 +77,7 @@ public class ObjectController(IClientCacheService clientCacheService) : Controll
                 Key = key
             };
             var response = await client.GetObjectAsync(getRequest);
+            logger.LogInformation("Got object from S3 for bucket={bucket}, key={key}", bucket, key);
             // Read response body
             using var memoryStream = new MemoryStream();
             await response.ResponseStream.CopyToAsync(memoryStream);
