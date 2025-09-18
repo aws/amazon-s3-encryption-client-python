@@ -98,6 +98,12 @@ stop-servers:
 	fi
 	@echo "Servers stopped"
 
+install-cpp-dependencies:
+	brew install libmicrohttpd nlohmann-json ossp-uuid aws-sdk-cpp
+
+start-cpp-v2-server:
+	cd cpp-v2-server && mkdir -p build && cd build && cmake .. && make && ./s3ec-server
+
 # Clean up logs and pid files
 clean: stop-servers
 	@echo "Cleaning up..."
@@ -113,6 +119,8 @@ help:
 	@echo "  start-python-v3-server  : Start only the Python V3 server"
 	@echo "  start-java-v3-server    : Start only the Java V3 server"
 	@echo "  start-go-v3-server      : Start only the Go V3 server"
+	@echo "  start-cpp-v2-server     : Start only the C++ V2 server"
+	@echo "  install-cpp-dependencies: use brew to install things necessary for start-cpp-v2-server"
 	@echo "  run-tests               : Run Java tests"
 	@echo "  stop-servers            : Stop running servers"
 	@echo "  clean                   : Stop servers and clean up logs"
