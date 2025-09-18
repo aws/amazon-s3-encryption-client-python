@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace NetV3Server.Models;
+namespace NetV2V3Server.Models;
 
 public class ClientResponse
 {

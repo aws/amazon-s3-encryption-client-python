@@ -2,7 +2,7 @@ using Amazon.S3;
 using Amazon.Extensions.S3.Encryption;
 using System.Collections.Concurrent;
 
-namespace NetV3Server.Services;
+namespace NetV2V3Server.Services;
 
 public interface IClientCacheService
 {

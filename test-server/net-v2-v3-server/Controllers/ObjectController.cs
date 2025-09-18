@@ -1,14 +1,14 @@
 using System.Text.Json;
 using Amazon.S3.Model;
 using Microsoft.AspNetCore.Mvc;
-using NetV3Server.Models;
-using NetV3Server.Services;
+using NetV2V3Server.Models;
+using NetV2V3Server.Services;
 
-namespace NetV3Server.Controllers;
+namespace NetV2V3Server.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-public class ObjectController(IClientCacheService clientCacheService, ILogger<ClientController> logger) : ControllerBase
+public class ObjectController(IClientCacheService clientCacheService, ILogger<ObjectController> logger) : ControllerBase
 {
     [HttpPut("{bucket}/{key}")]
     public async Task<IActionResult> PutObject(string bucket, string key)
@@ -40,9 +40,9 @@ public class ObjectController(IClientCacheService clientCacheService, ILogger<Cl
             await client.PutObjectAsync(putRequest);
 
             var response = new { bucket, key };
-            
+
             logger.LogInformation(
-                "Put object succeeded for bucket={bucket}, key={key} and clientId = {clientId}", 
+                "Put object succeeded for bucket={bucket}, key={key} and clientId = {clientId}",
                 bucket, key, clientId);
             return new ContentResult
             {
@@ -96,7 +96,7 @@ public class ObjectController(IClientCacheService clientCacheService, ILogger<Cl
             return File(bodyBytes, "application/octet-stream");
         }
         catch (Exception ex)
-        { 
+        {
             logger.LogError(ex, "Failed to get object from S3 for bucket={bucket}, key={key}", bucket, key);
             return StatusCode(500, new S3EncryptionClientError { Message = ex.Message });
         }

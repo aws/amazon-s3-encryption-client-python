@@ -1,4 +1,4 @@
-using NetV3Server.Services;
+using NetV2V3Server.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
