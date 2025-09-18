@@ -108,12 +108,28 @@ function createDefaultClientTuple(): array
     $s3Client = new S3Client([
         'region' => 'us-west-2',
         'version' => 'latest',
+        'http' => [
+            'debug' => false,
+            'verify' => true,
+            'curl' => [
+                CURLOPT_VERBOSE => false,
+                CURLOPT_NOPROGRESS => true
+            ]
+        ]
     ]);
     $encryptionClient = new S3EncryptionClientV2($s3Client);
 
     $kmsClient = new KmsClient([
         'region' => 'us-west-2',
         'version' => 'latest',
+        'http' => [
+            'debug' => false,
+            'verify' => true,
+            'curl' => [
+                CURLOPT_VERBOSE => false,
+                CURLOPT_NOPROGRESS => true
+            ]
+        ]
     ]);
     $materialsProvider = new KmsMaterialsProviderV2($kmsClient, 'arn:aws:kms:us-west-2:370957321024:alias/S3EC-Test-Server-Github-KMS-Key');
 
@@ -204,10 +220,26 @@ $router->addRoute('POST', '/client', function () {
         's3Config' => [
             'region' => 'us-west-2',
             'version' => 'latest',
+            'http' => [
+                'debug' => false,
+                'verify' => true,
+                'curl' => [
+                    CURLOPT_VERBOSE => false,
+                    CURLOPT_NOPROGRESS => true
+                ]
+            ]
         ],
         'kmsConfig' => [
             'region' => 'us-west-2',
             'version' => 'latest',
+            'http' => [
+                'debug' => false,
+                'verify' => true,
+                'curl' => [
+                    CURLOPT_VERBOSE => false,
+                    CURLOPT_NOPROGRESS => true
+                ]
+            ]
         ],
         'kmsKeyId' => $kms_key_id,
         'created' => time()
@@ -242,8 +274,6 @@ $router->addRoute('GET', '/object/{bucket}/{key}', function ($params) {
         return json_encode(['error' => 'ClientID header is required']);
     }
 
-    error_log("clientId from get /object: " . $clientId);
-
     # Get the S3EncryptionClient from the client_cache
     $s3ecClientTuple = getCachedClient($clientId);
     if ($s3ecClientTuple === null) {
@@ -254,7 +284,7 @@ $router->addRoute('GET', '/object/{bucket}/{key}', function ($params) {
 
     $metadata = $_SERVER['HTTP_CONTENT_METADATA'] ?? '';
     $encryptionContext = metadataStringToMap($metadata);
-    // error_log("encryption context: " . json_encode($encryptionContext));
+    error_log("Encryption Context: " . json_encode($encryptionContext));
 
     // Extract bucket and key from URL parameters
     $bucket = $params['bucket'] ?? null;
@@ -265,7 +295,6 @@ $router->addRoute('GET', '/object/{bucket}/{key}', function ($params) {
 
     try {
         $result = $s3ec->getObject([
-            '@KmsAllowDecryptWithAnyCmk' => true,
             '@SecurityProfile' => 'V2',
             '@MaterialsProvider' => $materialProvider,
             '@KmsEncryptionContext' => $encryptionContext,
@@ -275,7 +304,6 @@ $router->addRoute('GET', '/object/{bucket}/{key}', function ($params) {
 
         $body = $result['Body']->getContents();
         $formattedMetadata = formatMetadataForResponse($result["Metadata"]);
-        error_log("Response Object: " . $body);
         header("Content-Metadata: " . $formattedMetadata);
         header("Content-Type: application/octet-stream");
         header("Content-Length: " . strlen($body));
@@ -301,8 +329,6 @@ $router->addRoute('PUT', '/object/{bucket}/{key}', function ($params) {
         return json_encode(['error' => 'ClientID header is required']);
     }
 
-    error_log("clientId from get /object: " . $clientId);
-
     # Get the S3EncryptionClient from the client_cache
     $s3ecClientTuple = getCachedClient($clientId);
     if ($s3ecClientTuple === null) {
@@ -310,9 +336,10 @@ $router->addRoute('PUT', '/object/{bucket}/{key}', function ($params) {
         error_log("Creating a default client now.");
         $s3ecClientTuple = createDefaultClientTuple();
     }
+    // Capture all Content-Metadata headers
     $metadata = $_SERVER['HTTP_CONTENT_METADATA'] ?? '';
     $encryptionContext = metadataStringToMap($metadata);
-    error_log("encryption context: " . json_encode($encryptionContext));
+    error_log('Combined Encryption Context: ' . $metadata);
 
     // Extract bucket and key from URL parameters
     $bucket = $params['bucket'] ?? null;
@@ -339,7 +366,7 @@ $router->addRoute('PUT', '/object/{bucket}/{key}', function ($params) {
         return json_encode([
             "bucket" => $bucket,
             "key" => $key,
-            "metadata" => $encryptionContext,
+            // "metadata" => $encryptionContext
         ]);
 
     } catch (InvalidArgumentException $e) {
