@@ -85,16 +85,18 @@ public class RoundTripTests {
         serverMap.put(NET_V3, new LanguageServerTarget(NET_V3, "8084"));
     }
 
-    // These S3EC implementations do not validate encryption context provided to getObject (i.e. on decrypt) (Go)
-    // or validates only from the stored object (.NET).
+    // Encryption context validation behavior varies by implementation:
+    // - Go: Does not validate encryption context on decrypt operations
+    // - .NET: Only validates against encryption context stored in the object metadata
     // If the encryption context provided to getObject does not match the encryption context on the stored object,
     // these implementations will not raise an error as expected.
     // For now, skip tests that expect encryption context validation on decrypt.
     private static final Set<String> ENCRYPTION_CONTEXT_ON_DECRYPT_UNSUPPORTED =
         Set.of(GO_V3, NET_V2, NET_V3);
     
-    // These S3EC implementations do not have a way to provide encryption context to putObject (i.e. on encrypt) (dotnet).
-    // So, the way these tests are configured, in these languages encryption context will not be passed on encrypt.
+    // S3EC .NET implementations does not accept encryption context (EC) during putObject operations.
+    // These tests are not configured to pass encryption context at client level but at encrypt, 
+    // So, for .NET EC is not passed.
     // For now, skip tests that expect encryption context validation on decrypt.
     private static final Set<String> ENCRYPTION_CONTEXT_ON_ENCRYPT_UNSUPPORTED =
         Set.of(NET_V2, NET_V3);
