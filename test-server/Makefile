@@ -10,23 +10,28 @@ ci: start-servers run-tests stop-servers
 
 SERVER_DIRS := $(shell find . -maxdepth 1 -type d -name '*-server' | sed 's|^\./||' | sort)
 
+SERVER_TARGETS := $(addprefix start-, $(SERVER_DIRS))
+
 # Start all servers in parallel
 start-servers:
 	@echo "Starting all servers..."
-	@for dir in $(SERVER_DIRS); do \
-		if [ -f $$dir/Makefile ]; then \
-			echo "Starting server in $$dir..."; \
-			$(MAKE) -C $$dir start-server; \
-		else \
-			echo "❌ Error: no Makefile found in $$dir"; \
-			exit 1; \
-		fi; \
-	done;
+	$(MAKE) start-all-servers
 	@echo "Waiting for servers to start..."
 	@for dir in $(SERVER_DIRS); do \
 		echo "Waiting for server in $$dir..."; \
 		$(MAKE) -C $$dir wait-for-server; \
 	done
+
+start-all-servers: $(SERVER_TARGETS)
+
+$(SERVER_TARGETS): start-%:
+	@if [ -f $*/Makefile ]; then \
+		echo "Starting server in $*..."; \
+		$(MAKE) -C $* start-server; \
+	else \
+		echo "❌ Error: no Makefile found in $$dir"; \
+		exit 1; \
+	fi; \
 
 
 # Run the Java tests
