@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace NetV2V3Server.Models;
 
 public class GenericServerError
