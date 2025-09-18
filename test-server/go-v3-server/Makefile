@@ -13,7 +13,7 @@ start-server:
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
 	go run . & echo $$! > $(PID_FILE)
-	@echo "Go server starting..."
+	@echo "Go V3 server starting..."
 
 stop-server:
 	@if [ -f $(PID_FILE) ]; then \
