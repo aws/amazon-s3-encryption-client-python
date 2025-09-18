@@ -26,14 +26,13 @@ stop-server:
 # to avoid simultaneous dotnet run conflict
 start-net-v2-server:
 	@echo "Starting .NET V2 server..."
-	cd net-v2-v3-server && \
 	AWS_ACCESS_KEY_ID="$$AWS_ACCESS_KEY_ID" \
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
 	rm -rf obj/v2 bin/v2 && \
 	dotnet build -p:S3EncryptionVersion=v2 -o bin/v2 -p:BaseIntermediateOutputPath=obj/v2/ && \
-	dotnet bin/v2/NetV2V3Server.dll > ../net-v2-server.log 2>&1 & echo $$! > net-v2-server.pid
+	dotnet bin/v2/NetV2V3Server.dll > net-v2-server.log 2>&1 & echo $$! > net-v2-server.pid
 	@echo ".NET V2 server starting..."
 
 
@@ -42,16 +41,14 @@ start-net-v2-server:
 # to avoid simultaneous dotnet run conflict
 start-net-v3-server:
 	@echo "Starting .NET V3 server..."
-	cd net-v2-v3-server && \
 	AWS_ACCESS_KEY_ID="$$AWS_ACCESS_KEY_ID" \
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
 	rm -rf obj/v3 bin/v3 && \
 	dotnet build -p:S3EncryptionVersion=v3 -o bin/v3 -p:BaseIntermediateOutputPath=obj/v3/ && \
-	dotnet bin/v3/NetV2V3Server.dll > ../net-v3-server.log 2>&1 & echo $$! > net-v3-server.pid
+	dotnet bin/v3/NetV2V3Server.dll > net-v3-server.log 2>&1 & echo $$! > net-v3-server.pid
 	@echo ".NET V3 server starting..."
-
 
 wait-for-server:
 	$(MAKE) -C .. wait-for-port PORT=$(PORT_NET_V2) \
