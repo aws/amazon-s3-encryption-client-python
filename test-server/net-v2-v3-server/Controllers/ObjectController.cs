@@ -53,6 +53,7 @@ public class ObjectController(IClientCacheService clientCacheService, ILogger<Cl
         }
         catch (Exception ex)
         {
+            logger.LogError(ex, "Failed to put object from S3 for bucket={bucket}, key={key}", bucket, key);
             return StatusCode(500, new S3EncryptionClientError { Message = $"Failed to put object: {ex.Message}" });
         }
     }
@@ -95,7 +96,8 @@ public class ObjectController(IClientCacheService clientCacheService, ILogger<Cl
             return File(bodyBytes, "application/octet-stream");
         }
         catch (Exception ex)
-        {
+        { 
+            logger.LogError(ex, "Failed to get object from S3 for bucket={bucket}, key={key}", bucket, key);
             return StatusCode(500, new S3EncryptionClientError { Message = ex.Message });
         }
     }

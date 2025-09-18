@@ -24,7 +24,7 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             logger.LogInformation(
                 "Created EncryptionMaterialsV2: KMS={KmsKeyId}, Encryption Context={EncryptionContext}", 
                 kmsKeyId, encryptionContext);
-            // SecurityProfile V2AndLegacy can decrypt from legacy S3EC while V2 cannot
+            // SecurityProfile V2AndLegacy can decrypt from legacy S3EC but V2 cannot
             var enableLegacyMode = enableLegacyUnauthenticatedModes || enableLegacyWrappingAlgorithms;
             var securityProfile = enableLegacyMode ? SecurityProfile.V2AndLegacy : SecurityProfile.V2;
             
@@ -48,6 +48,7 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
         }
         catch (Exception ex)
         {
+            logger.LogError(ex, "Failed to create S3EC client");
             return StatusCode(500, new S3EncryptionClientError
             {
                 Message = $"Failed to create client: {ex.Message}"
