@@ -13,11 +13,12 @@ function handleCreateClient()
         http_response_code(400);
         return json_encode(['error' => 'Invalid JSON in request body']);
     }
-    $config_data = $requestData['config'] ?? [];
-    $key_material = $config_data["keyMaterial"] ?? null;
-
+    $configData = $requestData['config'] ?? [];
+    $keyMaterial = $configData["keyMaterial"] ?? null;
+    $legacyAlgorithms = $configData["enableLegacyWrappingAlgorithms"] ?? false;
+    error_log("Legacy Wrapping Algorithms: " . $legacyAlgorithms);
     $clientId = Uuid::uuid4()->toString();
-    $kms_key_id = $key_material["kmsKeyId"] ?? null;
+    $kmsKeyId = $keyMaterial["kmsKeyId"] ?? null;
 
     // Store client configuration instead of objects (AWS objects can't be serialized)
     $_SESSION['s3ecCache'][$clientId] = [
@@ -45,7 +46,8 @@ function handleCreateClient()
                 ]
             ]
         ],
-        'kmsKeyId' => $kms_key_id,
+        'kmsKeyId' => $kmsKeyId,
+        'legacy' => $legacyAlgorithms,
         'created' => time()
     ];
 

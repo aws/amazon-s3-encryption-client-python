@@ -10,9 +10,6 @@ use Aws\Crypto\KmsMaterialsProviderV2;
 use Aws\S3\S3Client;
 use Aws\Kms\KmsClient;
 
-use Ramsey\Uuid\Uuid;
-use GuzzleHttp\Psr7\Response;
-
 // Function to read session ID from cookies.txt file
 function getSessionIdFromCookiesFile()
 {
@@ -156,6 +153,7 @@ function getCachedClient($clientId)
     }
 
     $config = $_SESSION['s3ecCache'][$clientId];
+    error_log("Cached Config: " . json_encode($config));
 
     // Recreate the AWS clients from stored configuration
     $s3Client = new S3Client($config['s3Config']);

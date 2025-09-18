@@ -29,10 +29,20 @@ function handleGetObject($params)
 
     $s3ec = $s3ecClientTuple["encryptionClient"];
     $materialProvider = $s3ecClientTuple["materialsProvider"];
+    $clientConfig = $s3ecClientTuple["config"];
+    $legacyConfig = $clientConfig["legacy"] ?? false;
+    error_log("Legacy Config from cached config: " . $legacyConfig);
+    $legacy = null;
+    if ($legacyConfig === false) {
+        $legacy = "V2";
+    } else {
+        $legacy = "V2_AND_LEGACY";
+    }
+    error_log("Using Security Profile: " . $legacy);
 
     try {
         $result = $s3ec->getObject([
-            '@SecurityProfile' => 'V2',
+            '@SecurityProfile' => $legacy,
             '@MaterialsProvider' => $materialProvider,
             '@KmsEncryptionContext' => $encryptionContext,
             'Bucket' => $bucket,

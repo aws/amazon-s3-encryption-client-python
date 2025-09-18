@@ -71,7 +71,7 @@ public class RoundTripTests {
         serverMap = new HashMap<>(2);
          serverMap.put("Java", new LanguageServerTarget("Java", "8080"));
         serverMap.put("Python", new LanguageServerTarget("Python", "8081"));
-        serverMap.put("PHP", new LanguageServerTarget("PHP-V2", "8087"));
+        serverMap.put("PHP-V2", new LanguageServerTarget("PHP-V2", "8087"));
     }
 
     static public class LanguageServerTarget {
@@ -174,42 +174,42 @@ public class RoundTripTests {
         return mdAsList;
     }
 
-     @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
-     @MethodSource("crossLanguageClients")
-     public void crossLanguageTestKms(LanguageServerTarget encLang, LanguageServerTarget decLang) {
-         S3ECTestServerClient encClient = testServerClientFor(encLang);
-         final String objectKey = "cross-lang-test-key-" + encLang;
-         final String input = "simple-test-input";
-         KeyMaterial kmsKeyArn = KeyMaterial.builder()
-           .kmsKeyId(KMS_KEY_ARN)
-           .build();
-         CreateClientOutput encClientOutput = encClient.createClient(CreateClientInput.builder()
-           .config(S3ECConfig.builder()
-             .keyMaterial(kmsKeyArn).build())
-           .build());
-         String encS3ECId = encClientOutput.getClientId();
-         encClient.putObject(PutObjectInput.builder()
-           .clientID(encS3ECId)
-           .key(objectKey)
-           .bucket(BUCKET)
-           .body(ByteBuffer.wrap(input.getBytes(StandardCharsets.UTF_8)))
-           .build());
-         S3ECTestServerClient decClient = testServerClientFor(decLang);
-         CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
-           .config(S3ECConfig.builder()
-             .keyMaterial(kmsKeyArn).build())
-           .build());
-         String decS3ECId = decClientOutput.getClientId();
-         GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
-           .clientID(decS3ECId)
-           .bucket(BUCKET)
-           .key(objectKey)
-           .build());
-
-         if (!input.equals(StandardCharsets.UTF_8.decode(output.getBody()).toString())) {
-             fail(String.format("Encryption in %s failed to decrpyt in %s!", encLang, decLang));
-         }
-     }
+//     @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
+//     @MethodSource("crossLanguageClients")
+//     public void crossLanguageTestKms(LanguageServerTarget encLang, LanguageServerTarget decLang) {
+//         S3ECTestServerClient encClient = testServerClientFor(encLang);
+//         final String objectKey = "cross-lang-test-key-" + encLang;
+//         final String input = "simple-test-input";
+//         KeyMaterial kmsKeyArn = KeyMaterial.builder()
+//           .kmsKeyId(KMS_KEY_ARN)
+//           .build();
+//         CreateClientOutput encClientOutput = encClient.createClient(CreateClientInput.builder()
+//           .config(S3ECConfig.builder()
+//             .keyMaterial(kmsKeyArn).build())
+//           .build());
+//         String encS3ECId = encClientOutput.getClientId();
+//         encClient.putObject(PutObjectInput.builder()
+//           .clientID(encS3ECId)
+//           .key(objectKey)
+//           .bucket(BUCKET)
+//           .body(ByteBuffer.wrap(input.getBytes(StandardCharsets.UTF_8)))
+//           .build());
+//         S3ECTestServerClient decClient = testServerClientFor(decLang);
+//         CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
+//           .config(S3ECConfig.builder()
+//             .keyMaterial(kmsKeyArn).build())
+//           .build());
+//         String decS3ECId = decClientOutput.getClientId();
+//         GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
+//           .clientID(decS3ECId)
+//           .bucket(BUCKET)
+//           .key(objectKey)
+//           .build());
+//
+//         if (!input.equals(StandardCharsets.UTF_8.decode(output.getBody()).toString())) {
+//             fail(String.format("Encryption in %s failed to decrpyt in %s!", encLang, decLang));
+//         }
+//     }
 
 //    @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
 //    @MethodSource("crossLanguageClients")
@@ -302,47 +302,47 @@ public class RoundTripTests {
 //         }
 //     }
 
-    // @ParameterizedTest(name = "{displayName} for Encrypt: Java, Decrypt: {0}")
-    // @MethodSource("clientsForTest")
-    // public void kmsV1Legacy(String language) {
-    //     S3ECTestServerClient client = testServerClientFor(serverMap.get(language));
-    //     final String objectKey = "test-key-kms-v1-" + language;
-    //     final String input = "simple-test-input";
-    //     KeyMaterial kmsKeyArn = KeyMaterial.builder()
-    //       .kmsKeyId(KMS_KEY_ARN)
-    //       .build();
-    //     CreateClientOutput output1 = client.createClient(CreateClientInput.builder()
-    //       .config(S3ECConfig.builder()
-    //         .enableLegacyWrappingAlgorithms(true)
-    //         .keyMaterial(kmsKeyArn)
-    //         .build())
-    //       .build());
-    //     String s3ECId = output1.getClientId();
+     @ParameterizedTest(name = "{displayName} for Encrypt: Java, Decrypt: {0}")
+     @MethodSource("clientsForTest")
+     public void kmsV1Legacy(String language) {
+         S3ECTestServerClient client = testServerClientFor(serverMap.get(language));
+         final String objectKey = "test-key-kms-v1-" + language;
+         final String input = "simple-test-input";
+         KeyMaterial kmsKeyArn = KeyMaterial.builder()
+           .kmsKeyId(KMS_KEY_ARN)
+           .build();
+         CreateClientOutput output1 = client.createClient(CreateClientInput.builder()
+           .config(S3ECConfig.builder()
+             .enableLegacyWrappingAlgorithms(true)
+             .keyMaterial(kmsKeyArn)
+             .build())
+           .build());
+         String s3ECId = output1.getClientId();
 
-    //     // Create the object using the old client
-    //     // V1 Client
-    //     EncryptionMaterialsProvider materialsProvider = new KMSEncryptionMaterialsProvider(KMS_KEY_ARN);
+         // Create the object using the old client
+         // V1 Client
+         EncryptionMaterialsProvider materialsProvider = new KMSEncryptionMaterialsProvider(KMS_KEY_ARN);
 
-    //     CryptoConfiguration v1Config =
-    //       new CryptoConfiguration(CryptoMode.AuthenticatedEncryption)
-    //         .withStorageMode(CryptoStorageMode.ObjectMetadata)
-    //         .withAwsKmsRegion(KMS_REGION);
+         CryptoConfiguration v1Config =
+           new CryptoConfiguration(CryptoMode.AuthenticatedEncryption)
+             .withStorageMode(CryptoStorageMode.ObjectMetadata)
+             .withAwsKmsRegion(KMS_REGION);
 
-    //     AmazonS3Encryption v1Client = AmazonS3EncryptionClient.encryptionBuilder()
-    //       .withCryptoConfiguration(v1Config)
-    //       .withEncryptionMaterials(materialsProvider)
-    //       .build();
+         AmazonS3Encryption v1Client = AmazonS3EncryptionClient.encryptionBuilder()
+           .withCryptoConfiguration(v1Config)
+           .withEncryptionMaterials(materialsProvider)
+           .build();
 
-    //     v1Client.putObject(BUCKET, objectKey, input);
+         v1Client.putObject(BUCKET, objectKey, input);
 
-    //     GetObjectOutput output = client.getObject(GetObjectInput.builder()
-    //       .clientID(s3ECId)
-    //       .bucket(BUCKET)
-    //       .key(objectKey)
-    //       .build());
+         GetObjectOutput output = client.getObject(GetObjectInput.builder()
+           .clientID(s3ECId)
+           .bucket(BUCKET)
+           .key(objectKey)
+           .build());
 
-    //     assertEquals(input, new String(output.getBody().array()));
-    // }
+         assertEquals(input, new String(output.getBody().array()));
+     }
 
     // @ParameterizedTest(name = "{displayName} for Encrypt: Java, Decrypt: {0}")
     // @MethodSource("clientsForTest")

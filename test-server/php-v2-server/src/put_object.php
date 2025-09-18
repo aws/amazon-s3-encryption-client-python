@@ -36,9 +36,17 @@ function handlePutObject($params)
         'Cipher' => 'gcm',
         'KeySize' => 256,
     ];
+    $legacyConfig = $s3ecClientTuple["legacy"] ?? false;
+    $legacy = null;
+    if ($legacyConfig === false) {
+        $legacy = "V2";
+    } else {
+        $legacy = "V2_AND_LEGACY";
+    }
 
     try {
         $result = $s3ec->putObject([
+            '@SecurityProfile' => $legacy,
             '@MaterialsProvider' => $materialProvider,
             '@KmsEncryptionContext' => $encryptionContext,
             '@CipherOptions' => $cipherOptions,
