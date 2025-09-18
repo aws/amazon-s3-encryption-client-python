@@ -12,7 +12,7 @@ start-server:
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
 	./gradlew --build-cache --parallel run & echo $$! > $(PID_FILE)
-	@echo "Java server starting..."
+	@echo "Java V3 server starting..."
 
 stop-server:
 	@if [ -f $(PID_FILE) ]; then \

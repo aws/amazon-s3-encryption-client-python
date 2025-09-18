@@ -16,7 +16,7 @@ start-server:
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
 	.venv/bin/python src/main.py & echo $$! > $(PID_FILE)
-	@echo "Python server starting..."
+	@echo "Python V3 server starting..."
 
 stop-server:
 	@if [ -f $(PID_FILE) ]; then \
