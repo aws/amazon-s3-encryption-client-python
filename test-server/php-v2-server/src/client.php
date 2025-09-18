@@ -53,6 +53,9 @@ function handleCreateClient()
     error_log("Total clients in cache: " . count($_SESSION['s3ecCache']));
     error_log("ClientID: " . $clientId);
 
+    // Auto-update cookies.txt with current session ID so tests can access cached clients
+    writeSessionIdToCookiesFile(session_id());
+
     header("Content-Type: application/json");
     return json_encode([
         'clientId' => $clientId,

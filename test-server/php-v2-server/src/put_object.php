@@ -18,11 +18,13 @@ function handlePutObject($params)
         error_log("No cached client found :( " . $clientId);
         error_log("Creating a default client now.");
         $s3ecClientTuple = createDefaultClientTuple();
+    } else {
+        error_log("Cached Client found: " . $clientId);
     }
+
     // Capture all Content-Metadata headers
     $metadata = $_SERVER['HTTP_CONTENT_METADATA'] ?? '';
     $encryptionContext = metadataStringToMap($metadata);
-    error_log('Combined Encryption Context: ' . $metadata);
 
     // Extract bucket and key from URL parameters
     $bucket = $params['bucket'] ?? null;
