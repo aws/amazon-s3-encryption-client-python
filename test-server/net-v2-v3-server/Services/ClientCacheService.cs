@@ -1,4 +1,3 @@
-using Amazon.S3;
 using Amazon.Extensions.S3.Encryption;
 using System.Collections.Concurrent;
 
