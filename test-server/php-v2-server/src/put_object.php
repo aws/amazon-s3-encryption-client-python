@@ -1,0 +1,62 @@
+<?php
+
+function handlePutObject($params)
+{
+    // Get the raw request body
+    $rawBody = file_get_contents('php://input');
+    // Get ClientID from HTTP header
+    $clientId = $_SERVER['HTTP_X_CLIENT_ID'] ?? $_SERVER['HTTP_CLIENTID'] ?? null;
+
+    if (empty($clientId)) {
+        http_response_code(400);
+        return json_encode(['error' => 'ClientID header is required']);
+    }
+
+    # Get the S3EncryptionClient from the client_cache
+    $s3ecClientTuple = getCachedClient($clientId);
+    if ($s3ecClientTuple === null) {
+        error_log("No cached client found :( " . $clientId);
+        error_log("Creating a default client now.");
+        $s3ecClientTuple = createDefaultClientTuple();
+    }
+    // Capture all Content-Metadata headers
+    $metadata = $_SERVER['HTTP_CONTENT_METADATA'] ?? '';
+    $encryptionContext = metadataStringToMap($metadata);
+    error_log('Combined Encryption Context: ' . $metadata);
+
+    // Extract bucket and key from URL parameters
+    $bucket = $params['bucket'] ?? null;
+    $key = $params['key'] ?? null;
+
+    $s3ec = $s3ecClientTuple["encryptionClient"];
+    $materialProvider = $s3ecClientTuple["materialsProvider"];
+    $cipherOptions = [
+        'Cipher' => 'gcm',
+        'KeySize' => 256,
+    ];
+
+    try {
+        $result = $s3ec->putObject([
+            '@MaterialsProvider' => $materialProvider,
+            '@KmsEncryptionContext' => $encryptionContext,
+            '@CipherOptions' => $cipherOptions,
+            'Bucket' => $bucket,
+            'Key' => $key,
+            'Body' => $rawBody,
+        ]);
+
+        header("Content-Type: application/json");
+        return json_encode([
+            "bucket" => $bucket,
+            "key" => $key,
+            // "metadata" => $encryptionContext
+        ]);
+
+    } catch (InvalidArgumentException $e) {
+        http_response_code(400);
+        return json_encode(['error' => 'Invalid argument: ' . $e->getMessage()]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        return json_encode(['error' => 'Server error: ' . $e->getMessage()]);
+    }
+}

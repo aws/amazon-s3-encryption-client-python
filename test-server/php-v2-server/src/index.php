@@ -1,6 +1,9 @@
 <?php
 
 require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/client.php';
+require_once __DIR__ . '/get_object.php';
+require_once __DIR__ . '/put_object.php';
 
 use Aws\S3\Crypto\S3EncryptionClientV2;
 use Aws\Crypto\KmsMaterialsProviderV2;
@@ -199,62 +202,6 @@ $router->addRoute('GET', '/', function () {
     ]);
 });
 
-$router->addRoute('POST', '/client', function () {
-    // Get the raw request body
-    $rawBody = file_get_contents('php://input');
-
-    // Parse JSON if the body contains JSON
-    $requestData = json_decode($rawBody, true);
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        http_response_code(400);
-        return json_encode(['error' => 'Invalid JSON in request body']);
-    }
-    $config_data = $requestData['config'] ?? [];
-    $key_material = $config_data["keyMaterial"] ?? null;
-
-    $clientId = Uuid::uuid4()->toString();
-    $kms_key_id = $key_material["kmsKeyId"] ?? null;
-
-    // Store client configuration instead of objects (AWS objects can't be serialized)
-    $_SESSION['s3ecCache'][$clientId] = [
-        's3Config' => [
-            'region' => 'us-west-2',
-            'version' => 'latest',
-            'http' => [
-                'debug' => false,
-                'verify' => true,
-                'curl' => [
-                    CURLOPT_VERBOSE => false,
-                    CURLOPT_NOPROGRESS => true
-                ]
-            ]
-        ],
-        'kmsConfig' => [
-            'region' => 'us-west-2',
-            'version' => 'latest',
-            'http' => [
-                'debug' => false,
-                'verify' => true,
-                'curl' => [
-                    CURLOPT_VERBOSE => false,
-                    CURLOPT_NOPROGRESS => true
-                ]
-            ]
-        ],
-        'kmsKeyId' => $kms_key_id,
-        'created' => time()
-    ];
-
-    // Debug: show all cached clients after adding
-    error_log("Total clients in cache: " . count($_SESSION['s3ecCache']));
-    error_log("ClientID: " . $clientId);
-
-    header("Content-Type: application/json");
-    return json_encode([
-        'clientId' => $clientId,
-    ]);
-});
-
 $router->addRoute('GET', '/cache', function () {
     return json_encode([
         'sessionId' => session_id(),
@@ -266,117 +213,17 @@ $router->addRoute('GET', '/cache', function () {
 });
 
 $router->addRoute('GET', '/object/{bucket}/{key}', function ($params) {
-    // Get ClientID from HTTP header
-    $clientId = $_SERVER['HTTP_X_CLIENT_ID'] ?? $_SERVER['HTTP_CLIENTID'] ?? null;
-
-    if (empty($clientId)) {
-        http_response_code(400);
-        return json_encode(['error' => 'ClientID header is required']);
-    }
-
-    # Get the S3EncryptionClient from the client_cache
-    $s3ecClientTuple = getCachedClient($clientId);
-    if ($s3ecClientTuple === null) {
-        error_log("No cached client found :( " . $clientId);
-        error_log("Creating a default client now.");
-        $s3ecClientTuple = createDefaultClientTuple();
-    }
-
-    $metadata = $_SERVER['HTTP_CONTENT_METADATA'] ?? '';
-    $encryptionContext = metadataStringToMap($metadata);
-    error_log("Encryption Context: " . json_encode($encryptionContext));
-
-    // Extract bucket and key from URL parameters
-    $bucket = $params['bucket'] ?? null;
-    $key = $params['key'] ?? null;
-
-    $s3ec = $s3ecClientTuple["encryptionClient"];
-    $materialProvider = $s3ecClientTuple["materialsProvider"];
-
-    try {
-        $result = $s3ec->getObject([
-            '@SecurityProfile' => 'V2',
-            '@MaterialsProvider' => $materialProvider,
-            '@KmsEncryptionContext' => $encryptionContext,
-            'Bucket' => $bucket,
-            'Key' => $key,
-        ]);
-
-        $body = $result['Body']->getContents();
-        $formattedMetadata = formatMetadataForResponse($result["Metadata"]);
-        header("Content-Metadata: " . $formattedMetadata);
-        header("Content-Type: application/octet-stream");
-        header("Content-Length: " . strlen($body));
-        return $body;
-    } catch (InvalidArgumentException $e) {
-        http_response_code(400);
-        return json_encode(['error' => 'Invalid argument: ' . $e->getMessage()]);
-    } catch (Exception $e) {
-        http_response_code(500);
-        return json_encode(['error' => 'Server error: ' . $e->getMessage()]);
-    }
-
+    return handleGetObject($params);
 });
 
 $router->addRoute('PUT', '/object/{bucket}/{key}', function ($params) {
-    // Get the raw request body
-    $rawBody = file_get_contents('php://input');
-    // Get ClientID from HTTP header
-    $clientId = $_SERVER['HTTP_X_CLIENT_ID'] ?? $_SERVER['HTTP_CLIENTID'] ?? null;
-
-    if (empty($clientId)) {
-        http_response_code(400);
-        return json_encode(['error' => 'ClientID header is required']);
-    }
-
-    # Get the S3EncryptionClient from the client_cache
-    $s3ecClientTuple = getCachedClient($clientId);
-    if ($s3ecClientTuple === null) {
-        error_log("No cached client found :( " . $clientId);
-        error_log("Creating a default client now.");
-        $s3ecClientTuple = createDefaultClientTuple();
-    }
-    // Capture all Content-Metadata headers
-    $metadata = $_SERVER['HTTP_CONTENT_METADATA'] ?? '';
-    $encryptionContext = metadataStringToMap($metadata);
-    error_log('Combined Encryption Context: ' . $metadata);
-
-    // Extract bucket and key from URL parameters
-    $bucket = $params['bucket'] ?? null;
-    $key = $params['key'] ?? null;
-
-    $s3ec = $s3ecClientTuple["encryptionClient"];
-    $materialProvider = $s3ecClientTuple["materialsProvider"];
-    $cipherOptions = [
-        'Cipher' => 'gcm',
-        'KeySize' => 256,
-    ];
-
-    try {
-        $result = $s3ec->putObject([
-            '@MaterialsProvider' => $materialProvider,
-            '@KmsEncryptionContext' => $encryptionContext,
-            '@CipherOptions' => $cipherOptions,
-            'Bucket' => $bucket,
-            'Key' => $key,
-            'Body' => $rawBody,
-        ]);
-
-        header("Content-Type: application/json");
-        return json_encode([
-            "bucket" => $bucket,
-            "key" => $key,
-            // "metadata" => $encryptionContext
-        ]);
-
-    } catch (InvalidArgumentException $e) {
-        http_response_code(400);
-        return json_encode(['error' => 'Invalid argument: ' . $e->getMessage()]);
-    } catch (Exception $e) {
-        http_response_code(500);
-        return json_encode(['error' => 'Server error: ' . $e->getMessage()]);
-    }
+    return handlePutObject($params);
 });
+
+$router->addRoute('POST', '/client', function () {
+    return handleCreateClient();
+});
+
 // Handle the request and output response
 $result = $router->handleRequest();
 if ($result !== false) {
