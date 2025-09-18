@@ -54,6 +54,12 @@ import com.amazonaws.services.s3.model.EncryptionMaterialsProvider;
 import com.amazonaws.services.s3.model.KMSEncryptionMaterialsProvider;
 
 public class RoundTripTests {
+    private static final String JAVA_V3 = "Java-V3";
+    private static final String PYTHON_V3 = "Python-V3";
+    private static final String GO_V3 = "Go-V3";
+    private static final String NET_V2 = "NET-v2";
+    private static final String NET_V3 = "NET-v3";
+    
     private static final List<LanguageServerTarget> serverList;
     private static final Map<String, LanguageServerTarget> serverMap;
 
@@ -65,22 +71,33 @@ public class RoundTripTests {
 
     static {
         serverList = new ArrayList<>(14);
-        serverList.add(new LanguageServerTarget("Java-V3", "8080"));
-        serverList.add(new LanguageServerTarget("Python-V3", "8081"));
-        serverList.add(new LanguageServerTarget("Go-V3", "8082"));
+        serverList.add(new LanguageServerTarget(JAVA_V3, "8080"));
+        serverList.add(new LanguageServerTarget(PYTHON_V3, "8081"));
+        serverList.add(new LanguageServerTarget(GO_V3, "8082"));
+        serverList.add(new LanguageServerTarget(NET_V2, "8083"));
+        serverList.add(new LanguageServerTarget(NET_V3, "8084"));
 
         serverMap = new HashMap<>(14);
-        serverMap.put("Java-V3", new LanguageServerTarget("Java-V3", "8080"));
-        serverMap.put("Python-V3", new LanguageServerTarget("Python-V3", "8081"));
-        serverMap.put("Go-V3", new LanguageServerTarget("Go-V3", "8082"));
+        serverMap.put(JAVA_V3, new LanguageServerTarget(JAVA_V3, "8080"));
+        serverMap.put(PYTHON_V3, new LanguageServerTarget(PYTHON_V3, "8081"));
+        serverMap.put(GO_V3, new LanguageServerTarget(GO_V3, "8082"));
+        serverMap.put(NET_V2, new LanguageServerTarget(NET_V2, "8083"));
+        serverMap.put(NET_V3, new LanguageServerTarget(NET_V3, "8084"));
     }
 
-    // These S3EC implementations do not validate encryption context provided to getObject (i.e. on decrypt).
+    // These S3EC implementations do not validate encryption context provided to getObject (i.e. on decrypt) (Go)
+    // or validates only from the stored object (.NET).
     // If the encryption context provided to getObject does not match the encryption context on the stored object,
     // these implementations will not raise an error as expected.
     // For now, skip tests that expect encryption context validation on decrypt.
     private static final Set<String> ENCRYPTION_CONTEXT_ON_DECRYPT_UNSUPPORTED =
-        Set.of("Go-V3");
+        Set.of(GO_V3, NET_V2, NET_V3);
+    
+    // These S3EC implementations do not have a way to provide encryption context to putObject (i.e. on encrypt) (dotnet).
+    // So, the way these tests are configured, in these languages encryption context will not be passed on encrypt.
+    // For now, skip tests that expect encryption context validation on decrypt.
+    private static final Set<String> ENCRYPTION_CONTEXT_ON_ENCRYPT_UNSUPPORTED =
+        Set.of(NET_V2, NET_V3);
 
     static public class LanguageServerTarget {
         public String getLanguageName() {
@@ -222,6 +239,9 @@ public class RoundTripTests {
     @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
     @MethodSource("crossLanguageClients")
     public void crossLanguageTestKmsWithEncCtx(LanguageServerTarget encLang, LanguageServerTarget decLang) {
+        if (ENCRYPTION_CONTEXT_ON_ENCRYPT_UNSUPPORTED.contains(encLang.getLanguageName())) {
+            return;
+        }
         S3ECTestServerClient encClient = testServerClientFor(encLang);
         final String objectKey = "cross-lang-test-key-kms-ec-" + encLang;
         final String input = "simple-test-input";
@@ -267,6 +287,9 @@ public class RoundTripTests {
     @MethodSource("crossLanguageClients")
     public void crossLanguageTestKmsWithSubsetEncCtxFails(LanguageServerTarget encLang, LanguageServerTarget decLang) {
         if (ENCRYPTION_CONTEXT_ON_DECRYPT_UNSUPPORTED.contains(decLang.getLanguageName())) {
+            return;
+        }
+        if (ENCRYPTION_CONTEXT_ON_ENCRYPT_UNSUPPORTED.contains(encLang.getLanguageName())) {
             return;
         }
         S3ECTestServerClient encClient = testServerClientFor(encLang);
@@ -494,7 +517,13 @@ public class RoundTripTests {
               .build());
             fail("Expected Exception");
         } catch (S3EncryptionClientError e) {
-            assertTrue(e.getMessage().contains("Enable legacy wrapping algorithms to use legacy key wrapping algorithm: kms"));
+            if (language.equals(NET_V3) || language.equals(NET_V2)) {
+              assertTrue(e.getMessage().contains(
+                "The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration V2."
+              ));
+            } else {
+              assertTrue(e.getMessage().contains("Enable legacy wrapping algorithms to use legacy key wrapping algorithm: kms"));
+            }
         }
     }
 
