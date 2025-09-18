@@ -18,17 +18,14 @@ start-servers:
 			echo "Starting server in $$dir..."; \
 			$(MAKE) -C $$dir start-server; \
 		else \
-			echo "Skipping $$dir (no Makefile found)"; \
+			echo "❌ Error: no Makefile found in $$dir"; \
+			exit 1; \
 		fi; \
 	done;
 	@echo "Waiting for servers to start..."
 	@for dir in $(SERVER_DIRS); do \
-		if [ -f $$dir/Makefile ]; then \
-			echo "Starting server in $$dir..."; \
-			$(MAKE) -C $$dir wait-for-server; \
-		else \
-			echo "Skipping $$dir (no Makefile found)"; \
-		fi; \
+		echo "Waiting for server in $$dir..."; \
+		$(MAKE) -C $$dir wait-for-server; \
 	done
 
 
@@ -73,22 +70,24 @@ check-env:
 	@if [ -z "$$AWS_SESSION_TOKEN" ]; then echo "AWS_SESSION_TOKEN is not set"; else echo "AWS_SESSION_TOKEN is set"; fi
 	@if [ -z "$$AWS_REGION" ]; then echo "AWS_REGION is not set (will use us-west-2 as default)"; else echo "AWS_REGION is set to $$AWS_REGION"; fi
 
+TIMEOUT := 360
+
 wait-for-port:
 	@if [ -z "$(PORT)" ]; then \
 		echo "❌ Error: PORT is required"; \
 		exit 1; \
 	fi
-	@for i in $$(seq 1 30); do \
+	@for i in $$(seq 1 $(TIMEOUT)); do \
 		if nc -z localhost $$PORT; then \
 			echo "Ports are open, waiting for servers to initialize..."; \
 			sleep 5; \
 			echo "Server at $$PORT is ready!"; \
 			break; \
 		fi; \
-		if [ $$i -eq 30 ]; then \
+		if [ $$i -eq $(TIMEOUT) ]; then \
 			echo "Timeout waiting for $$PORT start"; \
 			exit 1; \
 		fi; \
-		echo "Waiting for $$PORT to start ($$i/30)..."; \
+		echo "Waiting for $$PORT to start ($$i/$(TIMEOUT))..."; \
 		sleep 1; \
 	done
