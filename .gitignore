@@ -53,3 +53,4 @@ gradle-app.setting
 smithy-java-core/out
 
 **/**/vendor/*
+test-server/php-v2-server/cookies.txt
