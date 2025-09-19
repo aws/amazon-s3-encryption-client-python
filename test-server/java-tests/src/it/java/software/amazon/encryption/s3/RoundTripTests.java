@@ -82,7 +82,7 @@ public class RoundTripTests {
     // these implementations will not raise an error as expected.
     // For now, skip tests that expect encryption context validation on decrypt.
     private static final Set<String> ENCRYPTION_CONTEXT_ON_DECRYPT_UNSUPPORTED =
-        Set.of("Go-V3");
+        Set.of("Go-V3", "PHP-V2");
 
     static public class LanguageServerTarget {
         public String getLanguageName() {
