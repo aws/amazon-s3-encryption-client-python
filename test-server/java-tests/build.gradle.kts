@@ -46,6 +46,8 @@ tasks {
         useJUnitPlatform()
         testClassesDirs = sourceSets["it"].output.classesDirs
         classpath = sourceSets["it"].runtimeClasspath
+        outputs.upToDateWhen { false }
+        outputs.cacheIf { false }
     }
 }
 
