@@ -1,10 +1,10 @@
-# S3EC PHP v2 Test Server
+# S3EC PHP v3 Test Server
 
 This is the PHP V3 implementation of the S3ECTestServer framework. It provides a server implementation for testing S3 Encryption Client functionality.
 
 ## Overview
 
-The S3ECPhpV2TestServer implements the S3ECTestServer service defined in the shared Smithy model. It provides endpoints for:
+The S3ECPhpV3TestServer implements the S3ECTestServer service defined in the shared Smithy model. It provides endpoints for:
 
 - Creating S3 Encryption Clients with session-based caching
 - Putting objects with encryption
