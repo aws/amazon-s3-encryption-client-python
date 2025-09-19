@@ -16,7 +16,6 @@ function handleCreateClient()
     $configData = $requestData['config'] ?? [];
     $keyMaterial = $configData["keyMaterial"] ?? null;
     $legacyAlgorithms = $configData["enableLegacyWrappingAlgorithms"] ?? false;
-    error_log("Legacy Wrapping Algorithms: " . $legacyAlgorithms);
     $clientId = Uuid::uuid4()->toString();
     $kmsKeyId = $keyMaterial["kmsKeyId"] ?? null;
 
@@ -50,10 +49,6 @@ function handleCreateClient()
         'legacy' => $legacyAlgorithms,
         'created' => time()
     ];
-
-    // Debug: show all cached clients after adding
-    error_log("Total clients in cache: " . count($_SESSION['s3ecCache']));
-    error_log("ClientID: " . $clientId);
 
     // Auto-update cookies.txt with current session ID so tests can access cached clients
     writeSessionIdToCookiesFile(session_id());

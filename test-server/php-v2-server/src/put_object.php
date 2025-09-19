@@ -15,11 +15,7 @@ function handlePutObject($params)
     # Get the S3EncryptionClient from the client_cache
     $s3ecClientTuple = getCachedClient($clientId);
     if ($s3ecClientTuple === null) {
-        error_log("No cached client found :( " . $clientId);
-        error_log("Creating a default client now.");
         $s3ecClientTuple = createDefaultClientTuple();
-    } else {
-        error_log("Cached Client found: " . $clientId);
     }
 
     // Capture all Content-Metadata headers

@@ -153,7 +153,6 @@ function getCachedClient($clientId)
     }
 
     $config = $_SESSION['s3ecCache'][$clientId];
-    error_log("Cached Config: " . json_encode($config));
 
     // Recreate the AWS clients from stored configuration
     $s3Client = new S3Client($config['s3Config']);
