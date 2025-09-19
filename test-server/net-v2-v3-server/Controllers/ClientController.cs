@@ -14,17 +14,29 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
     [HttpPost]
     public IActionResult CreateClient([FromBody] ClientRequest request)
     {
+        // Return 501 for not implemented features by the server
+        if (request.Config.EnableDelayedAuthenticationMode)
+            return StatusCode(501, new GenericServerError { Message = "EnableDelayedAuthenticationMode not supported" });
+        if (request.Config.SetBufferSize.HasValue)
+            return StatusCode(501, new GenericServerError { Message = "SetBufferSize not supported" });
+        if (request.Config.KeyMaterial.RsaKey != null)
+            return StatusCode(501, new GenericServerError { Message = "RsaKey not supported" });
+        if (request.Config.KeyMaterial.AesKey != null)
+            return StatusCode(501, new GenericServerError { Message = "AesKey not supported" });
+
         var kmsKeyId = request.Config.KeyMaterial.KmsKeyId;
         var enableLegacyUnauthenticatedModes = request.Config.EnableLegacyUnauthenticatedModes;
         var enableLegacyWrappingAlgorithms = request.Config.EnableLegacyWrappingAlgorithms;
-        var encryptionContext = request.Config.EncryptionContext;
-
+        
         try
         {
+            // The POST request does not contain encryption context. However, encryption context is a required field for KMS.
+            // So, we are passing empty dictionary.
+            var encryptionContext = new Dictionary<string, string>();
             var encryptionMaterial = new EncryptionMaterialsV2(kmsKeyId, KmsType.KmsContext, encryptionContext);
             logger.LogInformation(
-                "Created EncryptionMaterialsV2: KMS={KmsKeyId}, Encryption Context={EncryptionContext}",
-                kmsKeyId, encryptionContext);
+                "Created EncryptionMaterialsV2: KMS={KmsKeyId}",
+                kmsKeyId);
             // SecurityProfile V2AndLegacy can decrypt from legacy S3EC but V2 cannot
             var enableLegacyMode = enableLegacyUnauthenticatedModes || enableLegacyWrappingAlgorithms;
             var securityProfile = enableLegacyMode ? SecurityProfile.V2AndLegacy : SecurityProfile.V2;
