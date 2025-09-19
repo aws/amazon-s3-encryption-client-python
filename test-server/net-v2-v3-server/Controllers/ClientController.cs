@@ -19,14 +19,6 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
         var enableLegacyWrappingAlgorithms = request.Config.EnableLegacyWrappingAlgorithms;
         var encryptionContext = request.Config.EncryptionContext;
 
-        if (string.IsNullOrEmpty(kmsKeyId))
-        {
-            return BadRequest(new GenericServerError
-            {
-                Message = "KMS Key ID is required"
-            });
-        }
-
         try
         {
             var encryptionMaterial = new EncryptionMaterialsV2(kmsKeyId, KmsType.KmsContext, encryptionContext);
