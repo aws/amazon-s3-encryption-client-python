@@ -57,8 +57,10 @@ public class RoundTripTests {
     private static final String JAVA_V3 = "Java-V3";
     private static final String PYTHON_V3 = "Python-V3";
     private static final String GO_V3 = "Go-V3";
-    private static final String NET_V2 = "NET-v2";
-    private static final String NET_V3 = "NET-v3";
+    private static final String NET_V2 = "NET-V2";
+    private static final String NET_V3 = "NET-V3";
+    private static final String PHP_V2 = "PHP-V2";
+    private static final String PHP_V3 = "PHP-V3";
     
     private static final List<LanguageServerTarget> serverList;
     private static final Map<String, LanguageServerTarget> serverMap;
@@ -76,6 +78,8 @@ public class RoundTripTests {
         serverList.add(new LanguageServerTarget(GO_V3, "8082"));
         serverList.add(new LanguageServerTarget(NET_V2, "8083"));
         serverList.add(new LanguageServerTarget(NET_V3, "8084"));
+        serverList.add(new LanguageServerTarget(PHP_V2, "8087"));
+        serverList.add(new LanguageServerTarget(PHP_V3, "8093"));
 
         serverMap = new HashMap<>(14);
         serverMap.put(JAVA_V3, new LanguageServerTarget(JAVA_V3, "8080"));
@@ -83,6 +87,8 @@ public class RoundTripTests {
         serverMap.put(GO_V3, new LanguageServerTarget(GO_V3, "8082"));
         serverMap.put(NET_V2, new LanguageServerTarget(NET_V2, "8083"));
         serverMap.put(NET_V3, new LanguageServerTarget(NET_V3, "8084"));
+        serverMap.put(PHP_V2, new LanguageServerTarget("PHP-V2", "8087"));
+        serverMap.put(PHP_V3, new LanguageServerTarget("PHP-V3", "8093"));
     }
 
     // Encryption context validation behavior varies by implementation:
@@ -92,7 +98,7 @@ public class RoundTripTests {
     // these implementations will not raise an error as expected.
     // For now, skip tests that expect encryption context validation on decrypt.
     private static final Set<String> ENCRYPTION_CONTEXT_ON_DECRYPT_UNSUPPORTED =
-        Set.of(GO_V3, NET_V2, NET_V3);
+        Set.of(GO_V3, PHP_V2, PHP_V3, NET_V2, NET_V3);
     
     // S3EC .NET implementations does not accept encryption context (EC) during putObject operations.
     // These tests are not configured to pass encryption context at client level but at encrypt, 
