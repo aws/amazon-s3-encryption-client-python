@@ -20,10 +20,10 @@ function handleCreateClient()
     $clientId = Uuid::uuid4()->toString();
     $kmsKeyId = $keyMaterial["kmsKeyId"] ?? null;
 
-    if ($configData == []) {
+    if (empty($configData)) {
         return GenericServerError("Invalid config in request body", 400);
     }
-    if (($keyMaterial || $kmsKeyId) === null) {
+    if (is_null($keyMaterial) || is_null($kmsKeyId)) {
         return GenericServerError("Invalid keyMaterial in config", 400);
     }
 

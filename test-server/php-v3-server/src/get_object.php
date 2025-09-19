@@ -13,7 +13,7 @@ function handleGetObject($params)
 
     # Get the S3EncryptionClient from the client_cache
     $s3ecClientTuple = getCachedClient($clientId);
-    if ($s3ecClientTuple == null) {
+    if (is_null($s3ecClientTuple)) {
         return GenericServerError("No client found for ClientID: " . $clientId, 404);
     }
 
