@@ -68,11 +68,15 @@ public class RoundTripTests {
         serverList.add(new LanguageServerTarget("Java-V3", "8080"));
         serverList.add(new LanguageServerTarget("Python-V3", "8081"));
         serverList.add(new LanguageServerTarget("Go-V3", "8082"));
+        serverList.add(new LanguageServerTarget("PHP-V2", "8087"));
+        serverList.add(new LanguageServerTarget("PHP-V3", "8093"));
 
         serverMap = new HashMap<>(14);
         serverMap.put("Java-V3", new LanguageServerTarget("Java-V3", "8080"));
         serverMap.put("Python-V3", new LanguageServerTarget("Python-V3", "8081"));
         serverMap.put("Go-V3", new LanguageServerTarget("Go-V3", "8082"));
+        serverMap.put("PHP-V2", new LanguageServerTarget("PHP-V2", "8087"));
+        serverMap.put("PHP-V3", new LanguageServerTarget("PHP-V3", "8093"));
     }
 
     // These S3EC implementations do not validate encryption context provided to getObject (i.e. on decrypt).
@@ -80,7 +84,7 @@ public class RoundTripTests {
     // these implementations will not raise an error as expected.
     // For now, skip tests that expect encryption context validation on decrypt.
     private static final Set<String> ENCRYPTION_CONTEXT_ON_DECRYPT_UNSUPPORTED =
-        Set.of("Go-V3");
+        Set.of("Go-V3", "PHP-V2", "PHP-V3");
 
     static public class LanguageServerTarget {
         public String getLanguageName() {
