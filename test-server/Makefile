@@ -18,7 +18,10 @@ start-servers:
 	@echo "Starting all servers..."
 	$(MAKE) start-all-servers
 	@echo "Waiting for servers to start..."
-	$(MAKE) wait-all-servers
+	@for dir in $(SERVER_DIRS); do \
+		echo "Waiting for server in $$dir..."; \
+		$(MAKE) -C $$dir wait-for-server; \
+	done
 
 start-all-servers: $(START_SERVER_TARGETS)
 
@@ -105,3 +108,13 @@ wait-for-port:
 		echo "Waiting for $$PORT to start ($$i/$(TIMEOUT))..."; \
 		sleep 1; \
 	done
+
+# Here are some helpful curl commands
+# that you can use to test specific test servers:
+test-create-client:
+	@echo $(PORT)
+	@curl -X POST \
+		-H "Content-Type: application/json" \
+		-H "User-Agent: smithy-java/0.0.3 ua/2.1 os/macos#15.5 lang/java#23.0.2" \
+		-d '{"config":{"enableLegacyUnauthenticatedModes":false,"enableDelayedAuthenticationMode":false,"enableLegacyWrappingAlgorithms":false,"keyMaterial":{"kmsKeyId":"arn:aws:kms:us-west-2:370957321024:alias/S3EC-Test-Server-Github-KMS-Key"}}}' \
+		http://localhost:$(PORT)/client
