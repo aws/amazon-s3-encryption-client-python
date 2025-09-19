@@ -6,8 +6,6 @@ PID_FILE := server.pid
 PORT := 8085
 
 build/s3ec-server: 
-	pwd
-	ls aws-sdk-cpp/README.md
 	brew install libmicrohttpd nlohmann-json ossp-uuid
 	git clone --recurse-submodules git@github.com:aws/aws-sdk-cpp.git
 	cd  aws-sdk-cpp && git checkout --track remotes/origin/ajewell/ec-for-get-object
