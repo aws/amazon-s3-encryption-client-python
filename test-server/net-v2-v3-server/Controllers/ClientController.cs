@@ -21,7 +21,7 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
 
         if (string.IsNullOrEmpty(kmsKeyId))
         {
-            return BadRequest(new S3EncryptionClientError
+            return BadRequest(new GenericServerError
             {
                 Message = "KMS Key ID is required"
             });
