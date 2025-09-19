@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(s3ec-cpp-server)
+project(s3ec-cpp-v2-server)
 
 set(CMAKE_CXX_STANDARD 17)
 

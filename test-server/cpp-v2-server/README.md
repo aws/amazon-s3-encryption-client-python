@@ -28,7 +28,7 @@ make
 ./s3ec-server
 ```
 
-Server runs on localhost:8081
+Server runs on localhost:8085
 
 ## API Endpoints
 
