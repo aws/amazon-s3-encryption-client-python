@@ -232,33 +232,33 @@ public class RoundTripTests {
         encCtx.put("user-defined-enc-ctx-key-2", "user-defined-enc-ctx-value-2");
         final List<String> mdAsList = metadataMapToList(encCtx);
         KeyMaterial kmsKeyArn = KeyMaterial.builder()
-            .kmsKeyId(KMS_KEY_ARN)
-            .build();
+          .kmsKeyId(KMS_KEY_ARN)
+          .build();
         CreateClientOutput encClientOutput = encClient.createClient(CreateClientInput.builder()
-            .config(S3ECConfig.builder()
-            .keyMaterial(kmsKeyArn).build())
-            .build());
+          .config(S3ECConfig.builder()
+          .keyMaterial(kmsKeyArn).build())
+          .build());
         String encS3ECId = encClientOutput.getClientId();
 
         encClient.putObject(PutObjectInput.builder()
-            .clientID(encS3ECId)
-            .key(objectKey)
-            .bucket(BUCKET)
-            .metadata(mdAsList)
-            .body(ByteBuffer.wrap(input.getBytes(StandardCharsets.UTF_8)))
-            .build());
+          .clientID(encS3ECId)
+          .key(objectKey)
+          .bucket(BUCKET)
+          .metadata(mdAsList)
+          .body(ByteBuffer.wrap(input.getBytes(StandardCharsets.UTF_8)))
+          .build());
         S3ECTestServerClient decClient = testServerClientFor(decLang);
         CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
-            .config(S3ECConfig.builder()
+          .config(S3ECConfig.builder()
             .keyMaterial(kmsKeyArn).build())
-            .build());
+          .build());
         String decS3ECId = decClientOutput.getClientId();
         GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
-            .clientID(decS3ECId)
-            .bucket(BUCKET)
-            .key(objectKey)
-            .metadata(mdAsList)
-            .build());
+          .clientID(decS3ECId)
+          .bucket(BUCKET)
+          .key(objectKey)
+          .metadata(mdAsList)
+          .build());
 
         if (!input.equals(StandardCharsets.UTF_8.decode(output.getBody()).toString())) {
             fail(String.format("Encryption in %s failed to decrpyt in %s!", encLang, decLang));
