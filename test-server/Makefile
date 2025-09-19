@@ -99,7 +99,9 @@ stop-servers:
 	@echo "Servers stopped"
 
 install-cpp-dependencies:
-	brew install libmicrohttpd nlohmann-json ossp-uuid aws-sdk-cpp
+	brew install libmicrohttpd nlohmann-json ossp-uuid
+	cd cpp-v2-server && git clone --recurse-submodules git@github.com:aws/aws-sdk-cpp.git
+	cd cpp-v2-server/aws-sdk-cpp && git checkout --track remotes/origin/ajewell/ec-for-get-object
 
 start-cpp-v2-server:
 	cd cpp-v2-server && mkdir -p build && cd build && cmake .. && make && ./s3ec-server

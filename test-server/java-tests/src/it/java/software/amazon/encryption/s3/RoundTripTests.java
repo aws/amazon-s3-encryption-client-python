@@ -494,7 +494,10 @@ public class RoundTripTests {
               .build());
             fail("Expected Exception");
         } catch (S3EncryptionClientError e) {
-            assertTrue(e.getMessage().contains("Enable legacy wrapping algorithms to use legacy key wrapping algorithm: kms"));
+          assertTrue(
+            e.getMessage().contains("Enable legacy wrapping algorithms to use legacy key wrapping algorithm: kms")
+            || e.getMessage().contains("Retry with V2_AND_LEGACY enabled")
+          );
         }
     }
 
