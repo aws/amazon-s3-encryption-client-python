@@ -30,7 +30,8 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
         
         try
         {
-            // The POST request does not contain encryption context. However, encryption context is a required field for KMS.
+            // The POST request does not contain encryption context. 
+            // However, encryption context is a required field when using KMS.
             // So, we are passing empty dictionary.
             var encryptionContext = new Dictionary<string, string>();
             var encryptionMaterial = new EncryptionMaterialsV2(kmsKeyId, KmsType.KmsContext, encryptionContext);
