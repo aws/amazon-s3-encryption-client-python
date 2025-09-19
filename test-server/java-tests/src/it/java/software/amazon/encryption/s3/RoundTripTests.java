@@ -87,8 +87,8 @@ public class RoundTripTests {
         serverMap.put(GO_V3, new LanguageServerTarget(GO_V3, "8082"));
         serverMap.put(NET_V2, new LanguageServerTarget(NET_V2, "8083"));
         serverMap.put(NET_V3, new LanguageServerTarget(NET_V3, "8084"));
-        serverMap.put(PHP_V2, new LanguageServerTarget("PHP-V2", "8087"));
-        serverMap.put(PHP_V3, new LanguageServerTarget("PHP-V3", "8093"));
+        serverMap.put(PHP_V2, new LanguageServerTarget(PHP_V2, "8087"));
+        serverMap.put(PHP_V3, new LanguageServerTarget(PHP_V3, "8093"));
     }
 
     // Encryption context validation behavior varies by implementation:
