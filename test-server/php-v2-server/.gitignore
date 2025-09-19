@@ -1,3 +1,4 @@
 vendor/*
 cookies.txt
 server.pid
+composer.lock
