@@ -26,6 +26,12 @@ jobs:
         with:
           python-version: ${{ inputs.python-version || '3.11' }}
       
+      - name: Set up PHP with Composer
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+      
       # Cache uv dependencies
       - name: Cache uv dependencies
         uses: actions/cache@v3
