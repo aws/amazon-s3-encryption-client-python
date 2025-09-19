@@ -26,6 +26,7 @@ public class ObjectController(IClientCacheService clientCacheService, ILogger<Ob
         {
             // Read raw body data
             using var memoryStream = new MemoryStream();
+            // Request is the HTTP request this method is currently handling 
             await Request.Body.CopyToAsync(memoryStream);
             var bodyBytes = memoryStream.ToArray();
 
