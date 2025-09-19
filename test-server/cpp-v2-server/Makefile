@@ -19,7 +19,7 @@ start-server: | build/s3ec-server
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
 	./s3ec-server & echo $$! > $(PID_FILE)
-	@echo "Go V3 server starting..."
+	@echo "Cpp V2 server starting..."
 
 stop-server:
 	@if [ -f $(PID_FILE) ]; then \

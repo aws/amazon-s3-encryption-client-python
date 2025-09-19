@@ -37,7 +37,7 @@ std::string get_header_value(struct MHD_Connection *connection,
 MHD_Result send_response(struct MHD_Connection *connection, int status_code,
                          const std::string &content) {
   struct MHD_Response *response = MHD_create_response_from_buffer(
-      content.length(), (void *)content.c_str(), MHD_RESPMEM_MUST_COPY);
+      content.length(), (void *)content.data(), MHD_RESPMEM_MUST_COPY);
   MHD_Result ret = MHD_queue_response(connection, status_code, response);
   MHD_destroy_response(response);
   return ret;
@@ -76,7 +76,7 @@ MHD_Result handle_create_client(struct MHD_Connection *connection,
     return send_response(connection, 200, response.dump());
   } catch (const std::exception &e) {
     return send_response(connection, 500,
-                         "{\"error\":\"" + std::string(e.what()) + "\"}");
+                         "{\"error\":\"An exception was thrown.\"}");
   } catch (...) {
     return send_response(connection, 500, "{\"error\":\"Unknown error\"}");
   }
@@ -173,7 +173,7 @@ MHD_Result handle_get_object(struct MHD_Connection *connection,
       return send_response(connection, 500, msg);
     }
   } catch (const std::exception &e) {
-    auto msg = make_error(e.what(), 500);
+    auto msg = make_error("An exception was thrown", 500);
     return send_response(connection, 500, msg);
   }
 }
@@ -275,11 +275,12 @@ int main() {
   Aws::InitAPI(options);
 
   struct MHD_Daemon *daemon =
-      MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION, 8085, NULL, NULL,
+      MHD_start_daemon(MHD_USE_SELECT_INTERNALLY, 8085, NULL, NULL,
                        &request_handler, NULL, MHD_OPTION_END);
 
   if (!daemon) {
     fprintf(stderr, "Failed to start server on port 8085\n");
+    Aws::ShutdownAPI(options);
     return 1;
   }
 
