@@ -7,7 +7,7 @@ PORT := 8085
 
 build/s3ec-server: 
 	brew install libmicrohttpd nlohmann-json ossp-uuid
-	git clone --recurse-submodules git@github.com:aws/aws-sdk-cpp.git
+	git clone --recurse-submodules https://github.com/aws/aws-sdk-cpp.git
 	cd  aws-sdk-cpp && git checkout --track remotes/origin/ajewell/ec-for-get-object
 	mkdir -p build && cd build && cmake ..
 
