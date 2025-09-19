@@ -32,9 +32,13 @@ jobs:
           php-version: '8.4'
           tools: composer:v2
       
-      - name: Install PHP dependencies
-        php-directories: [php-v2-server, php-v3-server]
-        working-directory: ./test-server/${{php-directories}}
+      - name: Install PHP V2 dependencies
+        working-directory: ./test-server/php-v2-server
+        shell: bash
+        run: composer install
+
+      - name: Install PHP V3 dependencies
+        working-directory: ./test-server/php-v3-server
         shell: bash
         run: composer install
       
