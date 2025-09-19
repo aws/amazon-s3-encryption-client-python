@@ -70,6 +70,7 @@ function writeSessionIdToCookiesFile($sessionId)
     return true;
 }
 
+set_time_limit(600);
 // Start session to persist cache across requests
 // First try to use session ID from cookies.txt if available
 $sessionId = getSessionIdFromCookiesFile();
