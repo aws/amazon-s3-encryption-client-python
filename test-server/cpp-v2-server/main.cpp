@@ -238,10 +238,8 @@ MHD_Result request_handler(void *cls, struct MHD_Connection *connection,
   std::string url_str(url);
 
   if (is_push && url_str == "/client") {
-    std::string *body = static_cast<std::string *>(*con_cls);
-    auto foo = handle_create_client(connection, *body);
-    delete body;
-    return foo;
+    std::unique_ptr<std::string> body(static_cast<std::string*>(*con_cls));
+    return handle_create_client(connection, *body);
   }
 
   if (url_str.find("/object/") == 0) {
@@ -256,12 +254,9 @@ MHD_Result request_handler(void *cls, struct MHD_Connection *connection,
       if (method_str == "GET") {
         return handle_get_object(connection, bucket, key, client_id, metadata);
       } else if (method_str == "PUT") {
-        std::string *body = static_cast<std::string *>(*con_cls);
+        std::unique_ptr<std::string> body(static_cast<std::string*>(*con_cls));
         *upload_data_size = 0;
-        auto foo = handle_put_object(connection, bucket, key, client_id, *body,
-                                     metadata);
-        delete body;
-        return foo;
+        return handle_put_object(connection, bucket, key, client_id, *body, metadata);
       }
     }
   }
