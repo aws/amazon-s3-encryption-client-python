@@ -19,8 +19,7 @@ using Aws::S3Encryption::Materials::KMSWithContextEncryptionMaterials;
 std::unordered_map<std::string, std::shared_ptr<S3EncryptionClientV2>>
     client_cache;
 
-std::string generate_uuid()
-{
+std::string generate_uuid() {
   uuid_t uuid;
   uuid_generate(uuid);
   char uuid_str[37];
@@ -28,44 +27,32 @@ std::string generate_uuid()
   return std::string(uuid_str);
 }
 
-MHD_Result print_key(void *cls, enum MHD_ValueKind kind, const char *key,
-                     const char *value)
-{
-  fprintf(stderr, "%s: %s\n", key, value);
-  return MHD_YES;
-}
-
 std::string get_header_value(struct MHD_Connection *connection,
-                             const char *key)
-{
+                             const char *key) {
   const char *value =
       MHD_lookup_connection_value(connection, MHD_HEADER_KIND, key);
   return value ? std::string(value) : "";
 }
 
 MHD_Result send_response(struct MHD_Connection *connection, int status_code,
-                         const std::string &content)
-{
+                         const std::string &content) {
   struct MHD_Response *response = MHD_create_response_from_buffer(
       content.length(), (void *)content.c_str(), MHD_RESPMEM_MUST_COPY);
   MHD_Result ret = MHD_queue_response(connection, status_code, response);
-  if (ret != MHD_YES)
-    fprintf(stderr, "MHD_queue_response returned %d\n", ret);
   MHD_destroy_response(response);
   return ret;
 }
 
-std::string make_error(const std::string &message, int status_code)
-{
-  std::string inner = "{\"__type\": \"software.amazon.encryption.s3#S3EncryptionClientError\", \"message\": \"" + message + "\"}";
-  return inner;
+std::string make_error(const std::string &message, int status_code) {
+  return "{\"__type\": "
+         "\"software.amazon.encryption.s3#S3EncryptionClientError\", "
+         "\"message\": \"" +
+         message + "\"}";
 }
 
 MHD_Result handle_create_client(struct MHD_Connection *connection,
-                                const std::string &body)
-{
-  try
-  {
+                                const std::string &body) {
+  try {
     json request = json::parse(body);
     std::string kms_key_id = request["config"]["keyMaterial"]["kmsKeyId"];
     bool legacy = request["config"]["enableLegacyWrappingAlgorithms"];
@@ -74,12 +61,9 @@ MHD_Result handle_create_client(struct MHD_Connection *connection,
     auto materials =
         std::make_shared<KMSWithContextEncryptionMaterials>(kms_key_id);
     CryptoConfigurationV2 config(materials);
-    if (legacy)
-    {
+    if (legacy) {
       config.SetSecurityProfile(SecurityProfile::V2_AND_LEGACY);
-    }
-    else
-    {
+    } else {
       config.SetSecurityProfile(SecurityProfile::V2);
     }
 
@@ -90,25 +74,17 @@ MHD_Result handle_create_client(struct MHD_Connection *connection,
 
     json response = {{"clientId", client_id}};
     return send_response(connection, 200, response.dump());
-  }
-  catch (const std::exception &e)
-  {
-    fprintf(stderr, "Error: %s\n", e.what());
+  } catch (const std::exception &e) {
     return send_response(connection, 500,
                          "{\"error\":\"" + std::string(e.what()) + "\"}");
-  }
-  catch (...)
-  {
-    fprintf(stderr, "Super secret error");
+  } catch (...) {
     return send_response(connection, 500, "{\"error\":\"Unknown error\"}");
   }
 }
 
 void fill_context(Aws::Map<Aws::String, Aws::String> &map,
-                  const std::string &metadata)
-{
-  if (metadata.empty())
-  {
+                  const std::string &metadata) {
+  if (metadata.empty()) {
     return;
   }
 
@@ -117,8 +93,7 @@ void fill_context(Aws::Map<Aws::String, Aws::String> &map,
   std::string current = metadata;
   size_t pos = 0;
 
-  while (pos < current.length())
-  {
+  while (pos < current.length()) {
     // Find opening bracket for key
     size_t key_start = current.find('[', pos);
     if (key_start == std::string::npos)
@@ -155,8 +130,7 @@ void fill_context(Aws::Map<Aws::String, Aws::String> &map,
     // Move to next pair (look for comma or next opening bracket)
     pos = value_end + 1;
     size_t comma = current.find(',', pos);
-    if (comma != std::string::npos)
-    {
+    if (comma != std::string::npos) {
       pos = comma + 1;
     }
   }
@@ -165,16 +139,13 @@ void fill_context(Aws::Map<Aws::String, Aws::String> &map,
 MHD_Result handle_get_object(struct MHD_Connection *connection,
                              const std::string &bucket, const std::string &key,
                              const std::string &client_id,
-                             const std::string &metadata)
-{
+                             const std::string &metadata) {
   auto it = client_cache.find(client_id);
-  if (it == client_cache.end())
-  {
+  if (it == client_cache.end()) {
     return send_response(connection, 404, "{\"error\":\"Client not found\"}");
   }
-  fprintf(stderr, "handle_get_object <%s>\n", metadata.c_str());
-  try
-  {
+
+  try {
     Aws::S3::Model::GetObjectRequest request;
     request.SetBucket(bucket);
     request.SetKey(key);
@@ -192,24 +163,17 @@ MHD_Result handle_get_object(struct MHD_Connection *connection,
     fill_context(kmsContextMap, metadata);
     auto outcome = it->second->GetObject(request, kmsContextMap);
 
-    if (outcome.IsSuccess())
-    {
+    if (outcome.IsSuccess()) {
       auto &stream = outcome.GetResult().GetBody();
       std::string content((std::istreambuf_iterator<char>(stream)),
                           std::istreambuf_iterator<char>());
       return send_response(connection, 200, content);
-    }
-    else
-    {
-      auto msg = make_error( outcome.GetError().GetMessage(), 500);
-      fprintf(stderr, "GetObject Failed : %s\n", msg.c_str());
+    } else {
+      auto msg = make_error(outcome.GetError().GetMessage(), 500);
       return send_response(connection, 500, msg);
     }
-  }
-  catch (const std::exception &e)
-  {
-    auto msg = make_error( e.what(), 500);
-    fprintf(stderr, "GetObject Threw : %s\n", msg.c_str());
+  } catch (const std::exception &e) {
+    auto msg = make_error(e.what(), 500);
     return send_response(connection, 500, msg);
   }
 }
@@ -218,16 +182,13 @@ MHD_Result handle_put_object(struct MHD_Connection *connection,
                              const std::string &bucket, const std::string &key,
                              const std::string &client_id,
                              const std::string &body,
-                             const std::string &metadata)
-{
+                             const std::string &metadata) {
   auto it = client_cache.find(client_id);
-  if (it == client_cache.end())
-  {
+  if (it == client_cache.end()) {
     return send_response(connection, 404, "{\"error\":\"Client not found\"}");
   }
-  fprintf(stderr, "handle_put_object <%s>\n", metadata.c_str());
-  try
-  {
+
+  try {
     Aws::Map<Aws::String, Aws::String> kmsContextMap;
     fill_context(kmsContextMap, metadata);
 
@@ -239,48 +200,35 @@ MHD_Result handle_put_object(struct MHD_Connection *connection,
     request.SetBody(stream);
 
     auto outcome = it->second->PutObject(request, kmsContextMap);
-    if (outcome.IsSuccess())
-    {
+    if (outcome.IsSuccess()) {
       json response = {{"bucket", bucket}, {"key", key}};
       return send_response(connection, 200, response.dump());
-    }
-    else
-    {
-      auto msg = make_error( outcome.GetError().GetMessage(), 500);
-      fprintf(stderr, "PutObject Failed : %s\n", msg.c_str());
+    } else {
+      auto msg = make_error(outcome.GetError().GetMessage(), 500);
       return send_response(connection, 500, msg);
     }
-  }
-  catch (const std::exception &e)
-  {
-      auto msg = make_error( e.what(), 500);
-      fprintf(stderr, "PutObject Threw : %s\n", msg.c_str());
-      return send_response(connection, 500, msg);
+  } catch (const std::exception &e) {
+    auto msg = make_error(e.what(), 500);
+    return send_response(connection, 500, msg);
   }
 }
 
 MHD_Result request_handler(void *cls, struct MHD_Connection *connection,
                            const char *url, const char *method,
                            const char *version, const char *upload_data,
-                           size_t *upload_data_size, void **con_cls)
-{
+                           size_t *upload_data_size, void **con_cls) {
   std::string method_str(method);
   bool is_push = method_str == "POST" || method_str == "PUT";
   static int dummy;
-  if (*con_cls == nullptr)
-  {
-    if (is_push)
-    {
+  if (*con_cls == nullptr) {
+    if (is_push) {
       *con_cls = new std::string();
-    }
-    else
-    {
+    } else {
       *con_cls = &dummy;
     }
     return MHD_YES;
   }
-  if (is_push && *upload_data_size)
-  {
+  if (is_push && *upload_data_size) {
     std::string *body = static_cast<std::string *>(*con_cls);
     body->append(upload_data, *upload_data_size);
     *upload_data_size = 0;
@@ -289,35 +237,25 @@ MHD_Result request_handler(void *cls, struct MHD_Connection *connection,
 
   std::string url_str(url);
 
-  if (is_push && url_str == "/client")
-  {
+  if (is_push && url_str == "/client") {
     std::string *body = static_cast<std::string *>(*con_cls);
     auto foo = handle_create_client(connection, *body);
     delete body;
     return foo;
   }
 
-  // fprintf(stderr, "request_handler <%s> <%s> <%s>\n", url, method,
-  // upload_data); fprintf(stderr, "keys<<\n"); MHD_get_connection_values
-  // (connection, MHD_HEADER_KIND, &print_key, NULL); fprintf(stderr, ">>\n");
-
-  if (url_str.find("/object/") == 0)
-  {
+  if (url_str.find("/object/") == 0) {
     std::string path = url_str.substr(8); // Remove "/object/"
     size_t slash_pos = path.find('/');
-    if (slash_pos != std::string::npos)
-    {
+    if (slash_pos != std::string::npos) {
       std::string bucket = path.substr(0, slash_pos);
       std::string key = path.substr(slash_pos + 1);
       std::string client_id = get_header_value(connection, "clientid");
 
       std::string metadata = get_header_value(connection, "content-metadata");
-      if (method_str == "GET")
-      {
+      if (method_str == "GET") {
         return handle_get_object(connection, bucket, key, client_id, metadata);
-      }
-      else if (method_str == "PUT")
-      {
+      } else if (method_str == "PUT") {
         std::string *body = static_cast<std::string *>(*con_cls);
         *upload_data_size = 0;
         auto foo = handle_put_object(connection, bucket, key, client_id, *body,
@@ -332,8 +270,7 @@ MHD_Result request_handler(void *cls, struct MHD_Connection *connection,
                        "{\"error\":\"Not idea what is happening\"}");
 }
 
-int main()
-{
+int main() {
   Aws::SDKOptions options;
   Aws::InitAPI(options);
 
@@ -341,13 +278,13 @@ int main()
       MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION, 8085, NULL, NULL,
                        &request_handler, NULL, MHD_OPTION_END);
 
-  if (!daemon)
-  {
+  if (!daemon) {
+    fprintf(stderr, "Failed to start server on port 8085\n");
     return 1;
   }
 
-  printf("Server running on port 8085\n");
-  getchar();
+  fprintf(stderr, "Server running on port 8085\n");
+  sleep(10000);
 
   MHD_stop_daemon(daemon);
   Aws::ShutdownAPI(options);
