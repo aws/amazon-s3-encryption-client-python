@@ -64,7 +64,6 @@ public class RoundTripTests {
     private static final String RUBY_V2 = "Ruby-V2";
     private static final String RUBY_V3 = "Ruby-V3";
     
-    private static final List<LanguageServerTarget> serverList;
     private static final Map<String, LanguageServerTarget> serverMap;
 
     private static final String KMS_KEY_ARN = System.getenv("TEST_SERVER_KMS_KEY_ARN") != null ?
@@ -74,18 +73,8 @@ public class RoundTripTests {
         System.getenv("TEST_SERVER_S3_BUCKET") : "s3ec-test-server-github-bucket";
 
     static {
-        serverList = new ArrayList<>(14);
-        serverList.add(new LanguageServerTarget(JAVA_V3, "8080"));
-        serverList.add(new LanguageServerTarget(PYTHON_V3, "8081"));
-        serverList.add(new LanguageServerTarget(GO_V3, "8082"));
-        serverList.add(new LanguageServerTarget(NET_V2, "8083"));
-        serverList.add(new LanguageServerTarget(NET_V3, "8084"));
-        serverList.add(new LanguageServerTarget(PHP_V2, "8087"));
-        serverList.add(new LanguageServerTarget(PHP_V3, "8093"));
-        serverList.add(new LanguageServerTarget(RUBY_V2, "8086"));
-        serverList.add(new LanguageServerTarget(RUBY_V3, "8092"));
 
-        serverMap = new HashMap<>(14);
+        serverMap = new HashMap<>();
         serverMap.put(JAVA_V3, new LanguageServerTarget(JAVA_V3, "8080"));
         serverMap.put(PYTHON_V3, new LanguageServerTarget(PYTHON_V3, "8081"));
         serverMap.put(GO_V3, new LanguageServerTarget(GO_V3, "8082"));
@@ -155,7 +144,7 @@ public class RoundTripTests {
     @BeforeAll
     public static void setup() {
         // Wait for servers to start
-        for (LanguageServerTarget server : serverList) {
+        for (LanguageServerTarget server : serverMap.values()) {
             if (!serverListening(server.getServerURI())) {
                 throw new RuntimeException(String.format("Test Server for %s is not running at endpoint: %s", server.getLanguageName(), server.getServerURI()));
             }
@@ -185,14 +174,14 @@ public class RoundTripTests {
     }
 
     static Stream<Arguments> clientsForTest() {
-        return serverList.stream()
+        return serverMap.values().stream()
           .map(LanguageServerTarget::getLanguageName)
           .map(Arguments::of);
     }
 
     static Stream<Arguments> crossLanguageClients() {
-        return serverList.stream()
-          .flatMap(t1 -> serverList.stream()
+        return serverMap.values().stream()
+          .flatMap(t1 -> serverMap.values().stream()
             .flatMap(t2 -> Stream.of(
               Arguments.of(t1, t2)
             )));

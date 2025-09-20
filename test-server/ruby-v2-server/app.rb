@@ -16,7 +16,7 @@ class S3ECRubyServer < Sinatra::Base
   def initialize
     super
     @client_manager = ClientManager.new
-    S3ECLogger.info("S3EC_SERVER: Ruby server initialized on port #{settings.port}")
+    S3ECLogger.info("S3EC_SERVER: Ruby V2 server initialized on port #{settings.port}")
   end
 
   # Request logging middleware
@@ -33,7 +33,7 @@ class S3ECRubyServer < Sinatra::Base
   # Health check endpoint
   get '/health' do
     content_type :json
-    { status: 'OK', server: 'Ruby S3EC Test Server', port: settings.port.to_i }.to_json
+    { status: 'OK', server: 'Ruby V2 S3EC Test Server', port: settings.port.to_i }.to_json
   end
 
   # POST /client - Create S3 encryption client
