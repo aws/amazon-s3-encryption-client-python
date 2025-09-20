@@ -63,8 +63,6 @@ public class RoundTripTests {
     private static final String PHP_V3 = "PHP-V3";
     private static final String RUBY_V2 = "Ruby-V2";
     private static final String RUBY_V3 = "Ruby-V3";
-
-
     
     private static final List<LanguageServerTarget> serverList;
     private static final Map<String, LanguageServerTarget> serverMap;
@@ -345,13 +343,11 @@ public class RoundTripTests {
                     .build());
             fail("Expected exception!");
         } catch (S3EncryptionClientError e) {
-            assertTrue(
-              e.getMessage().contains("Provided encryption context does not match information retrieved from S3") ||
-              // Ruby error message
-              (e.getMessage().contains("Value of encryption context from envelope does not match the provided encryption context")
-                && decLang.languageName.startsWith("ruby-v")
-              )
-            );
+            if (decLang.languageName.equals(RUBY_V3) || decLang.languageName.equals(RUBY_V2)) {
+                assertTrue(e.getMessage().contains("Value of encryption context from envelope does not match the provided encryption context"));
+            } else {
+                assertTrue(e.getMessage().contains("Provided encryption context does not match information retrieved from S3"));
+            }
         }
     }
 
