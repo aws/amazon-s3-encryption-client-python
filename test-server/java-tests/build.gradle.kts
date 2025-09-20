@@ -48,6 +48,8 @@ tasks {
         classpath = sourceSets["it"].runtimeClasspath
         outputs.upToDateWhen { false }
         outputs.cacheIf { false }
+        // Passing information from Gradle into the tests so that we can filter our servers
+        systemProperty("test.filter.servers", System.getProperty("test.filter.servers"))
         // For debugging
         // // Enable System.out output
         // testLogging {

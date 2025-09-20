@@ -14,11 +14,14 @@ import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.amazonaws.services.s3.model.KMSEncryptionMaterials;
@@ -73,18 +76,44 @@ public class RoundTripTests {
         System.getenv("TEST_SERVER_S3_BUCKET") : "s3ec-test-server-github-bucket";
 
     static {
+        final Map<String, LanguageServerTarget> servers = new LinkedHashMap<>();
+        servers.put(JAVA_V3, new LanguageServerTarget(JAVA_V3, "8080"));
+        servers.put(PYTHON_V3, new LanguageServerTarget(PYTHON_V3, "8081"));
+        servers.put(GO_V3, new LanguageServerTarget(GO_V3, "8082"));
+        servers.put(NET_V2, new LanguageServerTarget(NET_V2, "8083"));
+        servers.put(NET_V3, new LanguageServerTarget(NET_V3, "8084"));
+        servers.put(PHP_V2, new LanguageServerTarget(PHP_V2, "8087"));
+        servers.put(PHP_V3, new LanguageServerTarget(PHP_V3, "8093"));
+        servers.put(RUBY_V2, new LanguageServerTarget(RUBY_V2, "8086"));
+        servers.put(RUBY_V3, new LanguageServerTarget(RUBY_V3, "8092"));
 
-        serverMap = new HashMap<>();
-        serverMap.put(JAVA_V3, new LanguageServerTarget(JAVA_V3, "8080"));
-        serverMap.put(PYTHON_V3, new LanguageServerTarget(PYTHON_V3, "8081"));
-        serverMap.put(GO_V3, new LanguageServerTarget(GO_V3, "8082"));
-        serverMap.put(NET_V2, new LanguageServerTarget(NET_V2, "8083"));
-        serverMap.put(NET_V3, new LanguageServerTarget(NET_V3, "8084"));
-        serverMap.put(PHP_V2, new LanguageServerTarget(PHP_V2, "8087"));
-        serverMap.put(PHP_V3, new LanguageServerTarget(PHP_V3, "8093"));
-        serverMap.put(RUBY_V2, new LanguageServerTarget(RUBY_V2, "8086"));
-        serverMap.put(RUBY_V3, new LanguageServerTarget(RUBY_V3, "8092"));
+        serverMap = filterServers(servers);
     }
+
+    private static Map<String, LanguageServerTarget> filterServers(Map<String, LanguageServerTarget> allServers) {
+      
+      final String maybeFilter = System.getProperty("test.filter.servers");
+      if (maybeFilter == null || maybeFilter.trim().isEmpty()) {
+          return allServers; // No filtering - use all servers
+      }
+
+      final String[] filters = Arrays.stream(maybeFilter.split(","))
+          .map(String::trim)
+          .map(String::toLowerCase)
+          .toArray(String[]::new);
+
+      return allServers.entrySet().stream()
+          .filter(entry -> {
+              String key = entry.getKey().toLowerCase();
+              return Arrays.stream(filters).anyMatch(key::contains);
+          })
+          .collect(Collectors.toMap(
+              Map.Entry::getKey,
+              Map.Entry::getValue,
+              (e1, e2) -> e1, // merge function (not really needed)
+              LinkedHashMap::new // preserve order
+          ));
+  }
 
     // Encryption context validation behavior varies by implementation:
     // - Go: Does not validate encryption context on decrypt operations
