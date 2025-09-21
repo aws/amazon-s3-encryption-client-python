@@ -10,7 +10,8 @@ ci: start-servers run-tests stop-servers
 
 SERVER_DIRS := $(shell find . -maxdepth 1 -type d -name '*-server' | sed 's|^\./||' | sort)
 
-SERVER_TARGETS := $(addprefix start-, $(SERVER_DIRS))
+START_SERVER_TARGETS := $(addprefix start-, $(SERVER_DIRS))
+WAIT_SERVER_TARGETS := $(addprefix wait-, $(SERVER_DIRS))
 
 # Start all servers in parallel
 start-servers:
@@ -22,14 +23,25 @@ start-servers:
 		$(MAKE) -C $$dir wait-for-server; \
 	done
 
-start-all-servers: $(SERVER_TARGETS)
+start-all-servers: $(START_SERVER_TARGETS)
 
-$(SERVER_TARGETS): start-%:
+$(START_SERVER_TARGETS): start-%:
 	@if [ -f $*/Makefile ]; then \
 		echo "Starting server in $*..."; \
 		$(MAKE) -C $* start-server; \
 	else \
-		echo "❌ Error: no Makefile found in $$dir"; \
+		echo "❌ Error: no Makefile found in $*"; \
+		exit 1; \
+	fi; \
+
+wait-all-servers: $(WAIT_SERVER_TARGETS)
+
+$(WAIT_SERVER_TARGETS): wait-%:
+	@if [ -f $*/Makefile ]; then \
+		echo "Waiting server in $*..."; \
+		$(MAKE) -C $* wait-for-server; \
+	else \
+		echo "❌ Error: no Makefile found in $*"; \
 		exit 1; \
 	fi; \
 
@@ -44,7 +56,7 @@ run-tests:
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
-	./gradlew --build-cache --rerun-tasks --parallel integ
+	./gradlew --build-cache --parallel integ -Dtest.filter.servers="$(FILTER)"
 	@echo "Tests completed successfully"
 
 # Stop the servers
@@ -96,3 +108,13 @@ wait-for-port:
 		echo "Waiting for $$PORT to start ($$i/$(TIMEOUT))..."; \
 		sleep 1; \
 	done
+
+# Here are some helpful curl commands
+# that you can use to test specific test servers:
+test-create-client:
+	@echo $(PORT)
+	@curl -X POST \
+		-H "Content-Type: application/json" \
+		-H "User-Agent: smithy-java/0.0.3 ua/2.1 os/macos#15.5 lang/java#23.0.2" \
+		-d '{"config":{"enableLegacyUnauthenticatedModes":false,"enableDelayedAuthenticationMode":false,"enableLegacyWrappingAlgorithms":false,"keyMaterial":{"kmsKeyId":"arn:aws:kms:us-west-2:370957321024:alias/S3EC-Test-Server-Github-KMS-Key"}}}' \
+		http://localhost:$(PORT)/client

@@ -20,11 +20,19 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: true
+          token: ${{ secrets.PAT_FOR_PRIVATE_RUBY }}
       
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ inputs.python-version || '3.11' }}
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4'
       
       - name: Set up PHP with Composer
         uses: shivammathur/setup-php@v2
@@ -61,7 +69,7 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-            test-server/java-server/.gradle
+            test-server/java-v3-server/.gradle
             test-server/java-tests/.gradle
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |

@@ -14,11 +14,14 @@ import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.amazonaws.services.s3.model.KMSEncryptionMaterials;
@@ -61,8 +64,9 @@ public class RoundTripTests {
     private static final String NET_V3 = "NET-V3";
     private static final String PHP_V2 = "PHP-V2";
     private static final String PHP_V3 = "PHP-V3";
+    private static final String RUBY_V2 = "Ruby-V2";
+    private static final String RUBY_V3 = "Ruby-V3";
     
-    private static final List<LanguageServerTarget> serverList;
     private static final Map<String, LanguageServerTarget> serverMap;
 
     private static final String KMS_KEY_ARN = System.getenv("TEST_SERVER_KMS_KEY_ARN") != null ?
@@ -72,24 +76,44 @@ public class RoundTripTests {
         System.getenv("TEST_SERVER_S3_BUCKET") : "s3ec-test-server-github-bucket";
 
     static {
-        serverList = new ArrayList<>(14);
-        serverList.add(new LanguageServerTarget(JAVA_V3, "8080"));
-        serverList.add(new LanguageServerTarget(PYTHON_V3, "8081"));
-        serverList.add(new LanguageServerTarget(GO_V3, "8082"));
-        serverList.add(new LanguageServerTarget(NET_V2, "8083"));
-        serverList.add(new LanguageServerTarget(NET_V3, "8084"));
-        serverList.add(new LanguageServerTarget(PHP_V2, "8087"));
-        serverList.add(new LanguageServerTarget(PHP_V3, "8093"));
+        final Map<String, LanguageServerTarget> servers = new LinkedHashMap<>();
+        servers.put(JAVA_V3, new LanguageServerTarget(JAVA_V3, "8080"));
+        servers.put(PYTHON_V3, new LanguageServerTarget(PYTHON_V3, "8081"));
+        servers.put(GO_V3, new LanguageServerTarget(GO_V3, "8082"));
+        servers.put(NET_V2, new LanguageServerTarget(NET_V2, "8083"));
+        servers.put(NET_V3, new LanguageServerTarget(NET_V3, "8084"));
+        servers.put(PHP_V2, new LanguageServerTarget(PHP_V2, "8087"));
+        servers.put(PHP_V3, new LanguageServerTarget(PHP_V3, "8093"));
+        servers.put(RUBY_V2, new LanguageServerTarget(RUBY_V2, "8086"));
+        servers.put(RUBY_V3, new LanguageServerTarget(RUBY_V3, "8092"));
 
-        serverMap = new HashMap<>(14);
-        serverMap.put(JAVA_V3, new LanguageServerTarget(JAVA_V3, "8080"));
-        serverMap.put(PYTHON_V3, new LanguageServerTarget(PYTHON_V3, "8081"));
-        serverMap.put(GO_V3, new LanguageServerTarget(GO_V3, "8082"));
-        serverMap.put(NET_V2, new LanguageServerTarget(NET_V2, "8083"));
-        serverMap.put(NET_V3, new LanguageServerTarget(NET_V3, "8084"));
-        serverMap.put(PHP_V2, new LanguageServerTarget(PHP_V2, "8087"));
-        serverMap.put(PHP_V3, new LanguageServerTarget(PHP_V3, "8093"));
+        serverMap = filterServers(servers);
     }
+
+    private static Map<String, LanguageServerTarget> filterServers(Map<String, LanguageServerTarget> allServers) {
+      
+      final String maybeFilter = System.getProperty("test.filter.servers");
+      if (maybeFilter == null || maybeFilter.trim().isEmpty()) {
+          return allServers; // No filtering - use all servers
+      }
+
+      final String[] filters = Arrays.stream(maybeFilter.split(","))
+          .map(String::trim)
+          .map(String::toLowerCase)
+          .toArray(String[]::new);
+
+      return allServers.entrySet().stream()
+          .filter(entry -> {
+              String key = entry.getKey().toLowerCase();
+              return Arrays.stream(filters).anyMatch(key::contains);
+          })
+          .collect(Collectors.toMap(
+              Map.Entry::getKey,
+              Map.Entry::getValue,
+              (e1, e2) -> e1, // merge function (not really needed)
+              LinkedHashMap::new // preserve order
+          ));
+  }
 
     // Encryption context validation behavior varies by implementation:
     // - Go: Does not validate encryption context on decrypt operations
@@ -149,7 +173,7 @@ public class RoundTripTests {
     @BeforeAll
     public static void setup() {
         // Wait for servers to start
-        for (LanguageServerTarget server : serverList) {
+        for (LanguageServerTarget server : serverMap.values()) {
             if (!serverListening(server.getServerURI())) {
                 throw new RuntimeException(String.format("Test Server for %s is not running at endpoint: %s", server.getLanguageName(), server.getServerURI()));
             }
@@ -179,14 +203,14 @@ public class RoundTripTests {
     }
 
     static Stream<Arguments> clientsForTest() {
-        return serverList.stream()
+        return serverMap.values().stream()
           .map(LanguageServerTarget::getLanguageName)
           .map(Arguments::of);
     }
 
     static Stream<Arguments> crossLanguageClients() {
-        return serverList.stream()
-          .flatMap(t1 -> serverList.stream()
+        return serverMap.values().stream()
+          .flatMap(t1 -> serverMap.values().stream()
             .flatMap(t2 -> Stream.of(
               Arguments.of(t1, t2)
             )));
@@ -337,7 +361,11 @@ public class RoundTripTests {
                     .build());
             fail("Expected exception!");
         } catch (S3EncryptionClientError e) {
-            assertTrue(e.getMessage().contains("Provided encryption context does not match information retrieved from S3"));
+            if (decLang.languageName.equals(RUBY_V3) || decLang.languageName.equals(RUBY_V2)) {
+                assertTrue(e.getMessage().contains("Value of encryption context from envelope does not match the provided encryption context"));
+            } else {
+                assertTrue(e.getMessage().contains("Provided encryption context does not match information retrieved from S3"));
+            }
         }
     }
 
@@ -389,7 +417,11 @@ public class RoundTripTests {
               .build());
             fail("Expected exception!");
         } catch (S3EncryptionClientError e) {
-            assertTrue(e.getMessage().contains("Provided encryption context does not match information retrieved from S3"));
+            if (decLang.languageName.equals(RUBY_V3) || decLang.languageName.equals(RUBY_V2)) {
+              assertTrue(e.getMessage().contains("Value of encryption context from envelope does not match the provided encryption context"));
+            } else {
+              assertTrue(e.getMessage().contains("Provided encryption context does not match information retrieved from S3"));
+            }
         }
     }
 
@@ -529,6 +561,8 @@ public class RoundTripTests {
               assertTrue(e.getMessage().contains(
                 "The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration V2."
               ));
+            } else if (language.equals(RUBY_V3) || language.equals(RUBY_V2)) {
+              assertTrue(e.getMessage().contains("The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration security_profile = :v2. Retry with :v2_and_legacy or re-encrypt the object."));
             } else {
               assertTrue(e.getMessage().contains("Enable legacy wrapping algorithms to use legacy key wrapping algorithm: kms"));
             }
