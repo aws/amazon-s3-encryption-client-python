@@ -106,16 +106,29 @@ export class S3ECPythonGithub extends cdk.Stack {
               resources: [
                 S3ECGithubTestS3Bucket.bucketArn + "/*", // object-level permissions need this extra path
                 S3ECTestServerGithubBucket.bucketArn + "/*", // Add permissions for the new test-server bucket
+                "arn:aws:s3:::aws-net-sdk-*/*" // permission for object inside S3EC .net bucket
               ],
             }),
             new PolicyStatement({
               effect: Effect.ALLOW,
               actions: [
                 "s3:ListBucket",
+                "s3:GetBucketAcl"
               ],
               resources: [
                 S3ECGithubTestS3Bucket.bucketArn,
                 S3ECTestServerGithubBucket.bucketArn, // Add permissions for the new test-server bucket
+                "arn:aws:s3:::aws-net-sdk-*", // permission for S3EC .net bucket
+              ],
+            }),
+            new PolicyStatement({
+              effect: Effect.ALLOW,
+              actions: [
+                "s3:CreateBucket",
+                "s3:DeleteBucket"
+              ],
+              resources: [
+                "arn:aws:s3:::aws-net-sdk-*"
               ],
             }),
           ]
@@ -155,7 +168,10 @@ export class S3ECPythonGithub extends cdk.Stack {
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
         },
         "StringLike": {
-          "token.actions.githubusercontent.com:sub": "repo:aws/amazon-s3-encryption-client-python:*"
+          "token.actions.githubusercontent.com:sub": [
+            "repo:aws/amazon-s3-encryption-client-python:*",
+            "repo:aws/private-amazon-s3-encryption-client-dotnet-staging:*"
+          ]
         }
       },
       "sts:AssumeRoleWithWebIdentity"
