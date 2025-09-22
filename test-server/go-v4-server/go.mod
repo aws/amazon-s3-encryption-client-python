@@ -30,4 +30,6 @@ require (
 	github.com/aws/smithy-go v1.19.0 // indirect
 )
 
+// S3EC Go V4 is not released to pkg.go.dev as of writing.
+// It is included as a submodule and referenced locally.
 replace github.com/aws/amazon-s3-encryption-client-go/v4 => ./local-go-s3ec/v4

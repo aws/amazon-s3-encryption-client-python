@@ -133,37 +133,6 @@ public class RoundTripTests {
     private static final Set<String> ENCRYPTION_CONTEXT_ON_ENCRYPT_UNSUPPORTED =
         Set.of(NET_V2, NET_V3);
 
-    private static final Set<String> CURRENT_VERSIONS =
-        Set.of(
-            JAVA_V3_CURRENT,
-            GO_V3_CURRENT,
-            NET_V2_CURRENT,
-            CPP_V2_CURRENT,
-            RUBY_V2_CURRENT,
-            PHP_V2_CURRENT
-        );
-
-    private static final Set<String> TRANSITION_VERSIONS =
-        Set.of(
-            JAVA_V3_TRANSITION,
-            GO_V3_TRANSITION,
-            NET_V2_TRANSITION,
-            CPP_V2_TRANSITION,
-            RUBY_V2_TRANSITION,
-            PHP_V2_TRANSITION
-        );
-
-    private static final Set<String> IMPROVED_VERSIONS =
-        Set.of(
-            JAVA_V4,
-            PYTHON_V3,
-            GO_V4,
-            NET_V3,
-            CPP_V3,
-            RUBY_V3,
-            PHP_V3
-        );
-
     static public class LanguageServerTarget {
         public String getLanguageName() {
             return languageName;

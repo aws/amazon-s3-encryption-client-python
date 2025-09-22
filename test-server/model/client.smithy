@@ -28,17 +28,10 @@ structure KeyMaterial {
     kmsKeyId: String
 }
 
-enum CommitmentPolicy {
-    REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
-    REQUIRE_ENCRYPT_ALLOW_DECRYPT,
-    ALLOW_ENCRYPT_ALLOW_DECRYPT
-}
-
 structure S3ECConfig {
     enableLegacyUnauthenticatedModes: Boolean = false,
     enableDelayedAuthenticationMode: Boolean = false,
     enableLegacyWrappingAlgorithms: Boolean = false,
     setBufferSize: Long,
-    keyMaterial: KeyMaterial,
-    commitmentPolicy: CommitmentPolicy
+    keyMaterial: KeyMaterial
 }
