@@ -561,7 +561,7 @@ public class RoundTripTests {
         } catch (S3EncryptionClientError e) {
             if (language.equals(NET_V3) || language.equals(NET_V2) || language.equals(CPP_V2)) {
               assertTrue(e.getMessage().contains(
-                "The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration V2."
+                "The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration"
               ));
             } else if (language.equals(RUBY_V3) || language.equals(RUBY_V2)) {
               assertTrue(e.getMessage().contains("The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration security_profile = :v2. Retry with :v2_and_legacy or re-encrypt the object."));

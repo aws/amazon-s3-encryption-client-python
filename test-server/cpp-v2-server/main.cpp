@@ -57,7 +57,6 @@ MHD_Result handle_create_client(struct MHD_Connection *connection,
     std::string kms_key_id = request["config"]["keyMaterial"]["kmsKeyId"];
     bool legacy = request["config"]["enableLegacyWrappingAlgorithms"];
 
-    Aws::KMS::KMSClient kms_client;
     auto materials =
         std::make_shared<KMSWithContextEncryptionMaterials>(kms_key_id);
     CryptoConfigurationV2 config(materials);
