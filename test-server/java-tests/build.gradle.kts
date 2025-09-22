@@ -48,6 +48,17 @@ tasks {
         classpath = sourceSets["it"].runtimeClasspath
         outputs.upToDateWhen { false }
         outputs.cacheIf { false }
+        // Passing information from Gradle into the tests so that we can filter our servers
+        systemProperty("test.filter.servers", System.getProperty("test.filter.servers"))
+        // For debugging
+        // // Enable System.out output
+        // testLogging {
+        //     events("passed", "skipped", "failed", "standardOut", "standardError")
+        //     showStandardStreams = true
+        // }
+
+        // // Disable AWS SDK v1 deprecation warnings
+        // systemProperty("aws.java.v1.disableDeprecationAnnouncement", "true")
     }
 }
 
