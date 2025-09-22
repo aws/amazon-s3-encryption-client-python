@@ -60,6 +60,7 @@ public class RoundTripTests {
     private static final String JAVA_V3 = "Java-V3";
     private static final String PYTHON_V3 = "Python-V3";
     private static final String GO_V3 = "Go-V3";
+    private static final String CPP_V2 = "CPP-V2";
     private static final String NET_V2 = "NET-V2";
     private static final String NET_V3 = "NET-V3";
     private static final String PHP_V2 = "PHP-V2";
@@ -82,6 +83,7 @@ public class RoundTripTests {
         servers.put(GO_V3, new LanguageServerTarget(GO_V3, "8082"));
         servers.put(NET_V2, new LanguageServerTarget(NET_V2, "8083"));
         servers.put(NET_V3, new LanguageServerTarget(NET_V3, "8084"));
+        servers.put(CPP_V2, new LanguageServerTarget(CPP_V2, "8085"));
         servers.put(PHP_V2, new LanguageServerTarget(PHP_V2, "8087"));
         servers.put(PHP_V3, new LanguageServerTarget(PHP_V3, "8093"));
         servers.put(RUBY_V2, new LanguageServerTarget(RUBY_V2, "8086"));
@@ -557,9 +559,9 @@ public class RoundTripTests {
               .build());
             fail("Expected Exception");
         } catch (S3EncryptionClientError e) {
-            if (language.equals(NET_V3) || language.equals(NET_V2)) {
+            if (language.equals(NET_V3) || language.equals(NET_V2) || language.equals(CPP_V2)) {
               assertTrue(e.getMessage().contains(
-                "The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration V2."
+                "The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration"
               ));
             } else if (language.equals(RUBY_V3) || language.equals(RUBY_V2)) {
               assertTrue(e.getMessage().contains("The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration security_profile = :v2. Retry with :v2_and_legacy or re-encrypt the object."));
@@ -568,5 +570,4 @@ public class RoundTripTests {
             }
         }
     }
-
 }

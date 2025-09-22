@@ -12,7 +12,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: macos-13
     permissions:
       id-token: write
       contents: read
@@ -50,6 +50,11 @@ jobs:
         shell: bash
         run: composer install
       
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.25
+
       # Cache uv dependencies
       - name: Cache uv dependencies
         uses: actions/cache@v3
