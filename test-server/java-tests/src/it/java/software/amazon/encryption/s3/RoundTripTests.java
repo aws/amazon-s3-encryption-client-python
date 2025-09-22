@@ -60,6 +60,7 @@ public class RoundTripTests {
     private static final String JAVA_V3 = "Java-V3";
     private static final String PYTHON_V3 = "Python-V3";
     private static final String GO_V3 = "Go-V3";
+    private static final String GO_V3 = "Go-V4";
     private static final String CPP_V2 = "CPP-V2";
     private static final String NET_V2 = "NET-V2";
     private static final String NET_V3 = "NET-V3";
@@ -85,6 +86,7 @@ public class RoundTripTests {
         servers.put(NET_V3, new LanguageServerTarget(NET_V3, "8084"));
         servers.put(CPP_V2, new LanguageServerTarget(CPP_V2, "8085"));
         servers.put(PHP_V2, new LanguageServerTarget(PHP_V2, "8087"));
+        servers.put(GO_V3, new LanguageServerTarget(GO_V4, "8089"));
         servers.put(PHP_V3, new LanguageServerTarget(PHP_V3, "8093"));
         servers.put(RUBY_V2, new LanguageServerTarget(RUBY_V2, "8086"));
         servers.put(RUBY_V3, new LanguageServerTarget(RUBY_V3, "8092"));

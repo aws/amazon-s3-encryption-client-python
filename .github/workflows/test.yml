@@ -22,8 +22,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: true
-          # ryanemer owns this PAT.
-          # Ping him to extend this PAT's permissions to access a new private repo.
+          # This is Ryan Emery's (seebees) PAT.
+          # To grant this workflow access to a new private repo,
+          # ask Ryan to edit this PAT's permissions to add access to a new private repo.
           token: ${{ secrets.PAT_FOR_PRIVATE_RUBY }}
       
       - name: Set up Python
