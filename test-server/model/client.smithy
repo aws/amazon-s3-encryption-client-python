@@ -31,7 +31,7 @@ structure KeyMaterial {
 enum CommitmentPolicy {
     REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
     REQUIRE_ENCRYPT_ALLOW_DECRYPT,
-    ALLOW_ENCRYPT_ALLOW_DECRYPT
+    FORBID_ENCRYPT_ALLOW_DECRYPT
 }
 
 structure S3ECConfig {
