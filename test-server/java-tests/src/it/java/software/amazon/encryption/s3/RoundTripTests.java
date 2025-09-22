@@ -60,7 +60,7 @@ public class RoundTripTests {
     private static final String JAVA_V3 = "Java-V3";
     private static final String PYTHON_V3 = "Python-V3";
     private static final String GO_V3 = "Go-V3";
-    private static final String GO_V3 = "Go-V4";
+    private static final String GO_V4 = "Go-V4";
     private static final String CPP_V2 = "CPP-V2";
     private static final String NET_V2 = "NET-V2";
     private static final String NET_V3 = "NET-V3";
