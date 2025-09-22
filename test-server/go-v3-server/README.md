@@ -10,15 +10,6 @@ The S3EC Go test server implements the S3ECTestServer service defined in the sha
 - Putting objects with encryption
 - Getting and decrypting objects
 
-## Architecture
-
-The server is built using:
-
-- **HTTP Framework**: Gorilla Mux for routing
-- **AWS SDK**: AWS SDK for Go v2 for S3 and KMS operations
-- **Concurrency**: Thread-safe client caching with sync.RWMutex
-- **Error Handling**: Smithy-compliant error responses
-
 ## Usage
 
 To run the server:
