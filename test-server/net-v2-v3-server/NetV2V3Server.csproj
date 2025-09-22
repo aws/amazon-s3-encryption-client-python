@@ -23,7 +23,7 @@
     </ItemGroup>
 
     <ItemGroup Condition="'$(S3EncryptionVersion)' == 'v3'">
-        <PackageReference Include="Amazon.Extensions.S3.Encryption" Version="3.0.0"/>
+        <ProjectReference Include="../../submodules/s3ec-dotnet/src/Amazon.Extensions.S3.Encryption.csproj"/>
     </ItemGroup>
 
     <ItemGroup>

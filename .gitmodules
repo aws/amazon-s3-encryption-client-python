@@ -4,3 +4,6 @@
 [submodule "test-server/ruby-v3-server/local-ruby-sdk"]
 	path = test-server/ruby-v3-server/local-ruby-sdk
 	url = git@github.com:aws/aws-sdk-ruby-staging.git
+[submodule "submodules/s3ec-dotnet"]
+	path = submodules/s3ec-dotnet
+	url = https://github.com/aws/private-amazon-s3-encryption-client-dotnet-staging.git
