@@ -74,7 +74,7 @@ export class S3ECPythonGithub extends cdk.Stack {
       this,
       "S3ECGithubTestS3Bucket",
       {
-        bucketName: "s3ec-python-github-test-bucket",
+        bucketName: "s3ec-python-github-test-bucket-" + this.account, // revert this
         blockPublicAccess: new BlockPublicAccess(AccessConfiguration)
       }
     )
@@ -84,7 +84,7 @@ export class S3ECPythonGithub extends cdk.Stack {
       this,
       "S3ECTestServerGithubBucket",
       {
-        bucketName: "s3ec-test-server-github-bucket",
+        bucketName: "s3ec-test-server-github-bucket-" + this.account, // revert this
         blockPublicAccess: new BlockPublicAccess(AccessConfiguration)
       }
     )
@@ -102,6 +102,7 @@ export class S3ECPythonGithub extends cdk.Stack {
                 "s3:PutObject",
                 "s3:GetObject",
                 "s3:DeleteObject",
+                "s3:DeleteObjectVersion"
               ],
               resources: [
                 S3ECGithubTestS3Bucket.bucketArn + "/*", // object-level permissions need this extra path
@@ -112,23 +113,16 @@ export class S3ECPythonGithub extends cdk.Stack {
             new PolicyStatement({
               effect: Effect.ALLOW,
               actions: [
+                "s3:CreateBucket",
+                "s3:DeleteBucket",
                 "s3:ListBucket",
+                "s3:ListBucketVersions",
                 "s3:GetBucketAcl"
               ],
               resources: [
                 S3ECGithubTestS3Bucket.bucketArn,
                 S3ECTestServerGithubBucket.bucketArn, // Add permissions for the new test-server bucket
                 "arn:aws:s3:::aws-net-sdk-*", // permission for S3EC .net bucket
-              ],
-            }),
-            new PolicyStatement({
-              effect: Effect.ALLOW,
-              actions: [
-                "s3:CreateBucket",
-                "s3:DeleteBucket"
-              ],
-              resources: [
-                "arn:aws:s3:::aws-net-sdk-*"
               ],
             }),
           ]
