@@ -74,7 +74,7 @@ export class S3ECPythonGithub extends cdk.Stack {
       this,
       "S3ECGithubTestS3Bucket",
       {
-        bucketName: "s3ec-python-github-test-bucket-",
+        bucketName: "s3ec-python-github-test-bucket",
         blockPublicAccess: new BlockPublicAccess(AccessConfiguration)
       }
     )
@@ -84,7 +84,7 @@ export class S3ECPythonGithub extends cdk.Stack {
       this,
       "S3ECTestServerGithubBucket",
       {
-        bucketName: "s3ec-test-server-github-bucket-",
+        bucketName: "s3ec-test-server-github-bucket",
         blockPublicAccess: new BlockPublicAccess(AccessConfiguration)
       }
     )
