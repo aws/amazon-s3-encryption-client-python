@@ -4,6 +4,3 @@
 [submodule "test-server/ruby-v3-server/local-ruby-sdk"]
 	path = test-server/ruby-v3-server/local-ruby-sdk
 	url = git@github.com:aws/aws-sdk-ruby-staging.git
-[submodule "test-server/php-sdk"]
-	path = test-server/php-sdk
-	url = git@github.com:aws/aws-sdk-php.git
