@@ -5,8 +5,8 @@ require_once __DIR__ . '/client.php';
 require_once __DIR__ . '/get_object.php';
 require_once __DIR__ . '/put_object.php';
 
-use Aws\S3\Crypto\S3EncryptionClientV2;
-use Aws\Crypto\KmsMaterialsProviderV2;
+use Local\Aws\S3\Crypto\S3EncryptionClientV2;
+use Local\Aws\Crypto\KmsMaterialsProviderV2;
 use Aws\S3\S3Client;
 use Aws\Kms\KmsClient;
 
