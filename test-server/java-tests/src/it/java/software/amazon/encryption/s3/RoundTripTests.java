@@ -85,7 +85,7 @@ public class RoundTripTests {
         // servers.put(NET_V3, new LanguageServerTarget(NET_V3, "8084"));
         // servers.put(CPP_V2, new LanguageServerTarget(CPP_V2, "8085"));
         servers.put(PHP_V2, new LanguageServerTarget(PHP_V2, "8087"));
-        // servers.put(PHP_V3, new LanguageServerTarget(PHP_V3, "8093"));
+        servers.put(PHP_V3, new LanguageServerTarget(PHP_V3, "8093"));
         // servers.put(RUBY_V2, new LanguageServerTarget(RUBY_V2, "8086"));
         // servers.put(RUBY_V3, new LanguageServerTarget(RUBY_V3, "8092"));
 
