@@ -5,7 +5,7 @@ require_once __DIR__ . '/client.php';
 require_once __DIR__ . '/get_object.php';
 require_once __DIR__ . '/put_object.php';
 
-use Local\Aws\S3\Crypto\S3EncryptionClientV2;
+use Local\Aws\S3\Crypto\S3EncryptionClientV3;
 use Local\Aws\Crypto\KmsMaterialsProviderV2;
 use Aws\S3\S3Client;
 use Aws\Kms\KmsClient;
@@ -157,7 +157,7 @@ function getCachedClient($clientId)
 
     // Recreate the AWS clients from stored configuration
     $s3Client = new S3Client($config['s3Config']);
-    $encryptionClient = new S3EncryptionClientV2($s3Client);
+    $encryptionClient = new S3EncryptionClientV3($s3Client);
 
     $kmsClient = new KmsClient($config['kmsConfig']);
     $materialsProvider = new KmsMaterialsProviderV2($kmsClient, $config['kmsKeyId']);
@@ -183,7 +183,7 @@ function createDefaultClientTuple(): array
             ]
         ]
     ]);
-    $encryptionClient = new S3EncryptionClientV2($s3Client);
+    $encryptionClient = new S3EncryptionClientV3($s3Client);
 
     $kmsClient = new KmsClient([
         'region' => 'us-west-2',
