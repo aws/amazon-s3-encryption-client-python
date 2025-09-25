@@ -26,7 +26,7 @@ import software.amazon.smithy.java.client.core.ClientProtocol;
 import software.amazon.smithy.java.client.core.endpoint.EndpointResolver;
 import software.amazon.encryption.s3.client.S3ECTestServerClient;
 import software.amazon.encryption.s3.model.S3ECTestServerApiService;
-import software.amazon.smithy.java.http.api.HttpRequest;c
+import software.amazon.smithy.java.http.api.HttpRequest;
 import software.amazon.smithy.java.http.api.HttpResponse;
 
 public class TestUtils {
