@@ -242,22 +242,20 @@ func (s *Server) putObject(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[Go V4] PutObject SUCCESS: Bucket=%s, Key=%s", bucket, key)
 
-	// Return an empty metadata list if result.Metadata is nil, not a list, or empty.
-	Metadata: func() []string {
-		if result.Metadata == nil || len(result.Metadata) == 0 {
-			return []string{}
-		}
-		return result.Metadata
-	}(),
+	// Empty metadata list if result.Metadata is nil or empty
+	md := result.Metadata
+	if md == nil {
+		md = []string{}
+	}
 
 	// Return response
 	w.Header().Set("Content-Type", "application/json")
-	response := PutObjectOutput{
+	resp := PutObjectOutput{
 		Bucket:   bucket,
 		Key:      key,
-		Metadata: Metadata,
+		Metadata: md,
 	}
-	json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(resp)
 }
 
 // getObject handles GET /object/{bucket}/{key}
