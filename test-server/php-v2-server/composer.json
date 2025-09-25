@@ -11,8 +11,7 @@
     "autoload": {
         "psr-4": {
             "S3EC\\PhpV2Server\\": "src/",
-            "Local\\Aws\\S3\\Crypto\\": "local-php-sdk/S3EC/",
-            "Local\\Aws\\Crypto\\": "local-php-sdk/Crypto/"
+            "Aws\\": "local-php-sdk/src/"
         }
     },
     "scripts": {
