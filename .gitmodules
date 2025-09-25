@@ -7,3 +7,11 @@
 [submodule "test-server/go-v4-server/local-go-s3ec"]
 	path = test-server/go-v4-server/local-go-s3ec
 	url = git@github.com:aws/private-amazon-s3-encryption-client-go-staging.git
+[submodule "test-server/php-v2-server/local-php-sdk"]
+	path = test-server/php-v2-server/local-php-sdk
+	url = git@github.com:aws/private-aws-sdk-php-staging.git
+	branch = s3ec/transitional
+[submodule "test-server/php-v3-server/local-php-sdk"]
+	path = test-server/php-v3-server/local-php-sdk
+	url = git@github.com:aws/private-aws-sdk-php-staging.git
+	branch = s3ec/improved
