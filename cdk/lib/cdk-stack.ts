@@ -10,6 +10,8 @@ import {
   PolicyDocument,
   PolicyStatement,
   FederatedPrincipal,
+  ArnPrincipal,
+  CompositePrincipal,
   ManagedPolicy,
 } from "aws-cdk-lib/aws-iam";
 import { 
@@ -170,11 +172,21 @@ export class S3ECPythonGithub extends cdk.Stack {
       },
       "sts:AssumeRoleWithWebIdentity"
     )
+    
+    // ToolsDevelopment role principal
+    const ToolsDevelopmentPrincipal = new ArnPrincipal("arn:aws:iam::" + this.account + ":role/ToolsDevelopment")
+    
+    // Composite principal to allow both GitHub Actions and ToolsDevelopment to assume the role
+    const CompositePrincipalForRole = new CompositePrincipal(
+      GithubActionsPrincipal,
+      ToolsDevelopmentPrincipal
+    )
+    
     const S3ECGithubTestRole = new Role(
       this,
       "s3-github-test-role",
       {
-        assumedBy: GithubActionsPrincipal,
+        assumedBy: CompositePrincipalForRole,
         roleName: "S3EC-Python-Github-test-role",
         description: " Grant GitHub S3 put and get and KMS encrypt, decrypt, and generate access for testing",
         path: "/",
