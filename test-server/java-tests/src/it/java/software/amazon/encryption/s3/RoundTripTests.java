@@ -36,7 +36,7 @@ import com.amazonaws.services.s3.AmazonS3EncryptionClient;
 import com.amazonaws.services.s3.model.CryptoConfiguration;
 import com.amazonaws.services.s3.model.CryptoMode;
 import com.amazonaws.services.s3.model.CryptoStorageMode;
-import software.amazon.encryption.s3.TestUtils.LanguageServerTarget;
+import software.amazon.encryption.s3.TestUtils.*;
 import com.amazonaws.services.s3.model.EncryptionMaterialsProvider;
 import com.amazonaws.services.s3.model.KMSEncryptionMaterialsProvider;
 
@@ -44,17 +44,17 @@ public class RoundTripTests {
 
     @BeforeAll
     public static void setup() {
-        TestUtils.validateServersRunning();
+        validateServersRunning();
     }
 
     @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
     @MethodSource("software.amazon.encryption.s3.TestUtils#crossLanguageClients")
     public void crossLanguageTestKms(LanguageServerTarget encLang, LanguageServerTarget decLang) {
-        S3ECTestServerClient encClient = TestUtils.testServerClientFor(encLang);
+        S3ECTestServerClient encClient = testServerClientFor(encLang);
         final String objectKey = "cross-lang-test-key-" + encLang;
         final String input = "simple-test-input";
         KeyMaterial kmsKeyArn = KeyMaterial.builder()
-          .kmsKeyId(TestUtils.KMS_KEY_ARN)
+          .kmsKeyId(KMS_KEY_ARN)
           .build();
         CreateClientOutput encClientOutput = encClient.createClient(CreateClientInput.builder()
           .config(S3ECConfig.builder()
@@ -64,10 +64,10 @@ public class RoundTripTests {
         encClient.putObject(PutObjectInput.builder()
           .clientID(encS3ECId)
           .key(objectKey)
-          .bucket(TestUtils.BUCKET)
+          .bucket(BUCKET)
           .body(ByteBuffer.wrap(input.getBytes(StandardCharsets.UTF_8)))
           .build());
-        S3ECTestServerClient decClient = TestUtils.testServerClientFor(decLang);
+        S3ECTestServerClient decClient = testServerClientFor(decLang);
         CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
           .config(S3ECConfig.builder()
             .keyMaterial(kmsKeyArn).build())
@@ -75,7 +75,7 @@ public class RoundTripTests {
         String decS3ECId = decClientOutput.getClientId();
         GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
           .clientID(decS3ECId)
-          .bucket(TestUtils.BUCKET)
+          .bucket(BUCKET)
           .key(objectKey)
           .build());
 
@@ -87,18 +87,18 @@ public class RoundTripTests {
     @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
     @MethodSource("software.amazon.encryption.s3.TestUtils#crossLanguageClients")
     public void crossLanguageTestKmsWithEncCtx(LanguageServerTarget encLang, LanguageServerTarget decLang) {
-        if (TestUtils.ENCRYPTION_CONTEXT_ON_ENCRYPT_UNSUPPORTED.contains(encLang.getLanguageName())) {
+        if (ENCRYPTION_CONTEXT_ON_ENCRYPT_UNSUPPORTED.contains(encLang.getLanguageName())) {
             return;
         }
-        S3ECTestServerClient encClient = TestUtils.testServerClientFor(encLang);
+        S3ECTestServerClient encClient = testServerClientFor(encLang);
         final String objectKey = "cross-lang-test-key-kms-ec-" + encLang;
         final String input = "simple-test-input";
         final Map<String, String> encCtx = new HashMap<>();
         encCtx.put("user-defined-enc-ctx-key", "user-defined-enc-ctx-value");
         encCtx.put("user-defined-enc-ctx-key-2", "user-defined-enc-ctx-value-2");
-        final List<String> mdAsList = TestUtils.metadataMapToList(encCtx);
+        final List<String> mdAsList = metadataMapToList(encCtx);
         KeyMaterial kmsKeyArn = KeyMaterial.builder()
-          .kmsKeyId(TestUtils.KMS_KEY_ARN)
+          .kmsKeyId(KMS_KEY_ARN)
           .build();
         CreateClientOutput encClientOutput = encClient.createClient(CreateClientInput.builder()
           .config(S3ECConfig.builder()
@@ -109,11 +109,11 @@ public class RoundTripTests {
         encClient.putObject(PutObjectInput.builder()
           .clientID(encS3ECId)
           .key(objectKey)
-          .bucket(TestUtils.BUCKET)
+          .bucket(BUCKET)
           .metadata(mdAsList)
           .body(ByteBuffer.wrap(input.getBytes(StandardCharsets.UTF_8)))
           .build());
-        S3ECTestServerClient decClient = TestUtils.testServerClientFor(decLang);
+        S3ECTestServerClient decClient = testServerClientFor(decLang);
         CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
           .config(S3ECConfig.builder()
             .keyMaterial(kmsKeyArn).build())
@@ -121,7 +121,7 @@ public class RoundTripTests {
         String decS3ECId = decClientOutput.getClientId();
         GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
           .clientID(decS3ECId)
-          .bucket(TestUtils.BUCKET)
+          .bucket(BUCKET)
           .key(objectKey)
           .metadata(mdAsList)
           .build());
@@ -134,21 +134,21 @@ public class RoundTripTests {
     @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
     @MethodSource("software.amazon.encryption.s3.TestUtils#crossLanguageClients")
     public void crossLanguageTestKmsWithSubsetEncCtxFails(LanguageServerTarget encLang, LanguageServerTarget decLang) {
-        if (TestUtils.ENCRYPTION_CONTEXT_ON_DECRYPT_UNSUPPORTED.contains(decLang.getLanguageName())) {
+        if (ENCRYPTION_CONTEXT_ON_DECRYPT_UNSUPPORTED.contains(decLang.getLanguageName())) {
             return;
         }
-        if (TestUtils.ENCRYPTION_CONTEXT_ON_ENCRYPT_UNSUPPORTED.contains(encLang.getLanguageName())) {
+        if (ENCRYPTION_CONTEXT_ON_ENCRYPT_UNSUPPORTED.contains(encLang.getLanguageName())) {
             return;
         }
-        S3ECTestServerClient encClient = TestUtils.testServerClientFor(encLang);
+        S3ECTestServerClient encClient = testServerClientFor(encLang);
         final String objectKey = "cross-lang-test-key-kms-ec-subset-fails" + encLang;
         final String input = "simple-test-input";
         final Map<String, String> encCtx = new HashMap<>();
         encCtx.put("user-defined-enc-ctx-key", "user-defined-enc-ctx-value");
         encCtx.put("user-defined-enc-ctx-key-2", "user-defined-enc-ctx-value-2");
-        final List<String> mdAsList = TestUtils.metadataMapToList(encCtx);
+        final List<String> mdAsList = metadataMapToList(encCtx);
         KeyMaterial kmsKeyArn = KeyMaterial.builder()
-                .kmsKeyId(TestUtils.KMS_KEY_ARN)
+                .kmsKeyId(KMS_KEY_ARN)
                 .build();
         CreateClientOutput encClientOutput = encClient.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -159,11 +159,11 @@ public class RoundTripTests {
         encClient.putObject(PutObjectInput.builder()
                 .clientID(encS3ECId)
                 .key(objectKey)
-                .bucket(TestUtils.BUCKET)
+                .bucket(BUCKET)
                 .metadata(mdAsList)
                 .body(ByteBuffer.wrap(input.getBytes(StandardCharsets.UTF_8)))
                 .build());
-        S3ECTestServerClient decClient = TestUtils.testServerClientFor(decLang);
+        S3ECTestServerClient decClient = testServerClientFor(decLang);
         CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
                         .keyMaterial(kmsKeyArn).build())
@@ -172,12 +172,12 @@ public class RoundTripTests {
         try {
             decClient.getObject(GetObjectInput.builder()
                     .clientID(decS3ECId)
-                    .bucket(TestUtils.BUCKET)
+                    .bucket(BUCKET)
                     .key(objectKey)
                     .build());
             fail("Expected exception!");
         } catch (S3EncryptionClientError e) {
-            if (decLang.getLanguageName().equals(TestUtils.RUBY_V3) || decLang.getLanguageName().equals(TestUtils.RUBY_V2)) {
+            if (decLang.getLanguageName().equals(RUBY_V3) || decLang.getLanguageName().equals(RUBY_V2)) {
                 assertTrue(e.getMessage().contains("Value of encryption context from envelope does not match the provided encryption context"));
             } else {
                 assertTrue(e.getMessage().contains("Provided encryption context does not match information retrieved from S3"));
@@ -188,18 +188,18 @@ public class RoundTripTests {
     @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
     @MethodSource("software.amazon.encryption.s3.TestUtils#crossLanguageClients")
     public void crossLanguageTestKmsWithIncorrectEncCtxFails(LanguageServerTarget encLang, LanguageServerTarget decLang) {
-        if (TestUtils.ENCRYPTION_CONTEXT_ON_DECRYPT_UNSUPPORTED.contains(decLang.getLanguageName())) {
+        if (ENCRYPTION_CONTEXT_ON_DECRYPT_UNSUPPORTED.contains(decLang.getLanguageName())) {
             return;
         }
-        S3ECTestServerClient encClient = TestUtils.testServerClientFor(encLang);
+        S3ECTestServerClient encClient = testServerClientFor(encLang);
         final String objectKey = "cross-lang-test-key-kms-ec-incorrect-fails" + encLang;
         final String input = "simple-test-input";
         final Map<String, String> encCtx = new HashMap<>();
         encCtx.put("user-defined-enc-ctx-key", "user-defined-enc-ctx-value");
         encCtx.put("user-defined-enc-ctx-key-2", "user-defined-enc-ctx-value-2");
-        final List<String> mdAsList = TestUtils.metadataMapToList(encCtx);
+        final List<String> mdAsList = metadataMapToList(encCtx);
         KeyMaterial kmsKeyArn = KeyMaterial.builder()
-          .kmsKeyId(TestUtils.KMS_KEY_ARN)
+          .kmsKeyId(KMS_KEY_ARN)
           .build();
         CreateClientOutput encClientOutput = encClient.createClient(CreateClientInput.builder()
           .config(S3ECConfig.builder()
@@ -210,11 +210,11 @@ public class RoundTripTests {
         encClient.putObject(PutObjectInput.builder()
           .clientID(encS3ECId)
           .key(objectKey)
-          .bucket(TestUtils.BUCKET)
+          .bucket(BUCKET)
           .metadata(mdAsList)
           .body(ByteBuffer.wrap(input.getBytes(StandardCharsets.UTF_8)))
           .build());
-        S3ECTestServerClient decClient = TestUtils.testServerClientFor(decLang);
+        S3ECTestServerClient decClient = testServerClientFor(decLang);
         CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
           .config(S3ECConfig.builder()
             .keyMaterial(kmsKeyArn).build())
@@ -223,17 +223,17 @@ public class RoundTripTests {
 
         final Map<String, String> incorrectEncCtx = new HashMap<>();
         incorrectEncCtx.put("this-is-wrong-ec-key", "bad-value");
-        var incorrectMdAsList = TestUtils.metadataMapToList(incorrectEncCtx);
+        var incorrectMdAsList = metadataMapToList(incorrectEncCtx);
         try {
             decClient.getObject(GetObjectInput.builder()
               .clientID(decS3ECId)
-              .bucket(TestUtils.BUCKET)
+              .bucket(BUCKET)
               .key(objectKey)
               .metadata(incorrectMdAsList)
               .build());
             fail("Expected exception!");
         } catch (S3EncryptionClientError e) {
-            if (decLang.getLanguageName().equals(TestUtils.RUBY_V3) || decLang.getLanguageName().equals(TestUtils.RUBY_V2)) {
+            if (decLang.getLanguageName().equals(RUBY_V3) || decLang.getLanguageName().equals(RUBY_V2)) {
               assertTrue(e.getMessage().contains("Value of encryption context from envelope does not match the provided encryption context"));
             } else {
               assertTrue(e.getMessage().contains("Provided encryption context does not match information retrieved from S3"));
@@ -244,11 +244,11 @@ public class RoundTripTests {
     @ParameterizedTest(name = "{displayName} for Encrypt: Java, Decrypt: {0}")
     @MethodSource("software.amazon.encryption.s3.TestUtils#clientsForTest")
     public void kmsV1Legacy(String language) {
-        S3ECTestServerClient client = TestUtils.testServerClientFor(TestUtils.getServerMap().get(language));
+        S3ECTestServerClient client = testServerClientFor(getServerMap().get(language));
         final String objectKey = "test-key-kms-v1-" + language;
         final String input = "simple-test-input";
         KeyMaterial kmsKeyArn = KeyMaterial.builder()
-          .kmsKeyId(TestUtils.KMS_KEY_ARN)
+          .kmsKeyId(KMS_KEY_ARN)
           .build();
         CreateClientOutput output1 = client.createClient(CreateClientInput.builder()
           .config(S3ECConfig.builder()
@@ -260,23 +260,23 @@ public class RoundTripTests {
 
         // Create the object using the old client
         // V1 Client
-        EncryptionMaterialsProvider materialsProvider = new KMSEncryptionMaterialsProvider(TestUtils.KMS_KEY_ARN);
+        EncryptionMaterialsProvider materialsProvider = new KMSEncryptionMaterialsProvider(KMS_KEY_ARN);
 
         CryptoConfiguration v1Config =
           new CryptoConfiguration(CryptoMode.AuthenticatedEncryption)
             .withStorageMode(CryptoStorageMode.ObjectMetadata)
-            .withAwsKmsRegion(TestUtils.KMS_REGION);
+            .withAwsKmsRegion(KMS_REGION);
 
         AmazonS3Encryption v1Client = AmazonS3EncryptionClient.encryptionBuilder()
           .withCryptoConfiguration(v1Config)
           .withEncryptionMaterials(materialsProvider)
           .build();
 
-        v1Client.putObject(TestUtils.BUCKET, objectKey, input);
+        v1Client.putObject(BUCKET, objectKey, input);
 
         GetObjectOutput output = client.getObject(GetObjectInput.builder()
           .clientID(s3ECId)
-          .bucket(TestUtils.BUCKET)
+          .bucket(BUCKET)
           .key(objectKey)
           .build());
 
@@ -286,11 +286,11 @@ public class RoundTripTests {
     @ParameterizedTest(name = "{displayName} for Encrypt: Java, Decrypt: {0}")
     @MethodSource("software.amazon.encryption.s3.TestUtils#clientsForTest")
     public void kmsV1LegacyWithEncCtx(String language) {
-        S3ECTestServerClient client = TestUtils.testServerClientFor(TestUtils.getServerMap().get(language));
+        S3ECTestServerClient client = testServerClientFor(getServerMap().get(language));
         final String objectKey = "test-key-kms-v1-with-enc-ctx-" + language;
         final String input = "simple-test-input";
         KeyMaterial kmsKeyArn = KeyMaterial.builder()
-          .kmsKeyId(TestUtils.KMS_KEY_ARN)
+          .kmsKeyId(KMS_KEY_ARN)
           .build();
         CreateClientOutput output1 = client.createClient(CreateClientInput.builder()
           .config(S3ECConfig.builder()
@@ -304,29 +304,29 @@ public class RoundTripTests {
         // V1 Client
         final String ecKey = "user-metadata-key";
         final String ecValue = "user-metadata-value-v1";
-        KMSEncryptionMaterials kmsMaterials = new KMSEncryptionMaterials(TestUtils.KMS_KEY_ARN);
+        KMSEncryptionMaterials kmsMaterials = new KMSEncryptionMaterials(KMS_KEY_ARN);
         kmsMaterials.addDescription(ecKey, ecValue);
         EncryptionMaterialsProvider materialsProvider = new KMSEncryptionMaterialsProvider(kmsMaterials);
 
         CryptoConfiguration v1Config =
           new CryptoConfiguration(CryptoMode.AuthenticatedEncryption)
             .withStorageMode(CryptoStorageMode.ObjectMetadata)
-            .withAwsKmsRegion(TestUtils.KMS_REGION);
+            .withAwsKmsRegion(KMS_REGION);
 
         AmazonS3Encryption v1Client = AmazonS3EncryptionClient.encryptionBuilder()
           .withCryptoConfiguration(v1Config)
           .withEncryptionMaterials(materialsProvider)
           .build();
 
-        v1Client.putObject(TestUtils.BUCKET, objectKey, input);
+        v1Client.putObject(BUCKET, objectKey, input);
 
         final Map<String, String> encCtx = new HashMap<>();
         encCtx.put(ecKey, ecValue);
         GetObjectOutput output = client.getObject(GetObjectInput.builder()
           .clientID(s3ECId)
-          .bucket(TestUtils.BUCKET)
+          .bucket(BUCKET)
           .key(objectKey)
-          .metadata(TestUtils.metadataMapToList(encCtx))
+          .metadata(metadataMapToList(encCtx))
           .build());
 
         assertEquals(input, new String(output.getBody().array()));
@@ -335,11 +335,11 @@ public class RoundTripTests {
     @ParameterizedTest(name = "{displayName} for Encrypt: Java, Decrypt: {0}")
     @MethodSource("software.amazon.encryption.s3.TestUtils#clientsForTest")
     public void kmsV1LegacyFailsWhenLegacyDisabled(String language) {
-        S3ECTestServerClient client = TestUtils.testServerClientFor(TestUtils.getServerMap().get(language));
+        S3ECTestServerClient client = testServerClientFor(getServerMap().get(language));
         final String objectKey = "test-key-kms-v1-fails-disabled" + language;
         final String input = "simple-test-input";
         KeyMaterial kmsKeyArn = KeyMaterial.builder()
-          .kmsKeyId(TestUtils.KMS_KEY_ARN)
+          .kmsKeyId(KMS_KEY_ARN)
           .build();
         CreateClientOutput output1 = client.createClient(CreateClientInput.builder()
           .config(S3ECConfig.builder()
@@ -351,33 +351,33 @@ public class RoundTripTests {
 
         // Create the object using the old client
         // V1 Client
-        EncryptionMaterialsProvider materialsProvider = new KMSEncryptionMaterialsProvider(TestUtils.KMS_KEY_ARN);
+        EncryptionMaterialsProvider materialsProvider = new KMSEncryptionMaterialsProvider(KMS_KEY_ARN);
 
         CryptoConfiguration v1Config =
           new CryptoConfiguration(CryptoMode.AuthenticatedEncryption)
             .withStorageMode(CryptoStorageMode.ObjectMetadata)
-            .withAwsKmsRegion(TestUtils.KMS_REGION);
+            .withAwsKmsRegion(KMS_REGION);
 
         AmazonS3Encryption v1Client = AmazonS3EncryptionClient.encryptionBuilder()
           .withCryptoConfiguration(v1Config)
           .withEncryptionMaterials(materialsProvider)
           .build();
 
-        v1Client.putObject(TestUtils.BUCKET, objectKey, input);
+        v1Client.putObject(BUCKET, objectKey, input);
 
         try {
             client.getObject(GetObjectInput.builder()
               .clientID(s3ECId)
-              .bucket(TestUtils.BUCKET)
+              .bucket(BUCKET)
               .key(objectKey)
               .build());
             fail("Expected Exception");
         } catch (S3EncryptionClientError e) {
-            if (language.equals(TestUtils.NET_V3) || language.equals(TestUtils.NET_V2) || language.equals(TestUtils.CPP_V2)) {
+            if (language.equals(NET_V3) || language.equals(NET_V2) || language.equals(CPP_V2)) {
               assertTrue(e.getMessage().contains(
                 "The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration"
               ));
-            } else if (language.equals(TestUtils.RUBY_V3) || language.equals(TestUtils.RUBY_V2)) {
+            } else if (language.equals(RUBY_V3) || language.equals(RUBY_V2)) {
               assertTrue(e.getMessage().contains("The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration security_profile = :v2. Retry with :v2_and_legacy or re-encrypt the object."));
             } else {
               assertTrue(e.getMessage().contains("Enable legacy wrapping algorithms to use legacy key wrapping algorithm: kms"));
