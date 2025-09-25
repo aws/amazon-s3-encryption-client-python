@@ -3,23 +3,34 @@
     "description": "PHP v2 implementation of the S3EC Test Server framework",
     "type": "project",
     "license": "Apache-2.0",
+    "repositories": [
+        {
+            "type": "path",
+            "url": "./local-php-sdk",
+            "options": {
+                "symlink": true
+            }
+        }
+    ],
     "require": {
         "php": ">=7.4",
-        "aws/aws-sdk-php": "^3.356",
+        "aws/aws-sdk-php": "@dev",
         "ramsey/uuid": "^4.9"
     },
     "autoload": {
         "psr-4": {
-            "S3EC\\PhpV2Server\\": "src/",
-            "Aws\\": "local-php-sdk/src/"
+            "S3EC\\PhpV2Server\\": "src/"
         }
     },
     "scripts": {
         "start": [
-            "php -S 0.0.0.0:8093 src/index.php"
+            "php -S 0.0.0.0:8087 src/index.php"
         ]
     },
     "config": {
-        "optimize-autoloader": true
+        "optimize-autoloader": true,
+        "platform": {
+            "php": "8.1"
+        }
     }
 }
