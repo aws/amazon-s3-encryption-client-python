@@ -1,6 +1,6 @@
 {
-    "name": "aws/s3ec-php-v2-test-server",
-    "description": "PHP v2 implementation of the S3EC Test Server framework",
+    "name": "aws/s3ec-php-v3-test-server",
+    "description": "PHP v3 implementation of the S3EC Test Server framework",
     "type": "project",
     "license": "Apache-2.0",
     "repositories": [
@@ -24,7 +24,7 @@
     },
     "scripts": {
         "start": [
-            "php -S 0.0.0.0:8087 src/index.php"
+            "php -S 0.0.0.0:8093 src/index.php"
         ]
     },
     "config": {
