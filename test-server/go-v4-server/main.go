@@ -234,7 +234,7 @@ func (s *Server) putObject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Make the put object request using the encryption client
-	_, err = client.PutObject(encryptionContext, putInput)
+	result, err = client.PutObject(encryptionContext, putInput)
 	if err != nil {
 		s.createS3EncryptionClientError(w, fmt.Sprintf("Failed to put object: %v", err), http.StatusInternalServerError)
 		return
@@ -242,12 +242,20 @@ func (s *Server) putObject(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[Go V4] PutObject SUCCESS: Bucket=%s, Key=%s", bucket, key)
 
+	// Return an empty metadata list if result.Metadata is nil, not a list, or empty.
+	Metadata: func() []string {
+		if result.Metadata == nil || len(result.Metadata) == 0 {
+			return []string{}
+		}
+		return result.Metadata
+	}(),
+
 	// Return response
 	w.Header().Set("Content-Type", "application/json")
 	response := PutObjectOutput{
 		Bucket:   bucket,
 		Key:      key,
-		Metadata: []string{}, // Return empty metadata list as per the model
+		Metadata: Metadata,
 	}
 	json.NewEncoder(w).Encode(response)
 }
