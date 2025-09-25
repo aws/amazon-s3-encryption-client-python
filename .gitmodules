@@ -15,3 +15,4 @@
 [submodule "test-server/java-v3-server/s3ec-staging"]
 	path = test-server/java-v3-server/s3ec-staging
 	url = git@github.com:aws/private-amazon-s3-encryption-client-java-staging.git
+	branch = s3ec/transitional
