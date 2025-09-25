@@ -85,6 +85,24 @@ class InstructionFileMetadataStrategy implements MetadataStrategyInterface
             }
         }
 
+        // check if we are reading a V3 object
+        // if it is a V3 object some data is stored in the object metadata and some
+        // as in the instruction file
+        //= aws-encryption-sdk-specification/s3-encryption/data-format/content-metadata.md#v3
+        //# In the V3 format, the mapkeys "x-amz-c", "x-amz-d", and "x-amz-i" 
+        //# MUST be stored exclusively in the Object Metadata
+        if (!empty($envelope[MetadataEnvelope::ENCRYPTED_DATA_KEY_V3])) {
+            // this data is stored in the original object's metadata
+            // V3 added x-amz-c, x-amz-d, x-amz-i, x-amz-3, x-amz-w, x-amz-m, x-amz-t
+            // x-amz-c, x-amz-d, x-amz-i are strictly stored on the object metadata
+            // the rest are stored in the instruction file
+            $contentCipherV3 = $args['Metadata'][MetadataEnvelope::CONTENT_CIPHER_V3];
+            $keyCommitmentV3 = $args['Metadata'][MetadataEnvelope::KEY_COMMITMENT_V3];
+            $messageIdV3 = $args['Metadata'][MetadataEnvelope::MESSAGE_ID_V3];
+
+
+        }
+
         return $envelope;
     }
 }

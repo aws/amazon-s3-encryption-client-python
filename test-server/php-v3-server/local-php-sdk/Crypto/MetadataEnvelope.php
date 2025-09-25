@@ -24,9 +24,12 @@ class MetadataEnvelope implements ArrayAccess, IteratorAggregate, JsonSerializab
     const KEY_WRAP_ALGORITHM_HEADER = 'x-amz-wrap-alg';
     const ENCRYPTED_DATA_KEY_ALGORITHM_V3 = 'x-amz-w';
     const CONTENT_CRYPTO_SCHEME_HEADER = 'x-amz-cek-alg';
+    const CONTENT_CIPHER_V3 = 'x-amz-c';
     const CRYPTO_TAG_LENGTH_HEADER = 'x-amz-tag-len';
     const UNENCRYPTED_CONTENT_LENGTH_HEADER = 'x-amz-unencrypted-content-length';
     const ENCRYPTION_CONTEXT_V3 = 'x-amz-t';
+    const KEY_COMMITMENT_V3 = 'x-amz-d';
+    const MESSAGE_ID_V3 = 'x-amz-i';
 
     private static $constants = [];
 
