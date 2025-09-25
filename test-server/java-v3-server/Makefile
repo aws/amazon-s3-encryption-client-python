@@ -1,11 +1,17 @@
 # Makefile for S3 Encryption Client Testing
 
-.PHONY: start-server stop-server wait-for-server
+.PHONY: start-server stop-server wait-for-server build-s3ec
 
 PID_FILE := server.pid
 PORT := 8080
 
-start-server:
+build-s3ec:
+	@echo "Building S3EC from source..."
+	cd s3ec-staging && mvn --batch-mode -no-transfer-progress clean compile
+	cd s3ec-staging && mvn -B -ntp install -DskipTests
+	@echo "S3EC build completed."
+
+start-server: build-s3ec
 	@echo "Starting Java V3 server..."
 	AWS_ACCESS_KEY_ID="$$AWS_ACCESS_KEY_ID" \
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
