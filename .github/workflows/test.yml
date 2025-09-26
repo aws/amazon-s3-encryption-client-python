@@ -105,3 +105,9 @@ jobs:
           TEST_SERVER_S3_BUCKET: ${{ vars.TEST_SERVER_S3_BUCKET }}
           TEST_SERVER_KMS_KEY_ARN: ${{ vars.TEST_SERVER_KMS_KEY_ARN }}
           GRADLE_OPTS: "-Dorg.gradle.daemon=true -Dorg.gradle.parallel=true -Dorg.gradle.caching=true"
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: results
+          path: test-server/java-tests/build/reports/tests/integ
