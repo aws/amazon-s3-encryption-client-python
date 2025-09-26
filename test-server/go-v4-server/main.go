@@ -242,18 +242,12 @@ func (s *Server) putObject(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[Go V4] PutObject SUCCESS: Bucket=%s, Key=%s", bucket, key)
 
-	// Empty metadata list if result.Metadata is nil or empty
-	md := result.Metadata
-	if md == nil {
-		md = []string{}
-	}
-
 	// Return response
 	w.Header().Set("Content-Type", "application/json")
 	resp := PutObjectOutput{
 		Bucket:   bucket,
 		Key:      key,
-		Metadata: md,
+		Metadata: []string{}, // TODO: pass metadata back in response
 	}
 	json.NewEncoder(w).Encode(resp)
 }
