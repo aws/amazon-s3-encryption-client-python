@@ -107,6 +107,7 @@ jobs:
           GRADLE_OPTS: "-Dorg.gradle.daemon=true -Dorg.gradle.parallel=true -Dorg.gradle.caching=true"
 
       - name: Upload results
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: results
