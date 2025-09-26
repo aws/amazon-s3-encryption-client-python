@@ -7,7 +7,6 @@ PORT := 8085
 
 build/s3ec-server: 
 	brew install libmicrohttpd nlohmann-json ossp-uuid
-	git clone --recurse-submodules -b fire-egg-dev git@github.com:awslabs/aws-sdk-cpp-staging.git aws-sdk-cpp
 	cd  aws-sdk-cpp
 	mkdir -p build && cd build && cmake ..
 

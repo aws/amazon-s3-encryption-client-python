@@ -19,10 +19,19 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: true
           token: ${{ secrets.PAT_FOR_PRIVATE_RUBY }}
+
+      - name: Checkout CPP code
+        uses: actions/checkout@v5
+        with:
+          submodules: true
+          token: ${{ secrets.PAT_FOR_CPP }}
+          repository: awslabs/aws-sdk-cpp-staging
+          ref: fire-egg-dev
+          path: test-server/cpp-v3-server/aws-sdk-cpp/
       
       - name: Set up Python
         uses: actions/setup-python@v5
