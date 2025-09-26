@@ -35,6 +35,7 @@ public class TestUtils {
     public static final String PYTHON_V3 = "Python-V3";
     public static final String GO_V3 = "Go-V3";
     public static final String CPP_V2 = "CPP-V2";
+    public static final String CPP_V3 = "CPP-V3";
     public static final String NET_V2 = "NET-V2";
     public static final String NET_V3 = "NET-V3";
     public static final String PHP_V2 = "PHP-V2";
@@ -66,6 +67,7 @@ public class TestUtils {
         servers.put(NET_V2, new LanguageServerTarget(NET_V2, "8083"));
         servers.put(NET_V3, new LanguageServerTarget(NET_V3, "8084"));
         servers.put(CPP_V2, new LanguageServerTarget(CPP_V2, "8085"));
+        servers.put(CPP_V3, new LanguageServerTarget(CPP_V3, "8091"));
         servers.put(PHP_V2, new LanguageServerTarget(PHP_V2, "8087"));
         servers.put(PHP_V3, new LanguageServerTarget(PHP_V3, "8093"));
         servers.put(RUBY_V2, new LanguageServerTarget(RUBY_V2, "8086"));
