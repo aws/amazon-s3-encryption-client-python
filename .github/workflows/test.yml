@@ -37,9 +37,7 @@ jobs:
       - name: Set up PHP with Composer
         uses: shivammathur/setup-php@v2
         with:
-          coverage: xdebug
           php-version: '8.1' 
-          ini-values: xdebug.overload_var_dump=0, memory_limit=4G, phar.readonly=false
       
       - name: Install PHP V2 dependencies
         working-directory: ./test-server/php-v2-server
