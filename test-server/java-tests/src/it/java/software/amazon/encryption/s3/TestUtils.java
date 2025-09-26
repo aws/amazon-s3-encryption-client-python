@@ -30,18 +30,40 @@ import software.amazon.smithy.java.http.api.HttpRequest;
 import software.amazon.smithy.java.http.api.HttpResponse;
 
 public class TestUtils {
-    // Language constants
-    public static final String JAVA_V3 = "Java-V3";
+
+    // Version name constants
+    // Each language can have up to 3 versions:
+    // vN-Current: Currently released version. Does not support setting commitment policy.
+    // vN-Transition: Proposed feature release version. Supports reading messages encrypted with key commitment.
+    // vN+1: Proposed breaking release version. Supports reading/writing messages encrypted with key commitment.
+
+    public static final String JAVA_V3_CURRENT = "Java-V3-Current";
+    public static final String JAVA_V3_TRANSITION = "Java-V3-Transition";
+    public static final String JAVA_V4 = "Java-V4";
+
+    // No Python S3EC versions are released. Only test V3 as the "vN+1" version.
     public static final String PYTHON_V3 = "Python-V3";
-    public static final String GO_V3 = "Go-V3";
-    public static final String CPP_V2 = "CPP-V2";
-    public static final String NET_V2 = "NET-V2";
+
+    public static final String GO_V3_CURRENT = "Go-V3-Current";
+    public static final String GO_V3_TRANSITION = "Go-V3-Transition";
+    public static final String GO_V4 = "Go-V4";
+
+    public static final String NET_V2_CURRENT = "NET-V2-Current";
+    public static final String NET_V2_TRANSITION = "NET-V2-Transition";
     public static final String NET_V3 = "NET-V3";
-    public static final String PHP_V2 = "PHP-V2";
-    public static final String PHP_V3 = "PHP-V3";
-    public static final String RUBY_V2 = "Ruby-V2";
+
+    public static final String CPP_V2_CURRENT = "CPP-V2-Current";
+    public static final String CPP_V2_TRANSITION = "CPP-V2-Transition";
+    public static final String CPP_V3 = "CPP-V3";
+
+    public static final String RUBY_V2_CURRENT = "Ruby-V2-Current";
+    public static final String RUBY_V2_TRANSITION = "Ruby-V2-Transition";
     public static final String RUBY_V3 = "Ruby-V3";
-    
+
+    public static final String PHP_V2_CURRENT = "PHP-V2-Current";
+    public static final String PHP_V2_TRANSITION = "PHP-V2-Transition";
+    public static final String PHP_V3 = "PHP-V3";
+
     // Test configuration constants
     public static final String KMS_KEY_ARN = System.getenv("TEST_SERVER_KMS_KEY_ARN") != null ?
         System.getenv("TEST_SERVER_KMS_KEY_ARN") : "arn:aws:kms:us-west-2:370957321024:alias/S3EC-Test-Server-Github-KMS-Key";
@@ -51,25 +73,62 @@ public class TestUtils {
 
     // Sets of unsupported features by language
     public static final Set<String> ENCRYPTION_CONTEXT_ON_DECRYPT_UNSUPPORTED =
-        Set.of(GO_V3, PHP_V2, PHP_V3, NET_V2, NET_V3);
+        Set.of(GO_V3_CURRENT, PHP_V2_CURRENT, PHP_V3, NET_V2_CURRENT, NET_V3);
     
     public static final Set<String> ENCRYPTION_CONTEXT_ON_ENCRYPT_UNSUPPORTED =
-        Set.of(NET_V2, NET_V3);
+        Set.of(NET_V2_CURRENT, NET_V3);
+
+    public static final Set<String> CURRENT_VERSIONS =
+        Set.of(
+            JAVA_V3_CURRENT,
+            GO_V3_CURRENT,
+            NET_V2_CURRENT,
+            CPP_V2_CURRENT,
+            RUBY_V2_CURRENT,
+            PHP_V2_CURRENT
+        );
+
+    public static final Set<String> TRANSITION_VERSIONS =
+        Set.of(
+            JAVA_V3_TRANSITION,
+            GO_V3_TRANSITION,
+            NET_V2_TRANSITION,
+            CPP_V2_TRANSITION,
+            RUBY_V2_TRANSITION,
+            PHP_V2_TRANSITION
+        );
+
+    public static final Set<String> IMPROVED_VERSIONS =
+        Set.of(
+            JAVA_V4,
+            PYTHON_V3,
+            GO_V4,
+            NET_V3,
+            CPP_V3,
+            RUBY_V3,
+            PHP_V3
+        );
 
     private static final Map<String, LanguageServerTarget> serverMap;
 
     static {
         final Map<String, LanguageServerTarget> servers = new LinkedHashMap<>();
-        servers.put(JAVA_V3, new LanguageServerTarget(JAVA_V3, "8080"));
+        servers.put(JAVA_V3_CURRENT, new LanguageServerTarget(JAVA_V3_CURRENT, "8080"));
         servers.put(PYTHON_V3, new LanguageServerTarget(PYTHON_V3, "8081"));
-        servers.put(GO_V3, new LanguageServerTarget(GO_V3, "8082"));
-        servers.put(NET_V2, new LanguageServerTarget(NET_V2, "8083"));
+        servers.put(GO_V3_CURRENT, new LanguageServerTarget(GO_V3_CURRENT, "8082"));
+        servers.put(NET_V2_CURRENT, new LanguageServerTarget(NET_V2_CURRENT, "8083"));
         servers.put(NET_V3, new LanguageServerTarget(NET_V3, "8084"));
-        servers.put(CPP_V2, new LanguageServerTarget(CPP_V2, "8085"));
-        servers.put(PHP_V2, new LanguageServerTarget(PHP_V2, "8087"));
-        servers.put(PHP_V3, new LanguageServerTarget(PHP_V3, "8093"));
-        servers.put(RUBY_V2, new LanguageServerTarget(RUBY_V2, "8086"));
+        servers.put(CPP_V2_CURRENT, new LanguageServerTarget(CPP_V2_CURRENT, "8085"));
+        servers.put(RUBY_V2_CURRENT, new LanguageServerTarget(RUBY_V2_CURRENT, "8086"));
+        servers.put(PHP_V2_CURRENT, new LanguageServerTarget(PHP_V2_CURRENT, "8087"));
         servers.put(RUBY_V3, new LanguageServerTarget(RUBY_V3, "8092"));
+        servers.put(PHP_V3, new LanguageServerTarget(PHP_V3, "8093"));
+        servers.put(JAVA_V3_TRANSITION, new LanguageServerTarget(JAVA_V3_TRANSITION, "8094"));
+        servers.put(GO_V3_TRANSITION, new LanguageServerTarget(GO_V3_TRANSITION, "8095"));
+        servers.put(NET_V2_TRANSITION, new LanguageServerTarget(NET_V2_TRANSITION, "8096"));
+        servers.put(CPP_V2_TRANSITION, new LanguageServerTarget(CPP_V2_TRANSITION, "8097"));
+        servers.put(RUBY_V2_TRANSITION, new LanguageServerTarget(RUBY_V2_TRANSITION, "8098"));
+        servers.put(PHP_V2_TRANSITION, new LanguageServerTarget(PHP_V2_TRANSITION, "8099"));
 
         serverMap = filterServers(servers);
     }
@@ -219,6 +278,30 @@ public class TestUtils {
         return serverMap.values().stream()
             .map(LanguageServerTarget::getLanguageName)
             .map(Arguments::of);
+    }
+
+    /**
+     * Get stream of arguments for current version clients for testing.
+     */
+    public static Stream<Arguments> currentClientsForTest() {
+        return clientsForTest()
+            .filter(arg -> CURRENT_VERSIONS.contains(arg.get()[0]));
+    }
+
+    /**
+     * Get stream of arguments for transition version clients for testing.
+     */
+    public static Stream<Arguments> transitionClientsForTest() {
+        return clientsForTest()
+            .filter(arg -> TRANSITION_VERSIONS.contains(arg.get()[0]));
+    }
+
+    /**
+     * Get stream of arguments for improved version clients for testing.
+     */
+    public static Stream<Arguments> improvedClientsForTest() {
+        return clientsForTest()
+            .filter(arg -> IMPROVED_VERSIONS.contains(arg.get()[0]));
     }
 
     /**
