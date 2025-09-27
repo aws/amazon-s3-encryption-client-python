@@ -7,14 +7,13 @@ PORT := 8085
 
 build/s3ec-server: 
 	brew install libmicrohttpd nlohmann-json ossp-uuid
-	cd  aws-sdk-cpp
 	pwd
-	ls
-	ls crt
-	ls crt/aws-crt-cpp/
-	ls crt/aws-crt-cpp/crt/aws-c-common/
-	ls crt/aws-crt-cpp/crt/aws-c-common/cmake/
-	ls crt/aws-crt-cpp/crt/aws-c-common/cmake/AwsFindPackage.cmake
+	ls aws-sdk-cpp/
+	ls aws-sdk-cpp/crt
+	ls aws-sdk-cpp/crt/aws-crt-cpp/
+	ls aws-sdk-cpp/crt/aws-crt-cpp/crt/aws-c-common/
+	ls aws-sdk-cpp/crt/aws-crt-cpp/crt/aws-c-common/cmake/
+	ls aws-sdk-cpp/crt/aws-crt-cpp/crt/aws-c-common/cmake/AwsFindPackage.cmake
 	mkdir -p build && cd build && cmake ..
 
 start-server: | build/s3ec-server
