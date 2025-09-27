@@ -27,7 +27,7 @@ jobs:
       - name: Checkout CPP code
         uses: actions/checkout@v5
         with:
-          submodules: true
+          submodules: recursive
           token: ${{ secrets.PAT_FOR_CPP }}
           repository: awslabs/aws-sdk-cpp-staging
           ref: fire-egg-dev
