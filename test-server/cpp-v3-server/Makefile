@@ -9,6 +9,7 @@ build/s3ec-server:
 	brew install libmicrohttpd nlohmann-json ossp-uuid
 	cd  aws-sdk-cpp
 	pwd
+	ls
 	ls crt
 	ls crt/aws-crt-cpp/
 	ls crt/aws-crt-cpp/crt/aws-c-common/
