@@ -3,17 +3,10 @@
 .PHONY: start-server stop-server wait-for-server
 
 PID_FILE := server.pid
-PORT := 8085
+PORT := 8091
 
 build/s3ec-server: 
 	brew install libmicrohttpd nlohmann-json ossp-uuid
-	pwd
-	ls aws-sdk-cpp/
-	ls aws-sdk-cpp/crt
-	ls aws-sdk-cpp/crt/aws-crt-cpp/
-	ls aws-sdk-cpp/crt/aws-crt-cpp/crt/aws-c-common/
-	ls aws-sdk-cpp/crt/aws-crt-cpp/crt/aws-c-common/cmake/
-	ls aws-sdk-cpp/crt/aws-crt-cpp/crt/aws-c-common/cmake/AwsFindPackage.cmake
 	mkdir -p build && cd build && cmake ..
 
 start-server: | build/s3ec-server
