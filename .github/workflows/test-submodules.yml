@@ -1,0 +1,222 @@
+name: Test Submodules for Breaking Changes
+
+on:
+  workflow_dispatch:
+    inputs:
+      submodule_name:
+        description: 'Submodule to test (leave empty to test all)'
+        required: false
+        type: choice
+        options:
+          - 'all'
+          - 'ruby-v2-server/local-ruby-sdk'
+          - 'ruby-v3-server/local-ruby-sdk'
+          - 'php-v2-server/local-php-sdk'
+          - 'php-v3-server/local-php-sdk'
+          - 'java-v3-transition-server/s3ec-staging'
+          - 'java-v4-server/s3ec-staging'
+        default: 'all'
+      ruby_v2_branch:
+        description: 'Branch for ruby-v2-server/local-ruby-sdk (default: main)'
+        required: false
+        type: string
+        default: ''
+      ruby_v3_branch:
+        description: 'Branch for ruby-v3-server/local-ruby-sdk (default: main)'
+        required: false
+        type: string
+        default: ''
+      php_v2_branch:
+        description: 'Branch for php-v2-server/local-php-sdk (default: s3ec/transitional)'
+        required: false
+        type: string
+        default: ''
+      php_v3_branch:
+        description: 'Branch for php-v3-server/local-php-sdk (default: s3ec/improved)'
+        required: false
+        type: string
+        default: ''
+      java_v3_transition_branch:
+        description: 'Branch for java-v3-transition-server/s3ec-staging (default: s3ec/transitional)'
+        required: false
+        type: string
+        default: ''
+      java_v4_branch:
+        description: 'Branch for java-v4-server/s3ec-staging (default: s3ec/improved)'
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  test-submodules:
+    runs-on: macos-13
+    permissions:
+      id-token: write
+      contents: read
+        
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          token: ${{ secrets.PAT_FOR_PRIVATE_RUBY }}
+          
+      - name: Update submodules to target branches
+        run: |
+          echo "## Submodule Update Summary" >> $GITHUB_STEP_SUMMARY
+          echo "Updating submodules to target branches..." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Determine target branches for each submodule (use input or default from .gitmodules)
+          ruby_v2_target="${{ inputs.ruby_v2_branch }}"
+          if [ -z "$ruby_v2_target" ]; then
+            ruby_v2_target="main"  # Default branch for ruby submodules (no branch specified in .gitmodules)
+          fi
+          
+          ruby_v3_target="${{ inputs.ruby_v3_branch }}"
+          if [ -z "$ruby_v3_target" ]; then
+            ruby_v3_target="main"  # Default branch for ruby submodules (no branch specified in .gitmodules)
+          fi
+          
+          php_v2_target="${{ inputs.php_v2_branch }}"
+          if [ -z "$php_v2_target" ]; then
+            php_v2_target="s3ec/transitional"  # Default from .gitmodules
+          fi
+          
+          php_v3_target="${{ inputs.php_v3_branch }}"
+          if [ -z "$php_v3_target" ]; then
+            php_v3_target="s3ec/improved"  # Default from .gitmodules
+          fi
+          
+          java_v3_transition_target="${{ inputs.java_v3_transition_branch }}"
+          if [ -z "$java_v3_transition_target" ]; then
+            java_v3_transition_target="s3ec/transitional"  # Default from .gitmodules
+          fi
+          
+          java_v4_target="${{ inputs.java_v4_branch }}"
+          if [ -z "$java_v4_target" ]; then
+            java_v4_target="s3ec/improved"  # Default from .gitmodules
+          fi
+          
+          # Function to update a submodule if it should be tested
+          update_submodule() {
+            local submodule_name="$1"
+            local submodule_path="$2"
+            local target_branch="$3"
+            
+            if [ "${{ inputs.submodule_name }}" = "all" ] || [ "${{ inputs.submodule_name }}" = "$submodule_name" ]; then
+              echo "Updating $submodule_name to branch: $target_branch"
+              echo "- **$submodule_name**: $target_branch" >> $GITHUB_STEP_SUMMARY
+              
+              cd "$submodule_path"
+              current_commit=$(git rev-parse HEAD)
+              echo "  Current commit: $current_commit"
+              
+              git fetch origin "$target_branch"
+              git checkout "$target_branch"
+              git pull origin "$target_branch"
+              new_commit=$(git rev-parse HEAD)
+              echo "  Updated to commit: $new_commit"
+              
+              cd - > /dev/null
+            fi
+          }
+          
+          # Update submodules based on selection
+          update_submodule "ruby-v2-server/local-ruby-sdk" "test-server/ruby-v2-server/local-ruby-sdk" "$ruby_v2_target"
+          update_submodule "ruby-v3-server/local-ruby-sdk" "test-server/ruby-v3-server/local-ruby-sdk" "$ruby_v3_target"
+          update_submodule "php-v2-server/local-php-sdk" "test-server/php-v2-server/local-php-sdk" "$php_v2_target"
+          update_submodule "php-v3-server/local-php-sdk" "test-server/php-v3-server/local-php-sdk" "$php_v3_target"
+          update_submodule "java-v3-transition-server/s3ec-staging" "test-server/java-v3-transition-server/s3ec-staging" "$java_v3_transition_target"
+          update_submodule "java-v4-server/s3ec-staging" "test-server/java-v4-server/s3ec-staging" "$java_v4_target"
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All specified submodules have been updated." >> $GITHUB_STEP_SUMMARY
+          
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4'
+      
+      - name: Set up PHP with Composer
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+      
+      - name: Install PHP V2 dependencies
+        working-directory: ./test-server/php-v2-server
+        shell: bash
+        run: composer install
+
+      - name: Install PHP V3 dependencies
+        working-directory: ./test-server/php-v3-server
+        shell: bash
+        run: composer install
+      
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.25
+
+      # Cache uv dependencies
+      - name: Cache uv dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+          
+      - name: Install Uv
+        run: pip install uv
+      
+      # Cache Gradle dependencies and build outputs
+      - name: Cache Gradle packages
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            test-server/java-v3-server/.gradle
+            test-server/java-tests/.gradle
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+          
+      - name: Install dependencies
+        run: make install
+        
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::370957321024:role/S3EC-Python-Github-test-role
+          aws-region: us-west-2
+          
+      - name: Run unit tests
+        run: make test-unit
+        
+      - name: Run integration tests
+        run: make test-integration
+        env:
+          CI_S3_BUCKET: ${{ vars.CI_S3_BUCKET }}
+          CI_KMS_KEY_ALIAS: ${{ vars.CI_KMS_KEY_ALIAS }}
+          
+      - name: Run test-server tests
+        run: cd test-server && make ci
+        env:
+          AWS_REGION: us-west-2
+          TEST_SERVER_S3_BUCKET: ${{ vars.TEST_SERVER_S3_BUCKET }}
+          TEST_SERVER_KMS_KEY_ARN: ${{ vars.TEST_SERVER_KMS_KEY_ARN }}
+          GRADLE_OPTS: "-Dorg.gradle.daemon=true -Dorg.gradle.parallel=true -Dorg.gradle.caching=true"
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: submodule-test-results
+          path: test-server/java-tests/build/reports/tests/integ
