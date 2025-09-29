@@ -123,12 +123,13 @@ public class TestUtils {
         servers.put(PHP_V2_CURRENT, new LanguageServerTarget(PHP_V2_CURRENT, "8087"));
         servers.put(RUBY_V3, new LanguageServerTarget(RUBY_V3, "8092"));
         servers.put(PHP_V3, new LanguageServerTarget(PHP_V3, "8093"));
-        servers.put(JAVA_V3_TRANSITION, new LanguageServerTarget(JAVA_V3_TRANSITION, "8094"));
-        servers.put(GO_V3_TRANSITION, new LanguageServerTarget(GO_V3_TRANSITION, "8095"));
-        servers.put(NET_V2_TRANSITION, new LanguageServerTarget(NET_V2_TRANSITION, "8096"));
-        servers.put(CPP_V2_TRANSITION, new LanguageServerTarget(CPP_V2_TRANSITION, "8097"));
-        servers.put(RUBY_V2_TRANSITION, new LanguageServerTarget(RUBY_V2_TRANSITION, "8098"));
-        servers.put(PHP_V2_TRANSITION, new LanguageServerTarget(PHP_V2_TRANSITION, "8099"));
+        // TODO: Create and add transition servers
+        // servers.put(JAVA_V3_TRANSITION, new LanguageServerTarget(JAVA_V3_TRANSITION, "8094"));
+        // servers.put(GO_V3_TRANSITION, new LanguageServerTarget(GO_V3_TRANSITION, "8095"));
+        // servers.put(NET_V2_TRANSITION, new LanguageServerTarget(NET_V2_TRANSITION, "8096"));
+        // servers.put(CPP_V2_TRANSITION, new LanguageServerTarget(CPP_V2_TRANSITION, "8097"));
+        // servers.put(RUBY_V2_TRANSITION, new LanguageServerTarget(RUBY_V2_TRANSITION, "8098"));
+        // servers.put(PHP_V2_TRANSITION, new LanguageServerTarget(PHP_V2_TRANSITION, "8099"));
 
         serverMap = filterServers(servers);
     }
