@@ -234,7 +234,7 @@ func (s *Server) putObject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Make the put object request using the encryption client
-	result, err = client.PutObject(encryptionContext, putInput)
+	_, err = client.PutObject(encryptionContext, putInput)
 	if err != nil {
 		s.createS3EncryptionClientError(w, fmt.Sprintf("Failed to put object: %v", err), http.StatusInternalServerError)
 		return
