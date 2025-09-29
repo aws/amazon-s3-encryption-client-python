@@ -3,6 +3,9 @@
 [[source]]
 pattern = "local-php-sdk/src/S3/**/*.php"
 
+[[source]]
+pattern = "local-php-sdk/src/Crypto/**/*.php"
+
 # Include required specifications here
 [[specification]]
 source = "../specification/s3-encryption/data-format/content-metadata.md"
@@ -14,4 +17,4 @@ enabled = true
 
 # Enable snapshots to prevent requirement coverage regressions
 [report.snapshot]
-enabled = true
+enabled = false

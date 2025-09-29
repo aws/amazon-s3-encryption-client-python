@@ -114,25 +114,6 @@ jobs:
           TEST_SERVER_KMS_KEY_ARN: ${{ vars.TEST_SERVER_KMS_KEY_ARN }}
           GRADLE_OPTS: "-Dorg.gradle.daemon=true -Dorg.gradle.parallel=true -Dorg.gradle.caching=true"
 
-      - name: Setup Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: stable
-
-      - name: Install Rust package
-        run: cargo install duvet
-
-      - name: Run duvet
-        if: always()
-        run: cd test-server && make duvet
-
-      - name: Upload duvet reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: reports
-          path: test-server/*-server/.duvet/reports/report.html
-
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4

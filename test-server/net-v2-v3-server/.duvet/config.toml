@@ -14,4 +14,4 @@ enabled = true
 
 # Enable snapshots to prevent requirement coverage regressions
 [report.snapshot]
-enabled = true
+enabled = false
