@@ -107,7 +107,7 @@ wait-for-port:
 			exit 1; \
 		fi; \
 		echo "Waiting for $$PORT to start ($$i/$(TIMEOUT))..."; \
-		sleep 1; \
+		sleep 3; \
 	done
 
 # Here are some helpful curl commands
