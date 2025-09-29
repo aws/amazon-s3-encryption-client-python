@@ -77,7 +77,10 @@ function handleGetObject($params)
             ob_end_clean();
         }
         if (strpos($e->getMessage(), "@SecurityProfile=V2") !== false) {
-            return S3EncryptionClientError($e->getMessage() . " " . "Enable legacy wrapping algorithms to use legacy key wrapping algorithm: kms");
+            return S3EncryptionClientError($e->getMessage());
+        }
+        if (strpos($e->getMessage(), "Provided encryption context does not match information retrieved from S3") !== false) {
+            return S3EncryptionClientError($e->getMessage());
         } else {
             return GenericServerError("Server argument: " . $e->getMessage(), 500);
         }
