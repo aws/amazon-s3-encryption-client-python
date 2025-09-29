@@ -3,7 +3,7 @@
 .PHONY: start-server stop-server wait-for-server
 
 PID_FILE := server.pid
-PORT := 8091
+PORT := 8097
 
 build/s3ec-server: 
 	brew install libmicrohttpd nlohmann-json ossp-uuid
