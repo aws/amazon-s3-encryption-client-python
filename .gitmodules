@@ -12,3 +12,6 @@
 	path = test-server/php-v3-server/local-php-sdk
 	url = git@github.com:aws/private-aws-sdk-php-staging.git
 	branch = s3ec/improved
+[submodule "test-server/specification"]
+	path = test-server/specification
+	url = git@github.com:awslabs/private-aws-encryption-sdk-specification-staging.git
