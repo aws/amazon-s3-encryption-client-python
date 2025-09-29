@@ -12,3 +12,7 @@
 	path = test-server/php-v3-server/local-php-sdk
 	url = git@github.com:aws/private-aws-sdk-php-staging.git
 	branch = s3ec/improved
+[submodule "test-server/java-v3-transition-server/s3ec-staging"]
+	path = test-server/java-v3-transition-server/s3ec-staging
+	url = git@github.com:aws/private-amazon-s3-encryption-client-java-staging.git
+	branch = s3ec/transitional
