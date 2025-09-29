@@ -77,7 +77,7 @@ jobs:
       
       # Cache Gradle dependencies and build outputs
       - name: Cache Gradle packages
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             test-server/java-v3-server/.gradle
