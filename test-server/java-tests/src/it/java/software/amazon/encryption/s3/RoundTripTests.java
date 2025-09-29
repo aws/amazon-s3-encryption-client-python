@@ -178,7 +178,7 @@ public class RoundTripTests {
                     .build());
             fail("Expected exception!");
         } catch (S3EncryptionClientError e) {
-            if (decLang.getLanguageName().equals(RUBY_V3) || decLang.getLanguageName().equals(RUBY_V2)) {
+            if (decLang.getLanguageName().equals(RUBY_V3) || decLang.getLanguageName().equals(RUBY_V2_CURRENT)) {
                 assertTrue(e.getMessage().contains("Value of encryption context from envelope does not match the provided encryption context"));
             } else {
                 assertTrue(e.getMessage().contains("Provided encryption context does not match information retrieved from S3"));
@@ -234,7 +234,7 @@ public class RoundTripTests {
               .build());
             fail("Expected exception!");
         } catch (S3EncryptionClientError e) {
-            if (decLang.getLanguageName().equals(RUBY_V3) || decLang.getLanguageName().equals(RUBY_V2)) {
+            if (decLang.getLanguageName().equals(RUBY_V3) || decLang.getLanguageName().equals(RUBY_V2_CURRENT)) {
               assertTrue(e.getMessage().contains("Value of encryption context from envelope does not match the provided encryption context"));
             } else {
               assertTrue(e.getMessage().contains("Provided encryption context does not match information retrieved from S3"));
@@ -374,11 +374,12 @@ public class RoundTripTests {
               .build());
             fail("Expected Exception");
         } catch (S3EncryptionClientError e) {
-            if (language.equals(NET_V3) || language.equals(NET_V2) || language.equals(CPP_V2) || language.equals(CPP_V3)) {
+            if (language.equals(NET_V3) || language.equals(NET_V2_CURRENT) 
+            || language.equals(CPP_V2_CURRENT) || language.equals(CPP_V2_TRANSITION) || language.equals(CPP_V3)) {
               assertTrue(e.getMessage().contains(
                 "The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration"
               ));
-            } else if (language.equals(RUBY_V3) || language.equals(RUBY_V2)) {
+            } else if (language.equals(RUBY_V3) || language.equals(RUBY_V2_CURRENT)) {
               assertTrue(e.getMessage().contains("The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration security_profile = :v2. Retry with :v2_and_legacy or re-encrypt the object."));
             } else {
               assertTrue(e.getMessage().contains("Enable legacy wrapping algorithms to use legacy key wrapping algorithm: kms"));

@@ -31,7 +31,7 @@ jobs:
           token: ${{ secrets.PAT_FOR_CPP }}
           repository: awslabs/aws-sdk-cpp-staging
           ref: fire-egg-dev
-          path: test-server/cpp-v3-server/aws-sdk-cpp/
+          path: test-server/cpp-v2-transition-server/aws-sdk-cpp/
       
       - name: Set up Python
         uses: actions/setup-python@v5
