@@ -32,6 +32,7 @@ import software.amazon.smithy.java.http.api.HttpResponse;
 public class TestUtils {
     // Language constants
     public static final String JAVA_V3 = "Java-V3";
+    public static final String JAVA_V3_TRANSITION = "Java-V3-Transition";
     public static final String PYTHON_V3 = "Python-V3";
     public static final String GO_V3 = "Go-V3";
     public static final String CPP_V2 = "CPP-V2";
@@ -70,6 +71,7 @@ public class TestUtils {
         servers.put(PHP_V3, new LanguageServerTarget(PHP_V3, "8093"));
         servers.put(RUBY_V2, new LanguageServerTarget(RUBY_V2, "8086"));
         servers.put(RUBY_V3, new LanguageServerTarget(RUBY_V3, "8092"));
+        servers.put(JAVA_V3_TRANSITION, new LanguageServerTarget(JAVA_V3_TRANSITION, "8094"));
 
         serverMap = filterServers(servers);
     }
