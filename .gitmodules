@@ -20,3 +20,6 @@
 	path = test-server/java-v4-server/s3ec-staging
 	url = git@github.com:aws/private-amazon-s3-encryption-client-java-staging.git
 	branch = s3ec/improved
+[submodule "test-server/specification"]
+	path = test-server/specification
+	url = git@github.com:awslabs/private-aws-encryption-sdk-specification-staging.git
