@@ -33,6 +33,7 @@ public class TestUtils {
     // Language constants
     public static final String JAVA_V3 = "Java-V3";
     public static final String JAVA_V3_TRANSITION = "Java-V3-Transition";
+    public static final String JAVA_V4 = "Java-V4";
     public static final String PYTHON_V3 = "Python-V3";
     public static final String GO_V3 = "Go-V3";
     public static final String CPP_V2 = "CPP-V2";
@@ -62,6 +63,7 @@ public class TestUtils {
     static {
         final Map<String, LanguageServerTarget> servers = new LinkedHashMap<>();
         servers.put(JAVA_V3, new LanguageServerTarget(JAVA_V3, "8080"));
+        servers.put(JAVA_V4, new LanguageServerTarget(JAVA_V4, "8090"));
         servers.put(PYTHON_V3, new LanguageServerTarget(PYTHON_V3, "8081"));
         servers.put(GO_V3, new LanguageServerTarget(GO_V3, "8082"));
         servers.put(NET_V2, new LanguageServerTarget(NET_V2, "8083"));
