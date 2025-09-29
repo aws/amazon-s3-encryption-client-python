@@ -1,0 +1,12 @@
+target = "../specification/s3-encryption/data-format/metadata-strategy.md#v1-v2-instruction-files"
+
+# V1/V2 Instruction Files
+#
+# In the V1/V2 message format, all of the content metadata MUST be stored in the Instruction File.
+
+[[spec]]
+level = "MUST"
+quote = '''
+In the V1/V2 message format, all of the content metadata MUST be stored in the Instruction File.
+'''
+
