@@ -15,3 +15,6 @@
 [submodule "test-server/go-v4-server/local-go-s3ec"]
 	path = test-server/go-v4-server/local-go-s3ec
 	url = https://github.com/aws/private-amazon-s3-encryption-client-go-staging
+[submodule "test-server/specification"]
+	path = test-server/specification
+	url = git@github.com:awslabs/private-aws-encryption-sdk-specification-staging.git
