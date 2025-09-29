@@ -273,7 +273,7 @@ int main() {
                        &request_handler, NULL, MHD_OPTION_END);
 
   if (!daemon) {
-    fprintf(stderr, "Failed to start server on port %d\n", port]);
+    fprintf(stderr, "Failed to start server on port %d\n", port);
     Aws::ShutdownAPI(options);
     return 1;
   }
