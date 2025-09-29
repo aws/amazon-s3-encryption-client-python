@@ -51,7 +51,7 @@ public class TestUtils {
 
     // Sets of unsupported features by language
     public static final Set<String> ENCRYPTION_CONTEXT_ON_DECRYPT_UNSUPPORTED =
-        Set.of(GO_V3, PHP_V2, PHP_V3, NET_V2, NET_V3);
+        Set.of(GO_V3, PHP_V2, NET_V2, NET_V3);
     
     public static final Set<String> ENCRYPTION_CONTEXT_ON_ENCRYPT_UNSUPPORTED =
         Set.of(NET_V2, NET_V3);
@@ -61,15 +61,15 @@ public class TestUtils {
     static {
         final Map<String, LanguageServerTarget> servers = new LinkedHashMap<>();
         servers.put(JAVA_V3, new LanguageServerTarget(JAVA_V3, "8080"));
-        //servers.put(PYTHON_V3, new LanguageServerTarget(PYTHON_V3, "8081"));
-        //servers.put(GO_V3, new LanguageServerTarget(GO_V3, "8082"));
-        //servers.put(NET_V2, new LanguageServerTarget(NET_V2, "8083"));
-        //servers.put(NET_V3, new LanguageServerTarget(NET_V3, "8084"));
-        //servers.put(CPP_V2, new LanguageServerTarget(CPP_V2, "8085"));
+        servers.put(PYTHON_V3, new LanguageServerTarget(PYTHON_V3, "8081"));
+        servers.put(GO_V3, new LanguageServerTarget(GO_V3, "8082"));
+        servers.put(NET_V2, new LanguageServerTarget(NET_V2, "8083"));
+        servers.put(NET_V3, new LanguageServerTarget(NET_V3, "8084"));
+        servers.put(CPP_V2, new LanguageServerTarget(CPP_V2, "8085"));
         servers.put(PHP_V2, new LanguageServerTarget(PHP_V2, "8087"));
         servers.put(PHP_V3, new LanguageServerTarget(PHP_V3, "8093"));
-        //servers.put(RUBY_V2, new LanguageServerTarget(RUBY_V2, "8086"));
-        //servers.put(RUBY_V3, new LanguageServerTarget(RUBY_V3, "8092"));
+        servers.put(RUBY_V2, new LanguageServerTarget(RUBY_V2, "8086"));
+        servers.put(RUBY_V3, new LanguageServerTarget(RUBY_V3, "8092"));
 
         serverMap = filterServers(servers);
     }
