@@ -28,3 +28,9 @@ stop-server:
 
 wait-for-server:
 	$(MAKE) -C .. wait-for-port PORT=$(PORT)
+
+duvet:
+	duvet report
+
+view-report-mac:
+	open .duvet/reports/report.html
