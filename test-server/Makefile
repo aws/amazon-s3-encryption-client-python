@@ -9,6 +9,7 @@ all: start-servers run-tests
 ci: start-servers run-tests stop-servers
 
 SERVER_DIRS := $(shell find . -maxdepth 1 -type d -name '*-server' | sed 's|^\./||' | sort)
+# SERVER_DIRS := cpp-v3-server
 
 START_SERVER_TARGETS := $(addprefix start-, $(SERVER_DIRS))
 WAIT_SERVER_TARGETS := $(addprefix wait-, $(SERVER_DIRS))
@@ -56,7 +57,7 @@ run-tests:
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
-	./gradlew --build-cache --parallel integ -Dtest.filter.servers="$(FILTER)"
+	./gradlew --build-cache --info --parallel integ -Dtest.filter.servers="$(FILTER)"
 	@echo "Tests completed successfully"
 
 # Stop the servers
@@ -106,7 +107,7 @@ wait-for-port:
 			exit 1; \
 		fi; \
 		echo "Waiting for $$PORT to start ($$i/$(TIMEOUT))..."; \
-		sleep 1; \
+		sleep 3; \
 	done
 
 # Here are some helpful curl commands

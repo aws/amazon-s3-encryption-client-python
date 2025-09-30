@@ -3,12 +3,10 @@
 .PHONY: start-server stop-server wait-for-server
 
 PID_FILE := server.pid
-PORT := 8085
+PORT := 8097
 
 build/s3ec-server: 
 	brew install libmicrohttpd nlohmann-json ossp-uuid
-	git clone --recurse-submodules https://github.com/aws/aws-sdk-cpp.git
-	cd aws-sdk-cpp
 	mkdir -p build && cd build && cmake ..
 
 start-server: | build/s3ec-server
