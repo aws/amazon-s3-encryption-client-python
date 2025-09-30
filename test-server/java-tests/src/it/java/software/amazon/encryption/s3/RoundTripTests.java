@@ -380,7 +380,7 @@ public class RoundTripTests {
               ));
             } else if (language.equals(RUBY_V3) || language.equals(RUBY_V2_CURRENT)) {
               assertTrue(e.getMessage().contains("The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration security_profile = :v2. Retry with :v2_and_legacy or re-encrypt the object."));
-            } else if (language.equals(PHP_V2) || language.equals(PHP_V3)) {
+            } else if (language.equals(PHP_V2_CURRENT) || language.equals(PHP_V3)) {
               assertTrue(e.getMessage().contains("The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration @SecurityProfile=V2. Retry with V2_AND_LEGACY enabled or reencrypt the object."));;
             } else {
               assertTrue(e.getMessage().contains("Enable legacy wrapping algorithms to use legacy key wrapping algorithm: kms"));
