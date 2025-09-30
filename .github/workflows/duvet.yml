@@ -30,7 +30,7 @@ jobs:
         run: cd /tmp/duvet && cargo xtask build
 
       - name: Install duvet
-        run: cd /tmp/duvet && cargo install --path .
+        run: cd /tmp/duvet && cargo install --path ./duvet
 
       - name: Run duvet
         if: always()

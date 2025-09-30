@@ -71,7 +71,7 @@ Until the latest version of Duvet is release
 ```bash
   git clone https://github.com/awslabs/duvet.git /tmp/duvet
   cd /tmp/duvet && cargo xtask build
-  cargo install --path .
+  cargo install --path ./duvet
 ```
 
 Inside each test server directory there is a `.duvet` directory that contains a `config.toml`.
