@@ -119,3 +119,10 @@ test-create-client:
 		-H "User-Agent: smithy-java/0.0.3 ua/2.1 os/macos#15.5 lang/java#23.0.2" \
 		-d '{"config":{"enableLegacyUnauthenticatedModes":false,"enableDelayedAuthenticationMode":false,"enableLegacyWrappingAlgorithms":false,"keyMaterial":{"kmsKeyId":"arn:aws:kms:us-west-2:370957321024:alias/S3EC-Test-Server-Github-KMS-Key"}}}' \
 		http://localhost:$(PORT)/client
+
+duvet:
+	@echo "Running duvet reports..."
+	@for dir in $(SERVER_DIRS); do \
+		echo "Running make duvet in $$dir..."; \
+		$(MAKE) -C $$dir duvet; \
+	done
