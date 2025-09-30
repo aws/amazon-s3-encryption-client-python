@@ -267,7 +267,8 @@ MHD_Result request_handler(void *cls, struct MHD_Connection *connection,
 int main() {
   Aws::SDKOptions options;
   Aws::InitAPI(options);
-  int port = 8085;
+  int port = 8097;
+
   struct MHD_Daemon *daemon =
       MHD_start_daemon(MHD_USE_SELECT_INTERNALLY, port, NULL, NULL,
                        &request_handler, NULL, MHD_OPTION_END);

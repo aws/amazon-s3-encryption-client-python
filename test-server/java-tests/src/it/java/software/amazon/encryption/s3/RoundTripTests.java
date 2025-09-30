@@ -374,7 +374,8 @@ public class RoundTripTests {
               .build());
             fail("Expected Exception");
         } catch (S3EncryptionClientError e) {
-            if (language.equals(NET_V3) || language.equals(NET_V2_CURRENT) || language.equals(CPP_V2_CURRENT)) {
+            if (language.equals(NET_V3) || language.equals(NET_V2_CURRENT) 
+            || language.equals(CPP_V2_CURRENT) || language.equals(CPP_V2_TRANSITION) || language.equals(CPP_V3)) {
               assertTrue(e.getMessage().contains(
                 "The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration"
               ));
