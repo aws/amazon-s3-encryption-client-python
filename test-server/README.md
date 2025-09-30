@@ -62,3 +62,21 @@ Performance optimizations have been implemented to speed up the test-server CI p
 - JVM optimizations
 
 For detailed information about the optimizations, see [OPTIMIZATION.md](./OPTIMIZATION.md).
+
+### Duvet
+
+To check duvet you need to install Rust.
+Then run `cargo install duvet`.
+
+Inside each test server directory there is a `.duvet` directory that contains a `config.toml`.
+This is the best way to configure `duvet`.
+
+You can adjust the source pattern or comment style as needed.
+Examples:
+
+- `ruby-v2-server/.duvet/config.toml`
+- `php-v2-server/.duvet/config.toml`
+
+There are Makefile targets,
+but you can just run `make duvet` or `duvet report` inside a server directory to run the report.
+To view the report `make view-report-mac` or `open .duvet/reports/report.html`
