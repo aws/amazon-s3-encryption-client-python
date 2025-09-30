@@ -26,11 +26,11 @@ jobs:
       - name: Clone duvet repository  
         run: git clone https://github.com/awslabs/duvet.git /tmp/duvet
 
-      - name: Build duvet assets
-        run: cd /tmp/duvet && cargo xtask build
-
-      - name: Install duvet
-        run: cd /tmp/duvet && cargo install --path ./duvet
+      - name: Build and install duvet
+        run: |
+          cd /tmp/duvet
+          cargo xtask build
+          cargo install --path ./duvet
 
       - name: Run duvet
         if: always()
