@@ -46,7 +46,6 @@ jobs:
       - name: Set up PHP with Composer
         uses: shivammathur/setup-php@v2
         env:
-          runner: self-hosted
           fail-fast: true
         with:
           php-version: '8.1' 
