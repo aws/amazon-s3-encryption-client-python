@@ -44,7 +44,7 @@ jobs:
           ruby-version: '3.4'
       
       - name: Set up PHP with Composer
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@verbose
         env:
           fail-fast: true
         with:
