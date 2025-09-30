@@ -66,7 +66,13 @@ For detailed information about the optimizations, see [OPTIMIZATION.md](./OPTIMI
 ### Duvet
 
 To check duvet you need to install Rust.
-Then run `cargo install duvet`.
+Until the latest version of Duvet is release
+
+```bash
+  git clone https://github.com/awslabs/duvet.git /tmp/duvet
+  cd /tmp/duvet && cargo xtask build
+  cargo install --path .
+```
 
 Inside each test server directory there is a `.duvet` directory that contains a `config.toml`.
 This is the best way to configure `duvet`.

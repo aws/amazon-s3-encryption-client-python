@@ -23,8 +23,14 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Install Rust package
-        run: cargo install duvet
+      - name: Clone duvet repository  
+        run: git clone https://github.com/awslabs/duvet.git /tmp/duvet
+
+      - name: Build duvet assets
+        run: cd /tmp/duvet && cargo xtask build
+
+      - name: Install duvet
+        run: cd /tmp/duvet && cargo install --path .
 
       - name: Run duvet
         if: always()
