@@ -64,7 +64,7 @@ public class RoundTripTests {
         String encS3ECId = encClientOutput.getClientId();
         encClient.putObject(PutObjectInput.builder()
           .clientID(encS3ECId)
-          .key(objectKey)
+          .key(appendTestSuffix(objectKey))
           .bucket(BUCKET)
           .body(ByteBuffer.wrap(input.getBytes(StandardCharsets.UTF_8)))
           .build());
@@ -77,7 +77,7 @@ public class RoundTripTests {
         GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
           .clientID(decS3ECId)
           .bucket(BUCKET)
-          .key(objectKey)
+          .key(appendTestSuffix(objectKey))
           .build());
 
         if (!input.equals(StandardCharsets.UTF_8.decode(output.getBody()).toString())) {
@@ -109,7 +109,7 @@ public class RoundTripTests {
 
         encClient.putObject(PutObjectInput.builder()
           .clientID(encS3ECId)
-          .key(objectKey)
+          .key(appendTestSuffix(objectKey))
           .bucket(BUCKET)
           .metadata(mdAsList)
           .body(ByteBuffer.wrap(input.getBytes(StandardCharsets.UTF_8)))
@@ -123,7 +123,7 @@ public class RoundTripTests {
         GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
           .clientID(decS3ECId)
           .bucket(BUCKET)
-          .key(objectKey)
+          .key(appendTestSuffix(objectKey))
           .metadata(mdAsList)
           .build());
 
@@ -159,7 +159,7 @@ public class RoundTripTests {
 
         encClient.putObject(PutObjectInput.builder()
                 .clientID(encS3ECId)
-                .key(objectKey)
+                .key(appendTestSuffix(objectKey))
                 .bucket(BUCKET)
                 .metadata(mdAsList)
                 .body(ByteBuffer.wrap(input.getBytes(StandardCharsets.UTF_8)))
@@ -174,7 +174,7 @@ public class RoundTripTests {
             decClient.getObject(GetObjectInput.builder()
                     .clientID(decS3ECId)
                     .bucket(BUCKET)
-                    .key(objectKey)
+                    .key(appendTestSuffix(objectKey))
                     .build());
             fail("Expected exception!");
         } catch (S3EncryptionClientError e) {
@@ -210,7 +210,7 @@ public class RoundTripTests {
 
         encClient.putObject(PutObjectInput.builder()
           .clientID(encS3ECId)
-          .key(objectKey)
+          .key(appendTestSuffix(objectKey))
           .bucket(BUCKET)
           .metadata(mdAsList)
           .body(ByteBuffer.wrap(input.getBytes(StandardCharsets.UTF_8)))
@@ -229,7 +229,7 @@ public class RoundTripTests {
             decClient.getObject(GetObjectInput.builder()
               .clientID(decS3ECId)
               .bucket(BUCKET)
-              .key(objectKey)
+              .key(appendTestSuffix(objectKey))
               .metadata(incorrectMdAsList)
               .build());
             fail("Expected exception!");
@@ -278,7 +278,7 @@ public class RoundTripTests {
         GetObjectOutput output = client.getObject(GetObjectInput.builder()
           .clientID(s3ECId)
           .bucket(BUCKET)
-          .key(objectKey)
+          .key(appendTestSuffix(objectKey))
           .build());
 
         assertEquals(input, new String(output.getBody().array()));
@@ -326,7 +326,7 @@ public class RoundTripTests {
         GetObjectOutput output = client.getObject(GetObjectInput.builder()
           .clientID(s3ECId)
           .bucket(BUCKET)
-          .key(objectKey)
+          .key(appendTestSuffix(objectKey))
           .metadata(metadataMapToList(encCtx))
           .build());
 
@@ -370,7 +370,7 @@ public class RoundTripTests {
             client.getObject(GetObjectInput.builder()
               .clientID(s3ECId)
               .bucket(BUCKET)
-              .key(objectKey)
+              .key(appendTestSuffix(objectKey))
               .build());
             fail("Expected Exception");
         } catch (S3EncryptionClientError e) {
