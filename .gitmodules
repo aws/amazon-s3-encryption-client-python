@@ -15,6 +15,15 @@
 [submodule "test-server/go-v4-server/local-go-s3ec"]
 	path = test-server/go-v4-server/local-go-s3ec
 	url = https://github.com/aws/private-amazon-s3-encryption-client-go-staging
+[submodule "test-server/java-v3-transition-server/s3ec-staging"]
+	path = test-server/java-v3-transition-server/s3ec-staging
+	url = git@github.com:aws/private-amazon-s3-encryption-client-java-staging.git
+	branch = s3ec/transitional
+[submodule "test-server/java-v4-server/s3ec-staging"]
+	path = test-server/java-v4-server/s3ec-staging
+	url = git@github.com:aws/private-amazon-s3-encryption-client-java-staging.git
+	branch = s3ec/improved
 [submodule "test-server/specification"]
 	path = test-server/specification
 	url = git@github.com:awslabs/private-aws-encryption-sdk-specification-staging.git
+	branch = fire-egg-staging
