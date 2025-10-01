@@ -12,17 +12,26 @@ on:
 
 jobs:
   test:
-    runs-on: macos-13
+    runs-on: macos-14
     permissions:
       id-token: write
       contents: read
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: true
           token: ${{ secrets.PAT_FOR_PRIVATE_RUBY }}
+
+      - name: Checkout CPP code
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          token: ${{ secrets.PAT_FOR_CPP }}
+          repository: awslabs/aws-sdk-cpp-staging
+          ref: fire-egg-dev
+          path: test-server/cpp-v2-transition-server/aws-sdk-cpp/
       
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -35,9 +44,9 @@ jobs:
           ruby-version: '3.4'
       
       - name: Set up PHP with Composer
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@verbose
         with:
-          php-version: '8.1' 
+          php-version: '8.1'
       
       - name: Install PHP V2 dependencies
         working-directory: ./test-server/php-v2-server
@@ -68,14 +77,14 @@ jobs:
       
       # Cache Gradle dependencies and build outputs
       - name: Cache Gradle packages
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
             test-server/java-v3-server/.gradle
             test-server/java-tests/.gradle
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          key: ${{ runner.os }}-gradle-${{ hashFiles('test-server/java-v3-server/**/*.gradle*', 'test-server/java-tests/**/gradle-wrapper.properties', 'test-server/java-tests/**/*.gradle*', 'test-server/java-v3-server/**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
           

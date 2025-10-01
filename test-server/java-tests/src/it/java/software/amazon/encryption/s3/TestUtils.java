@@ -17,6 +17,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.joda.time.DateTime;
+import org.joda.time.format.DateTimeFormat;
 import org.junit.jupiter.params.provider.Arguments;
 import com.amazonaws.regions.Region;
 import com.amazonaws.regions.Regions;
@@ -124,13 +126,13 @@ public class TestUtils {
         servers.put(RUBY_V3, new LanguageServerTarget(RUBY_V3, "8092"));
         servers.put(PHP_V3, new LanguageServerTarget(PHP_V3, "8093"));
         // TODO: Create and add transition servers
-        // servers.put(JAVA_V3_TRANSITION, new LanguageServerTarget(JAVA_V3_TRANSITION, "8094"));
+        servers.put(JAVA_V3_TRANSITION, new LanguageServerTarget(JAVA_V3_TRANSITION, "8094"));
         // servers.put(GO_V3_TRANSITION, new LanguageServerTarget(GO_V3_TRANSITION, "8095"));
         // servers.put(NET_V2_TRANSITION, new LanguageServerTarget(NET_V2_TRANSITION, "8096"));
-        // servers.put(CPP_V2_TRANSITION, new LanguageServerTarget(CPP_V2_TRANSITION, "8097"));
+        servers.put(CPP_V2_TRANSITION, new LanguageServerTarget(CPP_V2_TRANSITION, "8097"));
         // servers.put(RUBY_V2_TRANSITION, new LanguageServerTarget(RUBY_V2_TRANSITION, "8098"));
         // servers.put(PHP_V2_TRANSITION, new LanguageServerTarget(PHP_V2_TRANSITION, "8099"));
-
+        servers.put(JAVA_V4, new LanguageServerTarget(JAVA_V4, "8090"));
         serverMap = filterServers(servers);
     }
 
@@ -315,5 +317,18 @@ public class TestUtils {
                 .flatMap(t2 -> Stream.of(
                     Arguments.of(t1, t2)
                 )));
+    }
+
+    /**
+     * For a given string, append a suffix to distinguish it from
+     * simultaneous test runs.
+     * @param s The string to append the suffix to
+     * @return The string with the suffix appended
+     */
+    public static String appendTestSuffix(final String s) {
+        StringBuilder stringBuilder = new StringBuilder(s);
+        stringBuilder.append(DateTimeFormat.forPattern("-yyMMdd-hhmmss-").print(new DateTime()));
+        stringBuilder.append((int) (Math.random() * 100000));
+        return stringBuilder.toString();
     }
 }

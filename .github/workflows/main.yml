@@ -23,3 +23,8 @@ jobs:
     with:
       python-version: ${{ inputs.python-version || '3.11' }}
     secrets: inherit
+
+  run-duvet:
+    name: Run Duvet
+    uses: ./.github/workflows/duvet.yml
+    secrets: inherit
