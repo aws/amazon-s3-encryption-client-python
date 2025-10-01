@@ -52,7 +52,7 @@ public class RoundTripTests {
     @MethodSource("software.amazon.encryption.s3.TestUtils#crossLanguageClients")
     public void crossLanguageTestKms(LanguageServerTarget encLang, LanguageServerTarget decLang) {
         S3ECTestServerClient encClient = testServerClientFor(encLang);
-        final String objectKey = "cross-lang-test-key-" + encLang;
+        final String objectKey = appendTestSuffix("cross-lang-test-key-" + encLang);
         final String input = "simple-test-input";
         KeyMaterial kmsKeyArn = KeyMaterial.builder()
           .kmsKeyId(KMS_KEY_ARN)
@@ -92,7 +92,7 @@ public class RoundTripTests {
             return;
         }
         S3ECTestServerClient encClient = testServerClientFor(encLang);
-        final String objectKey = "cross-lang-test-key-kms-ec-" + encLang;
+        final String objectKey = appendTestSuffix("cross-lang-test-key-kms-ec-" + encLang);
         final String input = "simple-test-input";
         final Map<String, String> encCtx = new HashMap<>();
         encCtx.put("user-defined-enc-ctx-key", "user-defined-enc-ctx-value");
@@ -142,7 +142,7 @@ public class RoundTripTests {
             return;
         }
         S3ECTestServerClient encClient = testServerClientFor(encLang);
-        final String objectKey = "cross-lang-test-key-kms-ec-subset-fails" + encLang;
+        final String objectKey = appendTestSuffix("cross-lang-test-key-kms-ec-subset-fails" + encLang);
         final String input = "simple-test-input";
         final Map<String, String> encCtx = new HashMap<>();
         encCtx.put("user-defined-enc-ctx-key", "user-defined-enc-ctx-value");
@@ -193,7 +193,7 @@ public class RoundTripTests {
             return;
         }
         S3ECTestServerClient encClient = testServerClientFor(encLang);
-        final String objectKey = "cross-lang-test-key-kms-ec-incorrect-fails" + encLang;
+        final String objectKey = appendTestSuffix("cross-lang-test-key-kms-ec-incorrect-fails" + encLang);
         final String input = "simple-test-input";
         final Map<String, String> encCtx = new HashMap<>();
         encCtx.put("user-defined-enc-ctx-key", "user-defined-enc-ctx-value");
@@ -246,7 +246,7 @@ public class RoundTripTests {
     @MethodSource("software.amazon.encryption.s3.TestUtils#clientsForTest")
     public void kmsV1Legacy(String language) {
         S3ECTestServerClient client = testServerClientFor(getServerMap().get(language));
-        final String objectKey = "test-key-kms-v1-" + language;
+        final String objectKey = appendTestSuffix("test-key-kms-v1-" + language);
         final String input = "simple-test-input";
         KeyMaterial kmsKeyArn = KeyMaterial.builder()
           .kmsKeyId(KMS_KEY_ARN)
@@ -288,7 +288,7 @@ public class RoundTripTests {
     @MethodSource("software.amazon.encryption.s3.TestUtils#clientsForTest")
     public void kmsV1LegacyWithEncCtx(String language) {
         S3ECTestServerClient client = testServerClientFor(getServerMap().get(language));
-        final String objectKey = "test-key-kms-v1-with-enc-ctx-" + language;
+        final String objectKey = appendTestSuffix("test-key-kms-v1-with-enc-ctx-" + language);
         final String input = "simple-test-input";
         KeyMaterial kmsKeyArn = KeyMaterial.builder()
           .kmsKeyId(KMS_KEY_ARN)
@@ -337,7 +337,7 @@ public class RoundTripTests {
     @MethodSource("software.amazon.encryption.s3.TestUtils#clientsForTest")
     public void kmsV1LegacyFailsWhenLegacyDisabled(String language) {
         S3ECTestServerClient client = testServerClientFor(getServerMap().get(language));
-        final String objectKey = "test-key-kms-v1-fails-disabled" + language;
+        final String objectKey = appendTestSuffix("test-key-kms-v1-fails-disabled" + language);
         final String input = "simple-test-input";
         KeyMaterial kmsKeyArn = KeyMaterial.builder()
           .kmsKeyId(KMS_KEY_ARN)

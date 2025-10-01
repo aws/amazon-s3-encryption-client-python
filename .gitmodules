@@ -23,3 +23,4 @@
 [submodule "test-server/specification"]
 	path = test-server/specification
 	url = git@github.com:awslabs/private-aws-encryption-sdk-specification-staging.git
+	branch = fire-egg-staging
