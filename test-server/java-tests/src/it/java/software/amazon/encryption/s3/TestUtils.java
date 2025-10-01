@@ -17,6 +17,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.joda.time.DateTime;
+import org.joda.time.format.DateTimeFormat;
 import org.junit.jupiter.params.provider.Arguments;
 import com.amazonaws.regions.Region;
 import com.amazonaws.regions.Regions;
@@ -315,5 +317,18 @@ public class TestUtils {
                 .flatMap(t2 -> Stream.of(
                     Arguments.of(t1, t2)
                 )));
+    }
+
+    /**
+     * For a given string, append a suffix to distinguish it from
+     * simultaneous test runs.
+     * @param s The string to append the suffix to
+     * @return The string with the suffix appended
+     */
+    public static String appendTestSuffix(final String s) {
+        StringBuilder stringBuilder = new StringBuilder(s);
+        stringBuilder.append(DateTimeFormat.forPattern("-yyMMdd-hhmmss-").print(new DateTime()));
+        stringBuilder.append((int) (Math.random() * 100000));
+        return stringBuilder.toString();
     }
 }
