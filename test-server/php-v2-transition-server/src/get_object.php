@@ -25,7 +25,7 @@ function handleGetObject($params)
     $key = $params['key'] ?? null;
 
     if (is_null($bucket) || is_null($key)) {
-        return GenericServerError("Invalidb bucket or key parameters", 400);
+        return GenericServerError("Invalid bucket or key parameters", 400);
     }
 
     $s3ec = $s3ecClientTuple["encryptionClient"];
@@ -79,7 +79,7 @@ function handleGetObject($params)
         if (strpos($e->getMessage(), "@SecurityProfile=V2") !== false) {
             return S3EncryptionClientError($e->getMessage() . " " . "Enable legacy wrapping algorithms to use legacy key wrapping algorithm: kms");
         } else {
-            return GenericServerError("Server argument: " . $e->getMessage(), 500);
+            return GenericServerError("Server error: " . $e->getMessage(), 500);
         }
     }
 }

@@ -5,7 +5,7 @@
  * Tests MUST NOT expect this error in negative tests.
  * 
  * @param string $message The error message to include in the response
- * @param int $code The error code to set in the reponse
+ * @param int $code The error code to set in the response
  * @return string JSON-encoded error response
  */
 function GenericServerError($message, $code = 500)

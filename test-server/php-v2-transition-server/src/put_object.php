@@ -28,7 +28,7 @@ function handlePutObject($params)
     $key = $params['key'] ?? null;
 
     if (is_null($bucket) || is_null($key)) {
-        return GenericServerError("Invalidb bucket or key parameters", 400);
+        return GenericServerError("Invalid bucket or key parameters", 400);
     }
 
     $s3ec = $s3ecClientTuple["encryptionClient"];
@@ -65,7 +65,7 @@ function handlePutObject($params)
         ]);
 
     } catch (InvalidArgumentException $e) {
-        return S3EncryptionClientError("Invalid arguement: " . $e->getMessage());
+        return S3EncryptionClientError("Invalid argument: " . $e->getMessage());
     } catch (Exception $e) {
         return GenericServerError("Server error: " . $e->getMessage());
     }
