@@ -6,6 +6,15 @@ pattern = "local-php-sdk/src/S3/**/*.php"
 [[source]]
 pattern = "local-php-sdk/src/Crypto/**/*.php"
 
+[[source]]
+pattern = "local-php-sdk/tests/S3/**/*.php"
+
+[[source]]
+pattern = "local-php-sdk/tests/Crypto/**/*.php"
+
+[[source]]
+pattern = "local-php-sdk/compliance_exceptions/*.txt"
+
 # Include required specifications here
 [[specification]]
 source = "../specification/s3-encryption/data-format/content-metadata.md"
