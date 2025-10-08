@@ -32,7 +32,7 @@ class ClientManager
 
     # Create the S3 encryption client
     s3_client = Aws::S3::Client.new(region: 'us-west-2')
-    encryption_client = Aws::S3::EncryptionV2::Client.new(
+    encryption_client = Aws::S3::EncryptionV3::Client.new(
       client: s3_client,
       **encryption_config
     )
