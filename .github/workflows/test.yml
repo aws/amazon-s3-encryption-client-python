@@ -5,8 +5,8 @@ on:
     # Optional inputs that can be provided when calling this workflow
     inputs:
       python-version:
-        description: 'Python version to use'
-        default: '3.11'
+        description: "Python version to use"
+        default: "3.11"
         required: false
         type: string
 
@@ -16,7 +16,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -32,7 +32,7 @@ jobs:
           repository: awslabs/aws-sdk-cpp-staging
           ref: fire-egg-dev
           path: test-server/cpp-v2-transition-server/aws-sdk-cpp/
-      
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -41,15 +41,20 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.4'
-      
+          ruby-version: "3.4"
+
       - name: Set up PHP with Composer
         uses: shivammathur/setup-php@verbose
         with:
-          php-version: '8.1'
-      
+          php-version: "8.1"
+
       - name: Install PHP V2 dependencies
         working-directory: ./test-server/php-v2-server
+        shell: bash
+        run: composer install
+
+      - name: Install PHP V2 Transition dependencies
+        working-directory: ./test-server/php-v2-transition-server
         shell: bash
         run: composer install
 
@@ -57,7 +62,7 @@ jobs:
         working-directory: ./test-server/php-v3-server
         shell: bash
         run: composer install
-      
+
       - name: Install Go
         uses: actions/setup-go@v5
         with:
@@ -71,10 +76,10 @@ jobs:
           key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
           restore-keys: |
             ${{ runner.os }}-uv-
-          
+
       - name: Install Uv
         run: pip install uv
-      
+
       # Cache Gradle dependencies and build outputs
       - name: Cache Gradle packages
         uses: actions/cache@v4
@@ -87,25 +92,25 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('test-server/java-v3-server/**/*.gradle*', 'test-server/java-tests/**/gradle-wrapper.properties', 'test-server/java-tests/**/*.gradle*', 'test-server/java-v3-server/**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
-          
+
       - name: Install dependencies
         run: make install
-        
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::370957321024:role/S3EC-Python-Github-test-role
           aws-region: us-west-2
-          
+
       - name: Run unit tests
         run: make test-unit
-        
+
       - name: Run integration tests
         run: make test-integration
         env:
           CI_S3_BUCKET: ${{ vars.CI_S3_BUCKET }}
           CI_KMS_KEY_ALIAS: ${{ vars.CI_KMS_KEY_ALIAS }}
-          
+
       - name: Run test-server tests
         run: cd test-server && make ci
         env:
