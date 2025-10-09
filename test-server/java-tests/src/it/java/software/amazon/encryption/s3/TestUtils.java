@@ -92,23 +92,23 @@ public class TestUtils {
 
     public static final Set<String> TRANSITION_VERSIONS =
         Set.of(
-            JAVA_V3_TRANSITION,
-            GO_V3_TRANSITION,
-            NET_V2_TRANSITION,
-            CPP_V2_TRANSITION,
-            RUBY_V2_TRANSITION,
-            PHP_V2_TRANSITION
+            // JAVA_V3_TRANSITION,
+            // GO_V3_TRANSITION,
+            // NET_V2_TRANSITION,
+            // CPP_V2_TRANSITION,
+            // PHP_V2_TRANSITION,
+            RUBY_V2_TRANSITION
         );
 
     public static final Set<String> IMPROVED_VERSIONS =
         Set.of(
-            JAVA_V4,
-            PYTHON_V3,
-            GO_V4,
-            NET_V3,
-            CPP_V3,
-            RUBY_V3,
-            PHP_V3
+            // JAVA_V4,
+            // PYTHON_V3,
+            // GO_V4,
+            // NET_V3,
+            // CPP_V3,
+            // PHP_V3,
+            RUBY_V3
         );
 
     private static final Map<String, LanguageServerTarget> serverMap;

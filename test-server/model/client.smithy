@@ -39,5 +39,6 @@ structure S3ECConfig {
     enableDelayedAuthenticationMode: Boolean = false,
     enableLegacyWrappingAlgorithms: Boolean = false,
     setBufferSize: Long,
-    keyMaterial: KeyMaterial
+    keyMaterial: KeyMaterial,
+    commitmentPolicy: CommitmentPolicy,
 }

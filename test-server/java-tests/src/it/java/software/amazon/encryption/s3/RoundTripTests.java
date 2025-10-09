@@ -23,6 +23,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import software.amazon.encryption.s3.client.S3ECTestServerClient;
+import software.amazon.encryption.s3.model.CommitmentPolicy;
 import software.amazon.encryption.s3.model.CreateClientInput;
 import software.amazon.encryption.s3.model.CreateClientOutput;
 import software.amazon.encryption.s3.model.GetObjectInput;
@@ -58,8 +59,12 @@ public class RoundTripTests {
           .kmsKeyId(KMS_KEY_ARN)
           .build();
         CreateClientOutput encClientOutput = encClient.createClient(CreateClientInput.builder()
-          .config(S3ECConfig.builder()
-            .keyMaterial(kmsKeyArn).build())
+          .config(S3ECConfig
+            .builder()
+            .keyMaterial(kmsKeyArn)
+            .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .build()
+          )
           .build());
         String encS3ECId = encClientOutput.getClientId();
         encClient.putObject(PutObjectInput.builder()
@@ -71,7 +76,10 @@ public class RoundTripTests {
         S3ECTestServerClient decClient = testServerClientFor(decLang);
         CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
           .config(S3ECConfig.builder()
-            .keyMaterial(kmsKeyArn).build())
+            .keyMaterial(kmsKeyArn)
+            .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .build()
+          )
           .build());
         String decS3ECId = decClientOutput.getClientId();
         GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
@@ -103,7 +111,10 @@ public class RoundTripTests {
           .build();
         CreateClientOutput encClientOutput = encClient.createClient(CreateClientInput.builder()
           .config(S3ECConfig.builder()
-            .keyMaterial(kmsKeyArn).build())
+            .keyMaterial(kmsKeyArn)
+            .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .build()
+          )
           .build());
         String encS3ECId = encClientOutput.getClientId();
 
@@ -117,7 +128,10 @@ public class RoundTripTests {
         S3ECTestServerClient decClient = testServerClientFor(decLang);
         CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
           .config(S3ECConfig.builder()
-            .keyMaterial(kmsKeyArn).build())
+            .keyMaterial(kmsKeyArn)
+            .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .build()
+          )
           .build());
         String decS3ECId = decClientOutput.getClientId();
         GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
@@ -167,7 +181,10 @@ public class RoundTripTests {
         S3ECTestServerClient decClient = testServerClientFor(decLang);
         CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
-                        .keyMaterial(kmsKeyArn).build())
+                  .keyMaterial(kmsKeyArn)
+                  .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+                  .build()
+                )
                 .build());
         String decS3ECId = decClientOutput.getClientId();
         try {
@@ -204,7 +221,10 @@ public class RoundTripTests {
           .build();
         CreateClientOutput encClientOutput = encClient.createClient(CreateClientInput.builder()
           .config(S3ECConfig.builder()
-            .keyMaterial(kmsKeyArn).build())
+            .keyMaterial(kmsKeyArn)
+            .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .build()
+          )
           .build());
         String encS3ECId = encClientOutput.getClientId();
 
@@ -218,7 +238,10 @@ public class RoundTripTests {
         S3ECTestServerClient decClient = testServerClientFor(decLang);
         CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
           .config(S3ECConfig.builder()
-            .keyMaterial(kmsKeyArn).build())
+            .keyMaterial(kmsKeyArn)
+            .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .build()
+          )
           .build());
         String decS3ECId = decClientOutput.getClientId();
 
@@ -255,6 +278,7 @@ public class RoundTripTests {
           .config(S3ECConfig.builder()
             .enableLegacyWrappingAlgorithms(true)
             .keyMaterial(kmsKeyArn)
+            .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
             .build())
           .build());
         String s3ECId = output1.getClientId();
@@ -297,6 +321,7 @@ public class RoundTripTests {
           .config(S3ECConfig.builder()
             .enableLegacyWrappingAlgorithms(true)
             .keyMaterial(kmsKeyArn)
+            .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
             .build())
           .build());
         String s3ECId = output1.getClientId();
@@ -346,6 +371,7 @@ public class RoundTripTests {
           .config(S3ECConfig.builder()
             .enableLegacyWrappingAlgorithms(false)
             .keyMaterial(kmsKeyArn)
+            .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
             .build())
           .build());
         String s3ECId = output1.getClientId();
