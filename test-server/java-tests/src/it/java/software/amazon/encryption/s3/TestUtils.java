@@ -310,11 +310,63 @@ public class TestUtils {
             .map(Arguments::of);
     }
 
+    /**
+     * These functions provide a stream of arguments for parameterized tests.
+     * @return Stream of Arguments containing pairs of LanguageServerTarget for encryption and decryption
+     */
     public static Stream<Arguments> encryptImprovedDecryptImproved() {
         return improvedClientsForTest()
-            .flatMap(t1 -> improvedClientsForTest()
-                .flatMap(t2 -> Stream.of(
-                    Arguments.of(t1.get()[0], t2.get()[0])
+            .flatMap(encrypt -> improvedClientsForTest()
+                .flatMap(decrypt -> Stream.of(
+                    Arguments.of(encrypt.get()[0], decrypt.get()[0])
+                )));
+    }
+
+    public static Stream<Arguments> encryptImprovedDecryptTransition() {
+        return improvedClientsForTest()
+            .flatMap(encrypt -> transitionClientsForTest()
+                .flatMap(decrypt -> Stream.of(
+                    Arguments.of(encrypt.get()[0], decrypt.get()[0])
+                )));
+    }
+
+    public static Stream<Arguments> encryptTransitionDecryptImproved() {
+        return transitionClientsForTest()
+            .flatMap(encrypt -> improvedClientsForTest()
+                .flatMap(decrypt -> Stream.of(
+                    Arguments.of(encrypt.get()[0], decrypt.get()[0])
+                )));
+    }
+
+    public static Stream<Arguments> encryptImprovedDecryptCurrent() {
+        return improvedClientsForTest()
+            .flatMap(encrypt -> currentClientsForTest()
+                .flatMap(decrypt -> Stream.of(
+                    Arguments.of(encrypt.get()[0], decrypt.get()[0])
+                )));
+    }
+
+    public static Stream<Arguments> encryptCurrentDecryptImproved() {
+        return currentClientsForTest()
+            .flatMap(encrypt -> improvedClientsForTest()
+                .flatMap(decrypt -> Stream.of(
+                    Arguments.of(encrypt.get()[0], decrypt.get()[0])
+                )));
+    }
+
+    public static Stream<Arguments> encryptTransitionDecryptCurrent() {
+        return transitionClientsForTest()
+            .flatMap(encrypt -> currentClientsForTest()
+                .flatMap(decrypt -> Stream.of(
+                    Arguments.of(encrypt.get()[0], decrypt.get()[0])
+                )));
+    }
+
+    public static Stream<Arguments> encryptCurrentDecryptTransition() {
+        return currentClientsForTest()
+            .flatMap(encrypt -> transitionClientsForTest()
+                .flatMap(decrypt -> Stream.of(
+                    Arguments.of(encrypt.get()[0], decrypt.get()[0])
                 )));
     }
 
