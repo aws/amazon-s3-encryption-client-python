@@ -279,7 +279,6 @@ public class TestUtils {
      */
     public static Stream<Arguments> clientsForTest() {
         return serverMap.values().stream()
-            .map(LanguageServerTarget::getLanguageName)
             .map(Arguments::of);
     }
 
@@ -287,24 +286,35 @@ public class TestUtils {
      * Get stream of arguments for current version clients for testing.
      */
     public static Stream<Arguments> currentClientsForTest() {
-        return clientsForTest()
-            .filter(arg -> CURRENT_VERSIONS.contains(arg.get()[0]));
+        return serverMap.values().stream()
+            .filter(target -> CURRENT_VERSIONS.contains(target.getLanguageName()))
+            .map(Arguments::of);
     }
 
     /**
      * Get stream of arguments for transition version clients for testing.
      */
     public static Stream<Arguments> transitionClientsForTest() {
-        return clientsForTest()
-            .filter(arg -> TRANSITION_VERSIONS.contains(arg.get()[0]));
+        return serverMap.values().stream()
+            .filter(target -> TRANSITION_VERSIONS.contains(target.getLanguageName()))
+            .map(Arguments::of);
     }
 
     /**
      * Get stream of arguments for improved version clients for testing.
      */
     public static Stream<Arguments> improvedClientsForTest() {
-        return clientsForTest()
-            .filter(arg -> IMPROVED_VERSIONS.contains(arg.get()[0]));
+        return serverMap.values().stream()
+            .filter(target -> IMPROVED_VERSIONS.contains(target.getLanguageName()))
+            .map(Arguments::of);
+    }
+
+    public static Stream<Arguments> encryptImprovedDecryptImproved() {
+        return improvedClientsForTest()
+            .flatMap(t1 -> improvedClientsForTest()
+                .flatMap(t2 -> Stream.of(
+                    Arguments.of(t1.get()[0], t2.get()[0])
+                )));
     }
 
     /**
