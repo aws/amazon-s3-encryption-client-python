@@ -167,7 +167,9 @@ public class RoundTripTests {
                 .build();
         CreateClientOutput encClientOutput = encClient.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
-                        .keyMaterial(kmsKeyArn).build())
+                        .keyMaterial(kmsKeyArn)
+                        .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+                        .build())
                 .build());
         String encS3ECId = encClientOutput.getClientId();
 
