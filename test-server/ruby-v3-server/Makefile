@@ -16,7 +16,7 @@ start-server:
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
-	bundle exec ruby app.rb & echo $$! > $(PID_FILE)
+	PORT=$(PORT) bundle exec ruby app.rb & echo $$! > $(PID_FILE)
 	@echo "Ruby V3 server starting..."
 
 stop-server:
