@@ -25,14 +25,30 @@ class ClientManager
       kms_key_id: kms_key_id,
       kms_client: @kms_client,
       key_wrap_schema: :kms_context,
-      content_encryption_schema: :aes_gcm_no_padding,
+      # content_encryption_schema: :aes_gcm_no_padding,
       # Set security profile based on legacy wrapping algorithms setting
-      security_profile: enable_legacy_wrapping ? :v2_and_legacy : :v2
-    }
+      # security_profile: enable_legacy_wrapping ? :v2_and_legacy : :v2
+    }.tap do |hash|
+      if !config['commitmentPolicy'].nil?
+        hash[:commitment_policy] = case config['commitmentPolicy']
+          when 'FORBID_ENCRYPT_ALLOW_DECRYPT'
+            :forbid_encrypt_allow_decrypt
+          when 'REQUIRE_ENCRYPT_ALLOW_DECRYPT'
+            :require_encrypt_allow_decrypt
+          when 'REQUIRE_ENCRYPT_REQUIRE_DECRYPT'
+            :require_encrypt_require_decrypt
+          else
+            raise "Unsupported commitment_policy " + config['commitmentPolicy']
+          end
+      end
+      if !config['enableLegacyWrappingAlgorithms'].nil? || !config['enableLegacyUnauthenticatedModes'].nil?
+        hash[:legacy_modes] = config['enableLegacyWrappingAlgorithms'] || config['enableLegacyUnauthenticatedModes']
+      end
+    end
 
     # Create the S3 encryption client
     s3_client = Aws::S3::Client.new(region: 'us-west-2')
-    encryption_client = Aws::S3::EncryptionV2::Client.new(
+    encryption_client = Aws::S3::EncryptionV3::Client.new(
       client: s3_client,
       **encryption_config
     )
