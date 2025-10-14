@@ -31,6 +31,7 @@ import software.amazon.encryption.s3.client.S3ECTestServerClient;
 import software.amazon.encryption.s3.model.CommitmentPolicy;
 import software.amazon.encryption.s3.model.CreateClientInput;
 import software.amazon.encryption.s3.model.CreateClientOutput;
+import software.amazon.encryption.s3.model.EncryptionAlgorithm;
 import software.amazon.encryption.s3.model.GetObjectInput;
 import software.amazon.encryption.s3.model.GetObjectOutput;
 import software.amazon.encryption.s3.model.KeyMaterial;
@@ -77,7 +78,7 @@ class GCMTests {
         .build());
         String S3ECId = clientOutput.getClientId();
         
-        TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBase + language.getLanguageName()), crossLanguageObjects);
+        TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBase + language.getLanguageName()), crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF);
     }
     
     @Order(2)
@@ -93,7 +94,7 @@ class GCMTests {
         .build());
         String S3ECId = clientOutput.getClientId();
         
-        TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBase + language.getLanguageName()), crossLanguageObjects);
+        TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBase + language.getLanguageName()), crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF);
     }
 
     @Order(3)
@@ -109,7 +110,7 @@ class GCMTests {
         .build());
         String S3ECId = clientOutput.getClientId();
         
-        TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBase + language.getLanguageName()), crossLanguageObjects);
+        TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBase + language.getLanguageName()), crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF);
     }
     
     @Order(10)
@@ -126,7 +127,7 @@ class GCMTests {
         .build());
         String S3ECId = clientOutput.getClientId();
         
-        TestUtils.Decrypt(client, S3ECId, crossLanguageObjects);
+        TestUtils.Decrypt(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF);
     }
     
     @Order(11)
@@ -143,7 +144,7 @@ class GCMTests {
         .build());
         String S3ECId = clientOutput.getClientId();
         
-        TestUtils.Decrypt(client, S3ECId, crossLanguageObjects);
+        TestUtils.Decrypt(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF);
     }
 
     @Order(12)
@@ -160,7 +161,7 @@ class GCMTests {
         .build());
         String S3ECId = clientOutput.getClientId();
         
-        TestUtils.Decrypt(client, S3ECId, crossLanguageObjects);
+        TestUtils.Decrypt(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF);
     }
     
     @Order(13)
@@ -177,7 +178,7 @@ class GCMTests {
         .build());
         String S3ECId = clientOutput.getClientId();
         
-        TestUtils.Decrypt(client, S3ECId, crossLanguageObjects);
+        TestUtils.Decrypt(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF);
     }
     
     @Order(14)
@@ -194,7 +195,7 @@ class GCMTests {
         .build());
         String S3ECId = clientOutput.getClientId();
         
-        TestUtils.Decrypt_fails(client, S3ECId, crossLanguageObjects);
+        TestUtils.Decrypt_fails(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF);
     }
     
 }

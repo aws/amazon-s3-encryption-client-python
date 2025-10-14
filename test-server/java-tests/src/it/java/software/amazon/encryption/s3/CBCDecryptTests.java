@@ -34,6 +34,7 @@ import software.amazon.encryption.s3.model.KeyMaterial;
 import software.amazon.encryption.s3.model.PutObjectInput;
 import software.amazon.encryption.s3.model.S3ECConfig;
 import software.amazon.encryption.s3.model.S3EncryptionClientError;
+import software.amazon.encryption.s3.model.EncryptionAlgorithm;
 
 import com.amazonaws.services.s3.AmazonS3Encryption;
 import com.amazonaws.services.s3.AmazonS3EncryptionClient;
@@ -93,7 +94,7 @@ class CBCDecryptTests {
         .build());
         String S3ECId = clientOutput.getClientId();
         
-        TestUtils.Decrypt(client, S3ECId, Arrays.asList(sharedObjectKey));
+        TestUtils.Decrypt(client, S3ECId, Arrays.asList(sharedObjectKey), EncryptionAlgorithm.ALG_AES_256_CBC_IV16_NO_KDF);
     }
 
     @ParameterizedTest(name = "{0}: Transition configured with ForbidEncryptAllowDecrypt should decrypt CBC")
@@ -110,7 +111,7 @@ class CBCDecryptTests {
         .build());
         String S3ECId = clientOutput.getClientId();
         
-        TestUtils.Decrypt(client, S3ECId, Arrays.asList(sharedObjectKey));
+        TestUtils.Decrypt(client, S3ECId, Arrays.asList(sharedObjectKey), EncryptionAlgorithm.ALG_AES_256_CBC_IV16_NO_KDF);
     }
     
     @ParameterizedTest(name = "{displayName} Decrypt: {0}")
@@ -126,7 +127,7 @@ class CBCDecryptTests {
         .build());
         String decS3ECId = decClientOutput.getClientId();
 
-        TestUtils.Decrypt(decClient, decS3ECId, Arrays.asList(sharedObjectKey));
+        TestUtils.Decrypt(decClient, decS3ECId, Arrays.asList(sharedObjectKey), EncryptionAlgorithm.ALG_AES_256_CBC_IV16_NO_KDF);
     }
     
     @ParameterizedTest(name = "{0}: Improved configured with RequireEncryptAllowDecrypt should decrypt CBC")
@@ -142,7 +143,7 @@ class CBCDecryptTests {
         .build());
         String decS3ECId = decClientOutput.getClientId();
         
-        TestUtils.Decrypt(decClient, decS3ECId, Arrays.asList(sharedObjectKey));
+        TestUtils.Decrypt(decClient, decS3ECId, Arrays.asList(sharedObjectKey), EncryptionAlgorithm.ALG_AES_256_CBC_IV16_NO_KDF);
     }
     
     @ParameterizedTest(name = "{0}: Improved configured with RequireEncryptRequireDecrypt should fail to decrypt CBC")
@@ -158,7 +159,7 @@ class CBCDecryptTests {
         .build());
         String decS3ECId = decClientOutput.getClientId();
         
-        TestUtils.Decrypt_fails(decClient, decS3ECId, Arrays.asList(sharedObjectKey));
+        TestUtils.Decrypt_fails(decClient, decS3ECId, Arrays.asList(sharedObjectKey), EncryptionAlgorithm.ALG_AES_256_CBC_IV16_NO_KDF);
     }
     
     @ParameterizedTest(name = "{0}: Improved configured with the default should fail to decrypt CBC")
@@ -172,6 +173,6 @@ class CBCDecryptTests {
         .build());
         String decS3ECId = decClientOutput.getClientId();
         
-        TestUtils.Decrypt_fails(decClient, decS3ECId, Arrays.asList(sharedObjectKey));
+        TestUtils.Decrypt_fails(decClient, decS3ECId, Arrays.asList(sharedObjectKey), EncryptionAlgorithm.ALG_AES_256_CBC_IV16_NO_KDF);
     }
 }
