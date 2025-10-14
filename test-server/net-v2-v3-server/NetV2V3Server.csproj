@@ -4,6 +4,7 @@
         <TargetFramework>net8.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
+        <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     </PropertyGroup>
 
     <PropertyGroup>
@@ -24,6 +25,10 @@
 
     <ItemGroup Condition="'$(S3EncryptionVersion)' == 'v3'">
         <ProjectReference Include="s3ec-net-v3/src/Amazon.Extensions.S3.Encryption.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Include="**/*.cs" Exclude="s3ec-net-*/**/*.cs" />
     </ItemGroup>
 
     <ItemGroup>
