@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Amazon.Extensions.S3.Encryption.Extensions;
 using Amazon.S3.Model;
 using Microsoft.AspNetCore.Mvc;
 using NetV2V3Server.Models;
@@ -21,7 +22,10 @@ public class ObjectController(IClientCacheService clientCacheService, ILogger<Ob
         var client = clientCacheService.GetClient(clientId);
         if (client == null)
             return NotFound(new GenericServerError { Message = $"No client found for ClientID: {clientId}" });
-
+        
+        var contentMetadataString = Request.Headers["content-metadata"].FirstOrDefault();
+        var ec = ParseEncryptionContext(contentMetadataString);
+        
         try
         {
             // Read raw body data
@@ -37,7 +41,9 @@ public class ObjectController(IClientCacheService clientCacheService, ILogger<Ob
                 Key = key,
                 InputStream = new MemoryStream(bodyBytes)
             };
-
+#if S3EC_V3
+            putRequest.SetEncryptionContext(ec);
+#endif
             await client.PutObjectAsync(putRequest);
 
             var response = new { bucket, key };
@@ -66,6 +72,9 @@ public class ObjectController(IClientCacheService clientCacheService, ILogger<Ob
         var clientId = Request.Headers["clientId"].FirstOrDefault();
         if (string.IsNullOrEmpty(clientId))
             return BadRequest(new GenericServerError { Message = "ClientID header is required" });
+        
+        var contentMetadataString = Request.Headers["content-metadata"].FirstOrDefault();
+        var ec = ParseEncryptionContext(contentMetadataString);
 
         var client = clientCacheService.GetClient(clientId);
         if (client == null)
@@ -78,6 +87,9 @@ public class ObjectController(IClientCacheService clientCacheService, ILogger<Ob
                 BucketName = bucket,
                 Key = key
             };
+#if S3EC_V3
+           getRequest.SetEncryptionContext(ec);
+#endif
             var response = await client.GetObjectAsync(getRequest);
             logger.LogInformation("Got object from S3 for bucket={bucket}, key={key}", bucket, key);
             // Read response body
@@ -101,5 +113,27 @@ public class ObjectController(IClientCacheService clientCacheService, ILogger<Ob
             logger.LogError(ex, "Failed to get object from S3 for bucket={bucket}, key={key}", bucket, key);
             return StatusCode(500, new S3EncryptionClientError { Message = ex.Message });
         }
+    }
+    
+    private static Dictionary<string, string> ParseEncryptionContext(string encryptionContextStr)
+    {
+        var result = new Dictionary<string, string>();
+
+        if (string.IsNullOrEmpty(encryptionContextStr))
+            return result;
+
+        var pairs = encryptionContextStr.Split(',');
+        foreach (var pair in pairs)
+        {
+            var parts = pair.Split(':', 2);
+            if (parts.Length == 2)
+            {
+                var key = parts[0].Trim('[', ']');
+                var value = parts[1].Trim('[', ']');
+                result.Add(key, value);
+            }
+        }
+
+        return result;
     }
 }
