@@ -8,7 +8,8 @@ all: start-servers run-tests
 # CI target for GitHub Actions
 ci: start-servers run-tests stop-servers
 
-SERVER_DIRS := $(shell find . -maxdepth 1 -type d -name '*-server' | sed 's|^\./||' | sort)
+SERVER_DIRS := $(shell find . -maxdepth 1 -type d -name '*-server' | sed 's|^\./||' | $(if $(FILTER),grep -E "$$(echo '$(FILTER)' | sed 's/,/|/g')",cat) | sort)
+# SERVER_DIRS := cpp-v3-server
 
 START_SERVER_TARGETS := $(addprefix start-, $(SERVER_DIRS))
 WAIT_SERVER_TARGETS := $(addprefix wait-, $(SERVER_DIRS))
@@ -56,7 +57,7 @@ run-tests:
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
-	./gradlew --build-cache --parallel integ -Dtest.filter.servers="$(FILTER)"
+	./gradlew --build-cache --info --parallel integ -Dtest.filter.servers="$(FILTER)"
 	@echo "Tests completed successfully"
 
 # Stop the servers
@@ -106,7 +107,7 @@ wait-for-port:
 			exit 1; \
 		fi; \
 		echo "Waiting for $$PORT to start ($$i/$(TIMEOUT))..."; \
-		sleep 1; \
+		sleep 3; \
 	done
 
 # Here are some helpful curl commands
@@ -118,3 +119,10 @@ test-create-client:
 		-H "User-Agent: smithy-java/0.0.3 ua/2.1 os/macos#15.5 lang/java#23.0.2" \
 		-d '{"config":{"enableLegacyUnauthenticatedModes":false,"enableDelayedAuthenticationMode":false,"enableLegacyWrappingAlgorithms":false,"keyMaterial":{"kmsKeyId":"arn:aws:kms:us-west-2:370957321024:alias/S3EC-Test-Server-Github-KMS-Key"}}}' \
 		http://localhost:$(PORT)/client
+
+duvet:
+	@echo "Running duvet reports..."
+	@for dir in $(SERVER_DIRS); do \
+		echo "Running make duvet in $$dir..."; \
+		$(MAKE) -C $$dir duvet; \
+	done

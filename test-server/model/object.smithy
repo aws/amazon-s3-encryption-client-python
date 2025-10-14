@@ -93,6 +93,39 @@ operation GetObject {
     }
 }
 
+@readonly
+@http(method: "GET", uri: "/object/{bucket}/{key}")
+operation ReEncrypt {
+    input := for Object {
+        @httpLabel
+        @required
+        $bucket
+
+        @httpLabel
+        @required
+        $key
+        
+        /// Should probably be renamed to be EC specific
+        @httpHeader("Content-Metadata")
+        $metadata
+
+        @httpHeader("ClientID")
+        @required
+        @notProperty
+        clientID: String
+    } 
+
+    output := for Object {
+        @httpHeader("Content-Metadata")
+        @required
+        $metadata
+
+        @required
+        @httpPayload
+        $body
+    }
+}
+
 /// Smithy does not know how to serialize a map 
 list ObjectMetadata {
     member: String

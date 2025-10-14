@@ -267,18 +267,18 @@ MHD_Result request_handler(void *cls, struct MHD_Connection *connection,
 int main() {
   Aws::SDKOptions options;
   Aws::InitAPI(options);
-
+  int port = 8085;
   struct MHD_Daemon *daemon =
-      MHD_start_daemon(MHD_USE_SELECT_INTERNALLY, 8085, NULL, NULL,
+      MHD_start_daemon(MHD_USE_SELECT_INTERNALLY, port, NULL, NULL,
                        &request_handler, NULL, MHD_OPTION_END);
 
   if (!daemon) {
-    fprintf(stderr, "Failed to start server on port 8085\n");
+    fprintf(stderr, "Failed to start server on port %d\n", port);
     Aws::ShutdownAPI(options);
     return 1;
   }
 
-  fprintf(stderr, "Server running on port 8085\n");
+  fprintf(stderr, "Server running on port %d\n", port);
   sleep(10000);
 
   MHD_stop_daemon(daemon);

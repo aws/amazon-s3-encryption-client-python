@@ -1,0 +1,45 @@
+name: Run Tests
+
+on:
+  workflow_call:
+    # Optional inputs that can be provided when calling this workflow
+
+jobs:
+  test:
+    runs-on: macos-latest
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          token: ${{ secrets.PAT_FOR_PRIVATE_RUBY }}
+      
+      - name: Setup Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Clone duvet repository  
+        run: git clone https://github.com/awslabs/duvet.git /tmp/duvet
+
+      - name: Build and install duvet
+        run: |
+          cd /tmp/duvet
+          cargo xtask build
+          cargo install --path ./duvet
+
+      - name: Run duvet
+        if: always()
+        run: cd test-server && make duvet
+
+      - name: Upload duvet reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          include-hidden-files: true
+          path: test-server/*-server/.duvet/reports/report.html

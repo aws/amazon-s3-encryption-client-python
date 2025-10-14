@@ -53,3 +53,9 @@ start-net-v3-server:
 wait-for-server:
 	$(MAKE) -C .. wait-for-port PORT=$(PORT_NET_V2) \
 	$(MAKE) -C .. wait-for-port PORT=$(PORT_NET_V3)
+
+duvet:
+	duvet report
+
+view-report-mac:
+	open .duvet/reports/report.html
