@@ -5,8 +5,12 @@
 
 package software.amazon.encryption.s3;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import java.net.Socket;
 import java.net.URI;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -27,8 +31,12 @@ import software.amazon.smithy.java.client.core.ClientConfig;
 import software.amazon.smithy.java.client.core.ClientProtocol;
 import software.amazon.smithy.java.client.core.endpoint.EndpointResolver;
 import software.amazon.encryption.s3.client.S3ECTestServerClient;
+import software.amazon.encryption.s3.model.GetObjectInput;
+import software.amazon.encryption.s3.model.GetObjectOutput;
+import software.amazon.encryption.s3.model.PutObjectInput;
 import software.amazon.encryption.s3.model.S3ECConfig;
 import software.amazon.encryption.s3.model.S3ECTestServerApiService;
+import software.amazon.encryption.s3.model.S3EncryptionClientError;
 import software.amazon.smithy.java.http.api.HttpRequest;
 import software.amazon.smithy.java.http.api.HttpResponse;
 
@@ -394,5 +402,46 @@ public class TestUtils {
         stringBuilder.append(DateTimeFormat.forPattern("-yyMMdd-hhmmss-").print(new DateTime()));
         stringBuilder.append((int) (Math.random() * 100000));
         return stringBuilder.toString();
+    }
+
+    public static void Encrypt(S3ECTestServerClient client, String S3ECId, String objectKey, List<String> crossLanguageObjects)
+    {
+        client.putObject(PutObjectInput.builder()
+        .clientID(S3ECId)
+        .key(objectKey)
+        .bucket(TestUtils.BUCKET)
+        .body(ByteBuffer.wrap(objectKey.getBytes(StandardCharsets.UTF_8)))
+        .build());
+        
+        crossLanguageObjects.add(objectKey);
+    }
+    
+    public static void Decrypt(S3ECTestServerClient client, String S3ECId, List<String> crossLanguageObjects)
+    {
+        for (String objectKey : crossLanguageObjects) {
+            GetObjectOutput output = client.getObject(GetObjectInput.builder()
+            .clientID(S3ECId)
+            .bucket(TestUtils.BUCKET)
+            .key(objectKey)
+            .build());
+            
+            // Then: Pass
+            assertEquals(objectKey, new String(output.getBody().array()));
+        }
+    }
+    
+    public static void Decrypt_fails(S3ECTestServerClient client, String S3ECId, List<String> crossLanguageObjects)
+    {
+        for (String objectKey : crossLanguageObjects) {
+            try {
+                GetObjectOutput output = client.getObject(GetObjectInput.builder()
+                .clientID(S3ECId)
+                .bucket(TestUtils.BUCKET)
+                .key(objectKey)
+                .build());
+            } catch (S3EncryptionClientError e) {
+                // This is a success
+            }
+        }
     }
 }

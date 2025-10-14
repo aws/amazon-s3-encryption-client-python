@@ -1,7 +1,7 @@
 /*
- * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
- * SPDX-License-Identifier: Apache-2.0
- */
+* Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+* SPDX-License-Identifier: Apache-2.0
+*/
 
 package software.amazon.encryption.s3;
 
@@ -12,6 +12,7 @@ import static software.amazon.encryption.s3.TestUtils.*;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,134 +45,133 @@ import com.amazonaws.services.s3.model.EncryptionMaterialsProvider;
 import com.amazonaws.services.s3.model.KMSEncryptionMaterialsProvider;
 
 /**
- * Exhaustive tests for S3 Encryption Client round-trip operations.
- * These tests cover various combinations of client versions, commitment policies, and encryption modes.
- * 
- * Tests are based on the exhaustive test matrix defined at:
- * https://tiny.amazon.com/3xnzwczl/loopcloumicrpeyJ3
- * 
- * These tests deal with decrypting CBC messages
- */
+* Exhaustive tests for S3 Encryption Client round-trip operations.
+* These tests cover various combinations of client versions, commitment policies, and encryption modes.
+* 
+* Tests are based on the exhaustive test matrix defined at:
+* https://tiny.amazon.com/3xnzwczl/loopcloumicrpeyJ3
+* 
+* These tests deal with decrypting CBC messages
+*/
 
 class CBCDecryptTests {
     private static String sharedObjectKey = appendTestSuffix("test-cbc-kms-v1-");
-    private static String sharedInput = "simple-test-input";
     private static KeyMaterial kmsKeyArn = KeyMaterial.builder()
-        .kmsKeyId(TestUtils.KMS_KEY_ARN)
-        .build();
+    .kmsKeyId(TestUtils.KMS_KEY_ARN)
+    .build();
     
     @BeforeAll
     static void encryptCBCObject() {
-    // Create the object using the old client
-    // V1 Client
-    EncryptionMaterialsProvider materialsProvider = new KMSEncryptionMaterialsProvider(TestUtils.KMS_KEY_ARN);
-
-    CryptoConfiguration v1Config =
+        // Create the object using the old client
+        // V1 Client
+        EncryptionMaterialsProvider materialsProvider = new KMSEncryptionMaterialsProvider(TestUtils.KMS_KEY_ARN);
+        
+        CryptoConfiguration v1Config =
         new CryptoConfiguration(CryptoMode.EncryptionOnly)
-            .withStorageMode(CryptoStorageMode.ObjectMetadata)
-            .withAwsKmsRegion(TestUtils.KMS_REGION);
-
-    AmazonS3Encryption v1Client = AmazonS3EncryptionClient.encryptionBuilder()
+        .withStorageMode(CryptoStorageMode.ObjectMetadata)
+        .withAwsKmsRegion(TestUtils.KMS_REGION);
+        
+        AmazonS3Encryption v1Client = AmazonS3EncryptionClient.encryptionBuilder()
         .withCryptoConfiguration(v1Config)
         .withEncryptionMaterials(materialsProvider)
         .build();
+        
+        v1Client.putObject(TestUtils.BUCKET, sharedObjectKey, sharedObjectKey);
+    }
 
-    v1Client.putObject(TestUtils.BUCKET, sharedObjectKey, sharedInput);
+    @ParameterizedTest(name = "{0}: Transition configured with the default should decrypt CBC")
+    @MethodSource("software.amazon.encryption.s3.TestUtils#transitionClientsForTest")
+    void DECRYPT_TRANSITIONAL_DEFAULT(TestUtils.LanguageServerTarget language) {
+        
+        S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+        CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+        .config(S3ECConfig.builder()
+        .keyMaterial(kmsKeyArn)
+        // .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+        .enableLegacyUnauthenticatedModes(true)
+        .build())
+        .build());
+        String S3ECId = clientOutput.getClientId();
+        
+        TestUtils.Decrypt(client, S3ECId, Arrays.asList(sharedObjectKey));
+    }
+
+    @ParameterizedTest(name = "{0}: Transition configured with ForbidEncryptAllowDecrypt should decrypt CBC")
+    @MethodSource("software.amazon.encryption.s3.TestUtils#transitionClientsForTest")
+    void DECRYPT_TRANSITIONAL_FORBID_ENCRYPT_ALLOW_DECRYPT(TestUtils.LanguageServerTarget language) {
+        
+        S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+        CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+        .config(S3ECConfig.builder()
+        .keyMaterial(kmsKeyArn)
+        .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+        .enableLegacyUnauthenticatedModes(true)
+        .build())
+        .build());
+        String S3ECId = clientOutput.getClientId();
+        
+        TestUtils.Decrypt(client, S3ECId, Arrays.asList(sharedObjectKey));
     }
     
     @ParameterizedTest(name = "{displayName} Decrypt: {0}")
     @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
-    void FORBID_ENCRYPT_ALLOW_DECRYPT(TestUtils.LanguageServerTarget language) {
-    S3ECTestServerClient decClient = TestUtils.testServerClientFor(language);
-    CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
+    void DECRYPT_IMPROVED_FORBID_ENCRYPT_ALLOW_DECRYPT(TestUtils.LanguageServerTarget language) {
+        S3ECTestServerClient decClient = TestUtils.testServerClientFor(language);
+        CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
         .config(S3ECConfig.builder()
-            .keyMaterial(kmsKeyArn)
-            .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
-            .enableLegacyUnauthenticatedModes(true)
-            .build())
+        .keyMaterial(kmsKeyArn)
+        .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+        .enableLegacyUnauthenticatedModes(true)
+        .build())
         .build());
-    String decS3ECId = decClientOutput.getClientId();
+        String decS3ECId = decClientOutput.getClientId();
 
-    // When: decrypt KC-GCM object with an improved version client with ForbidEncryptAllowDecrypt policy
-    GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
-        .clientID(decS3ECId)
-        .bucket(TestUtils.BUCKET)
-        .key(sharedObjectKey)
-        .build());
-
-    // Then: Pass
-    assertEquals(sharedInput, StandardCharsets.UTF_8.decode(output.getBody()).toString());
+        TestUtils.Decrypt(decClient, decS3ECId, Arrays.asList(sharedObjectKey));
     }
-
-    @ParameterizedTest(name = "{displayName} Decrypt: {0}")
+    
+    @ParameterizedTest(name = "{0}: Improved configured with RequireEncryptAllowDecrypt should decrypt CBC")
     @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
-    void REQUIRE_ENCRYPT_ALLOW_DECRYPT(TestUtils.LanguageServerTarget language) {
-    S3ECTestServerClient decClient = TestUtils.testServerClientFor(language);
-    CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
+    void DECRYPT_IMPROVED_REQUIRE_ENCRYPT_ALLOW_DECRYPT(TestUtils.LanguageServerTarget language) {
+        S3ECTestServerClient decClient = TestUtils.testServerClientFor(language);
+        CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
         .config(S3ECConfig.builder()
-            .keyMaterial(kmsKeyArn)
-            .commitmentPolicy(CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT)
-            .enableLegacyUnauthenticatedModes(true)
-            .build())
+        .keyMaterial(kmsKeyArn)
+        .commitmentPolicy(CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT)
+        .enableLegacyUnauthenticatedModes(true)
+        .build())
         .build());
-    String decS3ECId = decClientOutput.getClientId();
-
-    // When: decrypt KC-GCM object with an improved version client with ForbidEncryptAllowDecrypt policy
-    GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
-        .clientID(decS3ECId)
-        .bucket(TestUtils.BUCKET)
-        .key(sharedObjectKey)
-        .build());
-
-    // Then: Pass
-    assertEquals(sharedInput, StandardCharsets.UTF_8.decode(output.getBody()).toString());
+        String decS3ECId = decClientOutput.getClientId();
+        
+        TestUtils.Decrypt(decClient, decS3ECId, Arrays.asList(sharedObjectKey));
     }
-
-    @ParameterizedTest(name = "{displayName} Decrypt: {0}")
+    
+    @ParameterizedTest(name = "{0}: Improved configured with RequireEncryptRequireDecrypt should fail to decrypt CBC")
     @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
-    void REQUIRE_ENCRYPT_REQUIRE_DECRYPT(TestUtils.LanguageServerTarget language) {
-    S3ECTestServerClient decClient = TestUtils.testServerClientFor(language);
-    CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
+    void DECRYPT_IMPROVED_REQUIRE_ENCRYPT_REQUIRE_DECRYPT(TestUtils.LanguageServerTarget language) {
+        S3ECTestServerClient decClient = TestUtils.testServerClientFor(language);
+        CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
         .config(S3ECConfig.builder()
-            .keyMaterial(kmsKeyArn)
-            .commitmentPolicy(CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT)
-            .enableLegacyUnauthenticatedModes(true)
-            .build())
+        .keyMaterial(kmsKeyArn)
+        .commitmentPolicy(CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT)
+        .enableLegacyUnauthenticatedModes(true)
+        .build())
         .build());
-    String decS3ECId = decClientOutput.getClientId();
-
-    try {
-        GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
-            .clientID(decS3ECId)
-            .bucket(TestUtils.BUCKET)
-            .key(sharedObjectKey)
-            .build());
-        fail("Should not be able to decrypt CBC");
-    } catch (S3EncryptionClientError e) {
-        // This is a success
+        String decS3ECId = decClientOutput.getClientId();
+        
+        TestUtils.Decrypt_fails(decClient, decS3ECId, Arrays.asList(sharedObjectKey));
     }
-    }
-
-    @ParameterizedTest(name = "{displayName} Decrypt: {0}")
+    
+    @ParameterizedTest(name = "{0}: Improved configured with the default should fail to decrypt CBC")
     @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
-    void Default_Commitment_Policy(TestUtils.LanguageServerTarget language) {
-    S3ECTestServerClient decClient = TestUtils.testServerClientFor(language);
-    CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
+    void DECRYPT_IMPROVED_DEFAULT(TestUtils.LanguageServerTarget language) {
+        S3ECTestServerClient decClient = TestUtils.testServerClientFor(language);
+        CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
         .config(S3ECConfig.builder()
-            .keyMaterial(kmsKeyArn)
-            .build())
+        .keyMaterial(kmsKeyArn)
+        .build())
         .build());
-    String decS3ECId = decClientOutput.getClientId();
-
-    try {
-        GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
-            .clientID(decS3ECId)
-            .bucket(TestUtils.BUCKET)
-            .key(sharedObjectKey)
-            .build());
-        fail("Should not be able to decrypt CBC");
-    } catch (S3EncryptionClientError e) {
-        // This is a success
-    }
+        String decS3ECId = decClientOutput.getClientId();
+        
+        TestUtils.Decrypt_fails(decClient, decS3ECId, Arrays.asList(sharedObjectKey));
     }
 }

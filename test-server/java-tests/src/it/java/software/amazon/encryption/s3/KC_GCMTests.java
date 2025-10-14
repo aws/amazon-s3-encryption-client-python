@@ -57,7 +57,7 @@ import com.amazonaws.services.s3.model.KMSEncryptionMaterialsProvider;
 */
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class GCMTests {
+class KC_GCMTests {
     private static String sharedObjectKeyBase = "test-gcm-kms";
     private static KeyMaterial kmsKeyArn = KeyMaterial.builder()
     .kmsKeyId(TestUtils.KMS_KEY_ARN)
@@ -65,30 +65,14 @@ class GCMTests {
     private static List<String> crossLanguageObjects = new ArrayList<>();
     
     @Order(1)
-    @ParameterizedTest(name = "{0}: Improved configured with ForbidEncryptAllowDecrypt should encrypt GCM")
+    @ParameterizedTest(name = "{0}: Improved configured with RequireEncryptAllowDecrypt should encrypt KC-GCM")
     @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
-    void ENCRYPT_IMPROVED_FORBID_ENCRYPT_ALLOW_DECRYPT(TestUtils.LanguageServerTarget language) {
+    void ENCRYPT_IMPROVED_REQUIRE_ENCRYPT_ALLOW_DECRYPT(TestUtils.LanguageServerTarget language) {
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
         .config(S3ECConfig.builder()
         .keyMaterial(kmsKeyArn)
-        .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
-        .build())
-        .build());
-        String S3ECId = clientOutput.getClientId();
-        
-        TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBase + language.getLanguageName()), crossLanguageObjects);
-    }
-    
-    @Order(2)
-    @ParameterizedTest(name = "{0}: Transition configured with the default should encrypt GCM")
-    @MethodSource("software.amazon.encryption.s3.TestUtils#transitionClientsForTest")
-    void ENCRYPT_TRANSITIONAL_DEFAULT(TestUtils.LanguageServerTarget language) {
-        S3ECTestServerClient client = TestUtils.testServerClientFor(language);
-        CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
-        .config(S3ECConfig.builder()
-        .keyMaterial(kmsKeyArn)
-        // .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+        .commitmentPolicy(CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT)
         .build())
         .build());
         String S3ECId = clientOutput.getClientId();
@@ -96,41 +80,40 @@ class GCMTests {
         TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBase + language.getLanguageName()), crossLanguageObjects);
     }
 
-    @Order(3)
-    @ParameterizedTest(name = "{0}: Transition configured with ForbidEncryptAllowDecrypt should encrypt GCM")
-    @MethodSource("software.amazon.encryption.s3.TestUtils#transitionClientsForTest")
-    void ENCRYPT_TRANSITIONAL_FORBID_ENCRYPT_ALLOW_DECRYPT(TestUtils.LanguageServerTarget language) {
+    @Order(2)
+    @ParameterizedTest(name = "{0}: Improved configured with RequireEncryptRequireDecrypt should encrypt KC-GCM")
+    @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
+    void ENCRYPT_IMPROVED_REQUIRE_ENCRYPT_REQUIRE_DECRYPT(TestUtils.LanguageServerTarget language) {
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
         .config(S3ECConfig.builder()
         .keyMaterial(kmsKeyArn)
-        .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+        .commitmentPolicy(CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT)
         .build())
         .build());
         String S3ECId = clientOutput.getClientId();
         
         TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBase + language.getLanguageName()), crossLanguageObjects);
     }
-    
-    @Order(10)
-    @ParameterizedTest(name = "{0}: Improved configured with ForbidEncryptAllowDecrypt should decrypt GCM")
+
+    @Order(2)
+    @ParameterizedTest(name = "{0}: Improved configured with the default should encrypt KC-GCM")
     @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
-    void DECRYPT_IMPROVED_FORBID_ENCRYPT_ALLOW_DECRYPT(TestUtils.LanguageServerTarget language) {
-        
+    void ENCRYPT_IMPROVED_DEFAULT(TestUtils.LanguageServerTarget language) {
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
         .config(S3ECConfig.builder()
         .keyMaterial(kmsKeyArn)
-        .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+        // .commitmentPolicy(CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT)
         .build())
         .build());
         String S3ECId = clientOutput.getClientId();
         
-        TestUtils.Decrypt(client, S3ECId, crossLanguageObjects);
+        TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBase + language.getLanguageName()), crossLanguageObjects);
     }
-    
-    @Order(11)
-    @ParameterizedTest(name = "{0}: Transition configured with the default should decrypt GCM")
+        
+    @Order(10)
+    @ParameterizedTest(name = "{0}: Transition configured with the default should decrypt KC-GCM")
     @MethodSource("software.amazon.encryption.s3.TestUtils#transitionClientsForTest")
     void DECRYPT_TRANSITIONAL_DEFAULT(TestUtils.LanguageServerTarget language) {
         
@@ -146,8 +129,8 @@ class GCMTests {
         TestUtils.Decrypt(client, S3ECId, crossLanguageObjects);
     }
 
-    @Order(12)
-    @ParameterizedTest(name = "{0}: Transition configured with ForbidEncryptAllowDecrypt should decrypt GCM")
+    @Order(11)
+    @ParameterizedTest(name = "{0}: Transition configured with ForbidEncryptAllowDecrypt should decrypt KC-GCM")
     @MethodSource("software.amazon.encryption.s3.TestUtils#transitionClientsForTest")
     void DECRYPT_TRANSITIONAL_FORBID_ENCRYPT_ALLOW_DECRYPT(TestUtils.LanguageServerTarget language) {
         
@@ -162,9 +145,26 @@ class GCMTests {
         
         TestUtils.Decrypt(client, S3ECId, crossLanguageObjects);
     }
+
+    @Order(12)
+    @ParameterizedTest(name = "{0}: Improved configured with ForbidEncryptAllowDecrypt should decrypt KC-GCM")
+    @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
+    void DECRYPT_IMPROVED_FORBID_ENCRYPT_ALLOW_DECRYPT(TestUtils.LanguageServerTarget language) {
+        
+        S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+        CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+        .config(S3ECConfig.builder()
+        .keyMaterial(kmsKeyArn)
+        .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+        .build())
+        .build());
+        String S3ECId = clientOutput.getClientId();
+        
+        TestUtils.Decrypt(client, S3ECId, crossLanguageObjects);
+    }
     
     @Order(13)
-    @ParameterizedTest(name = "{0}: Improved configured with RequireEncryptAllowDecrypt should decrypt GCM")
+    @ParameterizedTest(name = "{0}: Improved configured with RequireEncryptAllowDecrypt should decrypt KC-GCM")
     @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
     void DECRYPT_IMPROVED_REQUIRE_ENCRYPT_ALLOW_DECRYPT(TestUtils.LanguageServerTarget language) {
         
@@ -181,7 +181,7 @@ class GCMTests {
     }
     
     @Order(14)
-    @ParameterizedTest(name = "{0}: Improved configured with RequireEncryptRequireDecrypt should fail to decrypt GCM")
+    @ParameterizedTest(name = "{0}: Improved configured with RequireEncryptRequireDecrypt should decrypt KC-GCM")
     @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
     void DECRYPT_IMPROVED_REQUIRE_ENCRYPT_REQUIRE_DECRYPT(TestUtils.LanguageServerTarget language) {
         
@@ -194,7 +194,24 @@ class GCMTests {
         .build());
         String S3ECId = clientOutput.getClientId();
         
-        TestUtils.Decrypt_fails(client, S3ECId, crossLanguageObjects);
+        TestUtils.Decrypt(client, S3ECId, crossLanguageObjects);
     }
-    
+
+    @Order(15)
+    @ParameterizedTest(name = "{0}: Improved configured with the default should decrypt KC-GCM")
+    @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
+    void DECRYPT_IMPROVED_DEFAULT(TestUtils.LanguageServerTarget language) {
+        
+        S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+        CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+        .config(S3ECConfig.builder()
+        .keyMaterial(kmsKeyArn)
+        // .commitmentPolicy(CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT)
+        .build())
+        .build());
+        String S3ECId = clientOutput.getClientId();
+        
+        TestUtils.Decrypt(client, S3ECId, crossLanguageObjects);
+    }
+        
 }
