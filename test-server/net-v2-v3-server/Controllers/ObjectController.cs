@@ -1,5 +1,7 @@
 using System.Text.Json;
+#if S3EC_V3
 using Amazon.Extensions.S3.Encryption.Extensions;
+#endif
 using Amazon.S3.Model;
 using Microsoft.AspNetCore.Mvc;
 using NetV2V3Server.Models;
