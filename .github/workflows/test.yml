@@ -51,7 +51,7 @@ jobs:
           token: ${{ secrets.PAT_FOR_DOTNET }}
           repository: aws/private-amazon-s3-encryption-client-dotnet-staging
           # This is the branch for S3EC .NET V3
-          ref: s3ec-v3
+          ref: rishav/addECperRequest
           path: test-server/net-v2-v3-server/s3ec-net-v3
 
       - name: Set up Python
