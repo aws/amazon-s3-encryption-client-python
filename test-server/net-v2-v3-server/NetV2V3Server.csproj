@@ -19,11 +19,11 @@
     </PropertyGroup>
 
     <ItemGroup Condition="'$(S3EncryptionVersion)' == 'v2'">
-        <PackageReference Include="Amazon.Extensions.S3.Encryption" Version="2.2.1"/>
+        <ProjectReference Include="s3ec-net-v2/src/Amazon.Extensions.S3.Encryption.csproj"/>
     </ItemGroup>
 
     <ItemGroup Condition="'$(S3EncryptionVersion)' == 'v3'">
-        <ProjectReference Include="../../submodules/s3ec-dotnet/src/Amazon.Extensions.S3.Encryption.csproj"/>
+        <ProjectReference Include="s3ec-net-v3/src/Amazon.Extensions.S3.Encryption.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
