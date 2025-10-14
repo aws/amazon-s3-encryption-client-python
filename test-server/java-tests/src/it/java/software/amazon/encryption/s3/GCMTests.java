@@ -68,7 +68,7 @@ class GCMTests {
     @Order(1)
     @ParameterizedTest(name = "{0}: Improved configured with ForbidEncryptAllowDecrypt should encrypt GCM")
     @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
-    void ENCRYPT_IMPROVED_FORBID_ENCRYPT_ALLOW_DECRYPT(TestUtils.LanguageServerTarget language) {
+    void improved_configured_with_forbid_encrypt_allow_decrypt_should_encrypt_gcm(TestUtils.LanguageServerTarget language) {
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
         .config(S3ECConfig.builder()
@@ -84,7 +84,7 @@ class GCMTests {
     @Order(2)
     @ParameterizedTest(name = "{0}: Transition configured with the default should encrypt GCM")
     @MethodSource("software.amazon.encryption.s3.TestUtils#transitionClientsForTest")
-    void ENCRYPT_TRANSITIONAL_DEFAULT(TestUtils.LanguageServerTarget language) {
+    void transition_configured_with_the_default_should_encrypt_gcm(TestUtils.LanguageServerTarget language) {
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
         .config(S3ECConfig.builder()
@@ -100,7 +100,7 @@ class GCMTests {
     @Order(3)
     @ParameterizedTest(name = "{0}: Transition configured with ForbidEncryptAllowDecrypt should encrypt GCM")
     @MethodSource("software.amazon.encryption.s3.TestUtils#transitionClientsForTest")
-    void ENCRYPT_TRANSITIONAL_FORBID_ENCRYPT_ALLOW_DECRYPT(TestUtils.LanguageServerTarget language) {
+    void transition_configured_with_forbid_encrypt_allow_decrypt_should_encrypt_gcm(TestUtils.LanguageServerTarget language) {
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
         .config(S3ECConfig.builder()
@@ -116,7 +116,7 @@ class GCMTests {
     @Order(10)
     @ParameterizedTest(name = "{0}: Improved configured with ForbidEncryptAllowDecrypt should decrypt GCM")
     @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
-    void DECRYPT_IMPROVED_FORBID_ENCRYPT_ALLOW_DECRYPT(TestUtils.LanguageServerTarget language) {
+    void improved_configured_with_forbid_encrypt_allow_decrypt_should_decrypt_gcm(TestUtils.LanguageServerTarget language) {
         
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
@@ -133,7 +133,7 @@ class GCMTests {
     @Order(11)
     @ParameterizedTest(name = "{0}: Transition configured with the default should decrypt GCM")
     @MethodSource("software.amazon.encryption.s3.TestUtils#transitionClientsForTest")
-    void DECRYPT_TRANSITIONAL_DEFAULT(TestUtils.LanguageServerTarget language) {
+    void transition_configured_with_the_default_should_decrypt_gcm(TestUtils.LanguageServerTarget language) {
         
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
@@ -150,7 +150,7 @@ class GCMTests {
     @Order(12)
     @ParameterizedTest(name = "{0}: Transition configured with ForbidEncryptAllowDecrypt should decrypt GCM")
     @MethodSource("software.amazon.encryption.s3.TestUtils#transitionClientsForTest")
-    void DECRYPT_TRANSITIONAL_FORBID_ENCRYPT_ALLOW_DECRYPT(TestUtils.LanguageServerTarget language) {
+    void transition_configured_with_forbid_encrypt_allow_decrypt_should_decrypt_gcm(TestUtils.LanguageServerTarget language) {
         
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
@@ -167,7 +167,7 @@ class GCMTests {
     @Order(13)
     @ParameterizedTest(name = "{0}: Improved configured with RequireEncryptAllowDecrypt should decrypt GCM")
     @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
-    void DECRYPT_IMPROVED_REQUIRE_ENCRYPT_ALLOW_DECRYPT(TestUtils.LanguageServerTarget language) {
+    void improved_configured_with_require_encrypt_allow_decrypt_should_decrypt_gcm(TestUtils.LanguageServerTarget language) {
         
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
@@ -184,7 +184,7 @@ class GCMTests {
     @Order(14)
     @ParameterizedTest(name = "{0}: Improved configured with RequireEncryptRequireDecrypt should fail to decrypt GCM")
     @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
-    void DECRYPT_IMPROVED_REQUIRE_ENCRYPT_REQUIRE_DECRYPT(TestUtils.LanguageServerTarget language) {
+    void improved_configured_with_require_encrypt_require_decrypt_should_fail_to_decrypt_gcm(TestUtils.LanguageServerTarget language) {
         
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()

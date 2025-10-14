@@ -82,7 +82,7 @@ class CBCDecryptTests {
 
     @ParameterizedTest(name = "{0}: Transition configured with the default should decrypt CBC")
     @MethodSource("software.amazon.encryption.s3.TestUtils#transitionClientsForTest")
-    void DECRYPT_TRANSITIONAL_DEFAULT(TestUtils.LanguageServerTarget language) {
+    void transition_configured_with_the_default_should_decrypt_cbc(TestUtils.LanguageServerTarget language) {
         
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
@@ -99,7 +99,7 @@ class CBCDecryptTests {
 
     @ParameterizedTest(name = "{0}: Transition configured with ForbidEncryptAllowDecrypt should decrypt CBC")
     @MethodSource("software.amazon.encryption.s3.TestUtils#transitionClientsForTest")
-    void DECRYPT_TRANSITIONAL_FORBID_ENCRYPT_ALLOW_DECRYPT(TestUtils.LanguageServerTarget language) {
+    void transition_configured_with_forbid_encrypt_allow_decrypt_should_decrypt_cbc(TestUtils.LanguageServerTarget language) {
         
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
@@ -132,7 +132,7 @@ class CBCDecryptTests {
     
     @ParameterizedTest(name = "{0}: Improved configured with RequireEncryptAllowDecrypt should decrypt CBC")
     @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
-    void DECRYPT_IMPROVED_REQUIRE_ENCRYPT_ALLOW_DECRYPT(TestUtils.LanguageServerTarget language) {
+    void improved_configured_with_require_encrypt_allow_decrypt_should_decrypt_cbc(TestUtils.LanguageServerTarget language) {
         S3ECTestServerClient decClient = TestUtils.testServerClientFor(language);
         CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
         .config(S3ECConfig.builder()
@@ -148,7 +148,7 @@ class CBCDecryptTests {
     
     @ParameterizedTest(name = "{0}: Improved configured with RequireEncryptRequireDecrypt should fail to decrypt CBC")
     @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
-    void DECRYPT_IMPROVED_REQUIRE_ENCRYPT_REQUIRE_DECRYPT(TestUtils.LanguageServerTarget language) {
+    void improved_configured_with_require_encrypt_require_decrypt_should_fail_to_decrypt_cbc(TestUtils.LanguageServerTarget language) {
         S3ECTestServerClient decClient = TestUtils.testServerClientFor(language);
         CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
         .config(S3ECConfig.builder()
@@ -164,7 +164,7 @@ class CBCDecryptTests {
     
     @ParameterizedTest(name = "{0}: Improved configured with the default should fail to decrypt CBC")
     @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
-    void DECRYPT_IMPROVED_DEFAULT(TestUtils.LanguageServerTarget language) {
+    void improved_configured_with_the_default_should_fail_to_decrypt_cbc(TestUtils.LanguageServerTarget language) {
         S3ECTestServerClient decClient = TestUtils.testServerClientFor(language);
         CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
         .config(S3ECConfig.builder()
