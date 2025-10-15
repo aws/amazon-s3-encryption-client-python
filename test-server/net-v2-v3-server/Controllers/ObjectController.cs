@@ -74,7 +74,7 @@ public class ObjectController(IClientCacheService clientCacheService, ILogger<Ob
         var clientId = Request.Headers["clientId"].FirstOrDefault();
         if (string.IsNullOrEmpty(clientId))
             return BadRequest(new GenericServerError { Message = "ClientID header is required" });
-        
+            
         var contentMetadataString = Request.Headers["content-metadata"].FirstOrDefault();
         var ec = ParseEncryptionContext(contentMetadataString);
 
@@ -119,11 +119,10 @@ public class ObjectController(IClientCacheService clientCacheService, ILogger<Ob
     
     private static Dictionary<string, string> ParseEncryptionContext(string encryptionContextStr)
     {
-        var result = new Dictionary<string, string>();
-
         if (string.IsNullOrEmpty(encryptionContextStr))
-            return result;
-
+            return null;
+        
+        var result = new Dictionary<string, string>();
         var pairs = encryptionContextStr.Split(',');
         foreach (var pair in pairs)
         {
