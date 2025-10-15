@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{server_name} - Duvet Compliance Report</title>
+    <link rel="stylesheet" href="../templates/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{server_name}</h1>
+            <a href="../compliance_homepage.html" class="nav-link">Back to Homepage</a>
+        </div>
+        {content}
+    </div>
+    
+    <script>
+        function toggleSection(sectionId) {
+            const content = document.getElementById('content_' + sectionId);
+            const icon = document.getElementById('icon_' + sectionId);
+            
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                icon.textContent = '▼';
+            } else {
+                content.classList.add('expanded');
+                icon.textContent = '▲';
+            }
+        }
+        
+        function toggleSubSection(sectionId) {
+            const content = document.getElementById('content_' + sectionId);
+            const icon = document.getElementById('icon_' + sectionId);
+            
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                icon.textContent = '▼';
+            } else {
+                content.classList.add('expanded');
+                icon.textContent = '▲';
+            }
+        }
+        
+        // Add keyboard navigation
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                // Close all expanded sections and subsections
+                document.querySelectorAll('.spec-content.expanded').forEach(content => {
+                    content.classList.remove('expanded');
+                });
+                document.querySelectorAll('.section-content.expanded').forEach(content => {
+                    content.classList.remove('expanded');
+                });
+                document.querySelectorAll('.expand-icon').forEach(icon => {
+                    icon.textContent = '▼';
+                });
+            }
+        });
+    </script>
+</body>
+</html>
