@@ -3,17 +3,16 @@
 .PHONY: start-server stop-server wait-for-server
 
 PID_FILE := server.pid
-PORT := 8089
+PORT := 8099
 
 start-server:
-	@echo "Starting Go V4 server..."
-	go mod tidy
+	@echo "Starting PHP V2 server..."
 	AWS_ACCESS_KEY_ID="$$AWS_ACCESS_KEY_ID" \
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
-	go run . & echo $$! > $(PID_FILE)
-	@echo "Go V4 server starting..."
+	composer run start & echo $$! > $(PID_FILE)
+	@echo "PHP V2 server starting..."
 
 stop-server:
 	@if [ -f $(PID_FILE) ]; then \

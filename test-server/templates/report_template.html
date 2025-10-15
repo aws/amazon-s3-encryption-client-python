@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{server_name} - Duvet Compliance Report</title>
+    <link rel="stylesheet" href="../templates/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{server_name}</h1>
+            <a href="../compliance_homepage.html" class="nav-link">Back to Homepage</a>
+        </div>
+        {content}
+    </div>
+    
+    <script>
+        function toggleSection(sectionId) {{
+            const content = document.getElementById('content_' + sectionId);
+            const icon = document.getElementById('icon_' + sectionId);
+            
+            if (content.classList.contains('expanded')) {{
+                content.classList.remove('expanded');
+                icon.textContent = '▼';
+            }} else {{
+                content.classList.add('expanded');
+                icon.textContent = '▲';
+            }}
+        }}
+        
+        function toggleSubSection(sectionId) {{
+            const content = document.getElementById('content_' + sectionId);
+            const icon = document.getElementById('icon_' + sectionId);
+            
+            if (content.classList.contains('expanded')) {{
+                content.classList.remove('expanded');
+                icon.textContent = '▼';
+            }} else {{
+                content.classList.add('expanded');
+                icon.textContent = '▲';
+            }}
+        }}
+        
+        function togglePieChart() {{
+            const container = document.getElementById('pie-chart-container');
+            const icon = document.getElementById('pie-chart-icon');
+            
+            if (container.style.display === 'none') {{
+                container.style.display = 'flex';
+                icon.textContent = '▲';
+                drawPieChart();
+            }} else {{
+                container.style.display = 'none';
+                icon.textContent = '▼';
+            }}
+        }}
+        
+        function drawPieChart() {{
+            const canvas = document.getElementById('implementationPieChart');
+            const ctx = canvas.getContext('2d');
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = 100;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Get data from global variable set by Python
+            const data = window.pieChartData || [];
+            
+            // Filter out zero values
+            const filteredData = data.filter(item => item.value > 0);
+            const total = filteredData.reduce((sum, item) => sum + item.value, 0);
+            
+            if (total > 0) {{
+                let currentAngle = -Math.PI / 2; // Start at top
+                
+                // Draw pie slices
+                filteredData.forEach(item => {{
+                    const sliceAngle = (item.value / total) * 2 * Math.PI;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(centerX, centerY);
+                    ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
+                    ctx.closePath();
+                    ctx.fillStyle = item.color;
+                    ctx.fill();
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    // Draw label if slice is large enough
+                    if (item.value / total > 0.05) {{
+                        const labelAngle = currentAngle + sliceAngle / 2;
+                        const labelX = centerX + Math.cos(labelAngle) * (radius * 0.7);
+                        const labelY = centerY + Math.sin(labelAngle) * (radius * 0.7);
+                        
+                        ctx.fillStyle = '#fff';
+                        ctx.font = 'bold 12px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(item.value.toString(), labelX, labelY);
+                    }}
+                    
+                    currentAngle += sliceAngle;
+                }});
+            }} else {{
+                // Draw "No data" message
+                ctx.fillStyle = '#666';
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('No data available', centerX, centerY);
+            }}
+        }}
+        
+        // Add keyboard navigation
+        document.addEventListener('keydown', function(e) {{
+            if (e.key === 'Escape') {{
+                // Close all expanded sections and subsections
+                document.querySelectorAll('.spec-content.expanded').forEach(content => {{
+                    content.classList.remove('expanded');
+                }});
+                document.querySelectorAll('.section-content.expanded').forEach(content => {{
+                    content.classList.remove('expanded');
+                }});
+                document.querySelectorAll('.expand-icon').forEach(icon => {{
+                    icon.textContent = '▼';
+                }});
+            }}
+        }});
+    </script>
+</body>
+</html>

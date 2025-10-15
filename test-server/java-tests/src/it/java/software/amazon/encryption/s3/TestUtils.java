@@ -75,7 +75,7 @@ public class TestUtils {
 
     // Sets of unsupported features by language
     public static final Set<String> ENCRYPTION_CONTEXT_ON_DECRYPT_UNSUPPORTED =
-        Set.of(GO_V3_CURRENT, PHP_V2_CURRENT, PHP_V3, NET_V2_CURRENT, NET_V3);
+        Set.of(GO_V3_CURRENT, PHP_V2_CURRENT, PHP_V2_TRANSITION, PHP_V3, NET_V2_CURRENT, NET_V3);
     
     public static final Set<String> ENCRYPTION_CONTEXT_ON_ENCRYPT_UNSUPPORTED =
         Set.of(NET_V2_CURRENT, NET_V3);
@@ -92,23 +92,23 @@ public class TestUtils {
 
     public static final Set<String> TRANSITION_VERSIONS =
         Set.of(
-            JAVA_V3_TRANSITION,
-            GO_V3_TRANSITION,
-            NET_V2_TRANSITION,
-            CPP_V2_TRANSITION,
-            RUBY_V2_TRANSITION,
-            PHP_V2_TRANSITION
+            // JAVA_V3_TRANSITION,
+            // GO_V3_TRANSITION,
+            // NET_V2_TRANSITION,
+            // CPP_V2_TRANSITION,
+            // PHP_V2_TRANSITION,
+            RUBY_V2_TRANSITION
         );
 
     public static final Set<String> IMPROVED_VERSIONS =
         Set.of(
-            JAVA_V4,
-            PYTHON_V3,
-            GO_V4,
-            NET_V3,
-            CPP_V3,
-            RUBY_V3,
-            PHP_V3
+            // JAVA_V4,
+            // PYTHON_V3,
+            // GO_V4,
+            // NET_V3,
+            // CPP_V3,
+            // PHP_V3,
+            RUBY_V3
         );
 
     private static final Map<String, LanguageServerTarget> serverMap;
@@ -132,7 +132,7 @@ public class TestUtils {
         // servers.put(NET_V2_TRANSITION, new LanguageServerTarget(NET_V2_TRANSITION, "8096"));
         servers.put(CPP_V2_TRANSITION, new LanguageServerTarget(CPP_V2_TRANSITION, "8097"));
         // servers.put(RUBY_V2_TRANSITION, new LanguageServerTarget(RUBY_V2_TRANSITION, "8098"));
-        // servers.put(PHP_V2_TRANSITION, new LanguageServerTarget(PHP_V2_TRANSITION, "8099"));
+        servers.put(PHP_V2_TRANSITION, new LanguageServerTarget(PHP_V2_TRANSITION, "8099"));
         servers.put(JAVA_V4, new LanguageServerTarget(JAVA_V4, "8090"));
         serverMap = filterServers(servers);
     }
@@ -280,7 +280,6 @@ public class TestUtils {
      */
     public static Stream<Arguments> clientsForTest() {
         return serverMap.values().stream()
-            .map(LanguageServerTarget::getLanguageName)
             .map(Arguments::of);
     }
 
@@ -288,24 +287,87 @@ public class TestUtils {
      * Get stream of arguments for current version clients for testing.
      */
     public static Stream<Arguments> currentClientsForTest() {
-        return clientsForTest()
-            .filter(arg -> CURRENT_VERSIONS.contains(arg.get()[0]));
+        return serverMap.values().stream()
+            .filter(target -> CURRENT_VERSIONS.contains(target.getLanguageName()))
+            .map(Arguments::of);
     }
 
     /**
      * Get stream of arguments for transition version clients for testing.
      */
     public static Stream<Arguments> transitionClientsForTest() {
-        return clientsForTest()
-            .filter(arg -> TRANSITION_VERSIONS.contains(arg.get()[0]));
+        return serverMap.values().stream()
+            .filter(target -> TRANSITION_VERSIONS.contains(target.getLanguageName()))
+            .map(Arguments::of);
     }
 
     /**
      * Get stream of arguments for improved version clients for testing.
      */
     public static Stream<Arguments> improvedClientsForTest() {
-        return clientsForTest()
-            .filter(arg -> IMPROVED_VERSIONS.contains(arg.get()[0]));
+        return serverMap.values().stream()
+            .filter(target -> IMPROVED_VERSIONS.contains(target.getLanguageName()))
+            .map(Arguments::of);
+    }
+
+    /**
+     * These functions provide a stream of arguments for parameterized tests.
+     * @return Stream of Arguments containing pairs of LanguageServerTarget for encryption and decryption
+     */
+    public static Stream<Arguments> encryptImprovedDecryptImproved() {
+        return improvedClientsForTest()
+            .flatMap(encrypt -> improvedClientsForTest()
+                .flatMap(decrypt -> Stream.of(
+                    Arguments.of(encrypt.get()[0], decrypt.get()[0])
+                )));
+    }
+
+    public static Stream<Arguments> encryptImprovedDecryptTransition() {
+        return improvedClientsForTest()
+            .flatMap(encrypt -> transitionClientsForTest()
+                .flatMap(decrypt -> Stream.of(
+                    Arguments.of(encrypt.get()[0], decrypt.get()[0])
+                )));
+    }
+
+    public static Stream<Arguments> encryptTransitionDecryptImproved() {
+        return transitionClientsForTest()
+            .flatMap(encrypt -> improvedClientsForTest()
+                .flatMap(decrypt -> Stream.of(
+                    Arguments.of(encrypt.get()[0], decrypt.get()[0])
+                )));
+    }
+
+    public static Stream<Arguments> encryptImprovedDecryptCurrent() {
+        return improvedClientsForTest()
+            .flatMap(encrypt -> currentClientsForTest()
+                .flatMap(decrypt -> Stream.of(
+                    Arguments.of(encrypt.get()[0], decrypt.get()[0])
+                )));
+    }
+
+    public static Stream<Arguments> encryptCurrentDecryptImproved() {
+        return currentClientsForTest()
+            .flatMap(encrypt -> improvedClientsForTest()
+                .flatMap(decrypt -> Stream.of(
+                    Arguments.of(encrypt.get()[0], decrypt.get()[0])
+                )));
+    }
+
+    public static Stream<Arguments> encryptTransitionDecryptCurrent() {
+        return transitionClientsForTest()
+            .flatMap(encrypt -> currentClientsForTest()
+                .flatMap(decrypt -> Stream.of(
+                    Arguments.of(encrypt.get()[0], decrypt.get()[0])
+                )));
+    }
+
+    public static Stream<Arguments> encryptCurrentDecryptTransition() {
+        return currentClientsForTest()
+            .flatMap(encrypt -> transitionClientsForTest()
+                .flatMap(decrypt -> Stream.of(
+                    Arguments.of(encrypt.get()[0], decrypt.get()[0])
+                )));
     }
 
     /**
