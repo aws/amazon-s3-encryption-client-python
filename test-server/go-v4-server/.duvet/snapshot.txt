@@ -1,0 +1,247 @@
+SPECIFICATION: [Client](../specification/s3-encryption/client.md)
+  SECTION: [AWS SDK Compatibility](#aws-sdk-compatibility)
+    TEXT[!MUST]: The S3EC MUST adhere to the same interface for API operations as the conventional AWS SDK S3 client.
+    TEXT[!SHOULD,implementation,test]: The S3EC SHOULD support invoking operations unrelated to client-side encryption e.g.
+    TEXT[!MUST,implication]: The S3EC MUST provide a different set of configuration options than the conventional S3 client.
+
+  SECTION: [Cryptographic Materials](#cryptographic-materials)
+    TEXT[!MUST,exception]: The S3EC MUST accept either one CMM or one Keyring instance upon initialization.
+    TEXT[!MUST,exception]: If both a CMM and a Keyring are provided, the S3EC MUST throw an exception.
+    TEXT[!MUST,exception]: When a Keyring is provided, the S3EC MUST create an instance of the DefaultCMM using the provided Keyring.
+    TEXT[!MAY,exception]: The S3EC MAY accept key material directly.
+
+  SECTION: [Enable Legacy Wrapping Algorithms](#enable-legacy-wrapping-algorithms)
+    TEXT[!MUST,implication]: The S3EC MUST support the option to enable or disable legacy wrapping algorithms.
+    TEXT[!MUST,implication]: The option to enable legacy wrapping algorithms MUST be set to false by default.
+    TEXT[!MUST,implementation]: When enabled, the S3EC MUST be able to decrypt objects encrypted with all supported wrapping algorithms (both legacy and fully supported).
+    TEXT[!MUST,implementation]: When disabled, the S3EC MUST NOT decrypt objects encrypted using legacy wrapping algorithms; it MUST throw an exception when attempting to decrypt an object encrypted with a legacy wrapping algorithm.
+
+  SECTION: [Enable Legacy Unauthenticated Modes](#enable-legacy-unauthenticated-modes)
+    TEXT[!MUST,implication]: The S3EC MUST support the option to enable or disable legacy unauthenticated modes (content encryption algorithms).
+    TEXT[!MUST,implementation]: The option to enable legacy unauthenticated modes MUST be set to false by default.
+    TEXT[!MUST,implementation]: When enabled, the S3EC MUST be able to decrypt objects encrypted with all content encryption algorithms (both legacy and fully supported).
+    TEXT[!MUST,implementation]: When disabled, the S3EC MUST NOT decrypt objects encrypted using legacy content encryption algorithms; it MUST throw an exception when attempting to decrypt an object encrypted with a legacy content encryption algorithm.
+
+  SECTION: [Enable Delayed Authentication](#enable-delayed-authentication)
+    TEXT[!MUST,exception]: The S3EC MUST support the option to enable or disable Delayed Authentication mode.
+    TEXT[!MUST,exception]: Delayed Authentication mode MUST be set to false by default.
+    TEXT[!MAY,exception]: When enabled, the S3EC MAY release plaintext from a stream which has not been authenticated.
+    TEXT[!MUST,exception]: When disabled the S3EC MUST NOT release plaintext from a stream which has not been authenticated.
+
+  SECTION: [Set Buffer Size](#set-buffer-size)
+    TEXT[!SHOULD]: The S3EC SHOULD accept a configurable buffer size which refers to the maximum ciphertext length in bytes to store in memory when Delayed Authentication mode is disabled.
+    TEXT[!MUST,exception]: If Delayed Authentication mode is enabled, and the buffer size has been set to a value other than its default, the S3EC MUST throw an exception.
+    TEXT[!MUST]: If Delayed Authentication mode is disabled, and no buffer size is provided, the S3EC MUST set the buffer size to a reasonable default.
+
+  SECTION: [Wrapped S3 Client(s)](#wrapped-s3-client-s)
+    TEXT[!MUST,implementation]: The S3EC MUST support the option to provide an SDK S3 client instance during its initialization.
+    TEXT[!MUST,implementation]: The S3EC MUST NOT support use of S3EC as the provided S3 client during its initialization; it MUST throw an exception in this case.
+
+  SECTION: [Instruction File Configuration](#instruction-file-configuration)
+    TEXT[!MAY,exception]: The S3EC MAY support the option to provide Instruction File Configuration during its initialization.
+    TEXT[!MUST,exception]: If the S3EC in a given language supports Instruction Files, then it MUST accept Instruction File Configuration during its initialization.
+    TEXT[!SHOULD,exception]: In this case, the Instruction File Configuration SHOULD be optional, such that its default configuration is used when none is provided.
+
+  SECTION: [Inherited SDK Configuration](#inherited-sdk-configuration)
+    TEXT[!MAY,exception]: The S3EC MAY support directly configuring the wrapped SDK clients through its initialization.
+    TEXT[!MAY,exception]: For example, the S3EC MAY accept a credentials provider instance during its initialization.
+    TEXT[!MUST,exception]: If the S3EC accepts SDK client configuration, the configuration MUST be applied to all wrapped S3 clients.
+    TEXT[!MUST,exception]: If the S3EC accepts SDK client configuration, the configuration MUST be applied to all wrapped SDK clients including the KMS client.
+
+  SECTION: [Encryption Algorithm](#encryption-algorithm)
+    TEXT[!MUST,implementation]: The S3EC MUST support configuration of the encryption algorithm (or algorithm suite) during its initialization.
+    TEXT[!MUST,implementation]: The S3EC MUST validate that the configured encryption algorithm is not legacy.
+    TEXT[!MUST,implementation]: If the configured encryption algorithm is legacy, then the S3EC MUST throw an exception.
+
+  SECTION: [Key Commitment](#key-commitment)
+    TEXT[!MUST,implementation]: The S3EC MUST support configuration of the [Key Commitment policy](./key-commitment.md) during its initialization.
+    TEXT[!MUST,implementation]: The S3EC MUST validate the configured Encryption Algorithm against the provided key commitment policy.
+    TEXT[!MUST,implementation]: If the configured Encryption Algorithm is incompatible with the key commitment policy, then it MUST throw an exception.
+
+  SECTION: [Randomness](#randomness)
+    TEXT[!MAY,exception]: The S3EC MAY accept a source of randomness during client initialization.
+
+  SECTION: [Required API Operations](#required-api-operations)
+    TEXT[!MUST,implementation]: - GetObject MUST be implemented by the S3EC.
+    TEXT[!MUST,implementation]:   - GetObject MUST decrypt data received from the S3 server and return it as plaintext.
+    TEXT[!MUST,implementation]: - PutObject MUST be implemented by the S3EC.
+    TEXT[!MUST,implementation]:   - PutObject MUST encrypt its input data before it is uploaded to S3.
+    TEXT[!MUST]: - DeleteObject MUST be implemented by the S3EC.
+    TEXT[!MUST]:   - DeleteObject MUST delete the given object key.
+    TEXT[!MUST]:   - DeleteObject MUST delete the associated instruction file using the default instruction file suffix.
+    TEXT[!MUST]: - DeleteObjects MUST be implemented by the S3EC.
+    TEXT[!MUST]:   - DeleteObjects MUST delete each of the given objects.
+    TEXT[!MUST]:   - DeleteObjects MUST delete each of the corresponding instruction files using the default instruction file suffix.
+
+  SECTION: [Optional API Operations](#optional-api-operations)
+    TEXT[!MAY]: - CreateMultipartUpload MAY be implemented by the S3EC.
+    TEXT[!MUST]:   - If implemented, CreateMultipartUpload MUST initiate a multipart upload.
+    TEXT[!MAY]: - UploadPart MAY be implemented by the S3EC.
+    TEXT[!MUST]:   - UploadPart MUST encrypt each part.
+    TEXT[!MUST]:   - Each part MUST be encrypted in sequence.
+    TEXT[!MUST]:   - Each part MUST be encrypted using the same cipher instance for each part.
+    TEXT[!MAY]: - CompleteMultipartUpload MAY be implemented by the S3EC.
+    TEXT[!MUST]:   - CompleteMultipartUpload MUST complete the multipart upload.
+    TEXT[!MAY]: - AbortMultipartUpload MAY be implemented by the S3EC.
+    TEXT[!MUST]:   - AbortMultipartUpload MUST abort the multipart upload.
+    TEXT[!MAY]: - ReEncryptInstructionFile MAY be implemented by the S3EC.
+    TEXT[!MUST]:   - ReEncryptInstructionFile MUST decrypt the instruction file's encrypted data key for the given object using the client's CMM.
+    TEXT[!MUST]:   - ReEncryptInstructionFile MUST re-encrypt the plaintext data key with a provided keyring.
+
+SPECIFICATION: [Content Metadata](../specification/s3-encryption/data-format/content-metadata.md)
+  SECTION: [Content Metadata MapKeys](#content-metadata-mapkeys)
+    TEXT[!MUST,implication]: The "x-amz-meta-" prefix is automatically added by the S3 server and MUST NOT be included in implementation code.
+    TEXT[!MUST,implication]: The "x-amz-" prefix denotes that the metadata is owned by an Amazon product and MUST be prepended to all S3EC metadata mapkeys.
+    TEXT[!SHOULD,exception]: - The mapkey "x-amz-unencrypted-content-length" SHOULD be present for V1 format objects.
+    TEXT[!MUST,exception]: - The mapkey "x-amz-key" MUST be present for V1 format objects.
+    TEXT[!MUST,exception]: - The mapkey "x-amz-matdesc" MUST be present for V1 format objects.
+    TEXT[!MUST,exception]: - The mapkey "x-amz-iv" MUST be present for V1 format objects.
+    TEXT[!MUST,implementation,test]: - The mapkey "x-amz-key-v2" MUST be present for V2 format objects.
+    TEXT[!MUST,implementation,test]: - The mapkey "x-amz-matdesc" MUST be present for V2 format objects.
+    TEXT[!MUST,implementation,test]: - The mapkey "x-amz-iv" MUST be present for V2 format objects.
+    TEXT[!MUST,implementation,test]: - The mapkey "x-amz-wrap-alg" MUST be present for V2 format objects.
+    TEXT[!MUST,implementation,test]: - The mapkey "x-amz-cek-alg" MUST be present for V2 format objects.
+    TEXT[!MUST,implementation,test]: - The mapkey "x-amz-tag-len" MUST be present for V2 format objects.
+    TEXT[!MUST,implementation,test]: - The mapkey "x-amz-c" MUST be present for V3 format objects.
+    TEXT[!SHOULD,implementation,test]:   - This mapkey ("x-amz-c") SHOULD be represented by a constant named "CONTENT_CIPHER_V3" or similar in the implementation code.
+    TEXT[!MUST,implementation,test]: - The mapkey "x-amz-3" MUST be present for V3 format objects.
+    TEXT[!SHOULD,implementation,test]:   - This mapkey ("x-amz-3") SHOULD be represented by a constant named "ENCRYPTED_DATA_KEY_V3" or similar in the implementation code.
+    TEXT[!SHOULD,implementation]: - The mapkey "x-amz-m" SHOULD be present for V3 format objects.
+    TEXT[!SHOULD,implementation,test]:   - This mapkey ("x-amz-m") SHOULD be represented by a constant named "MAT_DESC_V3" or similar in the implementation code.
+    TEXT[!SHOULD,implementation,test]: - The mapkey "x-amz-t" SHOULD be present for V3 format objects.
+    TEXT[!SHOULD,implementation,test]:   - This mapkey ("x-amz-t") SHOULD be represented by a constant named "ENCRYPTION_CONTEXT_V3" or similar in the implementation code.
+    TEXT[!MUST,implementation,test]: - The mapkey "x-amz-w" MUST be present for V3 format objects.
+    TEXT[!SHOULD,implementation,test]:   - This mapkey ("x-amz-w") SHOULD be represented by a constant named "ENCRYPTED_DATA_KEY_ALGORITHM_V3" or similar in the implementation code.
+    TEXT[!MUST,implementation,test]: - The mapkey "x-amz-d" MUST be present for V3 format objects.
+    TEXT[!SHOULD,implementation,test]:   - This mapkey ("x-amz-d") SHOULD be represented by a constant named "KEY_COMMITMENT_V3" or similar in the implementation code.
+    TEXT[!MUST,implementation,test]: - The mapkey "x-amz-i" MUST be present for V3 format objects.
+    TEXT[!SHOULD,implementation,test]:   - This mapkey ("x-amz-i") SHOULD be represented by a constant named "MESSAGE_ID_V3" or similar in the implementation code.
+    TEXT[!MUST,implication]: In the V3 format, the mapkeys "x-amz-c", "x-amz-d", and "x-amz-i" MUST be stored exclusively in the Object Metadata.
+
+  SECTION: [Determining S3EC Object Status](#determining-s3ec-object-status)
+    TEXT[!MUST,implementation,test]: - If the metadata contains "x-amz-iv" and "x-amz-key" then the object MUST be considered as an S3EC-encrypted object using the V1 format.
+    TEXT[!MUST,implementation,test]: - If the metadata contains "x-amz-iv" and "x-amz-metadata-x-amz-key-v2" then the object MUST be considered as an S3EC-encrypted object using the V2 format.
+    TEXT[!MUST,implementation,test]: - If the metadata contains "x-amz-3" and "x-amz-d" and "x-amz-i" then the object MUST be considered an S3EC-encrypted object using the V3 format.
+    TEXT[!MUST,implementation,test]: If the object matches none of the V1/V2/V3 formats, the S3EC MUST attempt to get the instruction file.
+    TEXT[!SHOULD,implementation,test]: If there are multiple mapkeys which are meant to be exclusive, such as "x-amz-key", "x-amz-key-v2", and "x-amz-3" then the S3EC SHOULD throw an exception.
+    TEXT[!SHOULD,implication]: In general, if there is any deviation from the above format, with the exception of additional unrelated mapkeys, then the S3EC SHOULD throw an exception.
+
+  SECTION: [V1/V2 Shared](#v1-v2-shared)
+    TEXT[!MAY,implementation,test]: This string MAY be encoded by the esoteric double-encoding scheme used by the S3 web server.
+
+  SECTION: [V3 Only](#v3-only)
+    TEXT[!MAY]: This material description string MAY be encoded by the esoteric double-encoding scheme used by the S3 web server.
+    TEXT[!MUST]: The Material Description MUST be used for wrapping algorithms `AES/GCM` (`02`) and `RSA-OAEP-SHA1` (`22`)
+    TEXT[!MUST]: If the mapkey is present,
+    TEXT[!MUST,implementation,test]: the default Material Description value MUST be set to an empty map (`{}`).
+    TEXT[!MAY]: This encryption context string MAY be encoded by the esoteric double-encoding scheme used by the S3 web server.
+    TEXT[!MUST]: The Encryption Context value MUST be used for wrapping algorithm `kms+context` or `12`.
+    TEXT[!MUST,implementation,test]:   - The wrapping algorithm value "02" MUST be translated to AES/GCM upon retrieval, and vice versa on write.
+    TEXT[!MUST,implementation,test]:   - The wrapping algorithm value "12" MUST be translated to kms+context upon retrieval, and vice versa on write.
+    TEXT[!MUST,implementation,test]:   - The wrapping algorithm value "22" MUST be translated to RSA-OAEP-SHA1 upon retrieval, and vice versa on write.
+
+  SECTION: [Algorithm Suite and Message Format Version Compatibility](#algorithm-suite-and-message-format-version-compatibility)
+    TEXT[!MAY]: Objects encrypted with ALG_AES_256_CBC_IV16_NO_KDF MAY use either the V1 or V2 message format version.
+    TEXT[!MUST]: Objects encrypted with ALG_AES_256_GCM_IV12_TAG16_NO_KDF MUST use the V2 message format version only.
+    TEXT[!MUST]: Objects encrypted with ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY MUST use the V3 message format version only.
+
+SPECIFICATION: [Content Metadata Strategy](../specification/s3-encryption/data-format/metadata-strategy.md)
+  SECTION: [Object Metadata](#object-metadata)
+    TEXT[!MUST,implication]: By default, the S3EC MUST store content metadata in the S3 Object Metadata.
+    TEXT[!SHOULD,implementation,test]: The S3EC SHOULD support decoding the S3 Server's "double encoding".
+    TEXT[!MUST,exception]: If the S3EC does not support decoding the S3 Server's "double encoding" then it MUST return the content metadata untouched.
+
+  SECTION: [Instruction File](#instruction-file)
+    TEXT[!MUST,exception]: The S3EC MUST support writing some or all (depending on format) content metadata to an Instruction File.
+    TEXT[!MUST,exception]: The content metadata stored in the Instruction File MUST be serialized to a JSON string.
+    TEXT[!MUST,exception]: The serialized JSON string MUST be the only contents of the Instruction File.
+    TEXT[!MUST,exception]: Instruction File writes MUST NOT be enabled by default.
+    TEXT[!MUST,exception]: Instruction File writes MUST be optionally configured during client creation or on each PutObject request.
+    TEXT[!MAY,exception]: The S3EC MAY support re-encryption/key rotation via Instruction Files.
+    TEXT[!MUST,exception]: The S3EC MUST NOT support providing a custom Instruction File suffix on ordinary writes; custom suffixes MUST only be used during re-encryption.
+    TEXT[!SHOULD,exception]: The S3EC SHOULD support providing a custom Instruction File suffix on GetObject requests, regardless of whether or not re-encryption is supported.
+
+  SECTION: [V1/V2 Instruction Files](#v1-v2-instruction-files)
+    TEXT[!MUST,exception]: In the V1/V2 message format, all of the content metadata MUST be stored in the Instruction File.
+
+  SECTION: [V3 Instruction Files](#v3-instruction-files)
+    TEXT[!MUST,exception]: - The V3 message format MUST store the mapkey "x-amz-c" and its value in the Object Metadata when writing with an Instruction File.
+    TEXT[!MUST,exception]: - The V3 message format MUST NOT store the mapkey "x-amz-c" and its value in the Instruction File.
+    TEXT[!MUST,exception]: - The V3 message format MUST store the mapkey "x-amz-d" and its value in the Object Metadata when writing with an Instruction File.
+    TEXT[!MUST,exception]: - The V3 message format MUST NOT store the mapkey "x-amz-d" and its value in the Instruction File.
+    TEXT[!MUST,exception]: - The V3 message format MUST store the mapkey "x-amz-i" and its value in the Object Metadata when writing with an Instruction File.
+    TEXT[!MUST,exception]: - The V3 message format MUST NOT store the mapkey "x-amz-i" and its value in the Instruction File.
+    TEXT[!MUST,exception]: - The V3 message format MUST store the mapkey "x-amz-3" and its value in the Instruction File.
+    TEXT[!MUST,exception]: - The V3 message format MUST store the mapkey "x-amz-w" and its value in the Instruction File.
+    TEXT[!MUST,exception]: - The V3 message format MUST store the mapkey "x-amz-m" and its value (when present in the content metadata) in the Instruction File.
+    TEXT[!MUST,exception]: - The V3 message format MUST store the mapkey "x-amz-t" and its value (when present in the content metadata) in the Instruction File.
+
+SPECIFICATION: [Decryption](../specification/s3-encryption/decryption.md)
+  SECTION: [Ranged Gets](#ranged-gets)
+    TEXT[!MAY,exception]: The S3EC MAY support the "range" parameter on GetObject which specifies a subset of bytes to download and decrypt.
+    TEXT[!MUST,exception]: If the S3EC supports Ranged Gets, the S3EC MUST adjust the customer-provided range to include the beginning and end of the cipher blocks for the given range.
+    TEXT[!MUST,exception]: For requests which provide a range to decrypt an object encrypted with an authenticated algorithm suite, the algorithm suite MUST be ALG_AES_256_CTR_IV16_TAG16_NO_KDF.
+    TEXT[!MUST,exception]: If the GetObject response contains a range, but the GetObject request does not contain a range, the S3EC MUST throw an exception.
+
+  SECTION: [Legacy Decryption](#legacy-decryption)
+    TEXT[!MUST,implementation]: The S3EC MUST NOT decrypt objects encrypted using legacy unauthenticated algorithm suites unless specifically configured to do so.
+    TEXT[!MUST,implementation]: If the S3EC is not configured to enable legacy unauthenticated content decryption, the client MUST throw an exception when attempting to decrypt an object encrypted with a legacy unauthenticated algorithm suite.
+
+  SECTION: [Key Commitment](#key-commitment)
+    TEXT[!MUST,implementation]: The S3EC MUST validate the algorithm suite used for decryption against the key commitment policy before attempting to decrypt the content ciphertext.
+    TEXT[!MUST,implementation]: If the commitment policy requires decryption using a committing algorithm suite, and the algorithm suite associated with the object does not support key commitment, then the S3EC MUST throw an exception.
+
+  SECTION: [ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY](#alg-aes-256-gcm-hkdf-sha512-commit-key)
+    TEXT[!MUST,implementation]: When using ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY, the client MUST verify that the [derived key commitment](./key-derivation.md#hkdf-operation) contains the same bytes as the stored key commitment retrieved from the stored object's metadata.
+    TEXT[!MUST,implication]: When using ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY, the verification of the derived key commitment value MUST be done in constant time.
+    TEXT[!MUST,implementation]: When using ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY, the client MUST throw an exception when the derived key commitment value and stored key commitment value do not match.
+    TEXT[!MUST,implication]: When using ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY, the client MUST verify the key commitment values match before deriving the [derived encryption key](./key-derivation.md#hkdf-operation).
+
+SPECIFICATION: [Encryption](../specification/s3-encryption/encryption.md)
+  SECTION: [Content Encryption](#content-encryption)
+    TEXT[!MUST]: The S3EC MUST use the encryption algorithm configured during [client](./client.md) initialization.
+    TEXT[!MUST,implementation]: The client MUST validate that the length of the plaintext bytes does not exceed the algorithm suite's cipher's maximum content length in bytes.
+    TEXT[!MUST,implementation]: The client MUST generate an IV or Message ID using the length of the IV or Message ID defined in the algorithm suite.
+    TEXT[!MUST,implementation]: The generated IV or Message ID MUST be set or returned from the encryption process such that it can be included in the content metadata.
+
+  SECTION: [Cipher Initialization](#cipher-initialization)
+    TEXT[!SHOULD,implementation]: The client SHOULD validate that the generated IV or Message ID is not zeros.
+
+  SECTION: [ALG_AES_256_CTR_IV16_TAG16_NO_KDF](#alg-aes-256-ctr-iv16-tag16-no-kdf)
+    TEXT[implication]: Encryption using AES-CTR is not supported.
+    TEXT[!MUST,implication]: Attempts to encrypt using AES-CTR MUST fail.
+
+  SECTION: [ALG_AES_256_GCM_IV12_TAG16_NO_KDF](#alg-aes-256-gcm-iv12-tag16-no-kdf)
+    TEXT[!MUST,implication]: The client MUST initialize the cipher, or call an AES-GCM encryption API, with the plaintext data key, the generated IV, and the tag length defined in the Algorithm Suite when encrypting with ALG_AES_256_GCM_IV12_TAG16_NO_KDF.
+    TEXT[!MUST,implementation,test]: The client MUST NOT provide any AAD when encrypting with ALG_AES_256_GCM_IV12_TAG16_NO_KDF.
+    TEXT[!MUST,exception]: The client MUST append the GCM auth tag to the ciphertext if the underlying crypto provider does not do so automatically.
+
+  SECTION: [ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY](#alg-aes-256-gcm-hkdf-sha512-commit-key)
+    TEXT[!MUST,implementation]: The client MUST use HKDF to derive the key commitment value and the derived encrypting key as described in [Key Derivation](key-derivation.md).
+    TEXT[!MUST,implementation]: The derived key commitment value MUST be set or returned from the encryption process such that it can be included in the content metadata.
+    TEXT[!MUST,exception]: The client MUST append the GCM auth tag to the ciphertext if the underlying crypto provider does not do so automatically.
+
+SPECIFICATION: [Key Commitment](../specification/s3-encryption/key-commitment.md)
+  SECTION: [Commitment Policy](#commitment-policy)
+    TEXT[!MUST,implementation]: When the commitment policy is FORBID_ENCRYPT_ALLOW_DECRYPT, the S3EC MUST NOT encrypt using an algorithm suite which supports key commitment.
+    TEXT[!MUST,implementation]: When the commitment policy is FORBID_ENCRYPT_ALLOW_DECRYPT, the S3EC MUST allow decryption using algorithm suites which do not support key commitment.
+    TEXT[!MUST,implementation]: When the commitment policy is REQUIRE_ENCRYPT_ALLOW_DECRYPT, the S3EC MUST only encrypt using an algorithm suite which supports key commitment.
+    TEXT[!MUST,implementation]: When the commitment policy is REQUIRE_ENCRYPT_ALLOW_DECRYPT, the S3EC MUST allow decryption using algorithm suites which do not support key commitment.
+    TEXT[!MUST,implementation]: When the commitment policy is REQUIRE_ENCRYPT_REQUIRE_DECRYPT, the S3EC MUST only encrypt using an algorithm suite which supports key commitment.
+    TEXT[!MUST,implementation]: When the commitment policy is REQUIRE_ENCRYPT_REQUIRE_DECRYPT, the S3EC MUST NOT allow decryption using algorithm suites which do not support key commitment.
+
+SPECIFICATION: [Key Derivation](../specification/s3-encryption/key-derivation.md)
+  SECTION: [HKDF Operation](#hkdf-operation)
+    TEXT[!MUST,implication]: - The hash function MUST be specified by the algorithm suite commitment settings.
+    TEXT[!MUST,implication]: - The input keying material MUST be the plaintext data key (PDK) generated by the key provider.
+    TEXT[!MUST,implementation]: - The length of the input keying material MUST equal the key derivation input length specified by the algorithm suite commit key derivation setting.
+    TEXT[!MUST,implementation]: - The salt MUST be the Message ID with the length defined in the algorithm suite.
+    TEXT[!MUST,implementation]:   - The DEK input pseudorandom key MUST be the output from the extract step.
+    TEXT[!MUST,implementation]:   - The length of the output keying material MUST equal the encryption key length specified by the algorithm suite encryption settings.
+    TEXT[!MUST,implementation]:   - The input info MUST be a concatenation of the algorithm suite ID as bytes followed by the string DERIVEKEY as UTF8 encoded bytes.
+    TEXT[!MUST,implementation]:   - The CK input pseudorandom key MUST be the output from the extract step.
+    TEXT[!MUST,implementation]:   - The length of the output keying material MUST equal the commit key length specified by the supported algorithm suites.
+    TEXT[!MUST,implementation]:   - The input info MUST be a concatenation of the algorithm suite ID as bytes followed by the string COMMITKEY as UTF8 encoded bytes.
+    TEXT[!MUST,implementation]: When encrypting or decrypting with ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY, the IV used in the AES-GCM content encryption/decryption MUST contain only zeros of the length defined in the algorithm suite.
+    TEXT[!MUST]: The client MUST initialize the cipher, or call an AES-GCM encryption API, with the derived encryption key, an IV containing only zeros, and the tag length defined in the Algorithm Suite when encrypting or decrypting with ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY.
+    TEXT[!MUST,implementation,test]: The client MUST set the AAD to the Algorithm Suite ID represented as bytes.
