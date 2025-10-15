@@ -4,6 +4,7 @@
 [submodule "test-server/ruby-v3-server/local-ruby-sdk"]
 	path = test-server/ruby-v3-server/local-ruby-sdk
 	url = git@github.com:aws/aws-sdk-ruby-staging.git
+	branch = fire-egg
 [submodule "test-server/php-v2-server/local-php-sdk"]
 	path = test-server/php-v2-server/local-php-sdk
 	url = git@github.com:aws/private-aws-sdk-php-staging.git
