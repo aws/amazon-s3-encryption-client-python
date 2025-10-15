@@ -202,6 +202,67 @@ def generate_server_report(server_path, server_name):
         'specifications': specifications
     }
 
+def calculate_summary_statistics(specifications):
+    """Calculate summary statistics for all specifications."""
+    total_sections = 0
+    complete_sections = 0
+    total_requirements = 0
+    complete_requirements = 0
+    
+    # Count requirements by implementation type
+    no_implementation = 0
+    implementation_only = 0
+    test_only = 0
+    implementation_and_test = 0
+    exception_count = 0
+    implication_count = 0
+    
+    for spec_data in specifications.values():
+        sections = spec_data.get('sections', {})
+        total_sections += len(sections)
+        
+        for section_data in sections.values():
+            requirements = section_data.get('requirements', [])
+            total_requirements += len(requirements)
+            
+            # Count complete requirements
+            section_complete_reqs = sum(1 for req in requirements if req['is_complete'])
+            complete_requirements += section_complete_reqs
+            
+            # A section is complete if all its requirements are complete
+            if requirements and section_complete_reqs == len(requirements):
+                complete_sections += 1
+            elif not requirements:  # Empty section is considered complete
+                complete_sections += 1
+            
+            # Count requirements by implementation type
+            for req in requirements:
+                if req['has_exception']:
+                    exception_count += 1
+                elif req['has_implication']:
+                    implication_count += 1
+                elif req['has_implementation'] and req['has_test']:
+                    implementation_and_test += 1
+                elif req['has_implementation']:
+                    implementation_only += 1
+                elif req['has_test']:
+                    test_only += 1
+                else:
+                    no_implementation += 1
+    
+    return {
+        'total_sections': total_sections,
+        'complete_sections': complete_sections,
+        'total_requirements': total_requirements,
+        'complete_requirements': complete_requirements,
+        'no_implementation': no_implementation,
+        'implementation_only': implementation_only,
+        'test_only': test_only,
+        'implementation_and_test': implementation_and_test,
+        'exception_count': exception_count,
+        'implication_count': implication_count
+    }
+
 def load_template(template_path):
     """Load a template file."""
     with open(template_path, 'r', encoding='utf-8') as f:
@@ -214,7 +275,152 @@ def generate_html_report(specifications, output_file_path, server_name):
     template_dir = Path(__file__).parent / 'templates'
     template = load_template(template_dir / 'report_template.html')
     
-    content_html = ""
+    # Calculate summary statistics
+    stats = calculate_summary_statistics(specifications)
+    
+    # Calculate progress percentages
+    section_progress = (stats['complete_sections'] / stats['total_sections'] * 100) if stats['total_sections'] > 0 else 0
+    requirement_progress = (stats['complete_requirements'] / stats['total_requirements'] * 100) if stats['total_requirements'] > 0 else 0
+    
+    # Generate summary statistics HTML
+    content_html = f"""
+        <div class="summary-stats">
+            <h2>Summary Statistics</h2>
+            <div class="progress-section">
+                <div class="progress-item">
+                    <div class="progress-header">
+                        <span class="progress-label">Sections Implemented</span>
+                        <span class="progress-count">{stats['complete_sections']}/{stats['total_sections']}</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {section_progress:.1f}%"></div>
+                    </div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-header">
+                        <span class="progress-label">Requirements Implemented</span>
+                        <span class="progress-count">{stats['complete_requirements']}/{stats['total_requirements']}</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {requirement_progress:.1f}%"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="breakdown-header" onclick="togglePieChart()">
+                <h3>Implementation Breakdown</h3>
+                <span class="expand-icon" id="pie-chart-icon">▼</span>
+            </div>
+            <div class="breakdown-grid">
+                <div class="breakdown-item">
+                    <div class="breakdown-number">{stats['implementation_and_test']}</div>
+                    <div class="breakdown-label" style="color: #28a745;">Implementation + Test</div>
+                </div>
+                <div class="breakdown-item">
+                    <div class="breakdown-number">{stats['implementation_only']}</div>
+                    <div class="breakdown-label" style="color: #ffc107;">Implementation Only</div>
+                </div>
+                <div class="breakdown-item">
+                    <div class="breakdown-number">{stats['test_only']}</div>
+                    <div class="breakdown-label">Test Only</div>
+                </div>
+                <div class="breakdown-item">
+                    <div class="breakdown-number">{stats['exception_count']}</div>
+                    <div class="breakdown-label" style="color: #87ceeb;">Exception</div>
+                </div>
+                <div class="breakdown-item">
+                    <div class="breakdown-number">{stats['implication_count']}</div>
+                    <div class="breakdown-label" style="color: #dda0dd;">Implication</div>
+                </div>
+                <div class="breakdown-item">
+                    <div class="breakdown-number">{stats['no_implementation']}</div>
+                    <div class="breakdown-label" style="color: #dc3545;">No Implementation</div>
+                </div>
+            </div>
+            
+            <div class="pie-chart-container" id="pie-chart-container" style="display: none;">
+                <canvas id="implementationPieChart" width="250" height="250"></canvas>
+            </div>
+            
+            <script>
+                function togglePieChart() {{
+                    const container = document.getElementById('pie-chart-container');
+                    const icon = document.getElementById('pie-chart-icon');
+                    
+                    if (container.style.display === 'none') {{
+                        container.style.display = 'flex';
+                        icon.textContent = '▲';
+                        drawPieChart();
+                    }} else {{
+                        container.style.display = 'none';
+                        icon.textContent = '▼';
+                    }}
+                }}
+                
+                function drawPieChart() {{
+                    const canvas = document.getElementById('implementationPieChart');
+                    const ctx = canvas.getContext('2d');
+                    const centerX = canvas.width / 2;
+                    const centerY = canvas.height / 2;
+                    const radius = 100;
+                    
+                    // Clear canvas
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    const data = [
+                        {{ label: 'Implementation + Test', value: {stats['implementation_and_test']}, color: '#28a745' }},
+                        {{ label: 'Implementation Only', value: {stats['implementation_only']}, color: '#ffc107' }},
+                        {{ label: 'Exception', value: {stats['exception_count']}, color: '#87ceeb' }},
+                        {{ label: 'Implication', value: {stats['implication_count']}, color: '#dda0dd' }},
+                        {{ label: 'No Implementation', value: {stats['no_implementation']}, color: '#dc3545' }}
+                    ];
+                    
+                    // Filter out zero values
+                    const filteredData = data.filter(item => item.value > 0);
+                    const total = filteredData.reduce((sum, item) => sum + item.value, 0);
+                    
+                    if (total > 0) {{
+                        let currentAngle = -Math.PI / 2; // Start at top
+                        
+                        // Draw pie slices
+                        filteredData.forEach(item => {{
+                            const sliceAngle = (item.value / total) * 2 * Math.PI;
+                            
+                            ctx.beginPath();
+                            ctx.moveTo(centerX, centerY);
+                            ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
+                            ctx.closePath();
+                            ctx.fillStyle = item.color;
+                            ctx.fill();
+                            ctx.strokeStyle = '#fff';
+                            ctx.lineWidth = 2;
+                            ctx.stroke();
+                            
+                            // Draw label if slice is large enough
+                            if (item.value / total > 0.05) {{
+                                const labelAngle = currentAngle + sliceAngle / 2;
+                                const labelX = centerX + Math.cos(labelAngle) * (radius * 0.7);
+                                const labelY = centerY + Math.sin(labelAngle) * (radius * 0.7);
+                                
+                                ctx.fillStyle = '#fff';
+                                ctx.font = 'bold 12px Arial';
+                                ctx.textAlign = 'center';
+                                ctx.fillText(item.value.toString(), labelX, labelY);
+                            }}
+                            
+                            currentAngle += sliceAngle;
+                        }});
+                    }} else {{
+                        // Draw "No data" message
+                        ctx.fillStyle = '#666';
+                        ctx.font = '16px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('No data available', centerX, centerY);
+                    }}
+                }}
+            </script>
+        </div>
+    """
     
     # Generate content for each specification
     spec_counter = 0
