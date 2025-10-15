@@ -521,171 +521,21 @@ def generate_html_report(specifications, output_file_path, server_name):
     with open(output_file_path, 'w', encoding='utf-8') as f:
         f.write(html_content)
 
+def load_template(template_path):
+    """Load a template file."""
+    with open(template_path, 'r', encoding='utf-8') as f:
+        return f.read()
+
 def generate_homepage(servers_info, output_file):
-    """Generate the main homepage with links to all server reports."""
+    """Generate the main homepage with links to all server reports using templates."""
     
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
-    html_content = f"""
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spec Compliance Dashboard</title>
-    <style>
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 20px;
-            background-color: #0d1117;
-            color: #c9d1d9;
-        }}
-        .container {{
-            max-width: 1200px;
-            margin: 0 auto;
-            background: #161b22;
-            border-radius: 6px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-            border: 1px solid #30363d;
-            overflow: hidden;
-        }}
-        .header {{
-            background: #21262d;
-            color: #c9d1d9;
-            padding: 15px 20px;
-            text-align: center;
-            border-bottom: 1px solid #30363d;
-        }}
-        .header h1 {{
-            margin: 0;
-            font-size: 1.8em;
-            font-weight: 400;
-        }}
-        .header p {{
-            margin: 5px 0 0 0;
-            opacity: 0.9;
-            font-size: 0.9em;
-        }}
-        .stats-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            padding: 30px;
-            background: #0d1117;
-        }}
-        .stat-card {{
-            background: #161b22;
-            padding: 20px;
-            border-radius: 6px;
-            text-align: center;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-            border: 1px solid #30363d;
-        }}
-        .stat-number {{
-            font-size: 2em;
-            font-weight: bold;
-            color: #c9d1d9;
-        }}
-        .stat-label {{
-            color: #8b949e;
-            font-size: 0.9em;
-            margin-top: 5px;
-        }}
-        .servers-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 20px;
-            padding: 30px;
-        }}
-        .server-card {{
-            background: #161b22;
-            border-radius: 6px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-            border: 1px solid #30363d;
-            overflow: hidden;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }}
-        .server-card:hover {{
-            transform: translateY(-2px);
-            box-shadow: 0 3px 6px rgba(0,0,0,0.4);
-        }}
-        .server-header {{
-            padding: 12px 16px;
-            background: #21262d;
-            color: #c9d1d9;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #30363d;
-        }}
-        .server-name {{
-            font-size: 1.2em;
-            font-weight: 600;
-        }}
-        .server-status {{
-            font-size: 1.5em;
-        }}
-        .server-body {{
-            padding: 20px;
-        }}
-        .progress-bar {{
-            background: #0d1117;
-            border-radius: 6px;
-            height: 8px;
-            margin: 15px 0;
-            overflow: hidden;
-            border: 1px solid #30363d;
-        }}
-        .progress-fill {{
-            height: 100%;
-            background: #238636;
-            border-radius: 6px;
-            transition: width 0.3s ease;
-        }}
-        .server-stats {{
-            display: flex;
-            justify-content: space-between;
-            margin-top: 15px;
-            font-size: 0.9em;
-            color: #8b949e;
-        }}
-        .view-report-btn {{
-            display: inline-block;
-            margin-top: 15px;
-            padding: 10px 20px;
-            background: #238636;
-            color: white;
-            text-decoration: none;
-            border-radius: 6px;
-            transition: background-color 0.2s;
-        }}
-        .view-report-btn:hover {{
-            background: #2ea043;
-        }}
-        .no-data {{
-            text-align: center;
-            padding: 40px;
-            color: #8b949e;
-        }}
-        .footer {{
-            padding: 20px;
-            text-align: center;
-            background: #21262d;
-            color: #8b949e;
-            font-size: 0.9em;
-            border-top: 1px solid #30363d;
-        }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Spec Compliance Dashboard</h1>
-            <p>Last updated: {current_time}</p>
-        </div>
-"""
+    # Load the homepage template
+    template_dir = Path(__file__).parent / 'templates'
+    template = load_template(template_dir / 'homepage_template.html')
+    
+    content_html = ""
     
     if servers_info:
         # Calculate overall stats
@@ -693,7 +543,7 @@ def generate_homepage(servers_info, output_file):
         complete_servers = sum(1 for server in servers_info if server['status'] == '✅')
         partial_servers = sum(1 for server in servers_info if server['status'] == '🟡')
         
-        html_content += f"""
+        content_html += f"""
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-number">{total_servers}</div>
@@ -722,7 +572,7 @@ def generate_homepage(servers_info, output_file):
             section_progress_percent = (server['complete_sections'] / server['total_sections'] * 100) if server['total_sections'] > 0 else 0
             requirement_progress_percent = (server['complete_requirements'] / server['total_requirements'] * 100) if server['total_requirements'] > 0 else 0
             
-            html_content += f"""
+            content_html += f"""
             <div class="server-card">
                 <div class="server-header">
                     <div class="server-name">{server['name']}</div>
@@ -757,25 +607,22 @@ def generate_homepage(servers_info, output_file):
             </div>
 """
         
-        html_content += """
+        content_html += """
         </div>
 """
     else:
-        html_content += """
+        content_html += """
         <div class="no-data">
             <h2>No compliance data found</h2>
             <p>No servers with .duvet/snapshot.txt files were found in the test-server directory.</p>
         </div>
 """
     
-    html_content += f"""
-        <div class="footer">
-            Generated by duvet compliance dashboard • {current_time}
-        </div>
-    </div>
-</body>
-</html>
-"""
+    # Replace placeholders in template
+    html_content = template.format(
+        timestamp=current_time,
+        content=content_html
+    )
     
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(html_content)

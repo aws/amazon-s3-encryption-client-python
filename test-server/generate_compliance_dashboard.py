@@ -202,180 +202,19 @@ def generate_server_report(server_path, server_name):
         'specifications': specifications
     }
 
+def load_template(template_path):
+    """Load a template file."""
+    with open(template_path, 'r', encoding='utf-8') as f:
+        return f.read()
+
 def generate_html_report(specifications, output_file_path, server_name):
-    """Generate an interactive HTML report for a server using GitHub color scheme."""
+    """Generate an interactive HTML report for a server using templates."""
     
-    html_content = f"""
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{server_name} - Duvet Compliance Report</title>
-    <style>
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 20px;
-            background-color: #0d1117;
-            color: #c9d1d9;
-        }}
-        .container {{
-            max-width: 1000px;
-            margin: 0 auto;
-            background: #161b22;
-            border-radius: 6px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-            border: 1px solid #30363d;
-            overflow: hidden;
-        }}
-        .header {{
-            background: #21262d;
-            color: #c9d1d9;
-            padding: 8px 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #30363d;
-        }}
-        .header h1 {{
-            margin: 0;
-            font-size: 1.2em;
-            font-weight: 500;
-        }}
-        .nav-link {{
-            color: white;
-            text-decoration: none;
-            font-size: 0.9em;
-            opacity: 0.9;
-        }}
-        .nav-link:hover {{
-            opacity: 1;
-            text-decoration: underline;
-        }}
-        .spec-section {{
-            border-bottom: 1px solid #30363d;
-        }}
-        .spec-section.even {{
-            background: #161b22;
-        }}
-        .spec-section.odd {{
-            background: #0d1117;
-        }}
-        .spec-header {{
-            padding: 15px 20px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: transparent;
-            transition: background-color 0.2s;
-            color: #c9d1d9;
-        }}
-        .spec-header:hover {{
-            background: #21262d;
-        }}
-        .spec-title {{
-            font-size: 18px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }}
-        .completion-count {{
-            color: #8b949e;
-            font-size: 0.8em;
-            font-weight: 400;
-        }}
-        .status-emoji {{
-            font-size: 20px;
-        }}
-        .expand-icon {{
-            font-size: 14px;
-            transition: transform 0.2s;
-        }}
-        .spec-content {{
-            display: none;
-            padding: 20px;
-            background: transparent;
-        }}
-        .spec-content.expanded {{
-            display: block;
-        }}
-        .requirement-item {{
-            margin-bottom: 15px;
-            padding: 15px;
-            background: #161b22;
-            border-radius: 6px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-            border: 1px solid #30363d;
-            color: #c9d1d9;
-        }}
-        .requirement-header {{
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 10px;
-            color: #c9d1d9;
-        }}
-        .requirement-id {{
-            font-weight: bold;
-            color: #c9d1d9;
-        }}
-        .requirement-status {{
-            font-size: 16px;
-        }}
-        .requirement-text {{
-            color: #c9d1d9;
-            white-space: pre-wrap;
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-            font-size: 14px;
-            line-height: 1.4;
-        }}
-        .section-item {{
-            margin-bottom: 10px;
-            border-radius: 6px;
-            background: #21262d;
-            border: 1px solid #30363d;
-        }}
-        .section-header {{
-            padding: 12px 15px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: transparent;
-            transition: background-color 0.2s;
-            color: #c9d1d9;
-        }}
-        .section-header:hover {{
-            background: #30363d;
-        }}
-        .section-title {{
-            font-size: 16px;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }}
-        .section-content {{
-            display: none;
-            padding: 15px;
-            background: transparent;
-        }}
-        .section-content.expanded {{
-            display: block;
-        }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>{server_name}</h1>
-            <a href="../compliance_homepage.html" class="nav-link">Back to Homepage</a>
-        </div>
-"""
+    # Load the report template
+    template_dir = Path(__file__).parent / 'templates'
+    template = load_template(template_dir / 'report_template.html')
+    
+    content_html = ""
     
     # Generate content for each specification
     spec_counter = 0
@@ -403,7 +242,7 @@ def generate_html_report(specifications, output_file_path, server_name):
         row_class = "even" if spec_counter % 2 == 0 else "odd"
         spec_counter += 1
         
-        html_content += f"""
+        content_html += f"""
         <div class="spec-section {row_class}">
             <div class="spec-header" onclick="toggleSection('{spec_title.replace(' ', '_')}')">
                 <div class="spec-title">
@@ -438,7 +277,7 @@ def generate_html_report(specifications, output_file_path, server_name):
             
             section_id = f"{spec_title.replace(' ', '_')}_{section_title.replace(' ', '_').replace('#', '').replace('-', '_')}"
             
-            html_content += f"""
+            content_html += f"""
                 <div class="section-item">
                     <div class="section-header" onclick="toggleSubSection('{section_id}')">
                         <div class="section-title">
@@ -457,247 +296,61 @@ def generate_html_report(specifications, output_file_path, server_name):
                 req_status = get_requirement_status(requirement)
                 req_text = requirement['text']
                 
-                html_content += f"""
+                # Build metadata tags
+                metadata_tags = []
+                if requirement['has_implementation']:
+                    metadata_tags.append('implementation')
+                if requirement['has_test']:
+                    metadata_tags.append('test')
+                if requirement['has_exception']:
+                    metadata_tags.append('exception')
+                if requirement['has_implication']:
+                    metadata_tags.append('implication')
+                
+                metadata_text = ', '.join(metadata_tags) if metadata_tags else 'no implementation'
+                
+                content_html += f"""
                         <div class="requirement-item">
                             <div class="requirement-header">
                                 <span class="requirement-id">Requirement {req_counter}:</span>
                                 <span class="requirement-status">{req_status}</span>
                             </div>
                             <div class="requirement-text">{req_text}</div>
+                            <div class="requirement-metadata">Status: {metadata_text}</div>
                         </div>
 """
                 req_counter += 1
             
-            html_content += """
+            content_html += """
                     </div>
                 </div>
 """
         
-        html_content += """
+        content_html += """
             </div>
         </div>
 """
     
-    # Add JavaScript and closing HTML
-    html_content += """
-    </div>
-    
-    <script>
-        function toggleSection(sectionId) {
-            const content = document.getElementById('content_' + sectionId);
-            const icon = document.getElementById('icon_' + sectionId);
-            
-            if (content.classList.contains('expanded')) {
-                content.classList.remove('expanded');
-                icon.textContent = '▼';
-            } else {
-                content.classList.add('expanded');
-                icon.textContent = '▲';
-            }
-        }
-        
-        function toggleSubSection(sectionId) {
-            const content = document.getElementById('content_' + sectionId);
-            const icon = document.getElementById('icon_' + sectionId);
-            
-            if (content.classList.contains('expanded')) {
-                content.classList.remove('expanded');
-                icon.textContent = '▼';
-            } else {
-                content.classList.add('expanded');
-                icon.textContent = '▲';
-            }
-        }
-        
-        // Add keyboard navigation
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                // Close all expanded sections and subsections
-                document.querySelectorAll('.spec-content.expanded').forEach(content => {
-                    content.classList.remove('expanded');
-                });
-                document.querySelectorAll('.section-content.expanded').forEach(content => {
-                    content.classList.remove('expanded');
-                });
-                document.querySelectorAll('.expand-icon').forEach(icon => {
-                    icon.textContent = '▼';
-                });
-            }
-        });
-    </script>
-</body>
-</html>
-"""
+    # Replace placeholders in template
+    html_content = template.format(
+        server_name=server_name,
+        content=content_html
+    )
     
     # Write the HTML file
     with open(output_file_path, 'w', encoding='utf-8') as f:
         f.write(html_content)
 
 def generate_homepage(servers_info, output_file):
-    """Generate the main homepage with links to all server reports."""
+    """Generate the main homepage with links to all server reports using templates."""
     
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
-    html_content = f"""
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spec Compliance Dashboard</title>
-    <style>
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 20px;
-            background-color: #0d1117;
-            color: #c9d1d9;
-        }}
-        .container {{
-            max-width: 1200px;
-            margin: 0 auto;
-            background: #161b22;
-            border-radius: 6px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-            border: 1px solid #30363d;
-            overflow: hidden;
-        }}
-        .header {{
-            background: #21262d;
-            color: #c9d1d9;
-            padding: 15px 20px;
-            text-align: center;
-            border-bottom: 1px solid #30363d;
-        }}
-        .header h1 {{
-            margin: 0;
-            font-size: 1.8em;
-            font-weight: 400;
-        }}
-        .header p {{
-            margin: 5px 0 0 0;
-            opacity: 0.9;
-            font-size: 0.9em;
-        }}
-        .stats-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            padding: 30px;
-            background: #0d1117;
-        }}
-        .stat-card {{
-            background: #161b22;
-            padding: 20px;
-            border-radius: 6px;
-            text-align: center;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-            border: 1px solid #30363d;
-        }}
-        .stat-number {{
-            font-size: 2em;
-            font-weight: bold;
-            color: #c9d1d9;
-        }}
-        .stat-label {{
-            color: #8b949e;
-            font-size: 0.9em;
-            margin-top: 5px;
-        }}
-        .servers-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 20px;
-            padding: 30px;
-        }}
-        .server-card {{
-            background: #161b22;
-            border-radius: 6px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-            border: 1px solid #30363d;
-            overflow: hidden;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }}
-        .server-card:hover {{
-            transform: translateY(-2px);
-            box-shadow: 0 3px 6px rgba(0,0,0,0.4);
-        }}
-        .server-header {{
-            padding: 12px 16px;
-            background: #21262d;
-            color: #c9d1d9;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #30363d;
-        }}
-        .server-name {{
-            font-size: 1.2em;
-            font-weight: 600;
-        }}
-        .server-status {{
-            font-size: 1.5em;
-        }}
-        .server-body {{
-            padding: 20px;
-        }}
-        .progress-bar {{
-            background: #0d1117;
-            border-radius: 6px;
-            height: 8px;
-            margin: 15px 0;
-            overflow: hidden;
-            border: 1px solid #30363d;
-        }}
-        .progress-fill {{
-            height: 100%;
-            background: #238636;
-            border-radius: 6px;
-            transition: width 0.3s ease;
-        }}
-        .server-stats {{
-            display: flex;
-            justify-content: space-between;
-            margin-top: 15px;
-            font-size: 0.9em;
-            color: #8b949e;
-        }}
-        .view-report-btn {{
-            display: inline-block;
-            margin-top: 15px;
-            padding: 10px 20px;
-            background: #238636;
-            color: white;
-            text-decoration: none;
-            border-radius: 6px;
-            transition: background-color 0.2s;
-        }}
-        .view-report-btn:hover {{
-            background: #2ea043;
-        }}
-        .no-data {{
-            text-align: center;
-            padding: 40px;
-            color: #8b949e;
-        }}
-        .footer {{
-            padding: 20px;
-            text-align: center;
-            background: #21262d;
-            color: #8b949e;
-            font-size: 0.9em;
-            border-top: 1px solid #30363d;
-        }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Spec Compliance Dashboard</h1>
-            <p>Last updated: {current_time}</p>
-        </div>
-"""
+    # Load the homepage template
+    template_dir = Path(__file__).parent / 'templates'
+    template = load_template(template_dir / 'homepage_template.html')
+    
+    content_html = ""
     
     if servers_info:
         # Calculate overall stats
@@ -705,7 +358,7 @@ def generate_homepage(servers_info, output_file):
         complete_servers = sum(1 for server in servers_info if server['status'] == '✅')
         partial_servers = sum(1 for server in servers_info if server['status'] == '🟡')
         
-        html_content += f"""
+        content_html += f"""
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-number">{total_servers}</div>
@@ -734,7 +387,7 @@ def generate_homepage(servers_info, output_file):
             section_progress_percent = (server['complete_sections'] / server['total_sections'] * 100) if server['total_sections'] > 0 else 0
             requirement_progress_percent = (server['complete_requirements'] / server['total_requirements'] * 100) if server['total_requirements'] > 0 else 0
             
-            html_content += f"""
+            content_html += f"""
             <div class="server-card">
                 <div class="server-header">
                     <div class="server-name">{server['name']}</div>
@@ -769,25 +422,22 @@ def generate_homepage(servers_info, output_file):
             </div>
 """
         
-        html_content += """
+        content_html += """
         </div>
 """
     else:
-        html_content += """
+        content_html += """
         <div class="no-data">
             <h2>No compliance data found</h2>
             <p>No servers with .duvet/snapshot.txt files were found in the test-server directory.</p>
         </div>
 """
     
-    html_content += f"""
-        <div class="footer">
-            Generated by duvet compliance dashboard • {current_time}
-        </div>
-    </div>
-</body>
-</html>
-"""
+    # Replace placeholders in template
+    html_content = template.format(
+        timestamp=current_time,
+        content=content_html
+    )
     
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(html_content)

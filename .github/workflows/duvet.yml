@@ -50,12 +50,3 @@ jobs:
         run: |
           cd test-server
           python generate_compliance_dashboard.py
-
-      - name: Deploy to GitHub Pages
-        if: always()
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./test-server
-          destination_dir: compliance
-          keep_files: false

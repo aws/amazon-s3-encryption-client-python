@@ -116,184 +116,149 @@ def get_requirement_status(requirement):
     else:
         return '❌'  # No implementation
 
+def format_requirement_text(text):
+    """Format requirement text to style status metadata lines."""
+    lines = text.split('\n')
+    formatted_lines = []
+    
+    for line in lines:
+        # Check if line contains status metadata
+        if line.strip().startswith('Status:'):
+            formatted_lines.append(f'<span class="status-metadata">{line}</span>')
+        else:
+            formatted_lines.append(line)
+    
+    return '\n'.join(formatted_lines)
+
+def calculate_summary_statistics(specifications):
+    """Calculate summary statistics for all specifications."""
+    total_sections = 0
+    complete_sections = 0
+    total_requirements = 0
+    complete_requirements = 0
+    
+    # Count requirements by implementation type
+    no_implementation = 0
+    implementation_only = 0
+    test_only = 0
+    implementation_and_test = 0
+    exception_count = 0
+    implication_count = 0
+    
+    for spec_data in specifications.values():
+        sections = spec_data.get('sections', {})
+        total_sections += len(sections)
+        
+        for section_data in sections.values():
+            requirements = section_data.get('requirements', [])
+            total_requirements += len(requirements)
+            
+            # Count complete requirements
+            section_complete_reqs = sum(1 for req in requirements if req['is_complete'])
+            complete_requirements += section_complete_reqs
+            
+            # A section is complete if all its requirements are complete
+            if requirements and section_complete_reqs == len(requirements):
+                complete_sections += 1
+            elif not requirements:  # Empty section is considered complete
+                complete_sections += 1
+            
+            # Count requirements by implementation type
+            for req in requirements:
+                if req['has_exception']:
+                    exception_count += 1
+                elif req['has_implication']:
+                    implication_count += 1
+                elif req['has_implementation'] and req['has_test']:
+                    implementation_and_test += 1
+                elif req['has_implementation']:
+                    implementation_only += 1
+                elif req['has_test']:
+                    test_only += 1
+                else:
+                    no_implementation += 1
+    
+    return {
+        'total_sections': total_sections,
+        'complete_sections': complete_sections,
+        'total_requirements': total_requirements,
+        'complete_requirements': complete_requirements,
+        'no_implementation': no_implementation,
+        'implementation_only': implementation_only,
+        'test_only': test_only,
+        'implementation_and_test': implementation_and_test,
+        'exception_count': exception_count,
+        'implication_count': implication_count
+    }
+
+def load_template(template_path):
+    """Load a template file."""
+    with open(template_path, 'r', encoding='utf-8') as f:
+        return f.read()
+
 def generate_html_report(snapshot_file_path, output_file_path, server_name):
-    """Generate an interactive HTML report."""
+    """Generate an interactive HTML report using templates."""
     specifications = parse_snapshot(snapshot_file_path)
     
-    html_content = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{server_name} - Duvet Compliance Report</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 20px;
-            background-color: #0d1117;
-            color: #c9d1d9;
-        }
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-            background: #161b22;
-            border-radius: 6px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-            border: 1px solid #30363d;
-            overflow: hidden;
-        }
-        .header {
-            background: #21262d;
-            color: #c9d1d9;
-            padding: 8px 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #30363d;
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 1.2em;
-            font-weight: 500;
-        }
-        .nav-link {
-            color: white;
-            text-decoration: none;
-            font-size: 0.9em;
-            opacity: 0.9;
-        }
-        .nav-link:hover {
-            opacity: 1;
-            text-decoration: underline;
-        }
-        .spec-section {
-            border-bottom: 1px solid #30363d;
-        }
-        .spec-section.even {
-            background: #161b22;
-        }
-        .spec-section.odd {
-            background: #0d1117;
-        }
-        .spec-header {
-            padding: 15px 20px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: transparent;
-            transition: background-color 0.2s;
-            color: #c9d1d9;
-        }
-        .spec-header:hover {
-            background: #21262d;
-        }
-        .spec-title {
-            font-size: 18px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .completion-count {
-            color: #8b949e;
-            font-size: 0.8em;
-            font-weight: 400;
-        }
-        .status-emoji {
-            font-size: 20px;
-        }
-        .expand-icon {
-            font-size: 14px;
-            transition: transform 0.2s;
-        }
-        .spec-content {
-            display: none;
-            padding: 20px;
-            background: transparent;
-        }
-        .spec-content.expanded {
-            display: block;
-        }
-        .requirement-item {
-            margin-bottom: 15px;
-            padding: 15px;
-            background: #161b22;
-            border-radius: 6px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-            border: 1px solid #30363d;
-            color: #c9d1d9;
-        }
-        .requirement-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 10px;
-            color: #c9d1d9;
-        }
-        .requirement-id {
-            font-weight: bold;
-            color: #c9d1d9;
-        }
-        .requirement-status {
-            font-size: 16px;
-        }
-        .requirement-text {
-            color: #c9d1d9;
-            white-space: pre-wrap;
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-            font-size: 14px;
-            line-height: 1.4;
-        }
-        .section-item {
-            margin-bottom: 10px;
-            border-radius: 6px;
-            background: #21262d;
-            border: 1px solid #30363d;
-        }
-        .section-header {
-            padding: 12px 15px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: transparent;
-            transition: background-color 0.2s;
-            color: #c9d1d9;
-        }
-        .section-header:hover {
-            background: #30363d;
-        }
-        .section-title {
-            font-size: 16px;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .section-content {
-            display: none;
-            padding: 15px;
-            background: transparent;
-        }
-        .section-content.expanded {
-            display: block;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>{server_name}</h1>
-            <a href="../compliance_homepage.html" class="nav-link">Back to Homepage</a>
+    # Load the report template
+    template_dir = Path(__file__).parent / 'templates'
+    template = load_template(template_dir / 'report_template.html')
+    
+    # Calculate summary statistics
+    stats = calculate_summary_statistics(specifications)
+    
+    # Generate summary statistics HTML
+    content_html = f"""
+        <div class="summary-stats">
+            <h2>Summary Statistics</h2>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-number">{stats['complete_sections']}/{stats['total_sections']}</div>
+                    <div class="stat-label">Sections Implemented</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">{stats['complete_requirements']}/{stats['total_requirements']}</div>
+                    <div class="stat-label">Requirements Implemented</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">{stats['complete_requirements']/stats['total_requirements']*100:.1f}%</div>
+                    <div class="stat-label">Overall Progress</div>
+                </div>
+            </div>
+            
+            <h3>Implementation Breakdown</h3>
+            <div class="breakdown-grid">
+                <div class="breakdown-item">
+                    <div class="breakdown-number">{stats['implementation_and_test']}</div>
+                    <div class="breakdown-label">Implementation + Test</div>
+                </div>
+                <div class="breakdown-item">
+                    <div class="breakdown-number">{stats['implementation_only']}</div>
+                    <div class="breakdown-label">Implementation Only</div>
+                </div>
+                <div class="breakdown-item">
+                    <div class="breakdown-number">{stats['test_only']}</div>
+                    <div class="breakdown-label">Test Only</div>
+                </div>
+                <div class="breakdown-item">
+                    <div class="breakdown-number">{stats['exception_count']}</div>
+                    <div class="breakdown-label">Exception</div>
+                </div>
+                <div class="breakdown-item">
+                    <div class="breakdown-number">{stats['implication_count']}</div>
+                    <div class="breakdown-label">Implication</div>
+                </div>
+                <div class="breakdown-item">
+                    <div class="breakdown-number">{stats['no_implementation']}</div>
+                    <div class="breakdown-label">No Implementation</div>
+                </div>
+            </div>
         </div>
-""".format(server_name=server_name)
+    """
     
     # Generate content for each specification
     spec_counter = 0
+    
     for spec_title, spec_data in specifications.items():
         status_icon = get_spec_status(spec_data)
         sections = spec_data.get('sections', {})
@@ -318,7 +283,7 @@ def generate_html_report(snapshot_file_path, output_file_path, server_name):
         row_class = "even" if spec_counter % 2 == 0 else "odd"
         spec_counter += 1
         
-        html_content += f"""
+        content_html += f"""
         <div class="spec-section {row_class}">
             <div class="spec-header" onclick="toggleSection('{spec_title.replace(' ', '_')}')">
                 <div class="spec-title">
@@ -353,7 +318,7 @@ def generate_html_report(snapshot_file_path, output_file_path, server_name):
             
             section_id = f"{spec_title.replace(' ', '_')}_{section_title.replace(' ', '_').replace('#', '').replace('-', '_')}"
             
-            html_content += f"""
+            content_html += f"""
                 <div class="section-item">
                     <div class="section-header" onclick="toggleSubSection('{section_id}')">
                         <div class="section-title">
@@ -370,9 +335,9 @@ def generate_html_report(snapshot_file_path, output_file_path, server_name):
             req_counter = 1
             for requirement in section_requirements:
                 req_status = get_requirement_status(requirement)
-                req_text = requirement['text']
+                req_text = format_requirement_text(requirement['text'])
                 
-                html_content += f"""
+                content_html += f"""
                         <div class="requirement-item">
                             <div class="requirement-header">
                                 <span class="requirement-id">Requirement {req_counter}:</span>
@@ -383,66 +348,21 @@ def generate_html_report(snapshot_file_path, output_file_path, server_name):
 """
                 req_counter += 1
             
-            html_content += """
+            content_html += """
                     </div>
                 </div>
 """
         
-        html_content += """
+        content_html += """
             </div>
         </div>
 """
     
-    # Add JavaScript and closing HTML
-    html_content += """
-    </div>
-    
-    <script>
-        function toggleSection(sectionId) {
-            const content = document.getElementById('content_' + sectionId);
-            const icon = document.getElementById('icon_' + sectionId);
-            
-            if (content.classList.contains('expanded')) {
-                content.classList.remove('expanded');
-                icon.textContent = '▼';
-            } else {
-                content.classList.add('expanded');
-                icon.textContent = '▲';
-            }
-        }
-        
-        function toggleSubSection(sectionId) {
-            const content = document.getElementById('content_' + sectionId);
-            const icon = document.getElementById('icon_' + sectionId);
-            
-            if (content.classList.contains('expanded')) {
-                content.classList.remove('expanded');
-                icon.textContent = '▼';
-            } else {
-                content.classList.add('expanded');
-                icon.textContent = '▲';
-            }
-        }
-        
-        // Add keyboard navigation
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                // Close all expanded sections and subsections
-                document.querySelectorAll('.spec-content.expanded').forEach(content => {
-                    content.classList.remove('expanded');
-                });
-                document.querySelectorAll('.section-content.expanded').forEach(content => {
-                    content.classList.remove('expanded');
-                });
-                document.querySelectorAll('.expand-icon').forEach(icon => {
-                    icon.textContent = '▼';
-                });
-            }
-        });
-    </script>
-</body>
-</html>
-"""
+    # Replace placeholders in template
+    html_content = template.format(
+        server_name=server_name,
+        content=content_html
+    )
     
     # Write the HTML file
     with open(output_file_path, 'w', encoding='utf-8') as f:

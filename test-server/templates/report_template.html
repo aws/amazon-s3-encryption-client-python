@@ -16,47 +16,47 @@
     </div>
     
     <script>
-        function toggleSection(sectionId) {
+        function toggleSection(sectionId) {{
             const content = document.getElementById('content_' + sectionId);
             const icon = document.getElementById('icon_' + sectionId);
             
-            if (content.classList.contains('expanded')) {
+            if (content.classList.contains('expanded')) {{
                 content.classList.remove('expanded');
                 icon.textContent = '▼';
-            } else {
+            }} else {{
                 content.classList.add('expanded');
                 icon.textContent = '▲';
-            }
-        }
+            }}
+        }}
         
-        function toggleSubSection(sectionId) {
+        function toggleSubSection(sectionId) {{
             const content = document.getElementById('content_' + sectionId);
             const icon = document.getElementById('icon_' + sectionId);
             
-            if (content.classList.contains('expanded')) {
+            if (content.classList.contains('expanded')) {{
                 content.classList.remove('expanded');
                 icon.textContent = '▼';
-            } else {
+            }} else {{
                 content.classList.add('expanded');
                 icon.textContent = '▲';
-            }
-        }
+            }}
+        }}
         
         // Add keyboard navigation
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
+        document.addEventListener('keydown', function(e) {{
+            if (e.key === 'Escape') {{
                 // Close all expanded sections and subsections
-                document.querySelectorAll('.spec-content.expanded').forEach(content => {
+                document.querySelectorAll('.spec-content.expanded').forEach(content => {{
                     content.classList.remove('expanded');
-                });
-                document.querySelectorAll('.section-content.expanded').forEach(content => {
+                }});
+                document.querySelectorAll('.section-content.expanded').forEach(content => {{
                     content.classList.remove('expanded');
-                });
-                document.querySelectorAll('.expand-icon').forEach(icon => {
+                }});
+                document.querySelectorAll('.expand-icon').forEach(icon => {{
                     icon.textContent = '▼';
-                });
-            }
-        });
+                }});
+            }}
+        }});
     </script>
 </body>
 </html>
