@@ -114,9 +114,9 @@ class CBCDecryptTests {
         TestUtils.Decrypt(client, S3ECId, Arrays.asList(sharedObjectKey), EncryptionAlgorithm.ALG_AES_256_CBC_IV16_NO_KDF);
     }
     
-    @ParameterizedTest(name = "{displayName} Decrypt: {0}")
+    @ParameterizedTest(name = "{0}: Improved configured with ForbidEncryptAllowDecrypt should decrypt CBC")
     @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
-    void DECRYPT_IMPROVED_FORBID_ENCRYPT_ALLOW_DECRYPT(TestUtils.LanguageServerTarget language) {
+    void improved_configured_with_forbid_encrypt_allow_decrypt_should_decrypt_cbc(TestUtils.LanguageServerTarget language) {
         S3ECTestServerClient decClient = TestUtils.testServerClientFor(language);
         CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
         .config(S3ECConfig.builder()
