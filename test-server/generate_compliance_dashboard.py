@@ -1,14 +1,23 @@
 #!/usr/bin/env python3
 """
 Comprehensive script to generate compliance dashboard and all server reports.
-Automatically discovers servers with .duvet/snapshot.txt files and generates
-individual reports using the snapshot-based format with GitHub color scheme.
+Automatically discovers servers with .duvet/reports/report.html files and generates
+individual reports using the enhanced report-based format.
 """
 
 import re
 import os
+import json
 from pathlib import Path
 from datetime import datetime
+
+# Import functions from the report generator
+from generate_html_from_report import (
+    parse_report_html,
+    calculate_summary_statistics,
+    generate_html_report as generate_enhanced_html_report,
+    get_spec_status
+)
 
 def parse_snapshot(snapshot_file_path):
     """Parse the snapshot.txt file and extract specification data."""
@@ -140,67 +149,61 @@ def get_overall_server_status(specifications):
         return '❌'
 
 def generate_server_report(server_path, server_name):
-    """Generate individual server report using snapshot-based format."""
-    snapshot_file = server_path / '.duvet' / 'snapshot.txt'
+    """Generate individual server report using the enhanced report-based format."""
+    report_file = server_path / '.duvet' / 'reports' / 'report.html'
     
-    if not snapshot_file.exists():
+    if not report_file.exists():
         return None
     
-    # Parse the snapshot
-    specifications = parse_snapshot(snapshot_file)
-    
-    # Generate expected output
-    output_lines = []
-    for spec_title, spec_data in specifications.items():
-        status_icon = get_spec_status(spec_data)
-        output_lines.append(f"{spec_title}: {status_icon}")
-    
-    # Write expected output
-    expected_output_file = server_path / 'expected_output.txt'
-    with open(expected_output_file, 'w', encoding='utf-8') as f:
-        f.write('\n'.join(output_lines))
-    
-    # Generate HTML report
-    html_output_file = server_path / 'compliance_summary_snapshot.html'
-    generate_html_report(specifications, html_output_file, server_name)
-    
-    # Calculate detailed compliance metrics
-    overall_status = get_overall_server_status(specifications)
-    total_specs = len(specifications)
-    complete_specs = sum(1 for spec_data in specifications.values() 
-                        if get_spec_status(spec_data) == '✅')
-    
-    # Calculate section and requirement level metrics
-    total_sections = 0
-    complete_sections = 0
-    total_requirements = 0
-    complete_requirements = 0
-    
-    for spec_data in specifications.values():
-        sections = spec_data.get('sections', {})
-        total_sections += len(sections)
+    try:
+        # Parse the report directly using imported function
+        specifications = parse_report_html(report_file)
         
-        for section_data in sections.values():
-            requirements = section_data.get('requirements', [])
-            total_requirements += len(requirements)
-            complete_requirements += sum(1 for req in requirements if req['is_complete'])
-            
-            # A section is complete if all its requirements are complete
-            if requirements and all(req['is_complete'] for req in requirements):
-                complete_sections += 1
-    
-    return {
-        'name': server_name,
-        'status': overall_status,
-        'total_specs': total_specs,
-        'complete_specs': complete_specs,
-        'total_sections': total_sections,
-        'complete_sections': complete_sections,
-        'total_requirements': total_requirements,
-        'complete_requirements': complete_requirements,
-        'report_file': f'{server_name}/compliance_summary_snapshot.html',
-        'specifications': specifications
-    }
+        # Generate the enhanced HTML report
+        html_output_file = server_path / 'compliance_summary_report.html'
+        generate_enhanced_html_report(report_file, html_output_file, server_name)
+        
+        # Calculate detailed statistics
+        stats = calculate_summary_statistics(specifications)
+        
+        # Calculate overall status based on actual implementation progress
+        total_reqs = stats.get('total_requirements', 0)
+        complete_reqs = stats.get('complete_requirements', 0)
+        
+        if total_reqs == 0:
+            overall_status = '❌'  # No requirements means not compliant
+        elif complete_reqs == total_reqs:
+            overall_status = '✅'  # All requirements complete
+        elif complete_reqs > 0:
+            overall_status = '🟡'  # Some requirements complete
+        else:
+            overall_status = '❌'  # No requirements complete
+        
+        # Calculate spec-level status
+        spec_statuses = {}
+        for spec_title, spec_data in specifications.items():
+            spec_statuses[spec_title] = get_spec_status(spec_data)
+        
+        total_specs = len(specifications)
+        complete_specs = sum(1 for status in spec_statuses.values() if status == '✅')
+        
+        return {
+            'name': server_name,
+            'status': overall_status,
+            'total_specs': total_specs,
+            'complete_specs': complete_specs,
+            'total_sections': stats['total_sections'],
+            'complete_sections': stats['complete_sections'],
+            'total_requirements': stats['total_requirements'],
+            'complete_requirements': stats['complete_requirements'],
+            'report_file': f'{server_name}/compliance_summary_report.html',
+            'specifications': spec_statuses,
+            'stats': stats  # Include full stats for homepage display
+        }
+        
+    except Exception as e:
+        print(f"Error processing {server_name}: {e}")
+        return None
 
 def calculate_summary_statistics(specifications):
     """Calculate summary statistics for all specifications."""
@@ -282,143 +285,59 @@ def generate_html_report(specifications, output_file_path, server_name):
     section_progress = (stats['complete_sections'] / stats['total_sections'] * 100) if stats['total_sections'] > 0 else 0
     requirement_progress = (stats['complete_requirements'] / stats['total_requirements'] * 100) if stats['total_requirements'] > 0 else 0
     
-    # Generate summary statistics HTML
+    # Calculate percentages for each implementation type
+    total_reqs = stats['total_requirements']
+    if total_reqs > 0:
+        impl_test_pct = (stats['implementation_and_test'] / total_reqs) * 100
+        impl_only_pct = (stats['implementation_only'] / total_reqs) * 100
+        test_only_pct = (stats['test_only'] / total_reqs) * 100
+        exception_pct = (stats['exception_count'] / total_reqs) * 100
+        implication_pct = (stats['implication_count'] / total_reqs) * 100
+        no_impl_pct = (stats['no_implementation'] / total_reqs) * 100
+    else:
+        impl_test_pct = impl_only_pct = test_only_pct = exception_pct = implication_pct = no_impl_pct = 0
+
+    # Generate summary statistics HTML with color-coded progress bars
     content_html = f"""
         <div class="summary-stats">
-            <h2>Summary Statistics</h2>
             <div class="progress-section">
                 <div class="progress-item">
                     <div class="progress-header">
-                        <span class="progress-label">Sections Implemented</span>
-                        <span class="progress-count">{stats['complete_sections']}/{stats['total_sections']}</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: {section_progress:.1f}%"></div>
-                    </div>
-                </div>
-                <div class="progress-item">
-                    <div class="progress-header">
-                        <span class="progress-label">Requirements Implemented</span>
+                        <span class="progress-label">Requirements by Implementation Type</span>
                         <span class="progress-count">{stats['complete_requirements']}/{stats['total_requirements']}</span>
                     </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: {requirement_progress:.1f}%"></div>
+                    <div class="progress-bar color-coded">
+                        <div class="progress-segment impl-test" style="width: {impl_test_pct:.1f}%" title="Implementation + Test: {stats['implementation_and_test']}"></div>
+                        <div class="progress-segment implication" style="width: {implication_pct:.1f}%" title="Implication: {stats['implication_count']}"></div>
+                        <div class="progress-segment exception" style="width: {exception_pct:.1f}%" title="Exception: {stats['exception_count']}"></div>
+                        <div class="progress-segment impl-only" style="width: {impl_only_pct:.1f}%" title="Implementation Only: {stats['implementation_only']}"></div>
+                        <div class="progress-segment no-impl" style="width: {no_impl_pct:.1f}%" title="No Implementation: {stats['no_implementation']}"></div>
                     </div>
                 </div>
             </div>
             
-            <div class="breakdown-header" onclick="togglePieChart()">
-                <h3>Implementation Breakdown</h3>
-                <span class="expand-icon" id="pie-chart-icon">▼</span>
-            </div>
             <div class="breakdown-grid">
                 <div class="breakdown-item">
                     <div class="breakdown-number">{stats['implementation_and_test']}</div>
                     <div class="breakdown-label" style="color: #28a745;">Implementation + Test</div>
                 </div>
                 <div class="breakdown-item">
-                    <div class="breakdown-number">{stats['implementation_only']}</div>
-                    <div class="breakdown-label" style="color: #ffc107;">Implementation Only</div>
-                </div>
-                <div class="breakdown-item">
-                    <div class="breakdown-number">{stats['test_only']}</div>
-                    <div class="breakdown-label">Test Only</div>
+                    <div class="breakdown-number">{stats['implication_count']}</div>
+                    <div class="breakdown-label" style="color: #dda0dd;">Implication</div>
                 </div>
                 <div class="breakdown-item">
                     <div class="breakdown-number">{stats['exception_count']}</div>
                     <div class="breakdown-label" style="color: #87ceeb;">Exception</div>
                 </div>
                 <div class="breakdown-item">
-                    <div class="breakdown-number">{stats['implication_count']}</div>
-                    <div class="breakdown-label" style="color: #dda0dd;">Implication</div>
+                    <div class="breakdown-number">{stats['implementation_only']}</div>
+                    <div class="breakdown-label" style="color: #ffc107;">Implementation Only</div>
                 </div>
                 <div class="breakdown-item">
                     <div class="breakdown-number">{stats['no_implementation']}</div>
                     <div class="breakdown-label" style="color: #dc3545;">No Implementation</div>
                 </div>
             </div>
-            
-            <div class="pie-chart-container" id="pie-chart-container" style="display: none;">
-                <canvas id="implementationPieChart" width="250" height="250"></canvas>
-            </div>
-            
-            <script>
-                function togglePieChart() {{
-                    const container = document.getElementById('pie-chart-container');
-                    const icon = document.getElementById('pie-chart-icon');
-                    
-                    if (container.style.display === 'none') {{
-                        container.style.display = 'flex';
-                        icon.textContent = '▲';
-                        drawPieChart();
-                    }} else {{
-                        container.style.display = 'none';
-                        icon.textContent = '▼';
-                    }}
-                }}
-                
-                function drawPieChart() {{
-                    const canvas = document.getElementById('implementationPieChart');
-                    const ctx = canvas.getContext('2d');
-                    const centerX = canvas.width / 2;
-                    const centerY = canvas.height / 2;
-                    const radius = 100;
-                    
-                    // Clear canvas
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    
-                    const data = [
-                        {{ label: 'Implementation + Test', value: {stats['implementation_and_test']}, color: '#28a745' }},
-                        {{ label: 'Implementation Only', value: {stats['implementation_only']}, color: '#ffc107' }},
-                        {{ label: 'Exception', value: {stats['exception_count']}, color: '#87ceeb' }},
-                        {{ label: 'Implication', value: {stats['implication_count']}, color: '#dda0dd' }},
-                        {{ label: 'No Implementation', value: {stats['no_implementation']}, color: '#dc3545' }}
-                    ];
-                    
-                    // Filter out zero values
-                    const filteredData = data.filter(item => item.value > 0);
-                    const total = filteredData.reduce((sum, item) => sum + item.value, 0);
-                    
-                    if (total > 0) {{
-                        let currentAngle = -Math.PI / 2; // Start at top
-                        
-                        // Draw pie slices
-                        filteredData.forEach(item => {{
-                            const sliceAngle = (item.value / total) * 2 * Math.PI;
-                            
-                            ctx.beginPath();
-                            ctx.moveTo(centerX, centerY);
-                            ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
-                            ctx.closePath();
-                            ctx.fillStyle = item.color;
-                            ctx.fill();
-                            ctx.strokeStyle = '#fff';
-                            ctx.lineWidth = 2;
-                            ctx.stroke();
-                            
-                            // Draw label if slice is large enough
-                            if (item.value / total > 0.05) {{
-                                const labelAngle = currentAngle + sliceAngle / 2;
-                                const labelX = centerX + Math.cos(labelAngle) * (radius * 0.7);
-                                const labelY = centerY + Math.sin(labelAngle) * (radius * 0.7);
-                                
-                                ctx.fillStyle = '#fff';
-                                ctx.font = 'bold 12px Arial';
-                                ctx.textAlign = 'center';
-                                ctx.fillText(item.value.toString(), labelX, labelY);
-                            }}
-                            
-                            currentAngle += sliceAngle;
-                        }});
-                    }} else {{
-                        // Draw "No data" message
-                        ctx.fillStyle = '#666';
-                        ctx.font = '16px Arial';
-                        ctx.textAlign = 'center';
-                        ctx.fillText('No data available', centerX, centerY);
-                    }}
-                }}
-            </script>
         </div>
     """
     
@@ -428,21 +347,14 @@ def generate_html_report(specifications, output_file_path, server_name):
         status_icon = get_spec_status(spec_data)
         sections = spec_data.get('sections', {})
         
-        # Calculate section-level progress for this spec
-        total_sections = len(sections)
-        complete_sections = 0
+        # Calculate requirement-level progress for this spec
+        spec_total_requirements = 0
+        spec_complete_requirements = 0
         
         for section_data in sections.values():
             section_requirements = section_data.get('requirements', [])
-            if section_requirements:
-                section_complete = sum(1 for req in section_requirements if req['is_complete'])
-                section_total = len(section_requirements)
-                # A section is considered complete if all its requirements are complete
-                if section_complete == section_total:
-                    complete_sections += 1
-            else:
-                # Empty section is considered complete
-                complete_sections += 1
+            spec_total_requirements += len(section_requirements)
+            spec_complete_requirements += sum(1 for req in section_requirements if req['is_complete'])
         
         # Determine alternating background class
         row_class = "even" if spec_counter % 2 == 0 else "odd"
@@ -454,7 +366,7 @@ def generate_html_report(specifications, output_file_path, server_name):
                 <div class="spec-title">
                     <span class="status-emoji">{status_icon}</span>
                     <span>{spec_title}</span>
-                    <span class="completion-count">({complete_sections}/{total_sections})</span>
+                    <span class="completion-count">({spec_complete_requirements}/{spec_total_requirements})</span>
                 </div>
                 <span class="expand-icon" id="icon_{spec_title.replace(' ', '_')}">▼</span>
             </div>
@@ -559,39 +471,54 @@ def generate_homepage(servers_info, output_file):
     content_html = ""
     
     if servers_info:
-        # Calculate overall stats
+        # Calculate overall statistics
         total_servers = len(servers_info)
-        complete_servers = sum(1 for server in servers_info if server['status'] == '✅')
+        compliant_servers = sum(1 for server in servers_info if server['status'] == '✅')
         partial_servers = sum(1 for server in servers_info if server['status'] == '🟡')
+        non_compliant_servers = sum(1 for server in servers_info if server['status'] == '❌')
         
+        # Add compact dark mode summary header
         content_html += f"""
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-number">{total_servers}</div>
-                <div class="stat-label">Total Servers</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">{complete_servers}</div>
-                <div class="stat-label">Fully Compliant</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">{partial_servers}</div>
-                <div class="stat-label">Partially Compliant</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">{complete_servers}/{total_servers}</div>
-                <div class="stat-label">Servers Complete</div>
+        <div class="summary-header" style="background: #2d3748; padding: 12px 20px; border-radius: 6px; margin-bottom: 20px; text-align: center;">
+            <div style="display: flex; justify-content: center; gap: 30px; flex-wrap: wrap;">
+                <div class="summary-stat">
+                    <span style="font-size: 18px; font-weight: bold; color: #a0aec0;">{total_servers}</span>
+                    <div style="font-size: 12px; color: #718096;">Total</div>
+                </div>
+                <div class="summary-stat">
+                    <span style="font-size: 18px; font-weight: bold; color: #48bb78;">{compliant_servers}</span>
+                    <div style="font-size: 12px; color: #718096;">Compliant</div>
+                </div>
+                <div class="summary-stat">
+                    <span style="font-size: 18px; font-weight: bold; color: #ed8936;">{partial_servers}</span>
+                    <div style="font-size: 12px; color: #718096;">Partial</div>
+                </div>
+                <div class="summary-stat">
+                    <span style="font-size: 18px; font-weight: bold; color: #f56565;">{non_compliant_servers}</span>
+                    <div style="font-size: 12px; color: #718096;">Missing</div>
+                </div>
             </div>
         </div>
         
         <div class="servers-grid">
 """
         
-        # Generate server cards
+        # Generate server cards with detailed statistics
         for server in sorted(servers_info, key=lambda x: x['name']):
-            spec_progress_percent = (server['complete_specs'] / server['total_specs'] * 100) if server['total_specs'] > 0 else 0
-            section_progress_percent = (server['complete_sections'] / server['total_sections'] * 100) if server['total_sections'] > 0 else 0
-            requirement_progress_percent = (server['complete_requirements'] / server['total_requirements'] * 100) if server['total_requirements'] > 0 else 0
+            # Get detailed stats for this server
+            server_stats = server.get('stats', {})
+            
+            # Calculate percentages for each implementation type
+            total_reqs = server_stats.get('total_requirements', 0)
+            if total_reqs > 0:
+                impl_test_pct = (server_stats.get('implementation_and_test', 0) / total_reqs) * 100
+                impl_only_pct = (server_stats.get('implementation_only', 0) / total_reqs) * 100
+                test_only_pct = (server_stats.get('test_only', 0) / total_reqs) * 100
+                exception_pct = (server_stats.get('exception_count', 0) / total_reqs) * 100
+                implication_pct = (server_stats.get('implication_count', 0) / total_reqs) * 100
+                no_impl_pct = (server_stats.get('no_implementation', 0) / total_reqs) * 100
+            else:
+                impl_test_pct = impl_only_pct = test_only_pct = exception_pct = implication_pct = no_impl_pct = 0
             
             content_html += f"""
             <div class="server-card">
@@ -600,28 +527,48 @@ def generate_homepage(servers_info, output_file):
                     <div class="server-status">{server['status']}</div>
                 </div>
                 <div class="server-body">
-                    <div style="margin-bottom: 10px;">
-                        <div style="font-size: 0.9em; color: #8b949e; margin-bottom: 5px;">Specification Compliance: {spec_progress_percent:.1f}%</div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: {spec_progress_percent:.1f}%"></div>
+                    <div class="progress-item">
+                        <div class="progress-header">
+                            <span class="progress-label">Requirements by Implementation Type</span>
+                            <span class="progress-count">{server_stats.get('complete_requirements', 0)}/{server_stats.get('total_requirements', 0)}</span>
+                        </div>
+                        <div class="progress-bar color-coded">
+                            <div class="progress-segment impl-test" style="width: {impl_test_pct:.1f}%" title="Implementation + Test: {server_stats.get('implementation_and_test', 0)}"></div>
+                            <div class="progress-segment implication" style="width: {implication_pct:.1f}%" title="Implication: {server_stats.get('implication_count', 0)}"></div>
+                            <div class="progress-segment exception" style="width: {exception_pct:.1f}%" title="Exception: {server_stats.get('exception_count', 0)}"></div>
+                            <div class="progress-segment impl-only" style="width: {impl_only_pct:.1f}%" title="Implementation Only: {server_stats.get('implementation_only', 0)}"></div>
+                            <div class="progress-segment no-impl" style="width: {no_impl_pct:.1f}%" title="No Implementation: {server_stats.get('no_implementation', 0)}"></div>
                         </div>
                     </div>
-                    <div style="margin-bottom: 10px;">
-                        <div style="font-size: 0.9em; color: #8b949e; margin-bottom: 5px;">Section Compliance: {section_progress_percent:.1f}%</div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: {section_progress_percent:.1f}%"></div>
+                    <div class="server-summary">
+                        <div class="summary-row">
+                            <div class="summary-item">
+                                <span class="summary-number" style="color: #28a745;">{server_stats.get('implementation_and_test', 0)}</span>
+                                <span class="summary-label">Complete</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-number" style="color: #dda0dd;">{server_stats.get('implication_count', 0)}</span>
+                                <span class="summary-label">Implied</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-number" style="color: #87ceeb;">{server_stats.get('exception_count', 0)}</span>
+                                <span class="summary-label">Exception</span>
+                            </div>
                         </div>
-                    </div>
-                    <div style="margin-bottom: 15px;">
-                        <div style="font-size: 0.9em; color: #8b949e; margin-bottom: 5px;">Requirement Compliance: {requirement_progress_percent:.1f}%</div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: {requirement_progress_percent:.1f}%"></div>
+                        <div class="summary-row">
+                            <div class="summary-item">
+                                <span class="summary-number" style="color: #ffc107;">{server_stats.get('implementation_only', 0)}</span>
+                                <span class="summary-label">Partial</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-number" style="color: #dc3545;">{server_stats.get('no_implementation', 0)}</span>
+                                <span class="summary-label">Missing</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-number" style="color: #8b949e;">{server_stats.get('total_requirements', 0)}</span>
+                                <span class="summary-label">Total</span>
+                            </div>
                         </div>
-                    </div>
-                    <div class="server-stats">
-                        <span>{server['complete_specs']}/{server['total_specs']} specs</span>
-                        <span>{server['complete_sections']}/{server['total_sections']} sections</span>
-                        <span>{server['complete_requirements']}/{server['total_requirements']} reqs</span>
                     </div>
                     <a href="{server['report_file']}" class="view-report-btn">View Detailed Report</a>
                 </div>
@@ -656,11 +603,11 @@ def main():
     
     servers_info = []
     
-    # Scan all subdirectories for .duvet/snapshot.txt files
+    # Scan all subdirectories for .duvet/reports/report.html files
     for item in test_server_dir.iterdir():
         if item.is_dir() and not item.name.startswith('.'):
-            snapshot_file = item / '.duvet' / 'snapshot.txt'
-            if snapshot_file.exists():
+            report_file = item / '.duvet' / 'reports' / 'report.html'
+            if report_file.exists():
                 print(f"Processing {item.name}...")
                 server_info = generate_server_report(item, item.name)
                 if server_info:

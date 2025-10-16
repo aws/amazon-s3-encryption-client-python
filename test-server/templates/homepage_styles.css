@@ -126,6 +126,136 @@ body {
     transition: width 0.3s ease;
 }
 
+.progress-bar.color-coded {
+    display: flex;
+    height: 12px;
+}
+
+.progress-segment {
+    height: 100%;
+    transition: width 0.3s ease;
+    position: relative;
+}
+
+.progress-segment:first-child {
+    border-radius: 6px 0 0 6px;
+}
+
+.progress-segment:last-child {
+    border-radius: 0 6px 6px 0;
+}
+
+.progress-segment:only-child {
+    border-radius: 6px;
+}
+
+.progress-segment.impl-test {
+    background: #28a745;
+}
+
+.progress-segment.impl-only {
+    background: #ffc107;
+}
+
+.progress-segment.test-only {
+    background: #6c757d;
+}
+
+.progress-segment.exception {
+    background: #87ceeb;
+}
+
+.progress-segment.implication {
+    background: #dda0dd;
+}
+
+.progress-segment.no-impl {
+    background: #dc3545;
+}
+
+.progress-item {
+    margin-bottom: 15px;
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.progress-label {
+    color: #c9d1d9;
+    font-weight: 500;
+    font-size: 0.9em;
+}
+
+.progress-count {
+    color: #8b949e;
+    font-size: 0.8em;
+}
+
+.breakdown-grid-compact {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.breakdown-item-compact {
+    background: #0d1117;
+    padding: 8px 4px;
+    border-radius: 4px;
+    text-align: center;
+    border: 1px solid #30363d;
+}
+
+.breakdown-number-compact {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #c9d1d9;
+    margin-bottom: 2px;
+}
+
+.breakdown-label-compact {
+    color: #8b949e;
+    font-size: 0.7em;
+    line-height: 1.2;
+}
+
+.server-summary {
+    margin-top: 15px;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.summary-row:last-child {
+    margin-bottom: 0;
+}
+
+.summary-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+}
+
+.summary-number {
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-bottom: 2px;
+}
+
+.summary-label {
+    color: #8b949e;
+    font-size: 0.75em;
+    text-align: center;
+}
+
 .server-stats {
     display: flex;
     justify-content: space-between;

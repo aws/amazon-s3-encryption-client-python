@@ -253,6 +253,53 @@ body {
     transition: width 0.3s ease;
 }
 
+.progress-bar.color-coded {
+    display: flex;
+    height: 12px;
+}
+
+.progress-segment {
+    height: 100%;
+    transition: width 0.3s ease;
+    position: relative;
+}
+
+.progress-segment:first-child {
+    border-radius: 6px 0 0 6px;
+}
+
+.progress-segment:last-child {
+    border-radius: 0 6px 6px 0;
+}
+
+.progress-segment:only-child {
+    border-radius: 6px;
+}
+
+.progress-segment.impl-test {
+    background: #28a745;
+}
+
+.progress-segment.impl-only {
+    background: #ffc107;
+}
+
+.progress-segment.test-only {
+    background: #6c757d;
+}
+
+.progress-segment.exception {
+    background: #87ceeb;
+}
+
+.progress-segment.implication {
+    background: #dda0dd;
+}
+
+.progress-segment.no-impl {
+    background: #dc3545;
+}
+
 .breakdown-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
