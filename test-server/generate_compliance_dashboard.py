@@ -317,7 +317,7 @@ def generate_enhanced_html_report(report_file_path, output_file_path, server_nam
                 <div class="progress-item">
                     <div class="progress-header">
                         <span class="progress-label">Requirements by Implementation Type</span>
-                        <span class="progress-count">{stats['complete_requirements']}/{stats['total_requirements']}</span>
+                        <span class="progress-count">{stats['complete_requirements']}/{stats['total_requirements']} <span title="implementation+test, implication, or exception" style="border-bottom: 1px dotted #8b949e; cursor: help;">completed</span></span>
                     </div>
                     <div class="progress-bar color-coded">
                         <div class="progress-segment impl-test" style="width: {impl_test_pct:.1f}%" title="Implementation + Test: {stats['implementation_and_test']}"></div>
@@ -329,26 +329,30 @@ def generate_enhanced_html_report(report_file_path, output_file_path, server_nam
                 </div>
             </div>
             
-            <div class="breakdown-grid">
-                <div class="breakdown-item">
-                    <div class="breakdown-number">{stats['implementation_and_test']}</div>
+            <div class="breakdown-grid single-row">
+                <div class="breakdown-item clickable-filter" data-filter="impl-test" onclick="filterRequirements('impl-test')" title="Click to filter Implementation + Test requirements">
+                    <div class="breakdown-number" style="color: #28a745;">{stats['implementation_and_test']}</div>
                     <div class="breakdown-label" style="color: #28a745;">Implementation + Test</div>
                 </div>
-                <div class="breakdown-item">
-                    <div class="breakdown-number">{stats['implication_count']}</div>
+                <div class="breakdown-item clickable-filter" data-filter="implication" onclick="filterRequirements('implication')" title="Click to filter Implication requirements">
+                    <div class="breakdown-number" style="color: #dda0dd;">{stats['implication_count']}</div>
                     <div class="breakdown-label" style="color: #dda0dd;">Implication</div>
                 </div>
-                <div class="breakdown-item">
-                    <div class="breakdown-number">{stats['exception_count']}</div>
+                <div class="breakdown-item clickable-filter" data-filter="exception" onclick="filterRequirements('exception')" title="Click to filter Exception requirements">
+                    <div class="breakdown-number" style="color: #87ceeb;">{stats['exception_count']}</div>
                     <div class="breakdown-label" style="color: #87ceeb;">Exception</div>
                 </div>
-                <div class="breakdown-item">
-                    <div class="breakdown-number">{stats['implementation_only']}</div>
+                <div class="breakdown-item clickable-filter" data-filter="impl-only" onclick="filterRequirements('impl-only')" title="Click to filter Implementation Only requirements">
+                    <div class="breakdown-number" style="color: #ffc107;">{stats['implementation_only']}</div>
                     <div class="breakdown-label" style="color: #ffc107;">Implementation Only</div>
                 </div>
-                <div class="breakdown-item">
-                    <div class="breakdown-number">{stats['no_implementation']}</div>
+                <div class="breakdown-item clickable-filter" data-filter="none" onclick="filterRequirements('none')" title="Click to filter No Implementation requirements">
+                    <div class="breakdown-number" style="color: #dc3545;">{stats['no_implementation']}</div>
                     <div class="breakdown-label" style="color: #dc3545;">No Implementation</div>
+                </div>
+                <div class="breakdown-item" title="Total requirements count">
+                    <div class="breakdown-number" style="color: #8b949e;">{stats['total_requirements']}</div>
+                    <div class="breakdown-label" style="color: #8b949e;">Total</div>
                 </div>
             </div>
         </div>
@@ -383,7 +387,7 @@ def generate_enhanced_html_report(report_file_path, output_file_path, server_nam
                 <div class="spec-title">
                     <span class="status-emoji">{status_icon}</span>
                     <span>{spec_title}</span>
-                    <span class="completion-count">({spec_complete_requirements}/{spec_total_requirements})</span>
+                    <span class="completion-count">({spec_complete_requirements}/{spec_total_requirements} completed)</span>
                     <a href="{spec_url}" target="_blank" title="View {spec_title} specification in duvet report" style="margin-left: 10px; font-size: 12px; color: #666;">🔗</a>
                 </div>
                 <span class="expand-icon" id="icon_{spec_title.replace(' ', '_')}">▼</span>
@@ -426,7 +430,7 @@ def generate_enhanced_html_report(report_file_path, output_file_path, server_nam
                         <div class="section-title">
                             <span class="status-emoji">{section_status}</span>
                             <span>{section_title}</span>
-                            <span class="completion-count">({section_complete}/{section_total})</span>
+                            <span class="completion-count">({section_complete}/{section_total} completed)</span>
                             <a href="{section_url}" target="_blank" title="View {section_title} section in duvet report" style="margin-left: 8px; font-size: 11px; color: #888;">🔗</a>
                         </div>
                         <span class="expand-icon" id="icon_{section_id}">▼</span>
@@ -475,12 +479,24 @@ def generate_enhanced_html_report(report_file_path, output_file_path, server_nam
                 else:
                     sources_html = '<div class="requirement-sources" style="font-size: 11px; color: #999; margin-top: 4px;">• no implementation found</div>'
                 
+                # Determine requirement type for filtering
+                if requirement['has_exception']:
+                    req_type = 'exception'
+                elif requirement['has_implication']:
+                    req_type = 'implication'
+                elif requirement['has_implementation'] and requirement['has_test']:
+                    req_type = 'impl-test'
+                elif requirement['has_implementation']:
+                    req_type = 'impl-only'
+                else:
+                    req_type = 'none'
+                
                 # Prepare requirement text for copying (clean version without HTML)
                 clean_req_text = requirement['text'].replace('\n', ' ').strip()
                 copy_text = f"//# {clean_req_text}"
                 
                 content_html += f"""
-                        <div class="requirement-item">
+                        <div class="requirement-item" data-requirement-type="{req_type}">
                             <div class="requirement-header">
                                 <span class="requirement-id">Requirement {req_counter}:</span>
                                 <span class="requirement-status">{req_status}</span>
@@ -662,8 +678,8 @@ def generate_homepage(servers_info, output_file):
                 <div class="server-body">
                     <div class="progress-item">
                         <div class="progress-header">
-                            <span class="progress-label">Requirements by Implementation Type</span>
-                            <span class="progress-count">{server_stats.get('complete_requirements', 0)}/{server_stats.get('total_requirements', 0)}</span>
+                            <span class="progress-label">Requirements Progress</span>
+                            <span class="progress-count">{server_stats.get('complete_requirements', 0)}/{server_stats.get('total_requirements', 0)} completed</span>
                         </div>
                         <div class="progress-bar color-coded">
                             <div class="progress-segment impl-test" style="width: {impl_test_pct:.1f}%" title="Implementation + Test: {server_stats.get('implementation_and_test', 0)}"></div>
@@ -674,7 +690,7 @@ def generate_homepage(servers_info, output_file):
                         </div>
                     </div>
                     
-                    <div class="breakdown-grid">
+                    <div class="breakdown-grid single-row">
                         <div class="breakdown-item">
                             <div class="breakdown-number" style="color: #28a745;">{server_stats.get('implementation_and_test', 0)}</div>
                             <div class="breakdown-label" style="color: #28a745;">Impl+Test</div>
