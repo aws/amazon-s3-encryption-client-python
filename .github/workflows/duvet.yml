@@ -60,4 +60,5 @@ jobs:
           path: |
             test-server/compliance_homepage.html
             test-server/*/compliance_summary_report.html
+            test-server/*/.duvet/reports/report.html
             test-server/templates/*
