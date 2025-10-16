@@ -148,6 +148,65 @@ public class RoundTripTests {
 
     @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
     @MethodSource("software.amazon.encryption.s3.TestUtils#crossLanguageClients")
+    public void crossLanguageTestKmsWithNoEncCtxOnGetFails(LanguageServerTarget encLang, LanguageServerTarget decLang) {
+        if (ENCRYPTION_CONTEXT_ON_DECRYPT_UNSUPPORTED.contains(decLang.getLanguageName())) {
+            return;
+        }
+        if (ENCRYPTION_CONTEXT_ON_ENCRYPT_UNSUPPORTED.contains(encLang.getLanguageName())) {
+            return;
+        }
+        S3ECTestServerClient encClient = testServerClientFor(encLang);
+        final String objectKey = appendTestSuffix("cross-lang-test-key-kms-no-ec-on-get-fails" + encLang);
+        final String input = "simple-test-input";
+        final Map<String, String> encCtx = new HashMap<>();
+        encCtx.put("user-defined-enc-ctx-key", "user-defined-enc-ctx-value");
+        encCtx.put("user-defined-enc-ctx-key-2", "user-defined-enc-ctx-value-2");
+        final List<String> mdAsList = metadataMapToList(encCtx);
+        KeyMaterial kmsKeyArn = KeyMaterial.builder()
+                .kmsKeyId(KMS_KEY_ARN)
+                .build();
+        CreateClientOutput encClientOutput = encClient.createClient(CreateClientInput.builder()
+                .config(S3ECConfig.builder()
+                        .keyMaterial(kmsKeyArn)
+                        .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+                        .build())
+                .build());
+        String encS3ECId = encClientOutput.getClientId();
+
+        encClient.putObject(PutObjectInput.builder()
+                .clientID(encS3ECId)
+                .key(objectKey)
+                .bucket(BUCKET)
+                .metadata(mdAsList)
+                .body(ByteBuffer.wrap(input.getBytes(StandardCharsets.UTF_8)))
+                .build());
+        S3ECTestServerClient decClient = testServerClientFor(decLang);
+        CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
+                .config(S3ECConfig.builder()
+                  .keyMaterial(kmsKeyArn)
+                  .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+                  .build()
+                )
+                .build());
+        String decS3ECId = decClientOutput.getClientId();
+        try {
+            decClient.getObject(GetObjectInput.builder()
+                    .clientID(decS3ECId)
+                    .bucket(BUCKET)
+                    .key(objectKey)
+                    .build());
+            fail("Expected exception!");
+        } catch (S3EncryptionClientError e) {
+            if (decLang.getLanguageName().equals(RUBY_V3) || decLang.getLanguageName().equals(RUBY_V2_CURRENT)) {
+                assertTrue(e.getMessage().contains("Value of encryption context from envelope does not match the provided encryption context"));
+            } else {
+                assertTrue(e.getMessage().contains("Provided encryption context does not match information retrieved from S3"));
+            }
+        }
+    }
+
+    @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
+    @MethodSource("software.amazon.encryption.s3.TestUtils#crossLanguageClients")
     public void crossLanguageTestKmsWithSubsetEncCtxFails(LanguageServerTarget encLang, LanguageServerTarget decLang) {
         if (ENCRYPTION_CONTEXT_ON_DECRYPT_UNSUPPORTED.contains(decLang.getLanguageName())) {
             return;
@@ -189,11 +248,15 @@ public class RoundTripTests {
                 )
                 .build());
         String decS3ECId = decClientOutput.getClientId();
+        final Map<String, String> encCtxSubset = new HashMap<>();
+        encCtxSubset.put("user-defined-enc-ctx-key", "user-defined-enc-ctx-value");
+        final List<String> subsetMdAsList = metadataMapToList(encCtxSubset);
         try {
             decClient.getObject(GetObjectInput.builder()
                     .clientID(decS3ECId)
                     .bucket(BUCKET)
                     .key(objectKey)
+                    .metadata(subsetMdAsList)
                     .build());
             fail("Expected exception!");
         } catch (S3EncryptionClientError e) {
