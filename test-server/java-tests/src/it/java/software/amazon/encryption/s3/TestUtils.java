@@ -99,7 +99,7 @@ public class TestUtils {
             // GO_V3_TRANSITION,
             // NET_V2_TRANSITION,
             // NET_V3_TRANSITION,
-            // CPP_V2_TRANSITION,
+            CPP_V2_TRANSITION,
             // PHP_V2_TRANSITION,
             RUBY_V2_TRANSITION
         );
@@ -135,6 +135,7 @@ public class TestUtils {
         // servers.put(GO_V3_TRANSITION, new LanguageServerTarget(GO_V3_TRANSITION, "8095"));
         // servers.put(NET_V2_TRANSITION, new LanguageServerTarget(NET_V2_TRANSITION, "8096"));
         servers.put(CPP_V2_TRANSITION, new LanguageServerTarget(CPP_V2_TRANSITION, "8097"));
+        // servers.put(CPP_V3, new LanguageServerTarget(CPP_V3, "8091"));
         // servers.put(RUBY_V2_TRANSITION, new LanguageServerTarget(RUBY_V2_TRANSITION, "8098"));
         servers.put(PHP_V2_TRANSITION, new LanguageServerTarget(PHP_V2_TRANSITION, "8099"));
         servers.put(JAVA_V4, new LanguageServerTarget(JAVA_V4, "8090"));
