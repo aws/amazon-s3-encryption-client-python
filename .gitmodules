@@ -34,7 +34,7 @@
 [submodule "test-server/net-v2-v3-server/s3ec-net-v2"]
 	path = test-server/net-v2-v3-server/s3ec-net-v2
 	url = https://github.com/aws/private-amazon-s3-encryption-client-dotnet-staging.git
-	branch = v3sdk-development
+	branch = rishav/addECperRequestS3ECV2
 [submodule "test-server/net-v2-v3-server/s3ec-net-v3"]
 	path = test-server/net-v2-v3-server/s3ec-net-v3
 	url = https://github.com/aws/private-amazon-s3-encryption-client-dotnet-staging.git
