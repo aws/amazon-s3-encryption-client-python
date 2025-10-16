@@ -253,18 +253,89 @@ body {
     transition: width 0.3s ease;
 }
 
+.progress-bar.color-coded {
+    display: flex;
+    height: 12px;
+}
+
+.progress-segment {
+    height: 100%;
+    transition: width 0.3s ease;
+    position: relative;
+}
+
+.progress-segment:first-child {
+    border-radius: 6px 0 0 6px;
+}
+
+.progress-segment:last-child {
+    border-radius: 0 6px 6px 0;
+}
+
+.progress-segment:only-child {
+    border-radius: 6px;
+}
+
+.progress-segment.impl-test {
+    background: #28a745;
+}
+
+.progress-segment.impl-only {
+    background: #ffc107;
+}
+
+.progress-segment.test-only {
+    background: #6c757d;
+}
+
+.progress-segment.exception {
+    background: #87ceeb;
+}
+
+.progress-segment.implication {
+    background: #dda0dd;
+}
+
+.progress-segment.no-impl {
+    background: #dc3545;
+}
+
 .breakdown-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, 1fr);
     gap: 10px;
 }
 
+.breakdown-grid.single-row {
+    grid-template-columns: repeat(6, 1fr);
+    grid-template-rows: 1fr;
+}
+
 .breakdown-item {
-    background: #161b22;
+    background: transparent;
     padding: 12px;
     border-radius: 6px;
     text-align: center;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.breakdown-item.clickable-filter {
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+.breakdown-item.clickable-filter:hover {
+    background: #21262d;
     border: 1px solid #30363d;
+    transform: translateY(-1px);
+}
+
+.breakdown-item.active-filter {
+    background: #21262d;
+    border: 2px solid #58a6ff;
+    box-shadow: 0 0 8px rgba(88, 166, 255, 0.3);
 }
 
 .breakdown-number {

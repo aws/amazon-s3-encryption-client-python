@@ -9,13 +9,47 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>{server_name}</h1>
+            <h1>{server_name} 
+                <a href=".duvet/reports/report.html" target="_blank" style="margin-left: 15px; padding: 6px 12px; background-color: #6c757d; color: white; text-decoration: none; border-radius: 4px; font-size: 14px; font-weight: normal;">
+                    📊 Duvet Report
+                </a>
+            </h1>
             <a href="../compliance_homepage.html" class="nav-link">Back to Homepage</a>
         </div>
         {content}
     </div>
     
     <script>
+        function copyToClipboard(text) {{
+            if (navigator.clipboard) {{
+                navigator.clipboard.writeText(text).then(function() {{
+                    // Could add a toast notification here
+                }}).catch(function(err) {{
+                    // Fallback for older browsers
+                    fallbackCopyTextToClipboard(text);
+                }});
+            }} else {{
+                fallbackCopyTextToClipboard(text);
+            }}
+        }}
+        
+        function fallbackCopyTextToClipboard(text) {{
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-999999px";
+            textArea.style.top = "-999999px"; 
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {{
+                document.execCommand('copy');
+            }} catch (err) {{
+                console.error('Fallback: Oops, unable to copy', err);
+            }}
+            document.body.removeChild(textArea);
+        }}
+
         function toggleSection(sectionId) {{
             const content = document.getElementById('content_' + sectionId);
             const icon = document.getElementById('icon_' + sectionId);
@@ -113,10 +147,113 @@
             }}
         }}
         
+        // Filtering functionality - now supports multiple selections
+        let activeFilters = new Set(['all']);
+        
+        function filterRequirements(filterType) {{
+            // Handle multiple selection logic
+            if (filterType === 'all') {{
+                activeFilters.clear();
+                activeFilters.add('all');
+            }} else {{
+                // Remove 'all' if selecting specific filters
+                if (activeFilters.has('all')) {{
+                    activeFilters.clear();
+                }}
+                
+                // Toggle the filter
+                if (activeFilters.has(filterType)) {{
+                    activeFilters.delete(filterType);
+                    // If no filters selected, default to 'all'
+                    if (activeFilters.size === 0) {{
+                        activeFilters.add('all');
+                    }}
+                }} else {{
+                    activeFilters.add(filterType);
+                }}
+            }}
+            
+            // Update filter buttons
+            document.querySelectorAll('.breakdown-item').forEach(item => {{
+                item.classList.remove('active-filter');
+                const filterValue = item.getAttribute('data-filter');
+                if (filterValue && activeFilters.has(filterValue)) {{
+                    item.classList.add('active-filter');
+                }}
+            }});
+            
+            // Filter requirements
+            document.querySelectorAll('.requirement-item').forEach(req => {{
+                const reqType = req.getAttribute('data-requirement-type');
+                if (activeFilters.has('all') || activeFilters.has(reqType)) {{
+                    req.style.display = 'block';
+                }} else {{
+                    req.style.display = 'none';
+                }}
+            }});
+            
+            // Update section counts
+            updateSectionCounts();
+            
+            // Removed filter status display
+        }}
+        
+        function updateSectionCounts() {{
+            // Update subsection counts
+            document.querySelectorAll('.section-item').forEach(section => {{
+                const visibleReqs = section.querySelectorAll('.requirement-item[style*="display: block"], .requirement-item:not([style*="display: none"])').length;
+                const totalReqs = section.querySelectorAll('.requirement-item').length;
+                
+                const countSpan = section.querySelector('.completion-count');
+                if (countSpan && !activeFilters.has('all')) {{
+                    if (visibleReqs === 0) {{
+                        // Hide subsection if no visible requirements
+                        section.style.display = 'none';
+                    }} else {{
+                        section.style.display = 'block';
+                        countSpan.textContent = '(' + visibleReqs + '/' + totalReqs + ' shown)';
+                    }}
+                }} else if (countSpan) {{
+                    // Reset to original count - completed means impl-test, implication, or exception
+                    section.style.display = 'block';
+                    const completeReqs = section.querySelectorAll('.requirement-item[data-requirement-type="impl-test"], .requirement-item[data-requirement-type="implication"], .requirement-item[data-requirement-type="exception"]').length;
+                    countSpan.textContent = '(' + completeReqs + '/' + totalReqs + ' completed)';
+                }}
+            }});
+            
+            // Update spec-level counts
+            document.querySelectorAll('.spec-section').forEach(spec => {{
+                const visibleReqs = spec.querySelectorAll('.requirement-item[style*="display: block"], .requirement-item:not([style*="display: none"])').length;
+                const totalReqs = spec.querySelectorAll('.requirement-item').length;
+                
+                const countSpan = spec.querySelector('.spec-title .completion-count');
+                if (countSpan && !activeFilters.has('all')) {{
+                    if (visibleReqs === 0) {{
+                        // Hide spec section if no visible requirements
+                        spec.style.display = 'none';
+                    }} else {{
+                        spec.style.display = 'block';
+                        countSpan.textContent = '(' + visibleReqs + '/' + totalReqs + ' shown)';
+                    }}
+                }} else if (countSpan) {{
+                    // Reset to original count - completed means impl-test, implication, or exception
+                    spec.style.display = 'block';
+                    const completeReqs = spec.querySelectorAll('.requirement-item[data-requirement-type="impl-test"], .requirement-item[data-requirement-type="implication"], .requirement-item[data-requirement-type="exception"]').length;
+                    countSpan.textContent = '(' + completeReqs + '/' + totalReqs + ' completed)';
+                }}
+            }});
+        }}
+        
+        
+        function clearFilter() {{
+            filterRequirements('all');
+        }}
+        
         // Add keyboard navigation
         document.addEventListener('keydown', function(e) {{
             if (e.key === 'Escape') {{
-                // Close all expanded sections and subsections
+                // Clear filter and close all expanded sections
+                clearFilter();
                 document.querySelectorAll('.spec-content.expanded').forEach(content => {{
                     content.classList.remove('expanded');
                 }});
