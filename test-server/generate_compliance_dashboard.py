@@ -12,175 +12,185 @@ import os
 from pathlib import Path
 from datetime import datetime
 
+
 def parse_report_html(report_file_path):
     """Parse the report.html file and extract specification data."""
-    with open(report_file_path, 'r', encoding='utf-8') as f:
+    with open(report_file_path, "r", encoding="utf-8") as f:
         content = f.read()
-    
+
     # Extract JSON from script tag with id="result"
     start_marker = '<script type="application/json" id=result>'
-    end_marker = '</script>'
-    
+    end_marker = "</script>"
+
     start_idx = content.find(start_marker)
     if start_idx == -1:
         raise ValueError("No result script tag found in HTML")
-    
+
     start_idx += len(start_marker)
     end_idx = content.find(end_marker, start_idx)
     if end_idx == -1:
         raise ValueError("No closing script tag found")
-    
+
     json_content = content[start_idx:end_idx]
     data = json.loads(json_content)
-    
+
     # Convert report.html JSON structure to match snapshot structure
     return convert_report_to_specifications(data)
+
 
 def convert_report_to_specifications(data):
     """Convert duvet report.html JSON structure to match snapshot structure."""
     specifications = {}
-    
-    for spec_path, spec in (data.get('specifications', {})).items():
+
+    for spec_path, spec in (data.get("specifications", {})).items():
         spec_data = {
-            'title': spec.get('title', 'Unknown'),
-            'spec_path': spec_path,  # Store the original spec path
-            'sections': {}
+            "title": spec.get("title", "Unknown"),
+            "spec_path": spec_path,  # Store the original spec path
+            "sections": {},
         }
-        
+
         # Process sections - sections is a list, not a dict
-        for section in (spec.get('sections', [])):
+        for section in spec.get("sections", []):
             section_data = {
-                'title': section.get('title', 'Unknown'),
-                'section_id': section.get('id', 'unknown'),  # Store the section ID
-                'requirements': []
+                "title": section.get("title", "Unknown"),
+                "section_id": section.get("id", "unknown"),  # Store the section ID
+                "requirements": [],
             }
-            
+
             # Process requirements for this section
-            for req_id in (section.get('requirements', [])):
+            for req_id in section.get("requirements", []):
                 # Get annotation data
                 annotation = None
-                if 'annotations' in data and isinstance(data['annotations'], list):
+                if "annotations" in data and isinstance(data["annotations"], list):
                     # annotations is a list indexed by req_id
-                    if req_id < len(data['annotations']):
-                        annotation = data['annotations'][req_id]
-                
+                    if req_id < len(data["annotations"]):
+                        annotation = data["annotations"][req_id]
+
                 # Get status data
                 status = None
-                if 'statuses' in data and isinstance(data['statuses'], dict):
-                    status = data['statuses'].get(str(req_id))
-                
+                if "statuses" in data and isinstance(data["statuses"], dict):
+                    status = data["statuses"].get(str(req_id))
+
                 if annotation and status:
                     # Parse status indicators (matching snapshot logic)
-                    has_implementation = bool(status.get('citation'))  # Only citation counts as implementation
-                    has_test = bool(status.get('test'))
-                    has_exception = bool(status.get('exception'))
-                    has_implication = bool(status.get('implication'))
-                    
+                    has_implementation = bool(
+                        status.get("citation")
+                    )  # Only citation counts as implementation
+                    has_test = bool(status.get("test"))
+                    has_exception = bool(status.get("exception"))
+                    has_implication = bool(status.get("implication"))
+
                     # Determine completion status (matching snapshot rules exactly)
-                    is_complete = (has_implementation and has_test) or has_exception or has_implication
-                    
+                    is_complete = (
+                        (has_implementation and has_test) or has_exception or has_implication
+                    )
+
                     # Collect related annotations for detailed status
                     related_sources = []
-                    if 'related' in status:
-                        for related_id in status['related']:
-                            if related_id < len(data['annotations']):
-                                related_annotation = data['annotations'][related_id]
-                                source = related_annotation.get('source', '')
-                                line = related_annotation.get('line', '')
-                                annotation_type = related_annotation.get('type', 'CITATION')
+                    if "related" in status:
+                        for related_id in status["related"]:
+                            if related_id < len(data["annotations"]):
+                                related_annotation = data["annotations"][related_id]
+                                source = related_annotation.get("source", "")
+                                line = related_annotation.get("line", "")
+                                annotation_type = related_annotation.get("type", "CITATION")
                                 if source:
                                     source_info = {
-                                        'source': source,
-                                        'line': line,
-                                        'type': annotation_type
+                                        "source": source,
+                                        "line": line,
+                                        "type": annotation_type,
                                     }
                                     related_sources.append(source_info)
-                    
+
                     requirement = {
-                        'text': annotation.get('comment', 'No comment available'),
-                        'has_implementation': has_implementation,
-                        'has_test': has_test,
-                        'has_exception': has_exception,
-                        'has_implication': has_implication,
-                        'is_complete': is_complete,
-                        'related_sources': related_sources
+                        "text": annotation.get("comment", "No comment available"),
+                        "has_implementation": has_implementation,
+                        "has_test": has_test,
+                        "has_exception": has_exception,
+                        "has_implication": has_implication,
+                        "is_complete": is_complete,
+                        "related_sources": related_sources,
                     }
-                    
-                    section_data['requirements'].append(requirement)
-                elif req_id < len(data.get('annotations', [])):
+
+                    section_data["requirements"].append(requirement)
+                elif req_id < len(data.get("annotations", [])):
                     # Fallback: create requirement with basic info
-                    annotation = data['annotations'][req_id]
+                    annotation = data["annotations"][req_id]
                     requirement = {
-                        'text': annotation.get('comment', f'Requirement {req_id}'),
-                        'has_implementation': False,
-                        'has_test': False,
-                        'has_exception': False,
-                        'has_implication': False,
-                        'is_complete': False,
-                        'related_sources': []
+                        "text": annotation.get("comment", f"Requirement {req_id}"),
+                        "has_implementation": False,
+                        "has_test": False,
+                        "has_exception": False,
+                        "has_implication": False,
+                        "is_complete": False,
+                        "related_sources": [],
                     }
-                    section_data['requirements'].append(requirement)
-            
-            spec_data['sections'][section.get('title', 'Unknown')] = section_data
-        
-        specifications[spec.get('title', 'Unknown')] = spec_data
-    
+                    section_data["requirements"].append(requirement)
+
+            spec_data["sections"][section.get("title", "Unknown")] = section_data
+
+        specifications[spec.get("title", "Unknown")] = spec_data
+
     return specifications
+
 
 def get_spec_status(spec_data):
     """Determine the overall status of a specification based on all its sections."""
-    sections = spec_data.get('sections', {})
-    
+    sections = spec_data.get("sections", {})
+
     if not sections:
-        return '✅'  # No sections means complete
-    
+        return "✅"  # No sections means complete
+
     # Get status of each section
     section_statuses = []
     for section_data in sections.values():
-        requirements = section_data.get('requirements', [])
+        requirements = section_data.get("requirements", [])
         if not requirements:
-            section_statuses.append('✅')  # Empty section is complete
+            section_statuses.append("✅")  # Empty section is complete
         else:
-            complete_reqs = sum(1 for req in requirements if req['is_complete'])
+            complete_reqs = sum(1 for req in requirements if req["is_complete"])
             total_reqs = len(requirements)
-            
+
             if complete_reqs == total_reqs:
-                section_statuses.append('✅')  # All requirements complete
+                section_statuses.append("✅")  # All requirements complete
             elif complete_reqs > 0:
-                section_statuses.append('🟡')  # Some requirements complete
+                section_statuses.append("🟡")  # Some requirements complete
             else:
-                section_statuses.append('❌')  # No requirements complete
-    
+                section_statuses.append("❌")  # No requirements complete
+
     # Apply the corrected logic based on section statuses:
-    if all(status == '✅' for status in section_statuses):
-        return '✅'  # Green check if all sections are green
-    elif any(status in ['✅', '🟡'] for status in section_statuses):
-        return '🟡'  # Yellow if any section is green or yellow
+    if all(status == "✅" for status in section_statuses):
+        return "✅"  # Green check if all sections are green
+    elif any(status in ["✅", "🟡"] for status in section_statuses):
+        return "🟡"  # Yellow if any section is green or yellow
     else:
-        return '❌'  # Red X if all sections are red X
+        return "❌"  # Red X if all sections are red X
+
 
 def get_requirement_status(requirement):
     """Get the status emoji for a single requirement."""
-    if requirement['is_complete']:
-        return '✅'
-    elif requirement['has_implementation'] and requirement['related_sources']:
-        return '🟡'  # Has implementation but no test
+    if requirement["is_complete"]:
+        return "✅"
+    elif requirement["has_implementation"] and requirement["related_sources"]:
+        return "🟡"  # Has implementation but no test
     else:
-        return '❌'  # No implementation
+        return "❌"  # No implementation
+
 
 def format_requirement_text(text):
     """Format requirement text to style status metadata lines."""
-    lines = text.split('\n')
+    lines = text.split("\n")
     formatted_lines = []
-    
+
     for line in lines:
         # Check if line contains status metadata
-        if line.strip().startswith('Status:'):
+        if line.strip().startswith("Status:"):
             formatted_lines.append(f'<span class="status-metadata">{line}</span>')
         else:
             formatted_lines.append(line)
-    
-    return '\n'.join(formatted_lines)
+
+    return "\n".join(formatted_lines)
+
 
 def calculate_summary_statistics(specifications):
     """Calculate summary statistics for all specifications."""
@@ -188,7 +198,7 @@ def calculate_summary_statistics(specifications):
     complete_sections = 0
     total_requirements = 0
     complete_requirements = 0
-    
+
     # Count requirements by implementation type
     no_implementation = 0
     implementation_only = 0
@@ -196,57 +206,60 @@ def calculate_summary_statistics(specifications):
     implementation_and_test = 0
     exception_count = 0
     implication_count = 0
-    
+
     for spec_data in specifications.values():
-        sections = spec_data.get('sections', {})
+        sections = spec_data.get("sections", {})
         total_sections += len(sections)
-        
+
         for section_data in sections.values():
-            requirements = section_data.get('requirements', [])
+            requirements = section_data.get("requirements", [])
             total_requirements += len(requirements)
-            
+
             # Count complete requirements
-            section_complete_reqs = sum(1 for req in requirements if req['is_complete'])
+            section_complete_reqs = sum(1 for req in requirements if req["is_complete"])
             complete_requirements += section_complete_reqs
-            
+
             # A section is complete if all its requirements are complete
             if requirements and section_complete_reqs == len(requirements):
                 complete_sections += 1
             elif not requirements:  # Empty section is considered complete
                 complete_sections += 1
-            
+
             # Count requirements by implementation type
             for req in requirements:
-                if req['has_exception']:
+                if req["has_exception"]:
                     exception_count += 1
-                elif req['has_implication']:
+                elif req["has_implication"]:
                     implication_count += 1
-                elif req['has_implementation'] and req['has_test']:
+                elif req["has_implementation"] and req["has_test"]:
                     implementation_and_test += 1
-                elif req['has_implementation']:
+                elif req["has_implementation"]:
                     implementation_only += 1
-                elif req['has_test']:
+                elif req["has_test"]:
                     test_only += 1
                 else:
                     no_implementation += 1
-    
+
     return {
-        'total_sections': total_sections,
-        'complete_sections': complete_sections,
-        'total_requirements': total_requirements,
-        'complete_requirements': complete_requirements,
-        'no_implementation': no_implementation,
-        'implementation_only': implementation_only,
-        'test_only': test_only,
-        'implementation_and_test': implementation_and_test,
-        'exception_count': exception_count,
-        'implication_count': implication_count
+        "total_sections": total_sections,
+        "complete_sections": complete_sections,
+        "total_requirements": total_requirements,
+        "complete_requirements": complete_requirements,
+        "no_implementation": no_implementation,
+        "implementation_only": implementation_only,
+        "test_only": test_only,
+        "implementation_and_test": implementation_and_test,
+        "exception_count": exception_count,
+        "implication_count": implication_count,
     }
+
 
 def url_encode_spec_path(spec_path):
     """URL encode the spec path for use in duvet report URLs."""
     import urllib.parse
-    return urllib.parse.quote(spec_path, safe='')
+
+    return urllib.parse.quote(spec_path, safe="")
+
 
 def generate_spec_url(duvet_report_path, spec_path):
     """Generate URL to a specific specification in the duvet report."""
@@ -262,53 +275,57 @@ def generate_github_url(source_path, line_number=None, github_base_url=None):
     """Generate GitHub URL for a source file."""
     if not github_base_url:
         return None
-    
+
     # Convert local path to GitHub path
     # Remove local-go-s3ec/ prefix if present
-    if source_path.startswith('local-go-s3ec/'):
-        github_path = source_path[len('local-go-s3ec/'):]
+    if source_path.startswith("local-go-s3ec/"):
+        github_path = source_path[len("local-go-s3ec/") :]
     else:
         github_path = source_path
-    
+
     url = f"{github_base_url}/{github_path}"
     if line_number:
         url += f"#L{line_number}"
-    
+
     return url
+
 
 def load_template(template_path):
     """Load a template file."""
-    with open(template_path, 'r', encoding='utf-8') as f:
+    with open(template_path, "r", encoding="utf-8") as f:
         return f.read()
+
 
 def generate_enhanced_html_report(report_file_path, output_file_path, server_name):
     """Generate an enhanced interactive HTML report using templates."""
     specifications = parse_report_html(report_file_path)
-    
+
     # Load the report template
-    template_dir = Path(__file__).parent / 'templates'
-    template = load_template(template_dir / 'report_template.html')
-    
+    template_dir = Path(__file__).parent / "templates"
+    template = load_template(template_dir / "report_template.html")
+
     # Create relative path to the duvet report.html
     duvet_report_path = ".duvet/reports/report.html"
-    
+
     # GitHub base URL - can be configured for when deployed to GitHub Pages
     github_base_url = None
-    
+
     # Calculate summary statistics
     stats = calculate_summary_statistics(specifications)
-    
+
     # Calculate percentages for each implementation type
-    total_reqs = stats['total_requirements']
+    total_reqs = stats["total_requirements"]
     if total_reqs > 0:
-        impl_test_pct = (stats['implementation_and_test'] / total_reqs) * 100
-        impl_only_pct = (stats['implementation_only'] / total_reqs) * 100
-        test_only_pct = (stats['test_only'] / total_reqs) * 100
-        exception_pct = (stats['exception_count'] / total_reqs) * 100
-        implication_pct = (stats['implication_count'] / total_reqs) * 100
-        no_impl_pct = (stats['no_implementation'] / total_reqs) * 100
+        impl_test_pct = (stats["implementation_and_test"] / total_reqs) * 100
+        impl_only_pct = (stats["implementation_only"] / total_reqs) * 100
+        test_only_pct = (stats["test_only"] / total_reqs) * 100
+        exception_pct = (stats["exception_count"] / total_reqs) * 100
+        implication_pct = (stats["implication_count"] / total_reqs) * 100
+        no_impl_pct = (stats["no_implementation"] / total_reqs) * 100
     else:
-        impl_test_pct = impl_only_pct = test_only_pct = exception_pct = implication_pct = no_impl_pct = 0
+        impl_test_pct = impl_only_pct = test_only_pct = exception_pct = implication_pct = (
+            no_impl_pct
+        ) = 0
 
     # Generate summary statistics HTML with color-coded progress bars
     content_html = f"""
@@ -357,30 +374,32 @@ def generate_enhanced_html_report(report_file_path, output_file_path, server_nam
             </div>
         </div>
     """
-    
+
     # Generate content for each specification
     spec_counter = 0
-    
+
     for spec_title, spec_data in specifications.items():
         status_icon = get_spec_status(spec_data)
-        sections = spec_data.get('sections', {})
-        
+        sections = spec_data.get("sections", {})
+
         # Calculate requirement-level progress for this spec
         spec_total_requirements = 0
         spec_complete_requirements = 0
-        
+
         for section_data in sections.values():
-            section_requirements = section_data.get('requirements', [])
+            section_requirements = section_data.get("requirements", [])
             spec_total_requirements += len(section_requirements)
-            spec_complete_requirements += sum(1 for req in section_requirements if req['is_complete'])
-        
+            spec_complete_requirements += sum(
+                1 for req in section_requirements if req["is_complete"]
+            )
+
         # Determine alternating background class
         row_class = "even" if spec_counter % 2 == 0 else "odd"
         spec_counter += 1
-        
+
         # Generate spec-specific URL
-        spec_url = generate_spec_url(duvet_report_path, spec_data['spec_path'])
-        
+        spec_url = generate_spec_url(duvet_report_path, spec_data["spec_path"])
+
         content_html += f"""
         <div class="spec-section {row_class}">
             <div class="spec-header" onclick="toggleSection('{spec_title.replace(' ', '_')}')">
@@ -394,36 +413,38 @@ def generate_enhanced_html_report(report_file_path, output_file_path, server_nam
             </div>
             <div class="spec-content" id="content_{spec_title.replace(' ', '_')}">
 """
-        
+
         # Add sections within each specification
         for section_title, section_data in sections.items():
-            section_requirements = section_data.get('requirements', [])
-            section_complete = sum(1 for req in section_requirements if req['is_complete'])
+            section_requirements = section_data.get("requirements", [])
+            section_complete = sum(1 for req in section_requirements if req["is_complete"])
             section_total = len(section_requirements)
-            
+
             # Skip sections with no requirements at all
             if section_total == 0:
                 continue
-            
+
             # Determine section status using the corrected logic
             # Get individual requirement statuses
             req_statuses = [get_requirement_status(req) for req in section_requirements]
-            
-            if all(status == '✅' for status in req_statuses):
-                section_status = '✅'  # All requirements are green
-            elif any(status in ['✅', '🟡'] for status in req_statuses):
-                section_status = '🟡'  # Any requirement is green or yellow
+
+            if all(status == "✅" for status in req_statuses):
+                section_status = "✅"  # All requirements are green
+            elif any(status in ["✅", "🟡"] for status in req_statuses):
+                section_status = "🟡"  # Any requirement is green or yellow
             else:
-                section_status = '❌'  # All requirements are red X
-            
+                section_status = "❌"  # All requirements are red X
+
             section_id = f"{spec_title.replace(' ', '_')}_{section_title.replace(' ', '_').replace('#', '').replace('-', '_')}"
-            
+
             # Generate section-specific URL
-            section_url = generate_section_url(duvet_report_path, spec_data['spec_path'], section_data['section_id'])
-            
+            section_url = generate_section_url(
+                duvet_report_path, spec_data["spec_path"], section_data["section_id"]
+            )
+
             # Generate local file path for this section
             local_file_path = f"{spec_data['spec_path']}#{section_data['section_id']}"
-            
+
             content_html += f"""
                 <div class="section-item">
                     <div class="section-header" onclick="toggleSubSection('{section_id}')">
@@ -441,60 +462,64 @@ def generate_enhanced_html_report(report_file_path, output_file_path, server_nam
                             <button onclick="copyToClipboard('//= {local_file_path}')" style="background: #4a5568; color: #a0aec0; border: none; padding: 2px 6px; border-radius: 2px; font-size: 10px; cursor: pointer; margin-left: 8px;" title="Copy with //= prefix">📋</button>
                         </div>
 """
-            
+
             # Add requirements within each section
             req_counter = 1
             for requirement in section_requirements:
                 req_status = get_requirement_status(requirement)
-                req_text = format_requirement_text(requirement['text'])
-                
+                req_text = format_requirement_text(requirement["text"])
+
                 # Build detailed source information with GitHub links - one bullet per source
                 sources_html = ""
-                if requirement['related_sources']:
+                if requirement["related_sources"]:
                     source_bullets = []
-                    for source_info in requirement['related_sources']:
-                        source_type = source_info['type']
-                        source_path = source_info['source']
-                        line_num = source_info['line']
-                        
+                    for source_info in requirement["related_sources"]:
+                        source_type = source_info["type"]
+                        source_path = source_info["source"]
+                        line_num = source_info["line"]
+
                         # Generate GitHub URL if possible
                         github_url = generate_github_url(source_path, line_num, github_base_url)
-                        
-                        if github_url and source_path.endswith('.go'):
+
+                        if github_url and source_path.endswith(".go"):
                             # Create clickable link for Go source files
                             source_display = f'<a href="{github_url}" target="_blank" style="color: #0366d6; text-decoration: none;">{source_path}'
                             if line_num:
-                                source_display += f':{line_num}'
-                            source_display += '</a>'
+                                source_display += f":{line_num}"
+                            source_display += "</a>"
                         else:
                             # Plain text for non-Go files or when no GitHub URL
                             source_display = source_path
                             if line_num:
-                                source_display += f':{line_num}'
-                        
+                                source_display += f":{line_num}"
+
                         type_display = source_type.lower()
                         source_bullets.append(f"• {type_display}: {source_display}")
-                    
-                    sources_html = '<div class="requirement-sources" style="font-size: 11px; color: #666; margin-top: 4px;">' + '<br>'.join(source_bullets) + '</div>'
+
+                    sources_html = (
+                        '<div class="requirement-sources" style="font-size: 11px; color: #666; margin-top: 4px;">'
+                        + "<br>".join(source_bullets)
+                        + "</div>"
+                    )
                 else:
                     sources_html = '<div class="requirement-sources" style="font-size: 11px; color: #999; margin-top: 4px;">• no implementation found</div>'
-                
+
                 # Determine requirement type for filtering
-                if requirement['has_exception']:
-                    req_type = 'exception'
-                elif requirement['has_implication']:
-                    req_type = 'implication'
-                elif requirement['has_implementation'] and requirement['has_test']:
-                    req_type = 'impl-test'
-                elif requirement['has_implementation']:
-                    req_type = 'impl-only'
+                if requirement["has_exception"]:
+                    req_type = "exception"
+                elif requirement["has_implication"]:
+                    req_type = "implication"
+                elif requirement["has_implementation"] and requirement["has_test"]:
+                    req_type = "impl-test"
+                elif requirement["has_implementation"]:
+                    req_type = "impl-only"
                 else:
-                    req_type = 'none'
-                
+                    req_type = "none"
+
                 # Prepare requirement text for copying (clean version without HTML)
-                clean_req_text = requirement['text'].replace('\n', ' ').strip()
+                clean_req_text = requirement["text"].replace("\n", " ").strip()
                 copy_text = f"//# {clean_req_text}"
-                
+
                 content_html += f"""
                         <div class="requirement-item" data-requirement-type="{req_type}">
                             <div class="requirement-header">
@@ -507,125 +532,127 @@ def generate_enhanced_html_report(report_file_path, output_file_path, server_nam
                         </div>
 """
                 req_counter += 1
-            
+
             content_html += """
                     </div>
                 </div>
 """
-        
+
         content_html += """
             </div>
         </div>
 """
-    
+
     # Replace placeholders in template
-    html_content = template.format(
-        server_name=server_name,
-        content=content_html
-    )
-    
+    html_content = template.format(server_name=server_name, content=content_html)
+
     # Write the HTML file
-    with open(output_file_path, 'w', encoding='utf-8') as f:
+    with open(output_file_path, "w", encoding="utf-8") as f:
         f.write(html_content)
+
 
 def generate_server_report(server_path, server_name):
     """Generate individual server report using the enhanced report-based format."""
-    report_file = server_path / '.duvet' / 'reports' / 'report.html'
-    
+    report_file = server_path / ".duvet" / "reports" / "report.html"
+
     if not report_file.exists():
         return None
-    
+
     try:
         # Parse the report directly
         specifications = parse_report_html(report_file)
-        
+
         # Generate the enhanced HTML report
-        html_output_file = server_path / 'compliance_summary_report.html'
+        html_output_file = server_path / "compliance_summary_report.html"
         generate_enhanced_html_report(report_file, html_output_file, server_name)
-        
+
         # Calculate detailed statistics
         stats = calculate_summary_statistics(specifications)
-        
+
         # Calculate overall status based on actual implementation progress
-        total_reqs = stats.get('total_requirements', 0)
-        complete_reqs = stats.get('complete_requirements', 0)
-        
+        total_reqs = stats.get("total_requirements", 0)
+        complete_reqs = stats.get("complete_requirements", 0)
+
         if total_reqs == 0:
-            overall_status = '❌'  # No requirements means not compliant
+            overall_status = "❌"  # No requirements means not compliant
         elif complete_reqs == total_reqs:
-            overall_status = '✅'  # All requirements complete
+            overall_status = "✅"  # All requirements complete
         elif complete_reqs > 0:
-            overall_status = '🟡'  # Some requirements complete
+            overall_status = "🟡"  # Some requirements complete
         else:
-            overall_status = '❌'  # No requirements complete
-        
+            overall_status = "❌"  # No requirements complete
+
         # Calculate spec-level status
         spec_statuses = {}
         for spec_title, spec_data in specifications.items():
             spec_statuses[spec_title] = get_spec_status(spec_data)
-        
+
         total_specs = len(specifications)
-        complete_specs = sum(1 for status in spec_statuses.values() if status == '✅')
-        
+        complete_specs = sum(1 for status in spec_statuses.values() if status == "✅")
+
         return {
-            'name': server_name,
-            'status': overall_status,
-            'total_specs': total_specs,
-            'complete_specs': complete_specs,
-            'total_sections': stats['total_sections'],
-            'complete_sections': stats['complete_sections'],
-            'total_requirements': stats['total_requirements'],
-            'complete_requirements': stats['complete_requirements'],
-            'report_file': f'{server_name}/compliance_summary_report.html',
-            'specifications': spec_statuses,
-            'stats': stats  # Include full stats for homepage display
+            "name": server_name,
+            "status": overall_status,
+            "total_specs": total_specs,
+            "complete_specs": complete_specs,
+            "total_sections": stats["total_sections"],
+            "complete_sections": stats["complete_sections"],
+            "total_requirements": stats["total_requirements"],
+            "complete_requirements": stats["complete_requirements"],
+            "report_file": f"{server_name}/compliance_summary_report.html",
+            "specifications": spec_statuses,
+            "stats": stats,  # Include full stats for homepage display
         }
-        
+
     except Exception as e:
         print(f"Error processing {server_name}: {e}")
         return None
 
+
 def generate_expected_output(report_file_path, output_file_path):
     """Generate the expected output format from report.html."""
     specifications = parse_report_html(report_file_path)
-    
+
     output_lines = []
     for spec_title, spec_data in specifications.items():
         status_icon = get_spec_status(spec_data)
         output_lines.append(f"{spec_title}: {status_icon}")
-    
+
     # Write the output file
-    with open(output_file_path, 'w', encoding='utf-8') as f:
-        f.write('\n'.join(output_lines))
+    with open(output_file_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(output_lines))
+
 
 def generate_stats_output(report_file_path, output_file_path):
     """Generate detailed statistics output for dashboard use."""
     specifications = parse_report_html(report_file_path)
     stats = calculate_summary_statistics(specifications)
-    
+
     # Write stats as JSON for easy parsing
     import json
-    with open(output_file_path, 'w', encoding='utf-8') as f:
+
+    with open(output_file_path, "w", encoding="utf-8") as f:
         json.dump(stats, f, indent=2)
+
 
 def generate_homepage(servers_info, output_file):
     """Generate the main homepage with links to all server reports using templates."""
-    
+
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
+
     # Load the homepage template
-    template_dir = Path(__file__).parent / 'templates'
-    template = load_template(template_dir / 'homepage_template.html')
-    
+    template_dir = Path(__file__).parent / "templates"
+    template = load_template(template_dir / "homepage_template.html")
+
     content_html = ""
-    
+
     if servers_info:
         # Calculate overall statistics
         total_servers = len(servers_info)
-        compliant_servers = sum(1 for server in servers_info if server['status'] == '✅')
-        partial_servers = sum(1 for server in servers_info if server['status'] == '🟡')
-        non_compliant_servers = sum(1 for server in servers_info if server['status'] == '❌')
-        
+        compliant_servers = sum(1 for server in servers_info if server["status"] == "✅")
+        partial_servers = sum(1 for server in servers_info if server["status"] == "🟡")
+        non_compliant_servers = sum(1 for server in servers_info if server["status"] == "❌")
+
         # Add compact dark mode summary header
         content_html += f"""
         <div class="summary-header" style="background: #2d3748; padding: 12px 20px; border-radius: 6px; margin-bottom: 20px; text-align: center;">
@@ -651,24 +678,26 @@ def generate_homepage(servers_info, output_file):
         
         <div class="servers-grid">
 """
-        
+
         # Generate server cards with detailed statistics
-        for server in sorted(servers_info, key=lambda x: x['name']):
+        for server in sorted(servers_info, key=lambda x: x["name"]):
             # Get detailed stats for this server
-            server_stats = server.get('stats', {})
-            
+            server_stats = server.get("stats", {})
+
             # Calculate percentages for each implementation type
-            total_reqs = server_stats.get('total_requirements', 0)
+            total_reqs = server_stats.get("total_requirements", 0)
             if total_reqs > 0:
-                impl_test_pct = (server_stats.get('implementation_and_test', 0) / total_reqs) * 100
-                impl_only_pct = (server_stats.get('implementation_only', 0) / total_reqs) * 100
-                test_only_pct = (server_stats.get('test_only', 0) / total_reqs) * 100
-                exception_pct = (server_stats.get('exception_count', 0) / total_reqs) * 100
-                implication_pct = (server_stats.get('implication_count', 0) / total_reqs) * 100
-                no_impl_pct = (server_stats.get('no_implementation', 0) / total_reqs) * 100
+                impl_test_pct = (server_stats.get("implementation_and_test", 0) / total_reqs) * 100
+                impl_only_pct = (server_stats.get("implementation_only", 0) / total_reqs) * 100
+                test_only_pct = (server_stats.get("test_only", 0) / total_reqs) * 100
+                exception_pct = (server_stats.get("exception_count", 0) / total_reqs) * 100
+                implication_pct = (server_stats.get("implication_count", 0) / total_reqs) * 100
+                no_impl_pct = (server_stats.get("no_implementation", 0) / total_reqs) * 100
             else:
-                impl_test_pct = impl_only_pct = test_only_pct = exception_pct = implication_pct = no_impl_pct = 0
-            
+                impl_test_pct = impl_only_pct = test_only_pct = exception_pct = implication_pct = (
+                    no_impl_pct
+                ) = 0
+
             content_html += f"""
             <div class="server-card">
                 <div class="server-header">
@@ -722,7 +751,7 @@ def generate_homepage(servers_info, output_file):
                 </div>
             </div>
 """
-        
+
         content_html += """
         </div>
 """
@@ -733,65 +762,64 @@ def generate_homepage(servers_info, output_file):
             <p>Make sure servers have .duvet/reports/report.html files.</p>
         </div>
 """
-    
+
     # Replace placeholders in template
-    html_content = template.format(
-        timestamp=current_time,
-        content=content_html
-    )
-    
+    html_content = template.format(timestamp=current_time, content=content_html)
+
     # Write the HTML file
-    with open(output_file, 'w', encoding='utf-8') as f:
+    with open(output_file, "w", encoding="utf-8") as f:
         f.write(html_content)
+
 
 def discover_servers():
     """Discover all servers with .duvet/reports/report.html files."""
     servers_info = []
     test_server_dir = Path(__file__).parent
-    
+
     # Look for directories with .duvet/reports/report.html
     for item in test_server_dir.iterdir():
-        if item.is_dir() and not item.name.startswith('.'):
-            duvet_report = item / '.duvet' / 'reports' / 'report.html'
+        if item.is_dir() and not item.name.startswith("."):
+            duvet_report = item / ".duvet" / "reports" / "report.html"
             if duvet_report.exists():
                 server_info = generate_server_report(item, item.name)
                 if server_info:
                     servers_info.append(server_info)
                     print(f"Processed server: {item.name}")
-    
+
     return servers_info
+
 
 def main():
     """Main function to generate both individual server reports and dashboard."""
     import sys
-    
+
     # Check if server directory is provided as argument (for single server mode)
     if len(sys.argv) > 1:
         server_dir = Path(sys.argv[1])
         server_name = sys.argv[2] if len(sys.argv) > 2 else server_dir.name
-        
-        report_file = server_dir / '.duvet' / 'reports' / 'report.html'
-        html_output_file = server_dir / 'compliance_summary_report.html'
-        expected_output_file = server_dir / 'expected_output_report.txt'
-        
+
+        report_file = server_dir / ".duvet" / "reports" / "report.html"
+        html_output_file = server_dir / "compliance_summary_report.html"
+        expected_output_file = server_dir / "expected_output_report.txt"
+
         if not report_file.exists():
             print(f"Error: Report file not found at {report_file}")
             return 1
-        
+
         try:
             # Generate HTML report
             generate_enhanced_html_report(report_file, html_output_file, server_name)
             print(f"Interactive HTML report generated: {html_output_file}")
-            
+
             # Generate expected output
             generate_expected_output(report_file, expected_output_file)
             print(f"Expected output generated: {expected_output_file}")
-            
+
             # Generate stats output for dashboard
-            stats_output_file = server_dir / 'compliance_stats.json'
+            stats_output_file = server_dir / "compliance_stats.json"
             generate_stats_output(report_file, stats_output_file)
             print(f"Stats output generated: {stats_output_file}")
-            
+
             return 0
         except Exception as e:
             print(f"Error generating reports: {e}")
@@ -801,23 +829,24 @@ def main():
         try:
             print("Discovering servers with compliance reports...")
             servers_info = discover_servers()
-            
+
             if servers_info:
                 print(f"Found {len(servers_info)} servers with reports")
-                
+
                 # Generate the main dashboard homepage
-                homepage_file = Path(__file__).parent / 'compliance_homepage.html'
+                homepage_file = Path(__file__).parent / "compliance_homepage.html"
                 generate_homepage(servers_info, homepage_file)
                 print(f"Dashboard homepage generated: {homepage_file}")
-                
+
                 return 0
             else:
                 print("No servers with .duvet/reports/report.html found")
                 return 1
-                
+
         except Exception as e:
             print(f"Error generating dashboard: {e}")
             return 1
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     exit(main())
