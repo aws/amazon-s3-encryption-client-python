@@ -68,9 +68,12 @@ body {
 
 .servers-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, 1fr);
     gap: 20px;
     padding: 30px;
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
 .server-card {
@@ -223,6 +226,36 @@ body {
     line-height: 1.2;
 }
 
+/* Regular breakdown grid (used by the generated HTML) */
+.breakdown-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.breakdown-item {
+    background: transparent;
+    padding: 8px 4px;
+    border-radius: 4px;
+    text-align: center;
+    border: none;
+}
+
+.breakdown-number {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #c9d1d9;
+    margin-bottom: 2px;
+}
+
+.breakdown-label {
+    color: #8b949e;
+    font-size: 0.7em;
+    line-height: 1.2;
+}
+
 .server-summary {
     margin-top: 15px;
 }
@@ -264,15 +297,22 @@ body {
     color: #8b949e;
 }
 
+.server-footer {
+    padding: 15px 20px;
+    background: #0d1117;
+    border-top: 1px solid #30363d;
+    text-align: center;
+}
+
 .view-report-btn {
     display: inline-block;
-    margin-top: 15px;
     padding: 10px 20px;
     background: #238636;
     color: white;
     text-decoration: none;
     border-radius: 6px;
     transition: background-color 0.2s;
+    font-size: 0.9em;
 }
 
 .view-report-btn:hover {
