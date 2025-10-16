@@ -1,7 +1,5 @@
 using System.Text.Json;
-#if S3EC_V3
 using Amazon.Extensions.S3.Encryption.Extensions;
-#endif
 using Amazon.S3.Model;
 using Microsoft.AspNetCore.Mvc;
 using NetV2V3Server.Models;
@@ -43,9 +41,7 @@ public class ObjectController(IClientCacheService clientCacheService, ILogger<Ob
                 Key = key,
                 InputStream = new MemoryStream(bodyBytes)
             };
-#if S3EC_V3
             putRequest.SetEncryptionContext(ec);
-#endif
             await client.PutObjectAsync(putRequest);
 
             var response = new { bucket, key };
@@ -89,9 +85,7 @@ public class ObjectController(IClientCacheService clientCacheService, ILogger<Ob
                 BucketName = bucket,
                 Key = key
             };
-#if S3EC_V3
            getRequest.SetEncryptionContext(ec);
-#endif
             var response = await client.GetObjectAsync(getRequest);
             logger.LogInformation("Got object from S3 for bucket={bucket}, key={key}", bucket, key);
             // Read response body
