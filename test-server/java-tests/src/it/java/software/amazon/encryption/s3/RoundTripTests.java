@@ -146,12 +146,6 @@ public class RoundTripTests {
     @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
     @MethodSource("software.amazon.encryption.s3.TestUtils#crossLanguageClients")
     public void crossLanguageTestKmsWithNoEncCtxOnGetFails(LanguageServerTarget encLang, LanguageServerTarget decLang) {
-        if (ENCRYPTION_CONTEXT_ON_DECRYPT_UNSUPPORTED.contains(decLang.getLanguageName())) {
-            return;
-        }
-        if (ENCRYPTION_CONTEXT_ON_ENCRYPT_UNSUPPORTED.contains(encLang.getLanguageName())) {
-            return;
-        }
         S3ECTestServerClient encClient = testServerClientFor(encLang);
         final String objectKey = appendTestSuffix("cross-lang-test-key-kms-no-ec-on-get-fails" + encLang);
         final String input = "simple-test-input";
@@ -192,7 +186,11 @@ public class RoundTripTests {
                     .bucket(BUCKET)
                     .key(objectKey)
                     .build());
-            fail("Expected exception!");
+            // On Decrypt, languages in `ENCRYPTION_CONTEXT_FALLSBACK_ON_DECRYPT` is expected to fetch EC from meta data of object. 
+            // So, it is not going to fail
+            if (!ENCRYPTION_CONTEXT_FALLSBACK_ON_DECRYPT.contains(decLang.getLanguageName())) {
+                fail("Expected exception!");
+            }
         } catch (S3EncryptionClientError e) {
             if (decLang.getLanguageName().equals(RUBY_V3) || decLang.getLanguageName().equals(RUBY_V2_CURRENT)) {
                 assertTrue(e.getMessage().contains("Value of encryption context from envelope does not match the provided encryption context"));
