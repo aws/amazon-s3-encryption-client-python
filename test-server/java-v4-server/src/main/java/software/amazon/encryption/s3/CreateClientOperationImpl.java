@@ -1,20 +1,19 @@
 package software.amazon.encryption.s3;
 
-import software.amazon.awssdk.core.traits.Trait;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.encryption.s3.S3EncryptionClient;
+import software.amazon.encryption.s3.algorithms.AlgorithmSuite;
 import software.amazon.encryption.s3.materials.AesKeyring;
 import software.amazon.encryption.s3.materials.Keyring;
 import software.amazon.encryption.s3.materials.KmsKeyring;
 import software.amazon.encryption.s3.materials.PartialRsaKeyPair;
 import software.amazon.encryption.s3.materials.RsaKeyring;
-import software.amazon.smithy.java.core.schema.Schema;
-import software.amazon.smithy.java.server.RequestContext;
 import software.amazon.encryption.s3.model.CreateClientInput;
 import software.amazon.encryption.s3.model.CreateClientOutput;
+import software.amazon.encryption.s3.model.EncryptionAlgorithm;
 import software.amazon.encryption.s3.model.GenericServerError;
 import software.amazon.encryption.s3.model.KeyMaterial;
 import software.amazon.encryption.s3.service.CreateClientOperation;
+import software.amazon.smithy.java.server.RequestContext;
 
 import javax.crypto.spec.SecretKeySpec;
 import java.io.PrintWriter;
@@ -23,10 +22,13 @@ import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
-import java.util.Arrays;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
+
+import static software.amazon.encryption.s3.CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT;
+import static software.amazon.encryption.s3.CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT;
+import static software.amazon.encryption.s3.CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT;
+import static software.amazon.encryption.s3.model.EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY;
 
 public class CreateClientOperationImpl implements CreateClientOperation {
   private Map<String, S3Client> clientCache_;
@@ -88,9 +90,23 @@ public class CreateClientOperationImpl implements CreateClientOperation {
       } else {
         throw new RuntimeException("No KeyMaterial found!");
       }
-      S3Client s3Client = S3EncryptionClient.builder()
-        .keyring(keyring)
-        .build();
+      // V4-Improved (FireEgg Improved) server configuration
+      S3EncryptionClient.Builder clientBuilder = S3EncryptionClient.builder()
+        .keyring(keyring);
+
+      // Configure commitment policy if provided (FireEgg feature)
+      if (input.getConfig().getCommitmentPolicy() != null) {
+        software.amazon.encryption.s3.CommitmentPolicy policy = getCommitmentPolicy(input);
+        clientBuilder.commitmentPolicy(policy);
+      }
+
+      // Configure encryption algorithm if provided (FireEgg feature)
+      if (input.getConfig().getEncryptionAlgorithm() != null) {
+        AlgorithmSuite algorithm = getAlgorithmSuite(input);
+        clientBuilder.encryptionAlgorithm(algorithm);
+      }
+
+      S3Client s3Client = clientBuilder.build();
       UUID uuid = UUID.randomUUID();
       String uuidString = uuid.toString();
       clientCache_.put(uuidString, s3Client);
@@ -104,6 +120,30 @@ public class CreateClientOperationImpl implements CreateClientOperation {
       throw GenericServerError.builder()
         .message(stackTrace)
         .build();
+    }
+  }
+
+  private static AlgorithmSuite getAlgorithmSuite(CreateClientInput input) {
+    if (input.getConfig().getEncryptionAlgorithm().equals(EncryptionAlgorithm.ALG_AES_256_CBC_IV16_NO_KDF)) {
+        return AlgorithmSuite.ALG_AES_256_CBC_IV16_NO_KDF;
+    } else if (input.getConfig().getEncryptionAlgorithm().equals(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)) {
+        return AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF;
+    } else if (input.getConfig().getEncryptionAlgorithm().equals(ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY)) {
+        return AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY;
+    } else {
+        throw new RuntimeException("Unknown encryption algorithm: " + input.getConfig().getEncryptionAlgorithm());
+    }
+  }
+
+  private static software.amazon.encryption.s3.CommitmentPolicy getCommitmentPolicy(CreateClientInput input) {
+    if (input.getConfig().getCommitmentPolicy().equals(software.amazon.encryption.s3.model.CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)) {
+        return FORBID_ENCRYPT_ALLOW_DECRYPT;
+    } else if (input.getConfig().getCommitmentPolicy().equals(software.amazon.encryption.s3.model.CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT)) {
+        return REQUIRE_ENCRYPT_ALLOW_DECRYPT;
+    } else if (input.getConfig().getCommitmentPolicy().equals(software.amazon.encryption.s3.model.CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT)) {
+        return REQUIRE_ENCRYPT_REQUIRE_DECRYPT;
+    } else {
+        throw new RuntimeException("Unknown commitment policy: " + input.getConfig().getCommitmentPolicy());
     }
   }
 }
