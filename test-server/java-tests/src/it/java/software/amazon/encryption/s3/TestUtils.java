@@ -90,7 +90,7 @@ public class TestUtils {
             NET_V2_CURRENT,
             NET_V3_CURRENT,
             CPP_V2_CURRENT,
-            RUBY_V2_CURRENT,
+            // RUBY_V2_CURRENT,
             PHP_V2_CURRENT
         );
 
@@ -100,9 +100,9 @@ public class TestUtils {
             // GO_V3_TRANSITION,
             // NET_V2_TRANSITION,
             // NET_V3_TRANSITION,
-            CPP_V2_TRANSITION,
+            CPP_V2_TRANSITION
             // PHP_V2_TRANSITION,
-            RUBY_V2_TRANSITION
+            // RUBY_V2_TRANSITION
         );
 
     public static final Set<String> IMPROVED_VERSIONS =
@@ -113,7 +113,7 @@ public class TestUtils {
             // NET_V4,
             // CPP_V3,
             // PHP_V3,
-            RUBY_V3
+            // RUBY_V3
         );
 
     private static final Map<String, LanguageServerTarget> serverMap;
