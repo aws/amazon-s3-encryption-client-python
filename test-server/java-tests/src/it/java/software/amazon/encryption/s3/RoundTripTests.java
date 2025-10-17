@@ -146,6 +146,9 @@ public class RoundTripTests {
     @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
     @MethodSource("software.amazon.encryption.s3.TestUtils#crossLanguageClients")
     public void crossLanguageTestKmsWithNoEncCtxOnGetFails(LanguageServerTarget encLang, LanguageServerTarget decLang) {
+        if (ENCRYPTION_CONTEXT_ON_DECRYPT_UNSUPPORTED.contains(decLang.getLanguageName())) {
+            return;
+        }
         S3ECTestServerClient encClient = testServerClientFor(encLang);
         final String objectKey = appendTestSuffix("cross-lang-test-key-kms-no-ec-on-get-fails" + encLang);
         final String input = "simple-test-input";
