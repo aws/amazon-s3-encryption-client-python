@@ -80,7 +80,7 @@ public class TestUtils {
         Set.of(GO_V3_CURRENT, PHP_V2_CURRENT, PHP_V2_TRANSITION, PHP_V3);
 
     // Set of language where no encryption context fallsback to get EC from material description stored with the object
-    public static final Set<String> NO_ENCRYPTION_CONTEXT_FALLSBACK_ON_DECRYPT =
+    public static final Set<String> ENCRYPTION_CONTEXT_FALLSBACK_ON_DECRYPT =
         Set.of(NET_V2_CURRENT, NET_V3_CURRENT);
 
     public static final Set<String> CURRENT_VERSIONS =
