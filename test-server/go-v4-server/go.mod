@@ -1,6 +1,6 @@
 module github.com/aws/amazon-s3-encryption-client-python/test-server/go-server
 
-go 1.21
+go 1.24.0
 
 require (
 	github.com/aws/amazon-s3-encryption-client-go/v4 v4.0.0
@@ -28,6 +28,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.21.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.26.5 // indirect
 	github.com/aws/smithy-go v1.19.0 // indirect
+	golang.org/x/crypto v0.42.0 // indirect
 )
 
 // S3EC Go V4 is not released to pkg.go.dev as of writing.

@@ -52,26 +52,32 @@
 
         function toggleSection(sectionId) {{
             const content = document.getElementById('content_' + sectionId);
+            const progress = document.getElementById('progress_' + sectionId);
             const icon = document.getElementById('icon_' + sectionId);
             
             if (content.classList.contains('expanded')) {{
                 content.classList.remove('expanded');
+                if (progress) progress.style.display = 'none';
                 icon.textContent = '▼';
             }} else {{
                 content.classList.add('expanded');
+                if (progress) progress.style.display = 'block';
                 icon.textContent = '▲';
             }}
         }}
         
         function toggleSubSection(sectionId) {{
             const content = document.getElementById('content_' + sectionId);
+            const progress = document.getElementById('section_progress_' + sectionId);
             const icon = document.getElementById('icon_' + sectionId);
             
             if (content.classList.contains('expanded')) {{
                 content.classList.remove('expanded');
+                if (progress) progress.style.display = 'none';
                 icon.textContent = '▼';
             }} else {{
                 content.classList.add('expanded');
+                if (progress) progress.style.display = 'block';
                 icon.textContent = '▲';
             }}
         }}

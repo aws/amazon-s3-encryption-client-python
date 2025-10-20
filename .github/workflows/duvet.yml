@@ -47,6 +47,8 @@ jobs:
 
       - name: Generate compliance dashboard
         if: always()
+        # Don't block the workflow if the dashboard generation failed
+        continue-on-error: true
         run: |
           cd test-server
           python generate_compliance_dashboard.py
@@ -54,6 +56,8 @@ jobs:
       - name: Upload compliance dashboard
         if: always()
         uses: actions/upload-artifact@v4
+        # Don't block the workflow if the dashboard generation failed
+        continue-on-error: true
         with:
           name: compliance-dashboard
           include-hidden-files: true
