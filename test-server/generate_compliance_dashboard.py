@@ -79,11 +79,12 @@ def convert_report_to_specifications(data):
                     has_test = bool(status.get("test"))
                     has_exception = bool(status.get("exception"))
                     has_implication = bool(status.get("implication"))
+                    has_partial_coverage = bool(status.get("incomplete"))
 
                     # Determine completion status (matching snapshot rules exactly)
                     is_complete = (
                         (has_implementation and has_test) or has_exception or has_implication
-                    )
+                    ) and not has_partial_coverage  # Partial coverage means not complete
 
                     # Collect related annotations for detailed status
                     related_sources = []
@@ -108,6 +109,7 @@ def convert_report_to_specifications(data):
                         "has_test": has_test,
                         "has_exception": has_exception,
                         "has_implication": has_implication,
+                        "has_partial_coverage": has_partial_coverage,
                         "is_complete": is_complete,
                         "related_sources": related_sources,
                     }
@@ -171,6 +173,8 @@ def get_requirement_status(requirement):
     """Get the status emoji for a single requirement."""
     if requirement["is_complete"]:
         return "✅"
+    elif requirement.get("has_partial_coverage", False):
+        return "🟡"  # Partial coverage - incomplete
     elif requirement["has_implementation"] and requirement["related_sources"]:
         return "🟡"  # Has implementation but no test
     else:
@@ -206,6 +210,7 @@ def calculate_summary_statistics(specifications):
     implementation_and_test = 0
     exception_count = 0
     implication_count = 0
+    partial_coverage_count = 0
 
     for spec_data in specifications.values():
         sections = spec_data.get("sections", {})
@@ -231,13 +236,14 @@ def calculate_summary_statistics(specifications):
                     exception_count += 1
                 elif req["has_implication"]:
                     implication_count += 1
-                elif req["has_implementation"] and req["has_test"]:
+                elif req["has_implementation"] and req["has_test"] and not req.get("has_partial_coverage", False):
                     implementation_and_test += 1
-                elif req["has_implementation"]:
+                elif req["has_implementation"] and not req.get("has_partial_coverage", False):
                     implementation_only += 1
-                elif req["has_test"]:
+                elif req["has_test"] and not req.get("has_partial_coverage", False):
                     test_only += 1
                 else:
+                    # Partial coverage gets counted as no implementation
                     no_implementation += 1
 
     return {
@@ -251,6 +257,7 @@ def calculate_summary_statistics(specifications):
         "implementation_and_test": implementation_and_test,
         "exception_count": exception_count,
         "implication_count": implication_count,
+        "partial_coverage_count": partial_coverage_count,
     }
 
 
@@ -266,12 +273,10 @@ def generate_spec_url(duvet_report_path, spec_path):
     encoded_path = url_encode_spec_path(spec_path)
     return f"{duvet_report_path}#/spec/{encoded_path}"
 
-
 def generate_section_url(duvet_report_path, spec_path, section_id):
     """Generate URL to a specific section in the duvet report."""
     encoded_path = url_encode_spec_path(spec_path)
     return f"{duvet_report_path}#/spec/{encoded_path}/{section_id}"
-
 
 def generate_github_url(source_path, line_number=None, github_base_url=None):
     """Generate GitHub URL for a source file."""
@@ -318,12 +323,46 @@ def generate_enhanced_html_report(report_file_path, output_file_path, server_nam
     # Calculate percentages for each implementation type
     total_reqs = stats["total_requirements"]
     if total_reqs > 0:
+        # Calculate raw percentages
         impl_test_pct = (stats["implementation_and_test"] / total_reqs) * 100
         impl_only_pct = (stats["implementation_only"] / total_reqs) * 100
         test_only_pct = (stats["test_only"] / total_reqs) * 100
         exception_pct = (stats["exception_count"] / total_reqs) * 100
         implication_pct = (stats["implication_count"] / total_reqs) * 100
         no_impl_pct = (stats["no_implementation"] / total_reqs) * 100
+        
+        # Ensure percentages add up to exactly 100% by using precise calculation
+        # and assigning any remainder to the largest segment
+        if total_reqs > 0:
+            # Calculate exact percentages using integer arithmetic to avoid floating point errors
+            percentages_data = [
+                (stats["implementation_and_test"], 'impl_test'),
+                (stats["implication_count"], 'implication'),
+                (stats["exception_count"], 'exception'),
+                (stats["implementation_only"], 'impl_only'),
+                (stats["no_implementation"], 'no_impl')
+            ]
+            
+            # Calculate percentages with high precision, then distribute remainder
+            total_allocated = 0.0
+            calculated_percentages = {}
+            
+            # Calculate all but the last percentage
+            for i, (count, name) in enumerate(percentages_data[:-1]):
+                pct = round((count / total_reqs) * 100, 1)
+                calculated_percentages[name] = pct
+                total_allocated += pct
+            
+            # Last segment gets the remainder to ensure exactly 100%
+            last_count, last_name = percentages_data[-1]
+            calculated_percentages[last_name] = round(100.0 - total_allocated, 1)
+            
+            # Assign back to variables
+            impl_test_pct = calculated_percentages['impl_test']
+            implication_pct = calculated_percentages['implication'] 
+            exception_pct = calculated_percentages['exception']
+            impl_only_pct = calculated_percentages['impl_only']
+            no_impl_pct = calculated_percentages['no_impl']
     else:
         impl_test_pct = impl_only_pct = test_only_pct = exception_pct = implication_pct = (
             no_impl_pct
@@ -402,6 +441,37 @@ def generate_enhanced_html_report(report_file_path, output_file_path, server_nam
         # Generate spec-specific URL
         spec_url = generate_spec_url(duvet_report_path, spec_data["spec_path"])
 
+        # Calculate spec-level statistics
+        spec_impl_test = 0
+        spec_implication = 0
+        spec_exception = 0
+        spec_impl_only = 0
+        spec_no_impl = 0
+        
+        for section_data in sections.values():
+            section_requirements = section_data.get('requirements', [])
+            for req in section_requirements:
+                if req['has_implementation'] and req['has_test']:
+                    spec_impl_test += 1
+                elif req['has_implication']:
+                    spec_implication += 1
+                elif req['has_exception']:
+                    spec_exception += 1
+                elif req['has_implementation']:
+                    spec_impl_only += 1
+                else:
+                    spec_no_impl += 1
+        
+        # Calculate percentages for spec progress bar
+        if spec_total_requirements > 0:
+            spec_impl_test_pct = (spec_impl_test / spec_total_requirements) * 100
+            spec_implication_pct = (spec_implication / spec_total_requirements) * 100
+            spec_exception_pct = (spec_exception / spec_total_requirements) * 100
+            spec_impl_only_pct = (spec_impl_only / spec_total_requirements) * 100
+            spec_no_impl_pct = (spec_no_impl / spec_total_requirements) * 100
+        else:
+            spec_impl_test_pct = spec_implication_pct = spec_exception_pct = spec_impl_only_pct = spec_no_impl_pct = 0
+
         content_html += f"""
         <div class="spec-section {row_class}">
             <div class="spec-header" onclick="toggleSection('{spec_title.replace(' ', '_')}')">
@@ -412,6 +482,22 @@ def generate_enhanced_html_report(report_file_path, output_file_path, server_nam
                     <a href="{spec_url}" target="_blank" title="View {spec_title} specification in duvet report" style="margin-left: 10px; font-size: 12px; color: #666;">🔗</a>
                 </div>
                 <span class="expand-icon" id="icon_{spec_title.replace(' ', '_')}">▼</span>
+            </div>
+            <div class="spec-progress" id="progress_{spec_title.replace(' ', '_')}" style="display: none; padding: 8px 20px; background: #0d1117;">
+                <div class="progress-bar color-coded" style="height: 8px;">
+                    <div class="progress-segment impl-test" style="width: {spec_impl_test_pct:.1f}%" title="Implementation + Test: {spec_impl_test}"></div>
+                    <div class="progress-segment implication" style="width: {spec_implication_pct:.1f}%" title="Implication: {spec_implication}"></div>
+                    <div class="progress-segment exception" style="width: {spec_exception_pct:.1f}%" title="Exception: {spec_exception}"></div>
+                    <div class="progress-segment impl-only" style="width: {spec_impl_only_pct:.1f}%" title="Implementation Only: {spec_impl_only}"></div>
+                    <div class="progress-segment no-impl" style="width: {spec_no_impl_pct:.1f}%" title="No Implementation: {spec_no_impl}"></div>
+                </div>
+                <div class="spec-breakdown" style="display: flex; justify-content: center; gap: 15px; margin-top: 8px; font-size: 11px; color: #8b949e;">
+                    <span style="color: #28a745;">Impl+Test: {spec_impl_test}</span>
+                    <span style="color: #dda0dd;">Implication: {spec_implication}</span>
+                    <span style="color: #87ceeb;">Exception: {spec_exception}</span>
+                    <span style="color: #ffc107;">Impl Only: {spec_impl_only}</span>
+                    <span style="color: #dc3545;">None: {spec_no_impl}</span>
+                </div>
             </div>
             <div class="spec-content" id="content_{spec_title.replace(' ', '_')}">
 """
@@ -447,6 +533,23 @@ def generate_enhanced_html_report(report_file_path, output_file_path, server_nam
             # Generate local file path for this section
             local_file_path = f"{spec_data['spec_path']}#{section_data['section_id']}"
 
+            # Calculate section-level statistics
+            section_impl_test = sum(1 for req in section_requirements if req['has_implementation'] and req['has_test'])
+            section_implication = sum(1 for req in section_requirements if req['has_implication'])
+            section_exception = sum(1 for req in section_requirements if req['has_exception'])
+            section_impl_only = sum(1 for req in section_requirements if req['has_implementation'] and not req['has_test'] and not req['has_exception'] and not req['has_implication'])
+            section_no_impl = sum(1 for req in section_requirements if not req['has_implementation'] and not req['has_test'] and not req['has_exception'] and not req['has_implication'])
+            
+            # Calculate percentages for section progress bar
+            if section_total > 0:
+                section_impl_test_pct = (section_impl_test / section_total) * 100
+                section_implication_pct = (section_implication / section_total) * 100
+                section_exception_pct = (section_exception / section_total) * 100
+                section_impl_only_pct = (section_impl_only / section_total) * 100
+                section_no_impl_pct = (section_no_impl / section_total) * 100
+            else:
+                section_impl_test_pct = section_implication_pct = section_exception_pct = section_impl_only_pct = section_no_impl_pct = 0
+            
             content_html += f"""
                 <div class="section-item">
                     <div class="section-header" onclick="toggleSubSection('{section_id}')">
@@ -459,6 +562,22 @@ def generate_enhanced_html_report(report_file_path, output_file_path, server_nam
                         <span class="expand-icon" id="icon_{section_id}">▼</span>
                     </div>
                     <div class="section-content" id="content_{section_id}">
+                        <div class="section-progress" id="section_progress_{section_id}" style="display: none; padding: 8px 15px; background: #1a1f26; margin-bottom: 10px;">
+                            <div class="progress-bar color-coded" style="height: 6px;">
+                                <div class="progress-segment impl-test" style="width: {section_impl_test_pct:.1f}%" title="Implementation + Test: {section_impl_test}"></div>
+                                <div class="progress-segment implication" style="width: {section_implication_pct:.1f}%" title="Implication: {section_implication}"></div>
+                                <div class="progress-segment exception" style="width: {section_exception_pct:.1f}%" title="Exception: {section_exception}"></div>
+                                <div class="progress-segment impl-only" style="width: {section_impl_only_pct:.1f}%" title="Implementation Only: {section_impl_only}"></div>
+                                <div class="progress-segment no-impl" style="width: {section_no_impl_pct:.1f}%" title="No Implementation: {section_no_impl}"></div>
+                            </div>
+                            <div class="section-breakdown" style="display: flex; justify-content: center; gap: 12px; margin-top: 6px; font-size: 10px; color: #8b949e;">
+                                <span style="color: #28a745;">Impl+Test: {section_impl_test}</span>
+                                <span style="color: #dda0dd;">Implication: {section_implication}</span>
+                                <span style="color: #87ceeb;">Exception: {section_exception}</span>
+                                <span style="color: #ffc107;">Impl Only: {section_impl_only}</span>
+                                <span style="color: #dc3545;">None: {section_no_impl}</span>
+                            </div>
+                        </div>
                         <div class="section-filepath" style="font-size: 11px; color: #a0aec0; margin-bottom: 10px; font-family: monospace; background: #2d3748; padding: 4px 8px; border-radius: 3px;">
                             <span>{local_file_path}</span>
                             <button onclick="copyToClipboard('//= {local_file_path}')" style="background: #4a5568; color: #a0aec0; border: none; padding: 2px 6px; border-radius: 2px; font-size: 10px; cursor: pointer; margin-left: 8px;" title="Copy with //= prefix">📋</button>
@@ -496,6 +615,9 @@ def generate_enhanced_html_report(report_file_path, output_file_path, server_nam
                                 source_display += f":{line_num}"
 
                         type_display = source_type.lower()
+                        # Add partial indicator if this requirement has partial coverage
+                        if requirement.get("has_partial_coverage", False):
+                            type_display = f"partial {type_display}"
                         source_bullets.append(f"• {type_display}: {source_display}")
 
                     sources_html = (
@@ -511,15 +633,18 @@ def generate_enhanced_html_report(report_file_path, output_file_path, server_nam
                     req_type = "exception"
                 elif requirement["has_implication"]:
                     req_type = "implication"
-                elif requirement["has_implementation"] and requirement["has_test"]:
+                elif requirement["has_implementation"] and requirement["has_test"] and not requirement.get("has_partial_coverage", False):
                     req_type = "impl-test"
-                elif requirement["has_implementation"]:
+                elif requirement["has_implementation"] and not requirement.get("has_partial_coverage", False):
                     req_type = "impl-only"
                 else:
+                    # Partial coverage and no implementation both get "none" type
                     req_type = "none"
 
                 # Prepare requirement text for copying (clean version without HTML)
                 clean_req_text = requirement["text"].replace("\n", " ").strip()
+                # Escape single quotes for JavaScript
+                clean_req_text = clean_req_text.replace("'", "\\'")
                 copy_text = f"//# {clean_req_text}"
 
                 content_html += f"""
@@ -689,12 +814,45 @@ def generate_homepage(servers_info, output_file):
             # Calculate percentages for each implementation type
             total_reqs = server_stats.get("total_requirements", 0)
             if total_reqs > 0:
+                # Calculate raw percentages
                 impl_test_pct = (server_stats.get("implementation_and_test", 0) / total_reqs) * 100
                 impl_only_pct = (server_stats.get("implementation_only", 0) / total_reqs) * 100
                 test_only_pct = (server_stats.get("test_only", 0) / total_reqs) * 100
                 exception_pct = (server_stats.get("exception_count", 0) / total_reqs) * 100
                 implication_pct = (server_stats.get("implication_count", 0) / total_reqs) * 100
                 no_impl_pct = (server_stats.get("no_implementation", 0) / total_reqs) * 100
+                
+                # Ensure percentages add up to exactly 100% by using precise calculation
+                if total_reqs > 0:
+                    # Calculate exact percentages and distribute remainder to largest segment
+                    percentages_data = [
+                        (server_stats.get("implementation_and_test", 0), 'impl_test'),
+                        (server_stats.get("implication_count", 0), 'implication'),
+                        (server_stats.get("exception_count", 0), 'exception'),
+                        (server_stats.get("implementation_only", 0), 'impl_only'),
+                        (server_stats.get("no_implementation", 0), 'no_impl')
+                    ]
+                    
+                    # Calculate percentages with high precision, then distribute remainder
+                    total_allocated = 0.0
+                    calculated_percentages = {}
+                    
+                    # Calculate all but the last percentage
+                    for i, (count, name) in enumerate(percentages_data[:-1]):
+                        pct = round((count / total_reqs) * 100, 1)
+                        calculated_percentages[name] = pct
+                        total_allocated += pct
+                    
+                    # Last segment gets the remainder to ensure exactly 100%
+                    last_count, last_name = percentages_data[-1]
+                    calculated_percentages[last_name] = round(100.0 - total_allocated, 1)
+                    
+                    # Assign back to variables
+                    impl_test_pct = calculated_percentages['impl_test']
+                    implication_pct = calculated_percentages['implication']
+                    exception_pct = calculated_percentages['exception']
+                    impl_only_pct = calculated_percentages['impl_only']
+                    no_impl_pct = calculated_percentages['no_impl']
             else:
                 impl_test_pct = impl_only_pct = test_only_pct = exception_pct = implication_pct = (
                     no_impl_pct
