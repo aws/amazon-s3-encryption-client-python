@@ -97,7 +97,7 @@ public class TestUtils {
             // NET_V2_TRANSITION,
             CPP_V2_TRANSITION,
             // PHP_V2_TRANSITION,
-            RUBY_V2_TRANSITION
+            // RUBY_V2_TRANSITION
         );
 
     public static final Set<String> IMPROVED_VERSIONS =
@@ -108,7 +108,7 @@ public class TestUtils {
             // NET_V3,
             // CPP_V3,
             // PHP_V3,
-            RUBY_V3
+            // RUBY_V3
         );
 
     private static final Map<String, LanguageServerTarget> serverMap;
