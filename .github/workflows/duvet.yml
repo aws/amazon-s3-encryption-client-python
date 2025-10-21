@@ -67,15 +67,40 @@ jobs:
         # if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
         uses: actions/configure-pages@v5
 
+      - name: Prepare Pages content
+        if: always()
+        run: |
+          mkdir -p pages-staging/spec-compliance-dashboard/templates
+          
+          # Copy homepage to root for GitHub Pages
+          cp test-server/spec-compliance-dashboard/compliance_homepage.html pages-staging/index.html
+          
+          # Copy templates
+          cp test-server/spec-compliance-dashboard/templates/* pages-staging/spec-compliance-dashboard/templates/
+          
+          # Copy server reports and duvet reports
+          for server_dir in test-server/*-server; do
+            if [ -d "$server_dir" ]; then
+              server_name=$(basename "$server_dir")
+              mkdir -p "pages-staging/$server_name/.duvet/reports"
+              
+              # Copy compliance summary report if it exists
+              if [ -f "$server_dir/compliance_summary_report.html" ]; then
+                cp "$server_dir/compliance_summary_report.html" "pages-staging/$server_name/"
+              fi
+              
+              # Copy duvet report if it exists
+              if [ -f "$server_dir/.duvet/reports/report.html" ]; then
+                cp "$server_dir/.duvet/reports/report.html" "pages-staging/$server_name/.duvet/reports/"
+              fi
+            fi
+          done
+
       - name: Upload Pages artifact
         # if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
         uses: actions/upload-pages-artifact@v3
         with:
-          path: |
-            test-server/spec-compliance-dashboard/compliance_homepage.html
-            test-server/*/compliance_summary_report.html
-            test-server/*/.duvet/reports/report.html
-            test-server/spec-compliance-dashboard/templates/*
+          path: pages-staging/
 
       - name: Deploy to GitHub Pages
         # if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
