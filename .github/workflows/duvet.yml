@@ -10,7 +10,6 @@ jobs:
     permissions:
       id-token: write
       contents: read
-      pages: write
     
     steps:
       - name: Checkout code
@@ -44,43 +43,3 @@ jobs:
           name: reports
           include-hidden-files: true
           path: test-server/*-server/.duvet/reports/report.html
-
-      - name: Generate compliance dashboard
-        if: always()
-        # Don't block the workflow if the dashboard generation failed
-        continue-on-error: true
-        run: |
-          cd test-server
-          python generate_compliance_dashboard.py
-
-      - name: Upload compliance dashboard
-        if: always()
-        uses: actions/upload-artifact@v4
-        # Don't block the workflow if the dashboard generation failed
-        continue-on-error: true
-        with:
-          name: compliance-dashboard
-          include-hidden-files: true
-          path: |
-            test-server/compliance_homepage.html
-            test-server/*/compliance_summary_report.html
-            test-server/*/.duvet/reports/report.html
-            test-server/templates/*
-
-      - name: Setup Pages
-        if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
-        uses: actions/configure-pages@v4
-
-      - name: Upload Pages artifact
-        if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: |
-            test-server/compliance_homepage.html
-            test-server/*/compliance_summary_report.html
-            test-server/*/.duvet/reports/report.html
-            test-server/templates/*
-
-      - name: Deploy to GitHub Pages
-        if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
-        uses: actions/deploy-pages@v4
