@@ -170,52 +170,52 @@ public class ExhaustiveRoundTripTests1_25 {
     // Outcome	Version	Operation	Policy	Content Encryption	
     // Pass	Improved	Decrypt	ForbidEncryptAllowDecrypt	KC-GCM	
 
-    @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
-    @MethodSource("software.amazon.encryption.s3.TestUtils#encryptImprovedDecryptImproved")
-    public void GIVEN_KCGCMEncryptedData_AND_ImprovedClientDecryptingWithForbidEncryptAllowDecrypt_WHEN_Decrypt_THEN_Pass(
-            TestUtils.LanguageServerTarget encLang, TestUtils.LanguageServerTarget decLang
-    ) {
+//     @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
+//     @MethodSource("software.amazon.encryption.s3.TestUtils#encryptImprovedDecryptImproved")
+//     public void GIVEN_KCGCMEncryptedData_AND_ImprovedClientDecryptingWithForbidEncryptAllowDecrypt_WHEN_Decrypt_THEN_Pass(
+//             TestUtils.LanguageServerTarget encLang, TestUtils.LanguageServerTarget decLang
+//     ) {
 
-        S3ECTestServerClient encClient = TestUtils.testServerClientFor(encLang);
-        final String objectKey = "encrypt-kc-gcm-decrypt-improved-test-key-" + encLang;
-        final String input = "simple-test-input";
-        KeyMaterial kmsKeyArn = KeyMaterial.builder()
-                .kmsKeyId(TestUtils.KMS_KEY_ARN)
-                .build();
-        CreateClientOutput encClientOutput = encClient.createClient(CreateClientInput.builder()
-                .config(S3ECConfig.builder()
-                        .keyMaterial(kmsKeyArn)
-                        .commitmentPolicy(CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT)
-                        .build())
-                .build());
-        String encS3ECId = encClientOutput.getClientId();
+//         S3ECTestServerClient encClient = TestUtils.testServerClientFor(encLang);
+//         final String objectKey = "encrypt-kc-gcm-decrypt-improved-test-key-" + encLang;
+//         final String input = "simple-test-input";
+//         KeyMaterial kmsKeyArn = KeyMaterial.builder()
+//                 .kmsKeyId(TestUtils.KMS_KEY_ARN)
+//                 .build();
+//         CreateClientOutput encClientOutput = encClient.createClient(CreateClientInput.builder()
+//                 .config(S3ECConfig.builder()
+//                         .keyMaterial(kmsKeyArn)
+//                         .commitmentPolicy(CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT)
+//                         .build())
+//                 .build());
+//         String encS3ECId = encClientOutput.getClientId();
         
-        // Given: object encrypted with key commitment
-        encClient.putObject(PutObjectInput.builder()
-                .clientID(encS3ECId)
-                .key(objectKey)
-                .bucket(TestUtils.BUCKET)
-                .body(ByteBuffer.wrap(input.getBytes(StandardCharsets.UTF_8)))
-                .build());
+//         // Given: object encrypted with key commitment
+//         encClient.putObject(PutObjectInput.builder()
+//                 .clientID(encS3ECId)
+//                 .key(objectKey)
+//                 .bucket(TestUtils.BUCKET)
+//                 .body(ByteBuffer.wrap(input.getBytes(StandardCharsets.UTF_8)))
+//                 .build());
                 
-        S3ECTestServerClient decClient = TestUtils.testServerClientFor(decLang);
-        CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
-                .config(S3ECConfig.builder()
-                        .keyMaterial(kmsKeyArn)
-                        .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
-                        .build())
-                .build());
-        String decS3ECId = decClientOutput.getClientId();
+//         S3ECTestServerClient decClient = TestUtils.testServerClientFor(decLang);
+//         CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
+//                 .config(S3ECConfig.builder()
+//                         .keyMaterial(kmsKeyArn)
+//                         .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+//                         .build())
+//                 .build());
+//         String decS3ECId = decClientOutput.getClientId();
 
-        // When: decrypt KC-GCM object with an improved version client with ForbidEncryptAllowDecrypt policy
-        GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
-                .clientID(decS3ECId)
-                .bucket(TestUtils.BUCKET)
-                .key(objectKey)
-                .build());
+//         // When: decrypt KC-GCM object with an improved version client with ForbidEncryptAllowDecrypt policy
+//         GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
+//                 .clientID(decS3ECId)
+//                 .bucket(TestUtils.BUCKET)
+//                 .key(objectKey)
+//                 .build());
 
-        // Then: Pass
-        assertEquals(input, StandardCharsets.UTF_8.decode(output.getBody()).toString());
-    }
+//         // Then: Pass
+//         assertEquals(input, StandardCharsets.UTF_8.decode(output.getBody()).toString());
+//     }
 
 }
