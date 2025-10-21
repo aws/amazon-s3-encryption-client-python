@@ -64,11 +64,11 @@ jobs:
             test-server/spec-compliance-dashboard/templates/*
 
       - name: Setup Pages
-        # if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
+        if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
         uses: actions/configure-pages@v5
 
       - name: Create redirect index.html
-        if: always()
+        if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
         run: |
           cat > test-server/index.html << 'EOF'
           <!DOCTYPE html>
@@ -85,11 +85,11 @@ jobs:
           EOF
 
       - name: Upload Pages artifact
-        # if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
+        if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
         uses: actions/upload-pages-artifact@v3
         with:
           path: test-server/
 
       - name: Deploy to GitHub Pages
-        # if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
+        if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
         uses: actions/deploy-pages@v4
