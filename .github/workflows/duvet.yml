@@ -64,19 +64,19 @@ jobs:
             test-server/spec-compliance-dashboard/templates/*
 
       - name: Setup Pages
-        if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
+        # if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
         uses: actions/configure-pages@v4
 
       - name: Upload Pages artifact
-        if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
+        # if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
         uses: actions/upload-pages-artifact@v3
         with:
           path: |
-            test-server/compliance_homepage.html
+            test-server/spec-compliance-dashboard/compliance_homepage.html
             test-server/*/compliance_summary_report.html
             test-server/*/.duvet/reports/report.html
-            test-server/templates/*
+            test-server/spec-compliance-dashboard/templates/*
 
       - name: Deploy to GitHub Pages
-        if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
+        # if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
         uses: actions/deploy-pages@v4
