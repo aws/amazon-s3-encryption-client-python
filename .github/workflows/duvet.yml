@@ -48,7 +48,7 @@ jobs:
       - name: Generate compliance dashboard
         if: always()
         run: |
-          cd test-server
+          cd test-server/spec-compliance-dashboard
           python generate_compliance_dashboard.py
 
       - name: Upload compliance dashboard
@@ -58,10 +58,10 @@ jobs:
           name: compliance-dashboard
           include-hidden-files: true
           path: |
-            test-server/compliance_homepage.html
+            test-server/spec-compliance-dashboard/compliance_homepage.html
             test-server/*/compliance_summary_report.html
             test-server/*/.duvet/reports/report.html
-            test-server/templates/*
+            test-server/spec-compliance-dashboard/templates/*
 
       - name: Setup Pages
         if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
