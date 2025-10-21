@@ -236,7 +236,11 @@ def calculate_summary_statistics(specifications):
                     exception_count += 1
                 elif req["has_implication"]:
                     implication_count += 1
-                elif req["has_implementation"] and req["has_test"] and not req.get("has_partial_coverage", False):
+                elif (
+                    req["has_implementation"]
+                    and req["has_test"]
+                    and not req.get("has_partial_coverage", False)
+                ):
                     implementation_and_test += 1
                 elif req["has_implementation"] and not req.get("has_partial_coverage", False):
                     implementation_only += 1
@@ -273,10 +277,12 @@ def generate_spec_url(duvet_report_path, spec_path):
     encoded_path = url_encode_spec_path(spec_path)
     return f"{duvet_report_path}#/spec/{encoded_path}"
 
+
 def generate_section_url(duvet_report_path, spec_path, section_id):
     """Generate URL to a specific section in the duvet report."""
     encoded_path = url_encode_spec_path(spec_path)
     return f"{duvet_report_path}#/spec/{encoded_path}/{section_id}"
+
 
 def generate_github_url(source_path, line_number=None, github_base_url=None):
     """Generate GitHub URL for a source file."""
@@ -330,39 +336,39 @@ def generate_enhanced_html_report(report_file_path, output_file_path, server_nam
         exception_pct = (stats["exception_count"] / total_reqs) * 100
         implication_pct = (stats["implication_count"] / total_reqs) * 100
         no_impl_pct = (stats["no_implementation"] / total_reqs) * 100
-        
+
         # Ensure percentages add up to exactly 100% by using precise calculation
         # and assigning any remainder to the largest segment
         if total_reqs > 0:
             # Calculate exact percentages using integer arithmetic to avoid floating point errors
             percentages_data = [
-                (stats["implementation_and_test"], 'impl_test'),
-                (stats["implication_count"], 'implication'),
-                (stats["exception_count"], 'exception'),
-                (stats["implementation_only"], 'impl_only'),
-                (stats["no_implementation"], 'no_impl')
+                (stats["implementation_and_test"], "impl_test"),
+                (stats["implication_count"], "implication"),
+                (stats["exception_count"], "exception"),
+                (stats["implementation_only"], "impl_only"),
+                (stats["no_implementation"], "no_impl"),
             ]
-            
+
             # Calculate percentages with high precision, then distribute remainder
             total_allocated = 0.0
             calculated_percentages = {}
-            
+
             # Calculate all but the last percentage
             for i, (count, name) in enumerate(percentages_data[:-1]):
                 pct = round((count / total_reqs) * 100, 1)
                 calculated_percentages[name] = pct
                 total_allocated += pct
-            
+
             # Last segment gets the remainder to ensure exactly 100%
             last_count, last_name = percentages_data[-1]
             calculated_percentages[last_name] = round(100.0 - total_allocated, 1)
-            
+
             # Assign back to variables
-            impl_test_pct = calculated_percentages['impl_test']
-            implication_pct = calculated_percentages['implication'] 
-            exception_pct = calculated_percentages['exception']
-            impl_only_pct = calculated_percentages['impl_only']
-            no_impl_pct = calculated_percentages['no_impl']
+            impl_test_pct = calculated_percentages["impl_test"]
+            implication_pct = calculated_percentages["implication"]
+            exception_pct = calculated_percentages["exception"]
+            impl_only_pct = calculated_percentages["impl_only"]
+            no_impl_pct = calculated_percentages["no_impl"]
     else:
         impl_test_pct = impl_only_pct = test_only_pct = exception_pct = implication_pct = (
             no_impl_pct
@@ -447,21 +453,21 @@ def generate_enhanced_html_report(report_file_path, output_file_path, server_nam
         spec_exception = 0
         spec_impl_only = 0
         spec_no_impl = 0
-        
+
         for section_data in sections.values():
-            section_requirements = section_data.get('requirements', [])
+            section_requirements = section_data.get("requirements", [])
             for req in section_requirements:
-                if req['has_implementation'] and req['has_test']:
+                if req["has_implementation"] and req["has_test"]:
                     spec_impl_test += 1
-                elif req['has_implication']:
+                elif req["has_implication"]:
                     spec_implication += 1
-                elif req['has_exception']:
+                elif req["has_exception"]:
                     spec_exception += 1
-                elif req['has_implementation']:
+                elif req["has_implementation"]:
                     spec_impl_only += 1
                 else:
                     spec_no_impl += 1
-        
+
         # Calculate percentages for spec progress bar
         if spec_total_requirements > 0:
             spec_impl_test_pct = (spec_impl_test / spec_total_requirements) * 100
@@ -470,7 +476,9 @@ def generate_enhanced_html_report(report_file_path, output_file_path, server_nam
             spec_impl_only_pct = (spec_impl_only / spec_total_requirements) * 100
             spec_no_impl_pct = (spec_no_impl / spec_total_requirements) * 100
         else:
-            spec_impl_test_pct = spec_implication_pct = spec_exception_pct = spec_impl_only_pct = spec_no_impl_pct = 0
+            spec_impl_test_pct = spec_implication_pct = spec_exception_pct = spec_impl_only_pct = (
+                spec_no_impl_pct
+            ) = 0
 
         content_html += f"""
         <div class="spec-section {row_class}">
@@ -534,12 +542,28 @@ def generate_enhanced_html_report(report_file_path, output_file_path, server_nam
             local_file_path = f"{spec_data['spec_path']}#{section_data['section_id']}"
 
             # Calculate section-level statistics
-            section_impl_test = sum(1 for req in section_requirements if req['has_implementation'] and req['has_test'])
-            section_implication = sum(1 for req in section_requirements if req['has_implication'])
-            section_exception = sum(1 for req in section_requirements if req['has_exception'])
-            section_impl_only = sum(1 for req in section_requirements if req['has_implementation'] and not req['has_test'] and not req['has_exception'] and not req['has_implication'])
-            section_no_impl = sum(1 for req in section_requirements if not req['has_implementation'] and not req['has_test'] and not req['has_exception'] and not req['has_implication'])
-            
+            section_impl_test = sum(
+                1 for req in section_requirements if req["has_implementation"] and req["has_test"]
+            )
+            section_implication = sum(1 for req in section_requirements if req["has_implication"])
+            section_exception = sum(1 for req in section_requirements if req["has_exception"])
+            section_impl_only = sum(
+                1
+                for req in section_requirements
+                if req["has_implementation"]
+                and not req["has_test"]
+                and not req["has_exception"]
+                and not req["has_implication"]
+            )
+            section_no_impl = sum(
+                1
+                for req in section_requirements
+                if not req["has_implementation"]
+                and not req["has_test"]
+                and not req["has_exception"]
+                and not req["has_implication"]
+            )
+
             # Calculate percentages for section progress bar
             if section_total > 0:
                 section_impl_test_pct = (section_impl_test / section_total) * 100
@@ -548,8 +572,10 @@ def generate_enhanced_html_report(report_file_path, output_file_path, server_nam
                 section_impl_only_pct = (section_impl_only / section_total) * 100
                 section_no_impl_pct = (section_no_impl / section_total) * 100
             else:
-                section_impl_test_pct = section_implication_pct = section_exception_pct = section_impl_only_pct = section_no_impl_pct = 0
-            
+                section_impl_test_pct = section_implication_pct = section_exception_pct = (
+                    section_impl_only_pct
+                ) = section_no_impl_pct = 0
+
             content_html += f"""
                 <div class="section-item">
                     <div class="section-header" onclick="toggleSubSection('{section_id}')">
@@ -633,9 +659,15 @@ def generate_enhanced_html_report(report_file_path, output_file_path, server_nam
                     req_type = "exception"
                 elif requirement["has_implication"]:
                     req_type = "implication"
-                elif requirement["has_implementation"] and requirement["has_test"] and not requirement.get("has_partial_coverage", False):
+                elif (
+                    requirement["has_implementation"]
+                    and requirement["has_test"]
+                    and not requirement.get("has_partial_coverage", False)
+                ):
                     req_type = "impl-test"
-                elif requirement["has_implementation"] and not requirement.get("has_partial_coverage", False):
+                elif requirement["has_implementation"] and not requirement.get(
+                    "has_partial_coverage", False
+                ):
                     req_type = "impl-only"
                 else:
                     # Partial coverage and no implementation both get "none" type
@@ -821,38 +853,38 @@ def generate_homepage(servers_info, output_file):
                 exception_pct = (server_stats.get("exception_count", 0) / total_reqs) * 100
                 implication_pct = (server_stats.get("implication_count", 0) / total_reqs) * 100
                 no_impl_pct = (server_stats.get("no_implementation", 0) / total_reqs) * 100
-                
+
                 # Ensure percentages add up to exactly 100% by using precise calculation
                 if total_reqs > 0:
                     # Calculate exact percentages and distribute remainder to largest segment
                     percentages_data = [
-                        (server_stats.get("implementation_and_test", 0), 'impl_test'),
-                        (server_stats.get("implication_count", 0), 'implication'),
-                        (server_stats.get("exception_count", 0), 'exception'),
-                        (server_stats.get("implementation_only", 0), 'impl_only'),
-                        (server_stats.get("no_implementation", 0), 'no_impl')
+                        (server_stats.get("implementation_and_test", 0), "impl_test"),
+                        (server_stats.get("implication_count", 0), "implication"),
+                        (server_stats.get("exception_count", 0), "exception"),
+                        (server_stats.get("implementation_only", 0), "impl_only"),
+                        (server_stats.get("no_implementation", 0), "no_impl"),
                     ]
-                    
+
                     # Calculate percentages with high precision, then distribute remainder
                     total_allocated = 0.0
                     calculated_percentages = {}
-                    
+
                     # Calculate all but the last percentage
                     for i, (count, name) in enumerate(percentages_data[:-1]):
                         pct = round((count / total_reqs) * 100, 1)
                         calculated_percentages[name] = pct
                         total_allocated += pct
-                    
+
                     # Last segment gets the remainder to ensure exactly 100%
                     last_count, last_name = percentages_data[-1]
                     calculated_percentages[last_name] = round(100.0 - total_allocated, 1)
-                    
+
                     # Assign back to variables
-                    impl_test_pct = calculated_percentages['impl_test']
-                    implication_pct = calculated_percentages['implication']
-                    exception_pct = calculated_percentages['exception']
-                    impl_only_pct = calculated_percentages['impl_only']
-                    no_impl_pct = calculated_percentages['no_impl']
+                    impl_test_pct = calculated_percentages["impl_test"]
+                    implication_pct = calculated_percentages["implication"]
+                    exception_pct = calculated_percentages["exception"]
+                    impl_only_pct = calculated_percentages["impl_only"]
+                    no_impl_pct = calculated_percentages["no_impl"]
             else:
                 impl_test_pct = impl_only_pct = test_only_pct = exception_pct = implication_pct = (
                     no_impl_pct
@@ -939,7 +971,11 @@ def discover_servers():
 
     # Look for directories with .duvet/reports/report.html
     for item in test_server_dir.iterdir():
-        if item.is_dir() and not item.name.startswith(".") and item.name != "spec-compliance-dashboard":
+        if (
+            item.is_dir()
+            and not item.name.startswith(".")
+            and item.name != "spec-compliance-dashboard"
+        ):
             duvet_report = item / ".duvet" / "reports" / "report.html"
             if duvet_report.exists():
                 server_info = generate_server_report(item, item.name)
