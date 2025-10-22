@@ -51,24 +51,8 @@ jobs:
           cd test-server/spec-compliance-dashboard
           python generate_compliance_dashboard.py
 
-      - name: Upload compliance dashboard
+      - name: Create dashboard redirect index.html
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: compliance-dashboard
-          include-hidden-files: true
-          path: |
-            test-server/spec-compliance-dashboard/compliance_homepage.html
-            test-server/*/compliance_summary_report.html
-            test-server/*/.duvet/reports/report.html
-            test-server/spec-compliance-dashboard/templates/*
-
-      - name: Setup Pages
-        if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
-        uses: actions/configure-pages@v5
-
-      - name: Create redirect index.html
-        if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
         run: |
           cat > test-server/index.html << 'EOF'
           <!DOCTYPE html>
@@ -83,6 +67,23 @@ jobs:
           </body>
           </html>
           EOF
+
+      - name: Upload compliance dashboard
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compliance-dashboard
+          include-hidden-files: true
+          path: |
+            test-server/spec-compliance-dashboard/compliance_homepage.html
+            test-server/*/compliance_summary_report.html
+            test-server/*/.duvet/reports/report.html
+            test-server/spec-compliance-dashboard/templates/*
+            test-server/index.html
+
+      - name: Setup Pages
+        if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
+        uses: actions/configure-pages@v5
 
       - name: Upload Pages artifact
         if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
