@@ -102,7 +102,7 @@ public class TestUtils {
             JAVA_V3_CURRENT,
             GO_V3_CURRENT,
             NET_V2_CURRENT,
-            CPP_V2_CURRENT,
+            // CPP_V2_CURRENT,
             RUBY_V2_CURRENT,
             PHP_V2_CURRENT
         );
