@@ -26,7 +26,7 @@ stop-server:
 	fi
 
 wait-for-server:
-	$(MAKE) -C .. wait-for-port PORT=$(PORT)
+# 	$(MAKE) -C .. wait-for-port PORT=$(PORT)
 
 duvet:
 	duvet report
