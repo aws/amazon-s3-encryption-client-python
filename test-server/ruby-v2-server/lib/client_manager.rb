@@ -16,7 +16,6 @@ class ClientManager
   def create_client(config)
     # Extract configuration
     kms_key_id = config.dig('keyMaterial', 'kmsKeyId')
-    enable_legacy_wrapping = config['enableLegacyWrappingAlgorithms'] || false
     
     raise 'KMS Key ID is required' if kms_key_id.nil? || kms_key_id.empty?
 
@@ -26,9 +25,13 @@ class ClientManager
       kms_client: @kms_client,
       key_wrap_schema: :kms_context,
       content_encryption_schema: :aes_gcm_no_padding,
-      # Set security profile based on legacy wrapping algorithms setting
-      security_profile: enable_legacy_wrapping ? :v2_and_legacy : :v2
-    }
+    }.tap do |hash|
+      if !config['enableLegacyWrappingAlgorithms'].nil? || !config['enableLegacyUnauthenticatedModes'].nil?
+        legacy_modes = config['enableLegacyWrappingAlgorithms'] || config['enableLegacyUnauthenticatedModes']
+        # Set security profile based on legacy wrapping algorithms setting
+        hash[:security_profile] = legacy_modes ? :v2_and_legacy : :v2
+      end
+    end
 
     # Create the S3 encryption client
     s3_client = Aws::S3::Client.new(region: 'us-west-2')

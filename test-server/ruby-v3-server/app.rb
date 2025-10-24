@@ -7,7 +7,7 @@ require_relative 'lib/logger'
 
 class S3ECRubyServer < Sinatra::Base
   configure do
-    set :port, 8092
+    set :port, ENV['PORT'] || 8092
     set :bind, '0.0.0.0'
     set :show_exceptions, false
     set :raise_errors, false
