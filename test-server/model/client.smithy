@@ -29,9 +29,15 @@ structure KeyMaterial {
 }
 
 enum CommitmentPolicy {
-    REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
-    REQUIRE_ENCRYPT_ALLOW_DECRYPT,
+    REQUIRE_ENCRYPT_REQUIRE_DECRYPT
+    REQUIRE_ENCRYPT_ALLOW_DECRYPT
     FORBID_ENCRYPT_ALLOW_DECRYPT
+}
+
+enum EncryptionAlgorithm {
+    ALG_AES_256_CBC_IV16_NO_KDF
+    ALG_AES_256_GCM_IV12_TAG16_NO_KDF
+    ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
 }
 
 structure S3ECConfig {
@@ -41,4 +47,5 @@ structure S3ECConfig {
     setBufferSize: Long,
     keyMaterial: KeyMaterial,
     commitmentPolicy: CommitmentPolicy,
+    encryptionAlgorithm: EncryptionAlgorithm,
 }

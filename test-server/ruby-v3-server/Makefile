@@ -11,12 +11,13 @@ start-server:
 		exit 1; \
 	fi;
 	@echo "Starting Ruby V3 server..."
+	gem install openssl
 	bundle install
 	AWS_ACCESS_KEY_ID="$$AWS_ACCESS_KEY_ID" \
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
-	bundle exec ruby app.rb & echo $$! > $(PID_FILE)
+	PORT=$(PORT) bundle exec ruby app.rb & echo $$! > $(PID_FILE)
 	@echo "Ruby V3 server starting..."
 
 stop-server:

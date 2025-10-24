@@ -3,7 +3,7 @@
 .PHONY: start-server stop-server wait-for-server
 
 PID_FILE := server.pid
-PORT := 8086
+PORT := 8098
 
 start-server:
 	@if [ -f $(PID_FILE) ]; then \
@@ -11,22 +11,23 @@ start-server:
 		exit 1; \
 	fi;
 	@echo "Starting Ruby V2 server..."
+	gem install openssl
 	bundle install
 	AWS_ACCESS_KEY_ID="$$AWS_ACCESS_KEY_ID" \
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
-	bundle exec ruby app.rb & echo $$! > server.pid
+	PORT=$(PORT) bundle exec ruby app.rb & echo $$! > $(PID_FILE)
 	@echo "Ruby V2 server starting..."
 
 stop-server:
-	@if [ -f server.pid ]; then \
-		kill $$(cat server.pid) 2>/dev/null || true; \
-		rm server.pid; \
+	@if [ -f $(PID_FILE) ]; then \
+		kill $$(cat $(PID_FILE)) 2>/dev/null || true; \
+		rm $(PID_FILE); \
 	fi
 
 wait-for-server:
-	$(MAKE) -C .. wait-for-port PORT=8086
+	$(MAKE) -C .. wait-for-port PORT=$(PORT)
 
 duvet:
 	duvet report
