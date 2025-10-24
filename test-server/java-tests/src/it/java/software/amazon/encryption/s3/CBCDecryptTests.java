@@ -90,6 +90,7 @@ class CBCDecryptTests {
         .keyMaterial(kmsKeyArn)
         // .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
         .enableLegacyUnauthenticatedModes(true)
+        .enableLegacyWrappingAlgorithms(true)
         .build())
         .build());
         String S3ECId = clientOutput.getClientId();
@@ -107,6 +108,7 @@ class CBCDecryptTests {
         .keyMaterial(kmsKeyArn)
         .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
         .enableLegacyUnauthenticatedModes(true)
+        .enableLegacyWrappingAlgorithms(true)
         .build())
         .build());
         String S3ECId = clientOutput.getClientId();
