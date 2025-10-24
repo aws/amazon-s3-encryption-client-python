@@ -197,7 +197,7 @@ public class RoundTripTests {
                     .build());
             fail("Expected exception!");
         } catch (S3EncryptionClientError e) {
-            if (decLang.getLanguageName().equals(RUBY_V3) || decLang.getLanguageName().equals(RUBY_V2_CURRENT)) {
+            if (decLang.getLanguageName().equals(RUBY_V3) || decLang.getLanguageName().equals(RUBY_V2_CURRENT) || decLang.getLanguageName().equals(RUBY_V2_TRANSITION)) {
                 assertTrue(e.getMessage().contains("Value of encryption context from envelope does not match the provided encryption context"));
             } else {
                 assertTrue(e.getMessage().contains("Provided encryption context does not match information retrieved from S3"));
@@ -259,7 +259,7 @@ public class RoundTripTests {
               .build());
             fail("Expected exception!");
         } catch (S3EncryptionClientError e) {
-            if (decLang.getLanguageName().equals(RUBY_V3) || decLang.getLanguageName().equals(RUBY_V2_CURRENT)) {
+            if (decLang.getLanguageName().equals(RUBY_V3) || decLang.getLanguageName().equals(RUBY_V2_CURRENT) || decLang.getLanguageName().equals(RUBY_V2_TRANSITION)) {
               assertTrue(e.getMessage().contains("Value of encryption context from envelope does not match the provided encryption context"));
             } else {
               assertTrue(e.getMessage().contains("Provided encryption context does not match information retrieved from S3"));
@@ -407,7 +407,7 @@ public class RoundTripTests {
               assertTrue(e.getMessage().contains(
                 "The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration"
               ));
-            } else if (language.getLanguageName().equals(RUBY_V3) || language.getLanguageName().equals(RUBY_V2_CURRENT)) {
+            } else if (language.getLanguageName().equals(RUBY_V3) || language.getLanguageName().equals(RUBY_V2_CURRENT) || language.getLanguageName().equals(RUBY_V2_TRANSITION)) {
               assertTrue(e.getMessage().contains(
                 "The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration security_profile = :v2. Retry with :v2_and_legacy or re-encrypt the object."
                 ), "Actual error:" + e.getMessage());
