@@ -10,6 +10,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
+      pages: write
     
     steps:
       - name: Checkout code
@@ -43,3 +44,53 @@ jobs:
           name: reports
           include-hidden-files: true
           path: test-server/*-server/.duvet/reports/report.html
+
+      - name: Generate compliance dashboard
+        if: always()
+        run: |
+          cd test-server/spec-compliance-dashboard
+          python generate_compliance_dashboard.py
+
+      - name: Create dashboard redirect index.html
+        if: always()
+        run: |
+          cat > test-server/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta http-equiv="refresh" content="0; url=spec-compliance-dashboard/compliance_homepage.html">
+              <title>Redirecting to Compliance Dashboard...</title>
+          </head>
+          <body>
+              <p>Redirecting to <a href="spec-compliance-dashboard/compliance_homepage.html">Compliance Dashboard</a>...</p>
+          </body>
+          </html>
+          EOF
+
+      - name: Upload compliance dashboard
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compliance-dashboard
+          include-hidden-files: true
+          path: |
+            test-server/spec-compliance-dashboard/compliance_homepage.html
+            test-server/*/compliance_summary_report.html
+            test-server/*/.duvet/reports/report.html
+            test-server/spec-compliance-dashboard/templates/*
+            test-server/index.html
+
+      - name: Setup Pages
+        if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: test-server/
+
+      - name: Deploy to GitHub Pages
+        if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
+        uses: actions/deploy-pages@v4
