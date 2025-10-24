@@ -158,8 +158,7 @@ func (s *Server) createClient(w http.ResponseWriter, r *http.Request) {
 	case "FORBID_ENCRYPT_ALLOW_DECRYPT":
 		commitmentPolicy = commitment.FORBID_ENCRYPT_ALLOW_DECRYPT
 	default:
-		s.createGenericServerError(w, fmt.Sprintf("Invalid commitment policy: %s", input.Config.CommitmentPolicy), http.StatusBadRequest)
-		return
+		commitmentPolicy = nil
 	}
 
 	// Create KMS keyring
@@ -178,7 +177,10 @@ func (s *Server) createClient(w http.ResponseWriter, r *http.Request) {
 	var s3EncryptionClient *client.S3EncryptionClientV4
 	s3PlaintextClient := s3.NewFromConfig(cfg)
 	s3EncryptionClient, err = client.New(s3PlaintextClient, cmm, func(clientOptions *client.EncryptionClientOptions) {
-		clientOptions.CommitmentPolicy = commitmentPolicy
+		if commitmentPolicy != nil {
+			clientOptions.CommitmentPolicy = commitmentPolicy
+		}
+		clientOptions.EnableLegacyUnauthenticatedModes = input.Config.EnableLegacyUnauthenticatedModes
 	})
 
 	if err != nil {
