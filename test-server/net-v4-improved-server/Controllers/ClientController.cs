@@ -57,10 +57,16 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             logger.LogInformation(
                 "Created EncryptionMaterialsV4: KMS={KmsKeyId}",
                 kmsKeyId);
-            // SecurityProfile V4AndLegacy can decrypt from legacy S3EC but V4 cannot
+            // SecurityProfile V4AndLegacy can decrypt from legacy S3EC and AESGCM but V4 cannot
             var enableLegacyMode = enableLegacyUnauthenticatedModes || enableLegacyWrappingAlgorithms;
             var securityProfile = enableLegacyMode ? SecurityProfile.V4AndLegacy : SecurityProfile.V4;
 
+            if (commitmentPolicy.Value == CommitmentPolicy.ForbidEncryptAllowDecrypt)
+            {
+                logger.LogInformation("CommitmentPolicy is set to FORBID_ENCRYPT_ALLOW_DECRYPT. " +
+                                      "Forcing to Create AmazonS3CryptoConfigurationV4 with security profile: V4AndLegacy,");
+                securityProfile = SecurityProfile.V4AndLegacy;
+            }
             logger.LogInformation("Created AmazonS3CryptoConfigurationV4 with security profile: {securityProfile}," + 
                 "commitmentPolicy: {commitmentPolicy}, encryptionAlgorithm: {encryptionAlgorithm}", securityProfile.ToString(), commitmentPolicy.Value, contextEncAlg);
 
