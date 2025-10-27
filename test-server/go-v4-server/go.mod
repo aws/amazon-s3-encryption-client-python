@@ -1,6 +1,6 @@
 module github.com/aws/amazon-s3-encryption-client-python/test-server/go-server
 
-go 1.21
+go 1.24
 
 require (
 	github.com/aws/amazon-s3-encryption-client-go/v4 v4.0.0
