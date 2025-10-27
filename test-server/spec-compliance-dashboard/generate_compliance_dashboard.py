@@ -9,6 +9,7 @@ copy buttons, and comprehensive statistics.
 import json
 import re
 import os
+import subprocess
 from pathlib import Path
 from datetime import datetime
 
@@ -301,6 +302,26 @@ def generate_github_url(source_path, line_number=None, github_base_url=None):
         url += f"#L{line_number}"
 
     return url
+
+
+def get_git_commit_hash():
+    """Get the current git commit hash for the repository."""
+    try:
+        # Get the test-server directory (parent of spec-compliance-dashboard)
+        test_server_dir = Path(__file__).parent.parent
+        # Go up one more level to get to the main repository root
+        repo_root = test_server_dir.parent
+        
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        return result.stdout.strip()[:8]  # Return short hash (first 8 characters)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return "unknown"
 
 
 def load_template(template_path):
@@ -798,6 +819,7 @@ def generate_homepage(servers_info, output_file):
     """Generate the main homepage with links to all server reports using templates."""
 
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    git_commit = get_git_commit_hash()
 
     # Load the homepage template
     template_dir = Path(__file__).parent / "templates"
@@ -956,7 +978,7 @@ def generate_homepage(servers_info, output_file):
 """
 
     # Replace placeholders in template
-    html_content = template.format(timestamp=current_time, content=content_html)
+    html_content = template.format(timestamp=current_time, git_commit=git_commit, content=content_html)
 
     # Write the HTML file
     with open(output_file, "w", encoding="utf-8") as f:
