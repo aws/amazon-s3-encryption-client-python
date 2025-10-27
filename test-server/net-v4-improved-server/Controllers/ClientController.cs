@@ -2,10 +2,10 @@ using System.Text.Json;
 using Amazon.Extensions.S3.Encryption;
 using Amazon.Extensions.S3.Encryption.Primitives;
 using Microsoft.AspNetCore.Mvc;
-using NetV2V3Server.Models;
-using NetV2V3Server.Services;
+using NetV4ImprovedServer.Models;
+using NetV4ImprovedServer.Services;
 
-namespace NetV2V3Server.Controllers;
+namespace NetV4ImprovedServer.Controllers;
 
 [ApiController]
 [Route("[controller]")]
@@ -43,37 +43,31 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
                 };
             }
 
-            // Parse EncryptionAlgorithm enum
-            ContentEncryptionAlgorithm? encryptionAlgorithm = null;
-            if (!string.IsNullOrEmpty(request.Config.EncryptionAlgorithm))
+            ContentEncryptionAlgorithm contextEncAlg = ContentEncryptionAlgorithm.AesGcmWithCommitment;
+            if (commitmentPolicy != null && commitmentPolicy.Value == CommitmentPolicy.ForbidEncryptAllowDecrypt)
             {
-                encryptionAlgorithm = request.Config.EncryptionAlgorithm switch
-                {
-                    "AES_GCM" => ContentEncryptionAlgorithm.AesGcm,
-                    "AES_GCM_WITH_COMMITMENT" => ContentEncryptionAlgorithm.AesGcmWithCommitment,
-                    _ => throw new ArgumentException($"Unsupported EncryptionAlgorithm: {request.Config.EncryptionAlgorithm}")
-                };
-            }
+                contextEncAlg = ContentEncryptionAlgorithm.AesGcm;
+            } 
 
             // The POST request does not contain encryption context. 
             // However, encryption context is a required field when using KMS.
             // So, we are passing empty dictionary.
             var encryptionContext = new Dictionary<string, string>();
-            var encryptionMaterial = new EncryptionMaterialsV2(kmsKeyId, KmsType.KmsContext, encryptionContext);
+            var encryptionMaterial = new EncryptionMaterialsV4(kmsKeyId, KmsType.KmsContext, encryptionContext);
             logger.LogInformation(
-                "Created EncryptionMaterialsV2: KMS={KmsKeyId}",
+                "Created EncryptionMaterialsV4: KMS={KmsKeyId}",
                 kmsKeyId);
-            // SecurityProfile V2AndLegacy can decrypt from legacy S3EC but V2 cannot
+            // SecurityProfile V4AndLegacy can decrypt from legacy S3EC but V4 cannot
             var enableLegacyMode = enableLegacyUnauthenticatedModes || enableLegacyWrappingAlgorithms;
             var securityProfile = enableLegacyMode ? SecurityProfile.V4AndLegacy : SecurityProfile.V4;
 
             logger.LogInformation("Created AmazonS3CryptoConfigurationV4 with security profile: {securityProfile}," + 
-                "commitmentPolicy: {commitmentPolicy}, encryptionAlgorithm: {encryptionAlgorithm}", securityProfile.ToString(), commitmentPolicy.Value, encryptionAlgorithm.Value);
+                "commitmentPolicy: {commitmentPolicy}, encryptionAlgorithm: {encryptionAlgorithm}", securityProfile.ToString(), commitmentPolicy.Value, contextEncAlg);
 
-            var configuration = new AmazonS3CryptoConfigurationV4(securityProfile, commitmentPolicy.Value, encryptionAlgorithm.Value);
+            var configuration = new AmazonS3CryptoConfigurationV4(securityProfile, commitmentPolicy.Value, contextEncAlg);
 
             // Create S3 encryption client
-            var encryptionClient = new AmazonS3EncryptionClientV2(configuration, encryptionMaterial);
+            var encryptionClient = new AmazonS3EncryptionClientV4(configuration, encryptionMaterial);
             // Add to cache and return client ID
             var clientId = clientCacheService.AddClient(encryptionClient);
             var response = new ClientResponse { ClientId = clientId };

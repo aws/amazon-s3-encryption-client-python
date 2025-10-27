@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace NetV2V3Server.Models;
+namespace NetV4ImprovedServer.Models;
 
 public class ClientRequest
 {
