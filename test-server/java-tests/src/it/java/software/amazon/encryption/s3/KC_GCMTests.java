@@ -59,7 +59,7 @@ import com.amazonaws.services.s3.model.KMSEncryptionMaterialsProvider;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class KC_GCMTests {
-    private static String sharedObjectKeyBase = "test-gcm-kms";
+    private static String sharedObjectKeyBase = "test-kc-gcm-kms";
     private static KeyMaterial kmsKeyArn = KeyMaterial.builder()
     .kmsKeyId(TestUtils.KMS_KEY_ARN)
     .build();
