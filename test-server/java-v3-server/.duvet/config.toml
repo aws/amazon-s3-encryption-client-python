@@ -1,7 +1,7 @@
 '$schema' = "https://awslabs.github.io/duvet/config/v0.4.0.json"
 
 [[source]]
-pattern = "**/*.java"
+pattern = "s3ec-staging/*.java"
 
 # Include required specifications here
 [[specification]]
