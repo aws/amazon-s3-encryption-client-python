@@ -61,12 +61,13 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             var enableLegacyMode = enableLegacyUnauthenticatedModes || enableLegacyWrappingAlgorithms;
             var securityProfile = enableLegacyMode ? SecurityProfile.V4AndLegacy : SecurityProfile.V4;
 
-            if (commitmentPolicy.Value == CommitmentPolicy.ForbidEncryptAllowDecrypt)
-            {
-                logger.LogInformation("CommitmentPolicy is set to FORBID_ENCRYPT_ALLOW_DECRYPT. " +
-                                      "Forcing to Create AmazonS3CryptoConfigurationV4 with security profile: V4AndLegacy,");
-                securityProfile = SecurityProfile.V4AndLegacy;
-            }
+            // TODO: We could do this too.
+            // if (commitmentPolicy.Value == CommitmentPolicy.ForbidEncryptAllowDecrypt)
+            // {
+            //     logger.LogInformation("CommitmentPolicy is set to FORBID_ENCRYPT_ALLOW_DECRYPT. " +
+            //                           "Forcing to Create AmazonS3CryptoConfigurationV4 with security profile: V4AndLegacy,");
+            //     securityProfile = SecurityProfile.V4AndLegacy;
+            // }
             logger.LogInformation("Created AmazonS3CryptoConfigurationV4 with security profile: {securityProfile}," + 
                 "commitmentPolicy: {commitmentPolicy}, encryptionAlgorithm: {encryptionAlgorithm}", securityProfile.ToString(), commitmentPolicy.Value, contextEncAlg);
 

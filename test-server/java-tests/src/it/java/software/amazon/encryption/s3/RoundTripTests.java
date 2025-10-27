@@ -63,6 +63,7 @@ public class RoundTripTests {
             .builder()
             .keyMaterial(kmsKeyArn)
             .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .enableLegacyWrappingAlgorithms(true)
             .build()
           )
           .build());
@@ -78,6 +79,7 @@ public class RoundTripTests {
           .config(S3ECConfig.builder()
             .keyMaterial(kmsKeyArn)
             .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .enableLegacyWrappingAlgorithms(true)
             .build()
           )
           .build());
@@ -113,6 +115,7 @@ public class RoundTripTests {
           .config(S3ECConfig.builder()
             .keyMaterial(kmsKeyArn)
             .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .enableLegacyWrappingAlgorithms(true)
             .build()
           )
           .build());
@@ -130,6 +133,7 @@ public class RoundTripTests {
           .config(S3ECConfig.builder()
             .keyMaterial(kmsKeyArn)
             .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .enableLegacyWrappingAlgorithms(true)
             .build()
           )
           .build());
@@ -169,6 +173,7 @@ public class RoundTripTests {
                 .config(S3ECConfig.builder()
                         .keyMaterial(kmsKeyArn)
                         .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+                        .enableLegacyWrappingAlgorithms(true)
                         .build())
                 .build());
         String encS3ECId = encClientOutput.getClientId();
@@ -185,6 +190,7 @@ public class RoundTripTests {
                 .config(S3ECConfig.builder()
                   .keyMaterial(kmsKeyArn)
                   .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+                  .enableLegacyWrappingAlgorithms(true)
                   .build()
                 )
                 .build());
@@ -223,6 +229,7 @@ public class RoundTripTests {
           .build();
         CreateClientOutput encClientOutput = encClient.createClient(CreateClientInput.builder()
           .config(S3ECConfig.builder()
+            .enableLegacyWrappingAlgorithms(true)
             .keyMaterial(kmsKeyArn)
             .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
             .build()
@@ -240,6 +247,7 @@ public class RoundTripTests {
         S3ECTestServerClient decClient = testServerClientFor(decLang);
         CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
           .config(S3ECConfig.builder()
+            .enableLegacyWrappingAlgorithms(true)
             .keyMaterial(kmsKeyArn)
             .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
             .build()
