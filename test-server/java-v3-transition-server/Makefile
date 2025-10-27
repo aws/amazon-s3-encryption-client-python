@@ -11,13 +11,13 @@ build-s3ec:
 	@echo "S3EC build completed."
 
 start-server: build-s3ec
-	@echo "Starting Java V3 server..."
+	@echo "Starting Java V3 Transition server..."
 	AWS_ACCESS_KEY_ID="$$AWS_ACCESS_KEY_ID" \
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
 	./gradlew --build-cache --parallel run & echo $$! > $(PID_FILE)
-	@echo "Java V3 server starting..."
+	@echo "Java V3 Transition server starting..."
 
 stop-server:
 	@if [ -f $(PID_FILE) ]; then \
