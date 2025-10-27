@@ -3,22 +3,17 @@
 .PHONY: start-server stop-server wait-for-server
 
 PID_FILE := server.pid
-PORT := 8098
+PORT := 8089
 
 start-server:
-	@if [ -f $(PID_FILE) ]; then \
-		echo "❌ Error: Server already running. Stop before starting."; \
-		exit 1; \
-	fi;
-	@echo "Starting Ruby V2 server..."
-	gem install openssl
-	bundle install
+	@echo "Starting Go V4 server..."
+	go mod tidy
 	AWS_ACCESS_KEY_ID="$$AWS_ACCESS_KEY_ID" \
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
-	PORT=$(PORT) bundle exec ruby app.rb & echo $$! > $(PID_FILE)
-	@echo "Ruby V2 server starting..."
+	go run . & echo $$! > $(PID_FILE)
+	@echo "Go V4 server starting..."
 
 stop-server:
 	@if [ -f $(PID_FILE) ]; then \
@@ -28,9 +23,3 @@ stop-server:
 
 wait-for-server:
 	$(MAKE) -C .. wait-for-port PORT=$(PORT)
-
-duvet:
-	duvet report
-
-view-report-mac:
-	open .duvet/reports/report.html

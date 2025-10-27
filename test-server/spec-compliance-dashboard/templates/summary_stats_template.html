@@ -1,0 +1,63 @@
+<div class="summary-stats">
+    <h2>Summary Statistics</h2>
+    <div class="progress-section">
+        <div class="progress-item">
+            <div class="progress-header">
+                <span class="progress-label">Sections Implemented</span>
+                <span class="progress-count">{complete_sections}/{total_sections}</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: {section_progress:.1f}%"></div>
+            </div>
+        </div>
+        <div class="progress-item">
+            <div class="progress-header">
+                <span class="progress-label">Requirements Implemented</span>
+                <span class="progress-count">{complete_requirements}/{total_requirements}</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: {requirement_progress:.1f}%"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="breakdown-header" onclick="togglePieChart()">
+        <h3>Implementation Breakdown</h3>
+        <span class="expand-icon" id="pie-chart-icon">▼</span>
+    </div>
+    <div class="breakdown-grid">
+        <div class="breakdown-item">
+            <div class="breakdown-number">{implementation_and_test}</div>
+            <div class="breakdown-label" style="color: #28a745;">Implementation + Test</div>
+        </div>
+        <div class="breakdown-item">
+            <div class="breakdown-number">{implementation_only}</div>
+            <div class="breakdown-label" style="color: #ffc107;">Implementation Only</div>
+        </div>
+        <div class="breakdown-item">
+            <div class="breakdown-number">{test_only}</div>
+            <div class="breakdown-label">Test Only</div>
+        </div>
+        <div class="breakdown-item">
+            <div class="breakdown-number">{exception_count}</div>
+            <div class="breakdown-label" style="color: #87ceeb;">Exception</div>
+        </div>
+        <div class="breakdown-item">
+            <div class="breakdown-number">{implication_count}</div>
+            <div class="breakdown-label" style="color: #dda0dd;">Implication</div>
+        </div>
+        <div class="breakdown-item">
+            <div class="breakdown-number">{no_implementation}</div>
+            <div class="breakdown-label" style="color: #dc3545;">No Implementation</div>
+        </div>
+    </div>
+    
+    <div class="pie-chart-container" id="pie-chart-container" style="display: none;">
+        <canvas id="implementationPieChart" width="250" height="250"></canvas>
+    </div>
+    
+    <script>
+        // Set pie chart data for JavaScript to use
+        window.pieChartData = {pie_chart_data};
+    </script>
+</div>

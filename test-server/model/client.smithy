@@ -28,10 +28,24 @@ structure KeyMaterial {
     kmsKeyId: String
 }
 
+enum CommitmentPolicy {
+    REQUIRE_ENCRYPT_REQUIRE_DECRYPT
+    REQUIRE_ENCRYPT_ALLOW_DECRYPT
+    FORBID_ENCRYPT_ALLOW_DECRYPT
+}
+
+enum EncryptionAlgorithm {
+    ALG_AES_256_CBC_IV16_NO_KDF
+    ALG_AES_256_GCM_IV12_TAG16_NO_KDF
+    ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+}
+
 structure S3ECConfig {
     enableLegacyUnauthenticatedModes: Boolean = false,
     enableDelayedAuthenticationMode: Boolean = false,
     enableLegacyWrappingAlgorithms: Boolean = false,
     setBufferSize: Long,
-    keyMaterial: KeyMaterial
+    keyMaterial: KeyMaterial,
+    commitmentPolicy: CommitmentPolicy,
+    encryptionAlgorithm: EncryptionAlgorithm,
 }

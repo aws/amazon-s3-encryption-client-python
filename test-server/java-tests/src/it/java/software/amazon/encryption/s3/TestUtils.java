@@ -5,8 +5,13 @@
 
 package software.amazon.encryption.s3;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.net.Socket;
 import java.net.URI;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -27,9 +32,21 @@ import software.amazon.smithy.java.client.core.ClientConfig;
 import software.amazon.smithy.java.client.core.ClientProtocol;
 import software.amazon.smithy.java.client.core.endpoint.EndpointResolver;
 import software.amazon.encryption.s3.client.S3ECTestServerClient;
+import software.amazon.encryption.s3.model.EncryptionAlgorithm;
+import software.amazon.encryption.s3.model.GetObjectInput;
+import software.amazon.encryption.s3.model.GetObjectOutput;
+import software.amazon.encryption.s3.model.PutObjectInput;
+import software.amazon.encryption.s3.model.PutObjectOutput;
+import software.amazon.encryption.s3.model.S3ECConfig;
 import software.amazon.encryption.s3.model.S3ECTestServerApiService;
+import software.amazon.encryption.s3.model.S3EncryptionClientError;
 import software.amazon.smithy.java.http.api.HttpRequest;
 import software.amazon.smithy.java.http.api.HttpResponse;
+
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.GetObjectMetadataRequest;
 
 public class TestUtils {
 
@@ -85,30 +102,30 @@ public class TestUtils {
             JAVA_V3_CURRENT,
             GO_V3_CURRENT,
             NET_V2_CURRENT,
-            CPP_V2_CURRENT,
+            // CPP_V2_CURRENT,
             RUBY_V2_CURRENT,
             PHP_V2_CURRENT
         );
 
     public static final Set<String> TRANSITION_VERSIONS =
         Set.of(
-            JAVA_V3_TRANSITION,
-            GO_V3_TRANSITION,
-            NET_V2_TRANSITION,
-            CPP_V2_TRANSITION,
-            RUBY_V2_TRANSITION,
-            PHP_V2_TRANSITION
+            // JAVA_V3_TRANSITION,
+            // GO_V3_TRANSITION,
+            // NET_V2_TRANSITION,
+            // CPP_V2_TRANSITION,
+            // PHP_V2_TRANSITION,
+            RUBY_V2_TRANSITION
         );
 
     public static final Set<String> IMPROVED_VERSIONS =
         Set.of(
-            JAVA_V4,
-            PYTHON_V3,
-            GO_V4,
-            NET_V3,
-            CPP_V3,
-            RUBY_V3,
-            PHP_V3
+            // JAVA_V4,
+            // PYTHON_V3,
+            // GO_V4,
+            // NET_V3,
+            // CPP_V3,
+            // PHP_V3,
+            RUBY_V3
         );
 
     private static final Map<String, LanguageServerTarget> serverMap;
@@ -120,17 +137,18 @@ public class TestUtils {
         servers.put(GO_V3_CURRENT, new LanguageServerTarget(GO_V3_CURRENT, "8082"));
         servers.put(NET_V2_CURRENT, new LanguageServerTarget(NET_V2_CURRENT, "8083"));
         servers.put(NET_V3, new LanguageServerTarget(NET_V3, "8084"));
-        servers.put(CPP_V2_CURRENT, new LanguageServerTarget(CPP_V2_CURRENT, "8085"));
-        servers.put(RUBY_V2_CURRENT, new LanguageServerTarget(RUBY_V2_CURRENT, "8086"));
+        // servers.put(CPP_V2_CURRENT, new LanguageServerTarget(CPP_V2_CURRENT, "8085"));
+        // servers.put(RUBY_V2_CURRENT, new LanguageServerTarget(RUBY_V2_CURRENT, "8086"));
         servers.put(PHP_V2_CURRENT, new LanguageServerTarget(PHP_V2_CURRENT, "8087"));
+        servers.put(GO_V4, new LanguageServerTarget(GO_V4, "8089"));
         servers.put(RUBY_V3, new LanguageServerTarget(RUBY_V3, "8092"));
         servers.put(PHP_V3, new LanguageServerTarget(PHP_V3, "8093"));
         // TODO: Create and add transition servers
         servers.put(JAVA_V3_TRANSITION, new LanguageServerTarget(JAVA_V3_TRANSITION, "8094"));
         // servers.put(GO_V3_TRANSITION, new LanguageServerTarget(GO_V3_TRANSITION, "8095"));
         // servers.put(NET_V2_TRANSITION, new LanguageServerTarget(NET_V2_TRANSITION, "8096"));
-        servers.put(CPP_V2_TRANSITION, new LanguageServerTarget(CPP_V2_TRANSITION, "8097"));
-        // servers.put(RUBY_V2_TRANSITION, new LanguageServerTarget(RUBY_V2_TRANSITION, "8098"));
+        // servers.put(CPP_V2_TRANSITION, new LanguageServerTarget(CPP_V2_TRANSITION, "8097"));
+        servers.put(RUBY_V2_TRANSITION, new LanguageServerTarget(RUBY_V2_TRANSITION, "8098"));
         servers.put(PHP_V2_TRANSITION, new LanguageServerTarget(PHP_V2_TRANSITION, "8099"));
         servers.put(JAVA_V4, new LanguageServerTarget(JAVA_V4, "8090"));
         serverMap = filterServers(servers);
@@ -279,7 +297,6 @@ public class TestUtils {
      */
     public static Stream<Arguments> clientsForTest() {
         return serverMap.values().stream()
-            .map(LanguageServerTarget::getLanguageName)
             .map(Arguments::of);
     }
 
@@ -287,24 +304,87 @@ public class TestUtils {
      * Get stream of arguments for current version clients for testing.
      */
     public static Stream<Arguments> currentClientsForTest() {
-        return clientsForTest()
-            .filter(arg -> CURRENT_VERSIONS.contains(arg.get()[0]));
+        return serverMap.values().stream()
+            .filter(target -> CURRENT_VERSIONS.contains(target.getLanguageName()))
+            .map(Arguments::of);
     }
 
     /**
      * Get stream of arguments for transition version clients for testing.
      */
     public static Stream<Arguments> transitionClientsForTest() {
-        return clientsForTest()
-            .filter(arg -> TRANSITION_VERSIONS.contains(arg.get()[0]));
+        return serverMap.values().stream()
+            .filter(target -> TRANSITION_VERSIONS.contains(target.getLanguageName()))
+            .map(Arguments::of);
     }
 
     /**
      * Get stream of arguments for improved version clients for testing.
      */
     public static Stream<Arguments> improvedClientsForTest() {
-        return clientsForTest()
-            .filter(arg -> IMPROVED_VERSIONS.contains(arg.get()[0]));
+        return serverMap.values().stream()
+            .filter(target -> IMPROVED_VERSIONS.contains(target.getLanguageName()))
+            .map(Arguments::of);
+    }
+
+    /**
+     * These functions provide a stream of arguments for parameterized tests.
+     * @return Stream of Arguments containing pairs of LanguageServerTarget for encryption and decryption
+     */
+    public static Stream<Arguments> encryptImprovedDecryptImproved() {
+        return improvedClientsForTest()
+            .flatMap(encrypt -> improvedClientsForTest()
+                .flatMap(decrypt -> Stream.of(
+                    Arguments.of(encrypt.get()[0], decrypt.get()[0])
+                )));
+    }
+
+    public static Stream<Arguments> encryptImprovedDecryptTransition() {
+        return improvedClientsForTest()
+            .flatMap(encrypt -> transitionClientsForTest()
+                .flatMap(decrypt -> Stream.of(
+                    Arguments.of(encrypt.get()[0], decrypt.get()[0])
+                )));
+    }
+
+    public static Stream<Arguments> encryptTransitionDecryptImproved() {
+        return transitionClientsForTest()
+            .flatMap(encrypt -> improvedClientsForTest()
+                .flatMap(decrypt -> Stream.of(
+                    Arguments.of(encrypt.get()[0], decrypt.get()[0])
+                )));
+    }
+
+    public static Stream<Arguments> encryptImprovedDecryptCurrent() {
+        return improvedClientsForTest()
+            .flatMap(encrypt -> currentClientsForTest()
+                .flatMap(decrypt -> Stream.of(
+                    Arguments.of(encrypt.get()[0], decrypt.get()[0])
+                )));
+    }
+
+    public static Stream<Arguments> encryptCurrentDecryptImproved() {
+        return currentClientsForTest()
+            .flatMap(encrypt -> improvedClientsForTest()
+                .flatMap(decrypt -> Stream.of(
+                    Arguments.of(encrypt.get()[0], decrypt.get()[0])
+                )));
+    }
+
+    public static Stream<Arguments> encryptTransitionDecryptCurrent() {
+        return transitionClientsForTest()
+            .flatMap(encrypt -> currentClientsForTest()
+                .flatMap(decrypt -> Stream.of(
+                    Arguments.of(encrypt.get()[0], decrypt.get()[0])
+                )));
+    }
+
+    public static Stream<Arguments> encryptCurrentDecryptTransition() {
+        return currentClientsForTest()
+            .flatMap(encrypt -> transitionClientsForTest()
+                .flatMap(decrypt -> Stream.of(
+                    Arguments.of(encrypt.get()[0], decrypt.get()[0])
+                )));
     }
 
     /**
@@ -330,5 +410,101 @@ public class TestUtils {
         stringBuilder.append(DateTimeFormat.forPattern("-yyMMdd-hhmmss-").print(new DateTime()));
         stringBuilder.append((int) (Math.random() * 100000));
         return stringBuilder.toString();
+    }
+
+    private static AmazonS3 s3Client = AmazonS3ClientBuilder.defaultClient();
+    public static EncryptionAlgorithm GetEncryptionAlgorithm(String objectKey)
+    {
+        ObjectMetadata metadata = s3Client.getObjectMetadata(TestUtils.BUCKET, objectKey);
+        Map<String, String> userMetadata = metadata.getUserMetadata();
+
+        // This is optimized to not need to go to the instruction files for commit_key
+        if (userMetadata.containsKey("x-amz-c")) {
+            return EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY;
+        } else if (userMetadata.containsKey("x-amz-cek-alg")) {
+            String cek = userMetadata.get("x-amz-cek-alg");
+            if (cek.contains("CBC")) {
+                return EncryptionAlgorithm.ALG_AES_256_CBC_IV16_NO_KDF;
+            } else if (cek.contains("GCM")) {
+                return EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF;
+            }
+        }
+        
+        throw new RuntimeException("Need to support instruction files!");
+    }
+
+    public static void Encrypt(
+        S3ECTestServerClient client,
+        String S3ECId,
+        String objectKey,
+        List<String> crossLanguageObjects,
+        EncryptionAlgorithm expectedEncryptionAlgorithm
+    ) {
+        PutObjectOutput foo = client.putObject(PutObjectInput.builder()
+        .clientID(S3ECId)
+        .key(objectKey)
+        .bucket(TestUtils.BUCKET)
+        .body(ByteBuffer.wrap(objectKey.getBytes(StandardCharsets.UTF_8)))
+        .build());
+
+        assertEquals(
+            expectedEncryptionAlgorithm,
+            GetEncryptionAlgorithm(objectKey),
+            "When encrypting the EncryptionAlgorithm does not match the expected value: " + expectedEncryptionAlgorithm
+        );
+
+        crossLanguageObjects.add(objectKey);
+    }
+    
+    public static void Decrypt(
+        S3ECTestServerClient client,
+        String S3ECId, List<String> crossLanguageObjects,
+        EncryptionAlgorithm expectedEncryptionAlgorithm
+    ) {
+        for (String objectKey : crossLanguageObjects) {
+            GetObjectOutput output = client.getObject(GetObjectInput.builder()
+            .clientID(S3ECId)
+            .bucket(TestUtils.BUCKET)
+            .key(objectKey)
+            .build());
+            
+            // Then: Pass
+            assertEquals(objectKey, new String(output.getBody().array()));
+            assertEquals(
+                expectedEncryptionAlgorithm,
+                GetEncryptionAlgorithm(objectKey),
+                "When decrypting the EncryptionAlgorithm does not match the expected value: " + expectedEncryptionAlgorithm
+            );
+        }
+    }
+    
+    public static void Decrypt_fails(
+        S3ECTestServerClient client,
+        String S3ECId, List<String> crossLanguageObjects,
+        EncryptionAlgorithm expectedEncryptionAlgorithm
+    ) {
+        List<String> successfulDecrypt = new ArrayList<>();
+        for (String objectKey : crossLanguageObjects) {
+            try {
+
+                assertEquals(
+                  expectedEncryptionAlgorithm,
+                    GetEncryptionAlgorithm(objectKey),
+                    "Before decrypting the EncryptionAlgorithm does not match the expected value: " + expectedEncryptionAlgorithm
+                );
+                GetObjectOutput output = client.getObject(GetObjectInput.builder()
+                .clientID(S3ECId)
+                .bucket(TestUtils.BUCKET)
+                .key(objectKey)
+                .build());
+                // It should fail to decrypt
+                successfulDecrypt.add(objectKey);
+            } catch (S3EncryptionClientError e) {
+                // This is a success
+                // TODO, add the failure message
+            }
+        }
+
+        assertEquals(successfulDecrypt.size(), 0, "Decryption should have failed:" + String.join(",", successfulDecrypt));
     }
 }

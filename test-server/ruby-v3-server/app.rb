@@ -7,7 +7,7 @@ require_relative 'lib/logger'
 
 class S3ECRubyServer < Sinatra::Base
   configure do
-    set :port, 8092
+    set :port, ENV['PORT'] || 8092
     set :bind, '0.0.0.0'
     set :show_exceptions, false
     set :raise_errors, false
@@ -129,7 +129,7 @@ class S3ECRubyServer < Sinatra::Base
         metadata: response_metadata
       }.to_json
 
-    rescue Aws::S3::EncryptionV2::Errors::EncryptionError => e
+    rescue Aws::S3::EncryptionV2::Errors::EncryptionError, Aws::S3::EncryptionV3::Errors::EncryptionError => e
       S3ECLogger.log_error(e, { endpoint: '/put', error_category: 'EncryptionError' }, @request_id)
       ErrorHandlers.send_s3_encryption_client_error(self, e.message)
     rescue StandardError => e
@@ -198,7 +198,7 @@ class S3ECRubyServer < Sinatra::Base
       content_type 'application/octet-stream'
       body
 
-    rescue Aws::S3::EncryptionV2::Errors::DecryptionError => e
+    rescue Aws::S3::EncryptionV2::Errors::DecryptionError, Aws::S3::EncryptionV3::Errors::DecryptionError => e
       S3ECLogger.log_error(e, { endpoint: '/get', error_category: 'DecryptionError' }, @request_id)
       ErrorHandlers.send_s3_encryption_client_error(self, e.message)
     rescue StandardError => e
