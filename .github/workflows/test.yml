@@ -27,14 +27,14 @@ jobs:
           # ask Ryan to edit this PAT's permissions to add access to a new private repo.
           token: ${{ secrets.PAT_FOR_PRIVATE_RUBY }}
 
-      - name: Checkout CPP code
-        uses: actions/checkout@v5
-        with:
-          submodules: recursive
-          token: ${{ secrets.PAT_FOR_CPP }}
-          repository: awslabs/aws-sdk-cpp-staging
-          ref: fire-egg-dev
-          path: test-server/cpp-v2-transition-server/aws-sdk-cpp/
+      # - name: Checkout CPP code
+      #   uses: actions/checkout@v5
+      #   with:
+      #     submodules: recursive
+      #     token: ${{ secrets.PAT_FOR_CPP }}
+      #     repository: awslabs/aws-sdk-cpp-staging
+      #     ref: fire-egg-dev
+      #     path: test-server/cpp-v2-transition-server/aws-sdk-cpp/
 
       - name: Checkout .NET V2 code
         uses: actions/checkout@v5
