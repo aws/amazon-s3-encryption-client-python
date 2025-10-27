@@ -70,7 +70,7 @@ public class TestUtils {
     public static final String NET_V2_CURRENT = "NET-V2-Current";
     public static final String NET_V3_CURRENT = "NET-V3-Current";
     public static final String NET_V2_TRANSITION = "NET-V2-Transition";
-    public static final String NET_V3_TRANSITION = "NET-V2-Transition";
+    public static final String NET_V3_TRANSITION = "NET-V3-Transition";
     public static final String NET_V4 = "NET-V4";
 
     public static final String CPP_V2_CURRENT = "CPP-V2-Current";
@@ -145,16 +145,17 @@ public class TestUtils {
         // servers.put(RUBY_V2_CURRENT, new LanguageServerTarget(RUBY_V2_CURRENT, "8086"));
         servers.put(PHP_V2_CURRENT, new LanguageServerTarget(PHP_V2_CURRENT, "8087"));
         servers.put(GO_V4, new LanguageServerTarget(GO_V4, "8089"));
+        servers.put(NET_V4, new LanguageServerTarget(NET_V4, "8090"));
         servers.put(RUBY_V3, new LanguageServerTarget(RUBY_V3, "8092"));
         servers.put(PHP_V3, new LanguageServerTarget(PHP_V3, "8093"));
         // TODO: Create and add transition servers
         servers.put(JAVA_V3_TRANSITION, new LanguageServerTarget(JAVA_V3_TRANSITION, "8094"));
         // servers.put(GO_V3_TRANSITION, new LanguageServerTarget(GO_V3_TRANSITION, "8095"));
         // servers.put(NET_V2_TRANSITION, new LanguageServerTarget(NET_V2_TRANSITION, "8096"));
-        servers.put(NET_V3_TRANSITION, new LanguageServerTarget(NET_V3_TRANSITION, "8100"));
         // servers.put(CPP_V2_TRANSITION, new LanguageServerTarget(CPP_V2_TRANSITION, "8097"));
         servers.put(RUBY_V2_TRANSITION, new LanguageServerTarget(RUBY_V2_TRANSITION, "8098"));
         servers.put(PHP_V2_TRANSITION, new LanguageServerTarget(PHP_V2_TRANSITION, "8099"));
+        servers.put(NET_V3_TRANSITION, new LanguageServerTarget(NET_V3_TRANSITION, "8100"));
         servers.put(JAVA_V4, new LanguageServerTarget(JAVA_V4, "8090"));
         serverMap = filterServers(servers);
     }
