@@ -121,7 +121,7 @@ public class TestUtils {
         Set.of(
             // JAVA_V4,
             // PYTHON_V3,
-            // GO_V4,
+            GO_V4,
             // NET_V3,
             // CPP_V3,
             // PHP_V3,
