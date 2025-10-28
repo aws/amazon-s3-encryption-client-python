@@ -82,15 +82,15 @@ jobs:
             test-server/index.html
 
       - name: Setup Pages
-        if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
+        if: always() && github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
         uses: actions/configure-pages@v5
 
       - name: Upload Pages artifact
-        if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
+        if: always() && github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
         uses: actions/upload-pages-artifact@v3
         with:
           path: test-server/
 
       - name: Deploy to GitHub Pages
-        if: github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
+        if: always() && github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
         uses: actions/deploy-pages@v4
