@@ -44,7 +44,16 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
 
             logger.LogInformation("Created securityProfile= {securityProfile}", securityProfile.ToString());
 
-            var configuration = new AmazonS3CryptoConfigurationV2(securityProfile);
+            // Map request enums to SDK enums
+            var commitmentPolicy = MapCommitmentPolicy(request.Config.CommitmentPolicy);
+
+            // Currently, tests does not send EncryptionAlgorithm
+            // var encryptionAlgorithm = MapEncryptionAlgorithm(request.Config.EncryptionAlgorithm);
+            var encryptionAlgorithm = commitmentPolicy == Amazon.Extensions.S3.Encryption.CommitmentPolicy.ForbidEncryptAllowDecrypt ? ContentEncryptionAlgorithm.AesGcm : ContentEncryptionAlgorithm.AesGcmWithCommitment;
+            logger.LogInformation("Created commitmentPolicy= {commitmentPolicy}", commitmentPolicy);
+            logger.LogInformation("Created encryptionAlgorithm= {encryptionAlgorithm}", encryptionAlgorithm);
+
+            var configuration = new AmazonS3CryptoConfigurationV2(securityProfile, commitmentPolicy, encryptionAlgorithm);
             // Create S3 encryption client
             var encryptionClient = new AmazonS3EncryptionClientV2(configuration, encryptionMaterial);
             // Add to cache and return client ID
@@ -68,5 +77,26 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
                 Message = $"Failed to create client: {ex.Message}"
             });
         }
+    }
+
+    private static Amazon.Extensions.S3.Encryption.CommitmentPolicy MapCommitmentPolicy(Models.CommitmentPolicy? policy)
+    {
+        return policy switch
+        {
+            Models.CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT => Amazon.Extensions.S3.Encryption.CommitmentPolicy.RequireEncryptRequireDecrypt,
+            Models.CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT => Amazon.Extensions.S3.Encryption.CommitmentPolicy.RequireEncryptAllowDecrypt,
+            Models.CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT => Amazon.Extensions.S3.Encryption.CommitmentPolicy.ForbidEncryptAllowDecrypt,
+            _ => Amazon.Extensions.S3.Encryption.CommitmentPolicy.ForbidEncryptAllowDecrypt
+        };
+    }
+
+    private static ContentEncryptionAlgorithm MapEncryptionAlgorithm(Models.EncryptionAlgorithm? algorithm)
+    {
+        return algorithm switch
+        {
+            Models.EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF => ContentEncryptionAlgorithm.AesGcm,
+            Models.EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY => ContentEncryptionAlgorithm.AesGcmWithCommitment,
+            _ => ContentEncryptionAlgorithm.AesGcm
+        };
     }
 }
