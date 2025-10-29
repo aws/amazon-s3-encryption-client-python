@@ -11,6 +11,7 @@ import (
 
 	"github.com/aws/amazon-s3-encryption-client-go/v4/client"
 	"github.com/aws/amazon-s3-encryption-client-go/v4/materials"
+	"github.com/aws/amazon-s3-encryption-client-go/v4/commitment"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
@@ -42,6 +43,7 @@ type S3ECConfig struct {
 	EnableLegacyWrappingAlgorithms   bool        `json:"enableLegacyWrappingAlgorithms"`
 	SetBufferSize                    int64       `json:"setBufferSize"`
 	KeyMaterial                      KeyMaterial `json:"keyMaterial"`
+	CommitmentPolicy				 string      `json:"commitmentPolicy"`
 }
 
 // KeyMaterial represents the key material for encryption
@@ -147,6 +149,16 @@ func (s *Server) createClient(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var commitmentPolicy commitment.CommitmentPolicy
+	switch input.Config.CommitmentPolicy {
+	case "REQUIRE_ENCRYPT_REQUIRE_DECRYPT":
+		commitmentPolicy = commitment.REQUIRE_ENCRYPT_REQUIRE_DECRYPT
+	case "REQUIRE_ENCRYPT_ALLOW_DECRYPT":
+		commitmentPolicy = commitment.REQUIRE_ENCRYPT_ALLOW_DECRYPT
+	case "FORBID_ENCRYPT_ALLOW_DECRYPT":
+		commitmentPolicy = commitment.FORBID_ENCRYPT_ALLOW_DECRYPT
+	}
+
 	// Create KMS keyring
 	kmsClient := kms.NewFromConfig(cfg)
 	keyring := materials.NewKmsKeyring(kmsClient, input.Config.KeyMaterial.KMSKeyID, func(options *materials.KeyringOptions) {
@@ -162,7 +174,12 @@ func (s *Server) createClient(w http.ResponseWriter, r *http.Request) {
 	// Create S3 encryption client
 	var s3EncryptionClient *client.S3EncryptionClientV4
 	s3PlaintextClient := s3.NewFromConfig(cfg)
-	s3EncryptionClient, err = client.New(s3PlaintextClient, cmm)
+	s3EncryptionClient, err = client.New(s3PlaintextClient, cmm, func(clientOptions *client.EncryptionClientOptions) {
+		if input.Config.CommitmentPolicy != "" {
+			clientOptions.CommitmentPolicy = commitmentPolicy
+		}
+		clientOptions.EnableLegacyUnauthenticatedModes = input.Config.EnableLegacyUnauthenticatedModes
+	})
 
 	if err != nil {
 		s.createS3EncryptionClientError(w, fmt.Sprintf("Failed to create S3EC: %v", err), http.StatusInternalServerError)
