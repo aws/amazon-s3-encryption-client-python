@@ -1,10 +1,10 @@
 using System.Text.Json;
 using Amazon.S3.Model;
 using Microsoft.AspNetCore.Mvc;
-using NetV2V3Server.Models;
-using NetV2V3Server.Services;
+using NetV3TransitionServer.Models;
+using NetV3TransitionServer.Services;
 
-namespace NetV2V3Server.Controllers;
+namespace NetV3TransitionServer.Controllers;
 
 [ApiController]
 [Route("[controller]")]

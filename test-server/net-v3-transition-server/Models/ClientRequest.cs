@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
-namespace NetV2V3Server.Models;
+namespace NetV3TransitionServer.Models;
 
 public class ClientRequest
 {

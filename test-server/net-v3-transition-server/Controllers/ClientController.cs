@@ -2,10 +2,10 @@ using System.Text.Json;
 using Amazon.Extensions.S3.Encryption;
 using Amazon.Extensions.S3.Encryption.Primitives;
 using Microsoft.AspNetCore.Mvc;
-using NetV2V3Server.Models;
-using NetV2V3Server.Services;
+using NetV3TransitionServer.Models;
+using NetV3TransitionServer.Services;
 
-namespace NetV2V3Server.Controllers;
+namespace NetV3TransitionServer.Controllers;
 
 [ApiController]
 [Route("[controller]")]
@@ -47,7 +47,7 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             // Map request enums to SDK enums
             var commitmentPolicy = MapCommitmentPolicy(request.Config.CommitmentPolicy);
 
-            // Currently, tests does not send EncryptionAlgorithm
+            // Currently, tests does not send EncryptionAlgorithm. Tests only validates EncryptionAlgorithm from metadata of the response.
             // var encryptionAlgorithm = MapEncryptionAlgorithm(request.Config.EncryptionAlgorithm);
             var encryptionAlgorithm = commitmentPolicy == Amazon.Extensions.S3.Encryption.CommitmentPolicy.ForbidEncryptAllowDecrypt ? ContentEncryptionAlgorithm.AesGcm : ContentEncryptionAlgorithm.AesGcmWithCommitment;
             logger.LogInformation("Created commitmentPolicy= {commitmentPolicy}", commitmentPolicy);
@@ -90,6 +90,7 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
         };
     }
 
+    // This is redundant but useful when tests starts sending EncryptionAlgorithm
     private static ContentEncryptionAlgorithm MapEncryptionAlgorithm(Models.EncryptionAlgorithm? algorithm)
     {
         return algorithm switch
