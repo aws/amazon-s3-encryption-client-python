@@ -34,19 +34,29 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             // However, encryption context is a required field when using KMS.
             // So, we are passing empty dictionary.
             var encryptionContext = new Dictionary<string, string>();
-            var encryptionMaterial = new EncryptionMaterialsV2(kmsKeyId, KmsType.KmsContext, encryptionContext);
+            var encryptionMaterial = new EncryptionMaterialsV4(kmsKeyId, KmsType.KmsContext, encryptionContext);
             logger.LogInformation(
-                "Created EncryptionMaterialsV2: KMS={KmsKeyId}",
+                "Created EncryptionMaterialsV4: KMS={KmsKeyId}",
                 kmsKeyId);
-            // SecurityProfile V2AndLegacy can decrypt from legacy S3EC but V2 cannot
+            // SecurityProfile V4AndLegacy can decrypt from legacy S3EC but V4 cannot
             var enableLegacyMode = enableLegacyUnauthenticatedModes || enableLegacyWrappingAlgorithms;
-            var securityProfile = enableLegacyMode ? SecurityProfile.V2AndLegacy : SecurityProfile.V2;
+            var securityProfile = enableLegacyMode ? SecurityProfile.V4AndLegacy : SecurityProfile.V4;
 
             logger.LogInformation("Created securityProfile= {securityProfile}", securityProfile.ToString());
+            
+            // Map request enums to SDK enums
+            var commitmentPolicy = MapCommitmentPolicy(request.Config.CommitmentPolicy);
 
-            var configuration = new AmazonS3CryptoConfigurationV2(securityProfile);
+            // Currently, tests does not send EncryptionAlgorithm
+            // var encryptionAlgorithm = MapEncryptionAlgorithm(request.Config.EncryptionAlgorithm);
+            var encryptionAlgorithm = commitmentPolicy == Amazon.Extensions.S3.Encryption.CommitmentPolicy.ForbidEncryptAllowDecrypt ? ContentEncryptionAlgorithm.AesGcm : ContentEncryptionAlgorithm.AesGcmWithCommitment;
+            logger.LogInformation("Created commitmentPolicy= {commitmentPolicy}", commitmentPolicy);
+            logger.LogInformation("Created encryptionAlgorithm= {encryptionAlgorithm}", encryptionAlgorithm);
+
+            var configuration = new AmazonS3CryptoConfigurationV4(securityProfile, commitmentPolicy, encryptionAlgorithm);
+            
             // Create S3 encryption client
-            var encryptionClient = new AmazonS3EncryptionClientV2(configuration, encryptionMaterial);
+            var encryptionClient = new AmazonS3EncryptionClientV4(configuration, encryptionMaterial);
             // Add to cache and return client ID
             var clientId = clientCacheService.AddClient(encryptionClient);
             var response = new ClientResponse { ClientId = clientId };
@@ -68,5 +78,26 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
                 Message = $"Failed to create client: {ex.Message}"
             });
         }
+    }
+    
+    private static Amazon.Extensions.S3.Encryption.CommitmentPolicy MapCommitmentPolicy(Models.CommitmentPolicy? policy)
+    {
+        return policy switch
+        {
+            Models.CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT => Amazon.Extensions.S3.Encryption.CommitmentPolicy.RequireEncryptRequireDecrypt,
+            Models.CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT => Amazon.Extensions.S3.Encryption.CommitmentPolicy.RequireEncryptAllowDecrypt,
+            Models.CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT => Amazon.Extensions.S3.Encryption.CommitmentPolicy.ForbidEncryptAllowDecrypt,
+            _ => Amazon.Extensions.S3.Encryption.CommitmentPolicy.ForbidEncryptAllowDecrypt
+        };
+    }
+
+    private static ContentEncryptionAlgorithm MapEncryptionAlgorithm(Models.EncryptionAlgorithm? algorithm)
+    {
+        return algorithm switch
+        {
+            Models.EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF => ContentEncryptionAlgorithm.AesGcm,
+            Models.EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY => ContentEncryptionAlgorithm.AesGcmWithCommitment,
+            _ => ContentEncryptionAlgorithm.AesGcm
+        };
     }
 }

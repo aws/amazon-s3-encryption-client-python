@@ -5,22 +5,22 @@ namespace NetV4Server.Services;
 
 public interface IClientCacheService
 {
-    string AddClient(AmazonS3EncryptionClientV2 client);
-    AmazonS3EncryptionClientV2? GetClient(string clientId);
+    string AddClient(AmazonS3EncryptionClientV4 client);
+    AmazonS3EncryptionClientV4? GetClient(string clientId);
 }
 
 public class ClientCacheService : IClientCacheService
 {
-    private readonly ConcurrentDictionary<string, AmazonS3EncryptionClientV2> _clients = new();
+    private readonly ConcurrentDictionary<string, AmazonS3EncryptionClientV4> _clients = new();
 
-    public string AddClient(AmazonS3EncryptionClientV2 client)
+    public string AddClient(AmazonS3EncryptionClientV4 client)
     {
         var clientId = Guid.NewGuid().ToString();
         _clients[clientId] = client;
         return clientId;
     }
 
-    public AmazonS3EncryptionClientV2? GetClient(string clientId)
+    public AmazonS3EncryptionClientV4? GetClient(string clientId)
     {
         _clients.TryGetValue(clientId, out var client);
         return client;
