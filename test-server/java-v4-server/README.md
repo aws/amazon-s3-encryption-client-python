@@ -18,6 +18,6 @@ To run the server:
 gradle run
 ```
 
-This will start the server running on port `8090`.
+This will start the server running on port `8088`.
 
 The server is used as part of the testing framework to verify cross-language compatibility of the S3 Encryption Client implementations.
