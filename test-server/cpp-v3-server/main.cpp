@@ -16,7 +16,7 @@
 using json = nlohmann::json;
 using namespace Aws::S3Encryption;
 using Aws::S3Encryption::Materials::KMSWithContextEncryptionMaterials;
-std::unordered_map<std::string, std::shared_ptr<S3EncryptionClientV2>>
+std::unordered_map<std::string, std::shared_ptr<S3EncryptionClientV3>>
     client_cache;
 
 std::string generate_uuid() {
@@ -50,6 +50,11 @@ std::string make_error(const std::string &message, int status_code) {
          message + "\"}";
 }
 
+MHD_Result unsupported(struct MHD_Connection *connection) {
+    send_response(connection, 404, "{\"error\":\"Unsupported Option.\"}");
+    return MHD_YES;
+}
+
 MHD_Result handle_create_client(struct MHD_Connection *connection,
                                 const std::string &body) {
   try {
@@ -62,7 +67,22 @@ MHD_Result handle_create_client(struct MHD_Connection *connection,
         std::make_shared<KMSWithContextEncryptionMaterials>(kms_key_id);
     CryptoConfigurationV3 config(materials);
     if (legacy1 || legacy2)
-      config.allowLegacy();
+      config.AllowLegacy();
+
+    std::string commitmentPolicy = request["config"]["commitmentPolicy"];
+    std::string encryptionAlgorithm = request["config"]["encryptionAlgorithm"];
+  
+    if (encryptionAlgorithm == "ALG_AES_256_CBC_IV16_NO_KDF") return unsupported(connection);
+    if (commitmentPolicy == "REQUIRE_ENCRYPT_REQUIRE_DECRYPT") {
+      if (encryptionAlgorithm == "ALG_AES_256_GCM_IV12_TAG16_NO_KDF") return unsupported(connection);
+      config.SetCommitmentPolicy(CommitmentPolicy::REQUIRE_ENCRYPT_REQUIRE_DECRYPT);
+    } else if (commitmentPolicy == "REQUIRE_ENCRYPT_ALLOW_DECRYPT") {
+      if (encryptionAlgorithm == "ALG_AES_256_GCM_IV12_TAG16_NO_KDF") return unsupported(connection);
+      config.SetCommitmentPolicy(CommitmentPolicy::REQUIRE_ENCRYPT_ALLOW_DECRYPT);
+    } else if (commitmentPolicy == "FORBID_ENCRYPT_ALLOW_DECRYPT") {
+      if (encryptionAlgorithm == "ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY") return unsupported(connection);
+      config.SetCommitmentPolicy(CommitmentPolicy::FORBID_ENCRYPT_ALLOW_DECRYPT);
+    }
 
     auto encryption_client = std::make_shared<S3EncryptionClientV3>(config);
 
@@ -73,7 +93,7 @@ MHD_Result handle_create_client(struct MHD_Connection *connection,
     return send_response(connection, 200, response.dump());
   } catch (const std::exception &e) {
     return send_response(connection, 500,
-                         "{\"error\":\"An exception was thrown.\"}");
+                        "{\"error\":\"An exception was thrown.\"}");
   } catch (...) {
     return send_response(connection, 500, "{\"error\":\"Unknown error\"}");
   }

@@ -50,10 +50,26 @@ std::string make_error(const std::string &message, int status_code) {
          message + "\"}";
 }
 
+bool unsupported(std::string& commitmentPolicy, std::string& encryptionAlgorithm)
+{
+  if (encryptionAlgorithm == "ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY") return true;
+  if (commitmentPolicy == "REQUIRE_ENCRYPT_REQUIRE_DECRYPT") return true;
+  if (commitmentPolicy == "REQUIRE_ENCRYPT_ALLOW_DECRYPT") return true;
+  return false;
+}
+
 MHD_Result handle_create_client(struct MHD_Connection *connection,
                                 const std::string &body) {
   try {
     json request = json::parse(body);
+    std::string commitmentPolicy = request["config"]["commitmentPolicy"];
+    std::string encryptionAlgorithm = request["config"]["encryptionAlgorithm"];
+    
+    if (unsupported(commitmentPolicy, encryptionAlgorithm)) {
+      send_response(connection, 404, "{\"error\":\"Unsupported Option.\"}");
+      return MHD_YES;
+    }
+
     std::string kms_key_id = request["config"]["keyMaterial"]["kmsKeyId"];
     bool legacy1 = request["config"]["enableLegacyWrappingAlgorithms"];
     bool legacy2 = request["config"]["enableLegacyUnauthenticatedModes"];
