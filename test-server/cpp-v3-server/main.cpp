@@ -68,6 +68,7 @@ std::string get_config(json & request, const char * x)
 MHD_Result handle_create_client(struct MHD_Connection *connection,
                                 const std::string &body) {
   try {
+    fprintf(stderr, "CPP V3 create_client called with %s\n", body.c_str());
     json request = json::parse(body);
     std::string kms_key_id = request["config"]["keyMaterial"]["kmsKeyId"];
     bool legacy1 = request["config"]["enableLegacyWrappingAlgorithms"];
@@ -81,6 +82,8 @@ MHD_Result handle_create_client(struct MHD_Connection *connection,
 
     std::string commitmentPolicy = get_config(request, "commitmentPolicy");
     std::string encryptionAlgorithm = get_config(request, "encryptionAlgorithm");
+    fprintf(stderr, "CPP V3 create_client got <%s> <%s>\n", commitmentPolicy.c_str(), encryptionAlgorithm.c_str());
+
   
     if (commitmentPolicy == "REQUIRE_ENCRYPT_REQUIRE_DECRYPT") {
       if (encryptionAlgorithm == "ALG_AES_256_GCM_IV12_TAG16_NO_KDF") return unsupported(connection, commitmentPolicy, encryptionAlgorithm);
