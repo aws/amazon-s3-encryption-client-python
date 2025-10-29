@@ -126,7 +126,7 @@ public class TestUtils {
             // JAVA_V4,
             // PYTHON_V3,
             GO_V4,
-            // NET_V4,
+            NET_V4,
             // CPP_V3,
             // PHP_V3,
             RUBY_V3
