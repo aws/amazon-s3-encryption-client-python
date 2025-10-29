@@ -19,6 +19,7 @@ function handleCreateClient()
     $legacyAlgorithms = $configData["enableLegacyWrappingAlgorithms"] ?? false;
     $clientId = Uuid::uuid4()->toString();
     $kmsKeyId = $keyMaterial["kmsKeyId"] ?? null;
+    $commitmentPolicy = $configData['commitmentPolicy'] ?? "REQUIRE_ENCRYPT_REQUIRE_DECRYPT";
 
     if (empty($configData)) {
         return GenericServerError("Invalid config in request body", 400);
@@ -55,6 +56,7 @@ function handleCreateClient()
         ],
         'kmsKeyId' => $kmsKeyId,
         'legacy' => $legacyAlgorithms,
+        'commitmentPolicy' => $commitmentPolicy,
         'created' => time()
     ];
 
