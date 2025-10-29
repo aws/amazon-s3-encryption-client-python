@@ -6,7 +6,7 @@
 all: start-all-servers run-tests
 
 # CI target for GitHub Actions
-ci: start-all-servers run-tests stop-servers
+ci: start-servers run-tests stop-servers
 
 SERVER_DIRS := $(shell find . -maxdepth 1 -type d -name '*-server' | sed 's|^\./||' | $(if $(FILTER),grep -E "$$(echo '$(FILTER)' | sed 's/,/|/g')",cat) | sort)
 # SERVER_DIRS := cpp-v3-server
