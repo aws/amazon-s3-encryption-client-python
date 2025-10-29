@@ -11,9 +11,9 @@ public class ClientRequest
 
 public class ClientConfig
 {
-    public bool EnableLegacyUnauthenticatedModes { get; set; } = false;
-    public bool EnableLegacyWrappingAlgorithms { get; set; } = false;
-    public bool EnableDelayedAuthenticationMode { get; set; } = false;
+    public bool? EnableLegacyUnauthenticatedModes { get; set; }
+    public bool? EnableLegacyWrappingAlgorithms { get; set; } 
+    public bool? EnableDelayedAuthenticationMode { get; set; }
     public long? SetBufferSize { get; set; }
     [Required]
     public KeyMaterial KeyMaterial { get; set; } = new();

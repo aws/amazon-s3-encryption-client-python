@@ -49,8 +49,8 @@ All object operations require a `clientId` header to specify which client to use
 curl -i -X POST \
  -H "Content-Type: application/json" \
  -H "User-Agent: smithy-java/0.0.3 ua/2.1 os/macos#15.5 lang/java#23.0.2" \
- -d '{"config":{"enableLegacyUnauthenticatedModes":true,"enableLegacyWrappingAlgorithms":true,"keyMaterial":{"kmsKeyId":"arn:aws:kms:us-west-2:370957321024:alias/S3EC-Test-Server-Github-KMS-Key"}, "encryptionContext": {"abc": "b"}}}' \
-    http://localhost:8083/client
+ -d '{"config":{"keyMaterial":{"kmsKeyId":"arn:aws:kms:us-west-2:370957321024:alias/S3EC-Test-Server-Github-KMS-Key"}, "encryptionContext": {"abc": "b"}, "CommitmentPolicy":"FORBID_ENCRYPT_ALLOW_DECRYPT"}}' \
+    http://localhost:8090/client
 ```
 
 ### Upload an Object

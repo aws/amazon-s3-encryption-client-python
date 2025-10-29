@@ -15,7 +15,7 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
     public IActionResult CreateClient([FromBody] ClientRequest request)
     {
         // Return 501 for not implemented features by the server
-        if (request.Config.EnableDelayedAuthenticationMode)
+        if (request.Config.EnableDelayedAuthenticationMode ?? false)
             return StatusCode(501, new GenericServerError { Message = "EnableDelayedAuthenticationMode not supported" });
         if (request.Config.SetBufferSize.HasValue)
             return StatusCode(501, new GenericServerError { Message = "SetBufferSize not supported" });
@@ -23,13 +23,16 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             return StatusCode(501, new GenericServerError { Message = "RsaKey not supported" });
         if (request.Config.KeyMaterial.AesKey != null)
             return StatusCode(501, new GenericServerError { Message = "AesKey not supported" });
-
-        var kmsKeyId = request.Config.KeyMaterial.KmsKeyId;
-        var enableLegacyUnauthenticatedModes = request.Config.EnableLegacyUnauthenticatedModes;
-        var enableLegacyWrappingAlgorithms = request.Config.EnableLegacyWrappingAlgorithms;
         
         try
         {
+            var kmsKeyId = request.Config.KeyMaterial.KmsKeyId;
+            var enableLegacyUnauthenticatedModes = request.Config.EnableLegacyUnauthenticatedModes ?? false;
+            var enableLegacyWrappingAlgorithms = request.Config.EnableLegacyWrappingAlgorithms ?? false;
+            var commitmentPolicy = MapCommitmentPolicy(request.Config.CommitmentPolicy);
+            var isSecurityProfileProvided = request.Config.EnableLegacyUnauthenticatedModes.HasValue || request.Config.EnableLegacyWrappingAlgorithms.HasValue;
+            var isCommitmentPolicyProvided = request.Config.CommitmentPolicy.HasValue;
+            
             // The POST request does not contain encryption context. 
             // However, encryption context is a required field when using KMS.
             // So, we are passing empty dictionary.
@@ -38,14 +41,11 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             logger.LogInformation(
                 "Created EncryptionMaterialsV4: KMS={KmsKeyId}",
                 kmsKeyId);
+            
             // SecurityProfile V4AndLegacy can decrypt from legacy S3EC but V4 cannot
             var enableLegacyMode = enableLegacyUnauthenticatedModes || enableLegacyWrappingAlgorithms;
             var securityProfile = enableLegacyMode ? SecurityProfile.V4AndLegacy : SecurityProfile.V4;
-
             logger.LogInformation("Created securityProfile= {securityProfile}", securityProfile.ToString());
-            
-            // Map request enums to SDK enums
-            var commitmentPolicy = MapCommitmentPolicy(request.Config.CommitmentPolicy);
 
             // Currently, tests does not send EncryptionAlgorithm
             // var encryptionAlgorithm = MapEncryptionAlgorithm(request.Config.EncryptionAlgorithm);
@@ -53,7 +53,9 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             logger.LogInformation("Created commitmentPolicy= {commitmentPolicy}", commitmentPolicy);
             logger.LogInformation("Created encryptionAlgorithm= {encryptionAlgorithm}", encryptionAlgorithm);
 
-            var configuration = new AmazonS3CryptoConfigurationV4(securityProfile, commitmentPolicy, encryptionAlgorithm);
+            var configuration = (!isSecurityProfileProvided && !isCommitmentPolicyProvided) 
+                ? new AmazonS3CryptoConfigurationV4() 
+                : new AmazonS3CryptoConfigurationV4(securityProfile, commitmentPolicy, encryptionAlgorithm);
             
             // Create S3 encryption client
             var encryptionClient = new AmazonS3EncryptionClientV4(configuration, encryptionMaterial);
