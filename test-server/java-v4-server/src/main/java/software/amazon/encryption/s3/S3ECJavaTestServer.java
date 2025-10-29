@@ -15,7 +15,7 @@ import software.amazon.smithy.java.server.Server;
 import software.amazon.encryption.s3.service.S3ECTestServer;
 
 public class S3ECJavaTestServer implements Runnable {
-    static final URI endpoint = URI.create("http://localhost:8098");
+    static final URI endpoint = URI.create("http://localhost:8088");
 
     public static void main(String[] args) {
         new S3ECJavaTestServer().run();
