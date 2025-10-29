@@ -58,12 +58,21 @@ bool unsupported(std::string& commitmentPolicy, std::string& encryptionAlgorithm
   return false;
 }
 
+std::string get_config(json & request, const char * x)
+{
+  if (!request.contains("config")) return "";
+  auto config = request["config"];
+  if (config.contains(x))
+    return config[x];
+  return "";
+}
+
 MHD_Result handle_create_client(struct MHD_Connection *connection,
                                 const std::string &body) {
   try {
     json request = json::parse(body);
-    std::string commitmentPolicy = request["config"]["commitmentPolicy"];
-    std::string encryptionAlgorithm = request["config"]["encryptionAlgorithm"];
+    std::string commitmentPolicy = get_config(request, "commitmentPolicy");
+    std::string encryptionAlgorithm = get_config(request, "encryptionAlgorithm");
     
     if (unsupported(commitmentPolicy, encryptionAlgorithm)) {
       send_response(connection, 404, "{\"error\":\"Unsupported Option.\"}");
