@@ -116,7 +116,7 @@ public class TestUtils {
             // GO_V3_TRANSITION,
             // NET_V2_TRANSITION,
             NET_V3_TRANSITION,
-            // CPP_V2_TRANSITION,
+            CPP_V2_TRANSITION,
             // PHP_V2_TRANSITION,
             RUBY_V2_TRANSITION
         );
