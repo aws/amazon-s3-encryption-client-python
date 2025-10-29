@@ -50,9 +50,19 @@ std::string make_error(const std::string &message, int status_code) {
          message + "\"}";
 }
 
-MHD_Result unsupported(struct MHD_Connection *connection) {
+MHD_Result unsupported(struct MHD_Connection *connection, std::string & commitmentPolicy, std::string & encryptionAlgorithm) {
+    fprintf(stderr, "Unsupported %s %s\n",commitmentPolicy.c_str(), encryptionAlgorithm.c_str() );
     send_response(connection, 404, "{\"error\":\"Unsupported Option.\"}");
     return MHD_YES;
+}
+
+std::string get_config(json & request, const char * x)
+{
+  if (!request.contains("config")) return "";
+  auto config = request["config"];
+  if (config.contains(x))
+    return config[x];
+  return "";
 }
 
 MHD_Result handle_create_client(struct MHD_Connection *connection,
@@ -69,18 +79,18 @@ MHD_Result handle_create_client(struct MHD_Connection *connection,
     if (legacy1 || legacy2)
       config.AllowLegacy();
 
-    std::string commitmentPolicy = request["config"]["commitmentPolicy"];
-    std::string encryptionAlgorithm = request["config"]["encryptionAlgorithm"];
+    std::string commitmentPolicy = get_config(request, "commitmentPolicy");
+    std::string encryptionAlgorithm = get_config(request, "encryptionAlgorithm");
   
-    if (encryptionAlgorithm == "ALG_AES_256_CBC_IV16_NO_KDF") return unsupported(connection);
     if (commitmentPolicy == "REQUIRE_ENCRYPT_REQUIRE_DECRYPT") {
-      if (encryptionAlgorithm == "ALG_AES_256_GCM_IV12_TAG16_NO_KDF") return unsupported(connection);
+      if (encryptionAlgorithm == "ALG_AES_256_GCM_IV12_TAG16_NO_KDF") return unsupported(connection, commitmentPolicy, encryptionAlgorithm);
+    if (encryptionAlgorithm == "ALG_AES_256_CBC_IV16_NO_KDF") return unsupported(connection, commitmentPolicy, encryptionAlgorithm);
       config.SetCommitmentPolicy(CommitmentPolicy::REQUIRE_ENCRYPT_REQUIRE_DECRYPT);
     } else if (commitmentPolicy == "REQUIRE_ENCRYPT_ALLOW_DECRYPT") {
-      if (encryptionAlgorithm == "ALG_AES_256_GCM_IV12_TAG16_NO_KDF") return unsupported(connection);
+      if (encryptionAlgorithm == "ALG_AES_256_GCM_IV12_TAG16_NO_KDF") return unsupported(connection, commitmentPolicy, encryptionAlgorithm);
       config.SetCommitmentPolicy(CommitmentPolicy::REQUIRE_ENCRYPT_ALLOW_DECRYPT);
     } else if (commitmentPolicy == "FORBID_ENCRYPT_ALLOW_DECRYPT") {
-      if (encryptionAlgorithm == "ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY") return unsupported(connection);
+      if (encryptionAlgorithm == "ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY") return unsupported(connection, commitmentPolicy, encryptionAlgorithm);
       config.SetCommitmentPolicy(CommitmentPolicy::FORBID_ENCRYPT_ALLOW_DECRYPT);
     }
 
@@ -92,6 +102,7 @@ MHD_Result handle_create_client(struct MHD_Connection *connection,
     json response = {{"clientId", client_id}};
     return send_response(connection, 200, response.dump());
   } catch (const std::exception &e) {
+    fprintf(stderr, "handle_create_client exception %s\n", e.what());
     return send_response(connection, 500,
                         "{\"error\":\"An exception was thrown.\"}");
   } catch (...) {
@@ -187,9 +198,11 @@ MHD_Result handle_get_object(struct MHD_Connection *connection,
       return send_response(connection, 200, content);
     } else {
       auto msg = make_error(outcome.GetError().GetMessage(), 500);
+    fprintf(stderr, "handle_get_object error %s\n", msg.c_str());
       return send_response(connection, 500, msg);
     }
   } catch (const std::exception &e) {
+    fprintf(stderr, "handle_get_object exception %s\n", e.what());
     auto msg = make_error("An exception was thrown", 500);
     return send_response(connection, 500, msg);
   }
@@ -222,9 +235,11 @@ MHD_Result handle_put_object(struct MHD_Connection *connection,
       return send_response(connection, 200, response.dump());
     } else {
       auto msg = make_error(outcome.GetError().GetMessage(), 500);
+    fprintf(stderr, "handle_put_object error %s\n", msg.c_str());
       return send_response(connection, 500, msg);
     }
   } catch (const std::exception &e) {
+    fprintf(stderr, "handle_put_object exception %s\n", e.what());
     auto msg = make_error(e.what(), 500);
     return send_response(connection, 500, msg);
   }
