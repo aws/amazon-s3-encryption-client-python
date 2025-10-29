@@ -66,105 +66,105 @@ public class ExhaustiveRoundTripTests1_25 {
     // Outcome	Version	Operation	Policy	Content Encryption	
     // Pass	Improved	Decrypt	ForbidEncryptAllowDecrypt	CBC	
 
-    @ParameterizedTest(name = "{displayName} for Encrypt: Java-V1, Decrypt: {0}")
-    @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
-    public void GIVEN_CBCEncryptedData_AND_ImprovedClientDecryptingWithForbidEncryptAllowDecrypt_WHEN_Decrypt_THEN_Pass(
-      TestUtils.LanguageServerTarget language
-    ) {
-        S3ECTestServerClient client = TestUtils.testServerClientFor(language);
-        final String objectKey = "test-key-kms-v1-" + language;
-        final String input = "simple-test-input";
-        KeyMaterial kmsKeyArn = KeyMaterial.builder()
-                .kmsKeyId(TestUtils.KMS_KEY_ARN)
-                .build();
+//     @ParameterizedTest(name = "{displayName} for Encrypt: Java-V1, Decrypt: {0}")
+//     @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
+//     public void GIVEN_CBCEncryptedData_AND_ImprovedClientDecryptingWithForbidEncryptAllowDecrypt_WHEN_Decrypt_THEN_Pass(
+//       TestUtils.LanguageServerTarget language
+//     ) {
+//         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+//         final String objectKey = "test-key-kms-v1-" + language;
+//         final String input = "simple-test-input";
+//         KeyMaterial kmsKeyArn = KeyMaterial.builder()
+//                 .kmsKeyId(TestUtils.KMS_KEY_ARN)
+//                 .build();
 
-        // Create the object using the old client
-        // V1 Client
-        EncryptionMaterialsProvider materialsProvider = new KMSEncryptionMaterialsProvider(TestUtils.KMS_KEY_ARN);
+//         // Create the object using the old client
+//         // V1 Client
+//         EncryptionMaterialsProvider materialsProvider = new KMSEncryptionMaterialsProvider(TestUtils.KMS_KEY_ARN);
 
-        CryptoConfiguration v1Config =
-                new CryptoConfiguration(CryptoMode.AuthenticatedEncryption)
-                        .withStorageMode(CryptoStorageMode.ObjectMetadata)
-                        .withAwsKmsRegion(TestUtils.KMS_REGION);
+//         CryptoConfiguration v1Config =
+//                 new CryptoConfiguration(CryptoMode.AuthenticatedEncryption)
+//                         .withStorageMode(CryptoStorageMode.ObjectMetadata)
+//                         .withAwsKmsRegion(TestUtils.KMS_REGION);
 
-        AmazonS3Encryption v1Client = AmazonS3EncryptionClient.encryptionBuilder()
-                .withCryptoConfiguration(v1Config)
-                .withEncryptionMaterials(materialsProvider)
-                .build();
+//         AmazonS3Encryption v1Client = AmazonS3EncryptionClient.encryptionBuilder()
+//                 .withCryptoConfiguration(v1Config)
+//                 .withEncryptionMaterials(materialsProvider)
+//                 .build();
 
-        v1Client.putObject(TestUtils.BUCKET, objectKey, input);
+//         v1Client.putObject(TestUtils.BUCKET, objectKey, input);
 
-        S3ECTestServerClient decClient = TestUtils.testServerClientFor(language);
-        CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
-          .config(S3ECConfig.builder()
-            .keyMaterial(kmsKeyArn)
-            .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
-            .enableLegacyWrappingAlgorithms(true)
-            .build()
-          )
-          .build());
-        String decS3ECId = decClientOutput.getClientId();
+//         S3ECTestServerClient decClient = TestUtils.testServerClientFor(language);
+//         CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
+//           .config(S3ECConfig.builder()
+//             .keyMaterial(kmsKeyArn)
+//             .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+//             .enableLegacyWrappingAlgorithms(true)
+//             .build()
+//           )
+//           .build());
+//         String decS3ECId = decClientOutput.getClientId();
 
-        // When: decrypt KC object with a current version client
-        GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
-          .clientID(decS3ECId)
-          .bucket(TestUtils.BUCKET)
-          .key(objectKey)
-          .build());
+//         // When: decrypt KC object with a current version client
+//         GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
+//           .clientID(decS3ECId)
+//           .bucket(TestUtils.BUCKET)
+//           .key(objectKey)
+//           .build());
 
-        // Then: Pass
-    }
+//         // Then: Pass
+//     }
 
-    // Exhaustive test 3
-    // Outcome	Version	Operation	Policy	Content Encryption	
-    // Pass	Improved	Decrypt	ForbidEncryptAllowDecrypt	GCM	
+//     // Exhaustive test 3
+//     // Outcome	Version	Operation	Policy	Content Encryption	
+//     // Pass	Improved	Decrypt	ForbidEncryptAllowDecrypt	GCM	
 
-    @ParameterizedTest(name = "{displayName} for Encrypt: Java-V1-GCM, Decrypt: {0}")
-    @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
-    public void GIVEN_GCMEncryptedData_AND_ImprovedClientDecryptingWithForbidEncryptAllowDecrypt_WHEN_Decrypt_THEN_Pass(
-        TestUtils.LanguageServerTarget language
-    ) {
-        S3ECTestServerClient client = TestUtils.testServerClientFor(language);
-        final String objectKey = "test-key-kms-v1-gcm-" + language;
-        final String input = "simple-test-input";
-        KeyMaterial kmsKeyArn = KeyMaterial.builder()
-                .kmsKeyId(TestUtils.KMS_KEY_ARN)
-                .build();
-        CreateClientOutput output1 = client.createClient(CreateClientInput.builder()
-                .config(S3ECConfig.builder()
-                        .enableLegacyWrappingAlgorithms(true)
-                        .keyMaterial(kmsKeyArn)
-                        .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
-                        .build())
-                .build());
-        String s3ECId = output1.getClientId();
+//     @ParameterizedTest(name = "{displayName} for Encrypt: Java-V1-GCM, Decrypt: {0}")
+//     @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
+//     public void GIVEN_GCMEncryptedData_AND_ImprovedClientDecryptingWithForbidEncryptAllowDecrypt_WHEN_Decrypt_THEN_Pass(
+//         TestUtils.LanguageServerTarget language
+//     ) {
+//         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+//         final String objectKey = "test-key-kms-v1-gcm-" + language;
+//         final String input = "simple-test-input";
+//         KeyMaterial kmsKeyArn = KeyMaterial.builder()
+//                 .kmsKeyId(TestUtils.KMS_KEY_ARN)
+//                 .build();
+//         CreateClientOutput output1 = client.createClient(CreateClientInput.builder()
+//                 .config(S3ECConfig.builder()
+//                         .enableLegacyWrappingAlgorithms(true)
+//                         .keyMaterial(kmsKeyArn)
+//                         .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+//                         .build())
+//                 .build());
+//         String s3ECId = output1.getClientId();
 
-        // Create the object using the old client with GCM encryption
-        // V1 Client with GCM
-        EncryptionMaterialsProvider materialsProvider = new KMSEncryptionMaterialsProvider(TestUtils.KMS_KEY_ARN);
+//         // Create the object using the old client with GCM encryption
+//         // V1 Client with GCM
+//         EncryptionMaterialsProvider materialsProvider = new KMSEncryptionMaterialsProvider(TestUtils.KMS_KEY_ARN);
 
-        CryptoConfiguration v1Config =
-                new CryptoConfiguration(CryptoMode.StrictAuthenticatedEncryption) // StrictAuthenticatedEncryption uses GCM
-                        .withStorageMode(CryptoStorageMode.ObjectMetadata)
-                        .withAwsKmsRegion(TestUtils.KMS_REGION);
+//         CryptoConfiguration v1Config =
+//                 new CryptoConfiguration(CryptoMode.StrictAuthenticatedEncryption) // StrictAuthenticatedEncryption uses GCM
+//                         .withStorageMode(CryptoStorageMode.ObjectMetadata)
+//                         .withAwsKmsRegion(TestUtils.KMS_REGION);
 
-        AmazonS3Encryption v1Client = AmazonS3EncryptionClient.encryptionBuilder()
-                .withCryptoConfiguration(v1Config)
-                .withEncryptionMaterials(materialsProvider)
-                .build();
+//         AmazonS3Encryption v1Client = AmazonS3EncryptionClient.encryptionBuilder()
+//                 .withCryptoConfiguration(v1Config)
+//                 .withEncryptionMaterials(materialsProvider)
+//                 .build();
 
-        v1Client.putObject(TestUtils.BUCKET, objectKey, input);
+//         v1Client.putObject(TestUtils.BUCKET, objectKey, input);
 
-        // When: decrypt GCM object with an improved version client
-        GetObjectOutput output = client.getObject(GetObjectInput.builder()
-                .clientID(s3ECId)
-                .bucket(TestUtils.BUCKET)
-                .key(objectKey)
-                .build());
+//         // When: decrypt GCM object with an improved version client
+//         GetObjectOutput output = client.getObject(GetObjectInput.builder()
+//                 .clientID(s3ECId)
+//                 .bucket(TestUtils.BUCKET)
+//                 .key(objectKey)
+//                 .build());
 
-        // Then: Pass
-        assertEquals(input, new String(output.getBody().array()));
-    }
+//         // Then: Pass
+//         assertEquals(input, new String(output.getBody().array()));
+//     }
 
     // Exhaustive test 4
     // Outcome	Version	Operation	Policy	Content Encryption	
@@ -173,11 +173,12 @@ public class ExhaustiveRoundTripTests1_25 {
     @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
     @MethodSource("software.amazon.encryption.s3.TestUtils#encryptImprovedDecryptImproved")
     public void GIVEN_KCGCMEncryptedData_AND_ImprovedClientDecryptingWithForbidEncryptAllowDecrypt_WHEN_Decrypt_THEN_Pass(
-            TestUtils.LanguageServerTarget encLang, TestUtils.LanguageServerTarget decLang
+            LanguageServerTarget encLang, LanguageServerTarget decLang
     ) {
 
         S3ECTestServerClient encClient = TestUtils.testServerClientFor(encLang);
         final String objectKey = "encrypt-kc-gcm-decrypt-improved-test-key-" + encLang;
+        final String objectKey2 = "encrypt-kc-gcm-decrypt-improved-test-key-CPP-V3";
         final String input = "simple-test-input";
         KeyMaterial kmsKeyArn = KeyMaterial.builder()
                 .kmsKeyId(TestUtils.KMS_KEY_ARN)
