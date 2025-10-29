@@ -130,7 +130,7 @@ public class CreateClientOperationImpl implements CreateClientOperation {
       return AlgorithmSuite.ALG_AES_256_CBC_IV16_NO_KDF;
     } else if (input.getConfig().getEncryptionAlgorithm().equals(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)) {
       return AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF;
-    } else if (input.getConfig().getEncryptionAlgorithm().equals(ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY)) {
+    } else if (input.getConfig().getEncryptionAlgorithm().equals(EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY)) {
       return AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY;
     } else {
       throw new RuntimeException("Unknown encryption algorithm: " + input.getConfig().getEncryptionAlgorithm());
