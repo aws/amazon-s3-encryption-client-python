@@ -37,19 +37,19 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             var encryptionContext = new Dictionary<string, string>();
             var encryptionMaterial = new EncryptionMaterialsV2(kmsKeyId, KmsType.KmsContext, encryptionContext);
             logger.LogInformation(
-                "Created EncryptionMaterialsV2: KMS={KmsKeyId}",
+                "[NET-V3-Transitional] Created EncryptionMaterialsV2: KMS={KmsKeyId}",
                 kmsKeyId);
             // SecurityProfile V2AndLegacy can decrypt from legacy S3EC but V2 cannot
             var enableLegacyMode = enableLegacyUnauthenticatedModes || enableLegacyWrappingAlgorithms;
             var securityProfile = enableLegacyMode ? SecurityProfile.V2AndLegacy : SecurityProfile.V2;
 
-            logger.LogInformation("Created securityProfile= {securityProfile}", securityProfile.ToString());
+            logger.LogInformation("[NET-V3-Transitional] Created securityProfile= {securityProfile}", securityProfile.ToString());
 
             // Currently, tests does not send EncryptionAlgorithm. Tests only validates EncryptionAlgorithm from metadata of the response.
             // var encryptionAlgorithm = MapEncryptionAlgorithm(request.Config.EncryptionAlgorithm);
             var encryptionAlgorithm = commitmentPolicy == Amazon.Extensions.S3.Encryption.CommitmentPolicy.ForbidEncryptAllowDecrypt ? ContentEncryptionAlgorithm.AesGcm : ContentEncryptionAlgorithm.AesGcmWithCommitment;
-            logger.LogInformation("Created commitmentPolicy= {commitmentPolicy}", commitmentPolicy);
-            logger.LogInformation("Created encryptionAlgorithm= {encryptionAlgorithm}", encryptionAlgorithm);
+            logger.LogInformation("[NET-V3-Transitional] Created commitmentPolicy= {commitmentPolicy}", commitmentPolicy);
+            logger.LogInformation("[NET-V3-Transitional] Created encryptionAlgorithm= {encryptionAlgorithm}", encryptionAlgorithm);
 
             var configuration = new AmazonS3CryptoConfigurationV2(securityProfile, commitmentPolicy, encryptionAlgorithm);
             // Create S3 encryption client
@@ -58,7 +58,7 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             var clientId = clientCacheService.AddClient(encryptionClient);
             var response = new ClientResponse { ClientId = clientId };
 
-            logger.LogInformation("Created S3EC client with ID: {clientId}", clientId);
+            logger.LogInformation("[NET-V3-Transitional] Created S3EC client with ID: {clientId}", clientId);
 
             return new ContentResult
             {
@@ -69,7 +69,7 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to create S3EC client");
+            logger.LogError(ex, "[NET-V3-Transitional] Failed to create S3EC client");
             return StatusCode(500, new S3EncryptionClientError
             {
                 Message = $"Failed to create client: {ex.Message}"
