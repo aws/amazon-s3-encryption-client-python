@@ -102,7 +102,7 @@ public class TestUtils {
             JAVA_V3_CURRENT,
             GO_V3_CURRENT,
             NET_V2_CURRENT,
-            // CPP_V2_CURRENT,
+            CPP_V2_CURRENT,
             RUBY_V2_CURRENT,
             PHP_V2_CURRENT
         );
@@ -112,7 +112,7 @@ public class TestUtils {
              JAVA_V3_TRANSITION,
             // GO_V3_TRANSITION,
             // NET_V2_TRANSITION,
-            // CPP_V2_TRANSITION,
+            CPP_V2_TRANSITION,
             // PHP_V2_TRANSITION,
             RUBY_V2_TRANSITION
         );
@@ -137,7 +137,7 @@ public class TestUtils {
         servers.put(GO_V3_CURRENT, new LanguageServerTarget(GO_V3_CURRENT, "8082"));
         servers.put(NET_V2_CURRENT, new LanguageServerTarget(NET_V2_CURRENT, "8083"));
         servers.put(NET_V3, new LanguageServerTarget(NET_V3, "8084"));
-        // servers.put(CPP_V2_CURRENT, new LanguageServerTarget(CPP_V2_CURRENT, "8085"));
+        servers.put(CPP_V2_CURRENT, new LanguageServerTarget(CPP_V2_CURRENT, "8085"));
         // servers.put(RUBY_V2_CURRENT, new LanguageServerTarget(RUBY_V2_CURRENT, "8086"));
         servers.put(PHP_V2_CURRENT, new LanguageServerTarget(PHP_V2_CURRENT, "8087"));
         servers.put(GO_V4, new LanguageServerTarget(GO_V4, "8089"));
@@ -147,7 +147,7 @@ public class TestUtils {
         servers.put(JAVA_V3_TRANSITION, new LanguageServerTarget(JAVA_V3_TRANSITION, "8094"));
         // servers.put(GO_V3_TRANSITION, new LanguageServerTarget(GO_V3_TRANSITION, "8095"));
         // servers.put(NET_V2_TRANSITION, new LanguageServerTarget(NET_V2_TRANSITION, "8096"));
-        // servers.put(CPP_V2_TRANSITION, new LanguageServerTarget(CPP_V2_TRANSITION, "8097"));
+        servers.put(CPP_V2_TRANSITION, new LanguageServerTarget(CPP_V2_TRANSITION, "8097"));
         servers.put(RUBY_V2_TRANSITION, new LanguageServerTarget(RUBY_V2_TRANSITION, "8098"));
         servers.put(PHP_V2_TRANSITION, new LanguageServerTarget(PHP_V2_TRANSITION, "8099"));
         servers.put(JAVA_V4, new LanguageServerTarget(JAVA_V4, "8090"));
