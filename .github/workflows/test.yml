@@ -54,7 +54,7 @@ jobs:
           ref: s3ec-v3
           path: test-server/net-v2-v3-server/s3ec-net-v3
 
-      - name: Checkout .NET V3 code
+      - name: Checkout .NET V3 code (Transition)
         uses: actions/checkout@v5
         with:
           token: ${{ secrets.PAT_FOR_DOTNET }}
