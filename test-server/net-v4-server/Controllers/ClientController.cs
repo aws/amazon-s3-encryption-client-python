@@ -32,6 +32,9 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             var commitmentPolicy = MapCommitmentPolicy(request.Config.CommitmentPolicy);
             var isSecurityProfileProvided = request.Config.EnableLegacyUnauthenticatedModes.HasValue || request.Config.EnableLegacyWrappingAlgorithms.HasValue;
             var isCommitmentPolicyProvided = request.Config.CommitmentPolicy.HasValue;
+            var useDefaultConf = !isSecurityProfileProvided && !isCommitmentPolicyProvided;
+
+            logger.LogInformation("isSecurityProfileProvided: {isSecurityProfileProvided}, isCommitmentPolicyProvided: {isCommitmentPolicyProvided}, useDefaultConf: {useDefaultConf}", isSecurityProfileProvided, isCommitmentPolicyProvided, useDefaultConf);
             
             // The POST request does not contain encryption context. 
             // However, encryption context is a required field when using KMS.
@@ -45,15 +48,22 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             // SecurityProfile V4AndLegacy can decrypt from legacy S3EC but V4 cannot
             var enableLegacyMode = enableLegacyUnauthenticatedModes || enableLegacyWrappingAlgorithms;
             var securityProfile = enableLegacyMode ? SecurityProfile.V4AndLegacy : SecurityProfile.V4;
-            logger.LogInformation("Created securityProfile= {securityProfile}", securityProfile.ToString());
 
             // Currently, tests does not send EncryptionAlgorithm
             // var encryptionAlgorithm = MapEncryptionAlgorithm(request.Config.EncryptionAlgorithm);
             var encryptionAlgorithm = commitmentPolicy == Amazon.Extensions.S3.Encryption.CommitmentPolicy.ForbidEncryptAllowDecrypt ? ContentEncryptionAlgorithm.AesGcm : ContentEncryptionAlgorithm.AesGcmWithCommitment;
-            logger.LogInformation("Created commitmentPolicy= {commitmentPolicy}", commitmentPolicy);
-            logger.LogInformation("Created encryptionAlgorithm= {encryptionAlgorithm}", encryptionAlgorithm);
+            
+            if (!useDefaultConf)
+            {
+                logger.LogInformation("Created securityProfile= {securityProfile}", securityProfile.ToString());
+                logger.LogInformation("Created commitmentPolicy= {commitmentPolicy}", commitmentPolicy);
+                logger.LogInformation("Created encryptionAlgorithm= {encryptionAlgorithm}", encryptionAlgorithm);
+            } else
+            {
+                logger.LogInformation("Using default configuration for securityProfile, commitmentPolicy and encryptionAlgorithm");
+            }
 
-            var configuration = (!isSecurityProfileProvided && !isCommitmentPolicyProvided) 
+            var configuration = useDefaultConf
                 ? new AmazonS3CryptoConfigurationV4() 
                 : new AmazonS3CryptoConfigurationV4(securityProfile, commitmentPolicy, encryptionAlgorithm);
             
