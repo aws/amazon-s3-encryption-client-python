@@ -23,13 +23,14 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             return StatusCode(501, new GenericServerError { Message = "RsaKey not supported" });
         if (request.Config.KeyMaterial.AesKey != null)
             return StatusCode(501, new GenericServerError { Message = "AesKey not supported" });
-
-        var kmsKeyId = request.Config.KeyMaterial.KmsKeyId;
-        var enableLegacyUnauthenticatedModes = request.Config.EnableLegacyUnauthenticatedModes;
-        var enableLegacyWrappingAlgorithms = request.Config.EnableLegacyWrappingAlgorithms;
         
         try
         {
+            var kmsKeyId = request.Config.KeyMaterial.KmsKeyId;
+            var enableLegacyUnauthenticatedModes = request.Config.EnableLegacyUnauthenticatedModes;
+            var enableLegacyWrappingAlgorithms = request.Config.EnableLegacyWrappingAlgorithms;
+            var commitmentPolicy = MapCommitmentPolicy(request.Config.CommitmentPolicy);
+            
             // The POST request does not contain encryption context. 
             // However, encryption context is a required field when using KMS.
             // So, we are passing empty dictionary.
@@ -43,9 +44,6 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             var securityProfile = enableLegacyMode ? SecurityProfile.V2AndLegacy : SecurityProfile.V2;
 
             logger.LogInformation("Created securityProfile= {securityProfile}", securityProfile.ToString());
-
-            // Map request enums to SDK enums
-            var commitmentPolicy = MapCommitmentPolicy(request.Config.CommitmentPolicy);
 
             // Currently, tests does not send EncryptionAlgorithm. Tests only validates EncryptionAlgorithm from metadata of the response.
             // var encryptionAlgorithm = MapEncryptionAlgorithm(request.Config.EncryptionAlgorithm);
