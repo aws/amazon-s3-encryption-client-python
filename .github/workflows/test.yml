@@ -89,7 +89,7 @@ jobs:
         run: composer install
 
       - name: Install PHP V3 dependencies
-        working-directory: ./test-server/php-v3-server
+        working-directory: php-v3-server
         shell: bash
         run: composer install
 
@@ -103,7 +103,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.cache/uv
-          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
+          key: ${{ runner.os }}-uv-${{ hashFiles('./test-server/python-v3-server/**/pyproject.toml') }}
           restore-keys: |
             ${{ runner.os }}-uv-
 
