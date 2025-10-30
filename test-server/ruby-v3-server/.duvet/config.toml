@@ -4,6 +4,10 @@
 pattern = "local-ruby-sdk/gems/aws-sdk-s3/lib/**/*.rb"
 comment-style = { meta = "##=", content = "##%" }
 
+[[source]]
+pattern = "local-ruby-sdk/gems/aws-sdk-s3/spec/**/*.rb"
+comment-style = { meta = "##=", content = "##%" }
+
 # Include required specifications here
 [[specification]]
 source = "../specification/s3-encryption/data-format/content-metadata.md"
