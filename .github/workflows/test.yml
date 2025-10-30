@@ -79,7 +79,7 @@ jobs:
           php-version: "8.1"
 
       - name: Install PHP V2 dependencies
-        working-directory: ./php-v2-server
+        working-directory: ./test-server/php-v2-server
         shell: bash
         run: composer install
 
@@ -89,7 +89,7 @@ jobs:
         run: composer install
 
       - name: Install PHP V3 dependencies
-        working-directory: php-v3-server
+        working-directory: ./test-server/php-v3-server
         shell: bash
         run: composer install
 
