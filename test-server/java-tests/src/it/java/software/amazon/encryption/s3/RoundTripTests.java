@@ -26,6 +26,7 @@ import software.amazon.encryption.s3.client.S3ECTestServerClient;
 import software.amazon.encryption.s3.model.CommitmentPolicy;
 import software.amazon.encryption.s3.model.CreateClientInput;
 import software.amazon.encryption.s3.model.CreateClientOutput;
+import software.amazon.encryption.s3.model.EncryptionAlgorithm;
 import software.amazon.encryption.s3.model.GetObjectInput;
 import software.amazon.encryption.s3.model.GetObjectOutput;
 import software.amazon.encryption.s3.model.KeyMaterial;
@@ -63,6 +64,7 @@ public class RoundTripTests {
             .builder()
             .keyMaterial(kmsKeyArn)
             .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
             .build()
           )
           .build());
@@ -78,6 +80,7 @@ public class RoundTripTests {
           .config(S3ECConfig.builder()
             .keyMaterial(kmsKeyArn)
             .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
             .build()
           )
           .build());
@@ -113,6 +116,7 @@ public class RoundTripTests {
           .config(S3ECConfig.builder()
             .keyMaterial(kmsKeyArn)
             .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
             .build()
           )
           .build());
@@ -130,6 +134,7 @@ public class RoundTripTests {
           .config(S3ECConfig.builder()
             .keyMaterial(kmsKeyArn)
             .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
             .build()
           )
           .build());
@@ -169,6 +174,7 @@ public class RoundTripTests {
                 .config(S3ECConfig.builder()
                         .keyMaterial(kmsKeyArn)
                         .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+                        .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
                         .build())
                 .build());
         String encS3ECId = encClientOutput.getClientId();
@@ -185,6 +191,7 @@ public class RoundTripTests {
                 .config(S3ECConfig.builder()
                   .keyMaterial(kmsKeyArn)
                   .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
                   .build()
                 )
                 .build());
@@ -225,6 +232,7 @@ public class RoundTripTests {
           .config(S3ECConfig.builder()
             .keyMaterial(kmsKeyArn)
             .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
             .build()
           )
           .build());
@@ -242,6 +250,7 @@ public class RoundTripTests {
           .config(S3ECConfig.builder()
             .keyMaterial(kmsKeyArn)
             .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
             .build()
           )
           .build());
@@ -281,6 +290,7 @@ public class RoundTripTests {
             .enableLegacyWrappingAlgorithms(true)
             .keyMaterial(kmsKeyArn)
             .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
             .build())
           .build());
         String s3ECId = output1.getClientId();
@@ -324,6 +334,7 @@ public class RoundTripTests {
             .enableLegacyWrappingAlgorithms(true)
             .keyMaterial(kmsKeyArn)
             .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
             .build())
           .build());
         String s3ECId = output1.getClientId();
@@ -374,6 +385,7 @@ public class RoundTripTests {
             .enableLegacyWrappingAlgorithms(false)
             .keyMaterial(kmsKeyArn)
             .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
             .build())
           .build());
         String s3ECId = output1.getClientId();
