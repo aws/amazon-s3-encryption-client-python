@@ -40,6 +40,12 @@ enum EncryptionAlgorithm {
     ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
 }
 
+structure InstructionFileConfig {
+    clientId: String,
+    enableInstructionFilePutObject: Boolean = false,
+    disableInstructionFile: Boolean = false
+}
+
 structure S3ECConfig {
     enableLegacyUnauthenticatedModes: Boolean = false,
     enableDelayedAuthenticationMode: Boolean = false,
@@ -48,4 +54,5 @@ structure S3ECConfig {
     keyMaterial: KeyMaterial,
     commitmentPolicy: CommitmentPolicy,
     encryptionAlgorithm: EncryptionAlgorithm,
+    instructionFileConfig: InstructionFileConfig,
 }
