@@ -3,7 +3,7 @@
 .PHONY: all start-servers run-tests stop-servers clean ci check-env help
 
 # Default target
-all: start-all-servers run-tests
+all: start-all-servers wait-all-servers run-tests
 
 # CI target for GitHub Actions
 ci: start-servers run-tests stop-servers

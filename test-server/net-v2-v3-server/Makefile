@@ -51,7 +51,7 @@ start-net-v3-server:
 	@echo ".NET V3 server starting..."
 
 wait-for-server:
-	$(MAKE) -C .. wait-for-port PORT=$(PORT_NET_V2) \
+	$(MAKE) -C .. wait-for-port PORT=$(PORT_NET_V2)
 	$(MAKE) -C .. wait-for-port PORT=$(PORT_NET_V3)
 
 duvet:
