@@ -16,11 +16,11 @@ public class ObjectController(IClientCacheService clientCacheService, ILogger<Ob
         logger.LogInformation("Starting PutObject");
         var clientId = Request.Headers["clientId"].FirstOrDefault();
         if (string.IsNullOrEmpty(clientId))
-            return BadRequest(new GenericServerError { Message = "ClientID header is required" });
+            return BadRequest(new GenericServerError { Message = "[NET-V4] ClientID header is required" });
 
         var client = clientCacheService.GetClient(clientId);
         if (client == null)
-            return NotFound(new GenericServerError { Message = $"No client found for ClientID: {clientId}" });
+            return NotFound(new GenericServerError { Message = $"[NET-V4] No client found for ClientID: {clientId}" });
 
         try
         {
@@ -43,7 +43,7 @@ public class ObjectController(IClientCacheService clientCacheService, ILogger<Ob
             var response = new { bucket, key };
 
             logger.LogInformation(
-                "Put object succeeded for bucket={bucket}, key={key} and clientId = {clientId}",
+                "[NET-V4] Put object succeeded for bucket={bucket}, key={key} and clientId = {clientId}",
                 bucket, key, clientId);
             return new ContentResult
             {
@@ -54,7 +54,7 @@ public class ObjectController(IClientCacheService clientCacheService, ILogger<Ob
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to put object from S3 for bucket={bucket}, key={key}", bucket, key);
+            logger.LogError(ex, "[NET-V4] Failed to put object from S3 for bucket={bucket}, key={key}", bucket, key);
             return StatusCode(500, new S3EncryptionClientError { Message = $"Failed to put object: {ex.Message}" });
         }
     }
@@ -62,14 +62,14 @@ public class ObjectController(IClientCacheService clientCacheService, ILogger<Ob
     [HttpGet("{bucket}/{key}")]
     public async Task<IActionResult> GetObject(string bucket, string key)
     {
-        logger.LogInformation("Starting GetObject");
+        logger.LogInformation("[NET-V4] Starting GetObject");
         var clientId = Request.Headers["clientId"].FirstOrDefault();
         if (string.IsNullOrEmpty(clientId))
-            return BadRequest(new GenericServerError { Message = "ClientID header is required" });
+            return BadRequest(new GenericServerError { Message = "[NET-V4] ClientID header is required" });
 
         var client = clientCacheService.GetClient(clientId);
         if (client == null)
-            return NotFound(new GenericServerError { Message = $"No client found for ClientID: {clientId}" });
+            return NotFound(new GenericServerError { Message = $"[NET-V4] No client found for ClientID: {clientId}" });
 
         try
         {
@@ -79,7 +79,7 @@ public class ObjectController(IClientCacheService clientCacheService, ILogger<Ob
                 Key = key
             };
             var response = await client.GetObjectAsync(getRequest);
-            logger.LogInformation("Got object from S3 for bucket={bucket}, key={key}", bucket, key);
+            logger.LogInformation("[NET-V4] Got object from S3 for bucket={bucket}, key={key}", bucket, key);
             // Read response body
             using var memoryStream = new MemoryStream();
             await response.ResponseStream.CopyToAsync(memoryStream);
@@ -98,7 +98,7 @@ public class ObjectController(IClientCacheService clientCacheService, ILogger<Ob
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to get object from S3 for bucket={bucket}, key={key}", bucket, key);
+            logger.LogError(ex, "[NET-V4] Failed to get object from S3 for bucket={bucket}, key={key}", bucket, key);
             return StatusCode(500, new S3EncryptionClientError { Message = ex.Message });
         }
     }

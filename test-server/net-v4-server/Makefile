@@ -23,7 +23,7 @@ start-net-V4-server:
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
-	dotnet run > net-v3-transition-server.log 2>&1 & echo $$! > net-v3-transition-server.pid
+	dotnet run & echo $! > net-v3-transition-server.pid
 	@echo ".NET V4 server starting..."
 
 wait-for-server:

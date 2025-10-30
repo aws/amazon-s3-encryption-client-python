@@ -16,13 +16,13 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
     {
         // Return 501 for not implemented features by the server
         if (request.Config.EnableDelayedAuthenticationMode ?? false)
-            return StatusCode(501, new GenericServerError { Message = "EnableDelayedAuthenticationMode not supported" });
+            return StatusCode(501, new GenericServerError { Message = "[NET-V4] EnableDelayedAuthenticationMode not supported" });
         if (request.Config.SetBufferSize.HasValue)
-            return StatusCode(501, new GenericServerError { Message = "SetBufferSize not supported" });
+            return StatusCode(501, new GenericServerError { Message = "[NET-V4] SetBufferSize not supported" });
         if (request.Config.KeyMaterial.RsaKey != null)
-            return StatusCode(501, new GenericServerError { Message = "RsaKey not supported" });
+            return StatusCode(501, new GenericServerError { Message = "[NET-V4] RsaKey not supported" });
         if (request.Config.KeyMaterial.AesKey != null)
-            return StatusCode(501, new GenericServerError { Message = "AesKey not supported" });
+            return StatusCode(501, new GenericServerError { Message = "[NET-V4] AesKey not supported" });
         
         try
         {
@@ -34,7 +34,7 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             var isCommitmentPolicyProvided = request.Config.CommitmentPolicy.HasValue;
             var useDefaultConf = !isSecurityProfileProvided && !isCommitmentPolicyProvided;
 
-            logger.LogInformation("isSecurityProfileProvided: {isSecurityProfileProvided}, isCommitmentPolicyProvided: {isCommitmentPolicyProvided}, useDefaultConf: {useDefaultConf}", isSecurityProfileProvided, isCommitmentPolicyProvided, useDefaultConf);
+            logger.LogInformation("[NET-V4] isSecurityProfileProvided: {isSecurityProfileProvided}, isCommitmentPolicyProvided: {isCommitmentPolicyProvided}, useDefaultConf: {useDefaultConf}", isSecurityProfileProvided, isCommitmentPolicyProvided, useDefaultConf);
             
             // The POST request does not contain encryption context. 
             // However, encryption context is a required field when using KMS.
@@ -42,7 +42,7 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             var encryptionContext = new Dictionary<string, string>();
             var encryptionMaterial = new EncryptionMaterialsV4(kmsKeyId, KmsType.KmsContext, encryptionContext);
             logger.LogInformation(
-                "Created EncryptionMaterialsV4: KMS={KmsKeyId}",
+                "[NET-V4] Created EncryptionMaterialsV4: KMS={KmsKeyId}",
                 kmsKeyId);
             
             // SecurityProfile V4AndLegacy can decrypt from legacy S3EC but V4 cannot
@@ -55,12 +55,12 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             
             if (!useDefaultConf)
             {
-                logger.LogInformation("Created securityProfile= {securityProfile}", securityProfile.ToString());
-                logger.LogInformation("Created commitmentPolicy= {commitmentPolicy}", commitmentPolicy);
-                logger.LogInformation("Created encryptionAlgorithm= {encryptionAlgorithm}", encryptionAlgorithm);
+                logger.LogInformation("[NET-V4] Created securityProfile= {securityProfile}", securityProfile.ToString());
+                logger.LogInformation("[NET-V4] Created commitmentPolicy= {commitmentPolicy}", commitmentPolicy);
+                logger.LogInformation("[NET-V4] Created encryptionAlgorithm= {encryptionAlgorithm}", encryptionAlgorithm);
             } else
             {
-                logger.LogInformation("Using default configuration for securityProfile, commitmentPolicy and encryptionAlgorithm");
+                logger.LogInformation("[NET-V4] Using default configuration for securityProfile, commitmentPolicy and encryptionAlgorithm");
             }
 
             var configuration = useDefaultConf
@@ -73,7 +73,7 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             var clientId = clientCacheService.AddClient(encryptionClient);
             var response = new ClientResponse { ClientId = clientId };
 
-            logger.LogInformation("Created S3EC client with ID: {clientId}", clientId);
+            logger.LogInformation("[NET-V4] Created S3EC client with ID: {clientId}", clientId);
 
             return new ContentResult
             {
@@ -84,10 +84,10 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to create S3EC client");
+            logger.LogError(ex, "[NET-V4] Failed to create S3EC client");
             return StatusCode(500, new S3EncryptionClientError
             {
-                Message = $"Failed to create client: {ex.Message}"
+                Message = $"[NET-V4] Failed to create client: {ex.Message}"
             });
         }
     }
