@@ -10,17 +10,19 @@ comment-style = { meta = "##=", content = "##%" }
 
 # Include required specifications here
 [[specification]]
-source = "../specification/s3-encryption/data-format/content-metadata.md"
-[[specification]]
-source = "../specification/s3-encryption/data-format/metadata-strategy.md"
-[[specification]]
-source = "../specification/s3-encryption/encryption.md"
+source = "../specification/s3-encryption/client.md"
 [[specification]]
 source = "../specification/s3-encryption/decryption.md"
 [[specification]]
-source = "../specification/s3-encryption/key-derivation.md"
+source = "../specification/s3-encryption/encryption.md"
 [[specification]]
 source = "../specification/s3-encryption/key-commitment.md"
+[[specification]]
+source = "../specification/s3-encryption/key-derivation.md"
+[[specification]]
+source = "../specification/s3-encryption/data-format/content-metadata.md"
+[[specification]]
+source = "../specification/s3-encryption/data-format/metadata-strategy.md"
 
 
 [report.html]
