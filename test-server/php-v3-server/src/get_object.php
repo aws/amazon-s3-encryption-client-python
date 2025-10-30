@@ -80,8 +80,9 @@ function handleGetObject($params)
         }
         if (strpos($e->getMessage(), "@SecurityProfile=V2") !== false) {
             return S3EncryptionClientError($e->getMessage());
-        }
-        if (strpos($e->getMessage(), "Provided encryption context does not match information retrieved from S3") !== false) {
+        } elseif (strpos($e->getMessage(), "Provided encryption context does not match information retrieved from S3") !== false) {
+            return S3EncryptionClientError($e->getMessage());
+        } elseif (strpos($e->getMessage(), "Message is encrypted with a non commiting algorithm but commitment policy is set to REQUIRE_ENCRYPT_REQUIRE_DECRYPT. Select a valid commitment policy to decrypt this object.") !== false) {
             return S3EncryptionClientError($e->getMessage());
         } else {
             error_log("This is the error: " . $e->getMessage());
