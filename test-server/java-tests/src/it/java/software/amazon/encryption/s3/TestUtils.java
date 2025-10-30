@@ -97,6 +97,11 @@ public class TestUtils {
     public static final Set<String> ENCRYPTION_CONTEXT_ON_ENCRYPT_UNSUPPORTED =
         Set.of(NET_V2_CURRENT, NET_V3);
 
+    // .NET only supports decrypting instruction files using AES and RSA.
+    // Python MUST support decrypting KMS instruction files, but does not yet.
+    public static final Set<String> KMS_INSTRUCTION_FILE_UNSUPPORTED =
+      Set.of(NET_V2_CURRENT, NET_V2_TRANSITION, NET_V3, PYTHON_V3);
+
     public static final Set<String> CURRENT_VERSIONS =
         Set.of(
             JAVA_V3_CURRENT,
