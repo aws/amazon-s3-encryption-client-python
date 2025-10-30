@@ -72,12 +72,15 @@ MHD_Result handle_create_client(struct MHD_Connection *connection,
     std::string kms_key_id = request["config"]["keyMaterial"]["kmsKeyId"];
     bool legacy1 = request["config"]["enableLegacyWrappingAlgorithms"];
     bool legacy2 = request["config"]["enableLegacyUnauthenticatedModes"];
+    bool inst_put = request["config"]["instructionFileConfig"]["enableInstructionFilePutObject"];
 
     auto materials =
         std::make_shared<KMSWithContextEncryptionMaterials>(kms_key_id);
     CryptoConfigurationV3 config(materials);
     if (legacy1 || legacy2)
       config.AllowLegacy();
+    if (inst_put)
+      config.SetStorageMethod(StorageMethod::INSTRUCTION_FILE);
 
     std::string commitmentPolicy = get_config(request, "commitmentPolicy");
     std::string encryptionAlgorithm = get_config(request, "encryptionAlgorithm");

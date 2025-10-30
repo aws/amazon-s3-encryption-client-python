@@ -471,8 +471,10 @@ public class RoundTripTests {
     @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
     @MethodSource("software.amazon.encryption.s3.TestUtils#crossLanguageClients")
     public void instructionFileWriteAndRead(LanguageServerTarget encLang, LanguageServerTarget decLang) {
-        // Skip for now
-        if (true) {
+        if (INSTRUCTION_FILE_PUT_UNSUPPORTED.contains(encLang.getLanguageName())) {
+            return;
+        }
+        if (INSTRUCTION_FILE_GET_UNSUPPORTED.contains(decLang.getLanguageName())) {
             return;
         }
         if (KMS_INSTRUCTION_FILE_UNSUPPORTED.contains(encLang.getLanguageName())) {

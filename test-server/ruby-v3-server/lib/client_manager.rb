@@ -16,7 +16,8 @@ class ClientManager
   def create_client(config)
     # Extract configuration
     kms_key_id = config.dig('keyMaterial', 'kmsKeyId')
-    
+    inst_file_put = config.dig('instructionFileConfig', 'enableInstructionFilePutObject')
+
     raise 'KMS Key ID is required' if kms_key_id.nil? || kms_key_id.empty?
 
     # Create S3 encryption client configuration
@@ -24,6 +25,7 @@ class ClientManager
       kms_key_id: kms_key_id,
       kms_client: @kms_client,
       key_wrap_schema: :kms_context,
+      envelope_location: inst_file_put ? :instruction_file : :metadata
       # content_encryption_schema: :aes_gcm_no_padding,
     }.tap do |hash|
       if !config['commitmentPolicy'].nil?

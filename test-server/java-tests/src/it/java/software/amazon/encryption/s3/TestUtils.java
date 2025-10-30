@@ -102,6 +102,14 @@ public class TestUtils {
     public static final Set<String> KMS_INSTRUCTION_FILE_UNSUPPORTED =
       Set.of(NET_V2_CURRENT, NET_V2_TRANSITION, NET_V3, PYTHON_V3);
 
+    // Go does not write with instruction files
+    public static final Set<String> INSTRUCTION_FILE_PUT_UNSUPPORTED =
+      Set.of(GO_V3_CURRENT, GO_V3_TRANSITION, GO_V4);
+
+    // Not implemented yet in Python.
+    public static final Set<String> INSTRUCTION_FILE_GET_UNSUPPORTED =
+      Set.of(PYTHON_V3);
+
     public static final Set<String> CURRENT_VERSIONS =
         Set.of(
             JAVA_V3_CURRENT,

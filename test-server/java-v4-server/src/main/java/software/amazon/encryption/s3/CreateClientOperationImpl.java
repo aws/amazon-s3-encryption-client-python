@@ -88,7 +88,17 @@ public class CreateClientOperationImpl implements CreateClientOperation {
       } else {
         throw new RuntimeException("No KeyMaterial found!");
       }
+
+      // Client Creation
+      boolean instFilePut = false;
+      if (input.getConfig().getInstructionFileConfig() != null) {
+        instFilePut = input.getConfig().getInstructionFileConfig().isEnableInstructionFilePutObject();
+      }
       S3Client s3Client = S3EncryptionClient.builder()
+        .instructionFileConfig(InstructionFileConfig.builder()
+          .instructionFileClient(S3Client.create())
+          .enableInstructionFilePutObject(instFilePut)
+          .build())
         .keyring(keyring)
         .build();
       UUID uuid = UUID.randomUUID();
