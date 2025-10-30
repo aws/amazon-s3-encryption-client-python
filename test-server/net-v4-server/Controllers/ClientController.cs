@@ -32,7 +32,7 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             var commitmentPolicy = MapCommitmentPolicy(request.Config.CommitmentPolicy);
             var isSecurityProfileProvided = request.Config.EnableLegacyUnauthenticatedModes.HasValue || request.Config.EnableLegacyWrappingAlgorithms.HasValue;
             var isCommitmentPolicyProvided = request.Config.CommitmentPolicy.HasValue;
-            var useDefaultConf = !isSecurityProfileProvided && !isCommitmentPolicyProvided;
+            var useDefaultConf = !isCommitmentPolicyProvided;
 
             logger.LogInformation("[NET-V4] isSecurityProfileProvided: {isSecurityProfileProvided}, isCommitmentPolicyProvided: {isCommitmentPolicyProvided}, useDefaultConf: {useDefaultConf}", isSecurityProfileProvided, isCommitmentPolicyProvided, useDefaultConf);
             
