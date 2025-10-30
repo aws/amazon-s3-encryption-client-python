@@ -27,7 +27,7 @@ jobs:
           # ask Ryan to edit this PAT's permissions to add access to a new private repo.
           token: ${{ secrets.PAT_FOR_PRIVATE_RUBY }}
 
-      - name: Checkout CPP code
+      - name: Checkout CPP code for cpp-v2-transition
         uses: actions/checkout@v5
         with:
           submodules: recursive
@@ -35,6 +35,15 @@ jobs:
           repository: awslabs/aws-sdk-cpp-staging
           ref: fire-egg-dev
           path: test-server/cpp-v2-transition-server/aws-sdk-cpp/
+
+      - name: Checkout CPP code cpp-v3
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          token: ${{ secrets.PAT_FOR_CPP }}
+          repository: awslabs/aws-sdk-cpp-staging
+          ref: fire-egg-dev
+          path: test-server/cpp-v3-server/aws-sdk-cpp/
 
       - name: Checkout .NET V2 code
         uses: actions/checkout@v5
@@ -94,7 +103,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.cache/uv
-          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
+          key: ${{ runner.os }}-uv-${{ hashFiles('./test-server/python-v3-server/**/pyproject.toml') }}
           restore-keys: |
             ${{ runner.os }}-uv-
 
