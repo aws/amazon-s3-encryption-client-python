@@ -1,0 +1,30 @@
+{
+    "name": "aws/s3ec-php-v3-example",
+    "description": "PHP v3 S3 Encryption Client example",
+    "type": "project",
+    "license": "Apache-2.0",
+    "repositories": [
+        {
+            "type": "path",
+            "url": "./local-php-sdk",
+            "options": {
+                "symlink": true
+            }
+        }
+    ],
+    "require": {
+        "php": ">=7.4",
+        "aws/aws-sdk-php": "@dev"
+    },
+    "autoload": {
+        "psr-4": {
+            "S3EC\\PhpV3Example\\": "src/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "platform": {
+            "php": "8.1"
+        }
+    }
+}

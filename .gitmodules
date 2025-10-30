@@ -39,3 +39,6 @@
 	path = test-server/net-v2-v3-server/s3ec-net-v3
 	url = https://github.com/aws/private-amazon-s3-encryption-client-dotnet-staging.git
 	branch = s3ec-v3
+[submodule "all-examples/ruby/v2/local-ruby-sdk"]
+	path = all-examples/ruby/v2/local-ruby-sdk
+	url = git@github.com:aws/aws-sdk-ruby-staging.git
