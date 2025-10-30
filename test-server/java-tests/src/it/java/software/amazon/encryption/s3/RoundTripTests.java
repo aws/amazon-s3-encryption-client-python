@@ -17,7 +17,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import com.amazonaws.services.s3.AmazonS3EncryptionClientV2;
+import com.amazonaws.services.s3.AmazonS3EncryptionV2;
+import com.amazonaws.services.s3.model.CryptoConfigurationV2;
+import com.amazonaws.services.s3.model.EncryptionMaterials;
 import com.amazonaws.services.s3.model.KMSEncryptionMaterials;
+import com.amazonaws.services.s3.model.StaticEncryptionMaterialsProvider;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -28,6 +33,7 @@ import software.amazon.encryption.s3.model.CreateClientInput;
 import software.amazon.encryption.s3.model.CreateClientOutput;
 import software.amazon.encryption.s3.model.GetObjectInput;
 import software.amazon.encryption.s3.model.GetObjectOutput;
+import software.amazon.encryption.s3.model.InstructionFileConfig;
 import software.amazon.encryption.s3.model.KeyMaterial;
 import software.amazon.encryption.s3.model.PutObjectInput;
 import software.amazon.encryption.s3.model.S3ECConfig;
@@ -415,5 +421,43 @@ public class RoundTripTests {
               assertTrue(e.getMessage().contains("Enable legacy wrapping algorithms to use legacy key wrapping algorithm: kms"));
             }
         }
+    }
+
+    @ParameterizedTest(name = "{displayName} for Encrypt: Java, Decrypt: {0}")
+    @MethodSource("software.amazon.encryption.s3.TestUtils#clientsForTest")
+    public void instructionFileReadV2Format(TestUtils.LanguageServerTarget language) {
+        S3ECTestServerClient client = testServerClientFor(language);
+        final String objectKey = appendTestSuffix("read-instruction-file-v2-" + language);
+        final String input = "simple-test-input";
+        KeyMaterial kmsKeyArn = KeyMaterial.builder()
+          .kmsKeyId(KMS_KEY_ARN)
+          .build();
+        CreateClientOutput output1 = client.createClient(CreateClientInput.builder()
+          .config(S3ECConfig.builder()
+            .enableLegacyWrappingAlgorithms(true)
+            .keyMaterial(kmsKeyArn)
+            .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .build())
+          .build());
+        String s3ECId = output1.getClientId();
+
+        // Write with instruction file using V2 client
+        EncryptionMaterialsProvider materialsProvider = new KMSEncryptionMaterialsProvider(KMS_KEY_ARN);
+        CryptoConfigurationV2 cryptoConfigurationV2 = new CryptoConfigurationV2();
+        cryptoConfigurationV2.setStorageMode(CryptoStorageMode.InstructionFile);
+        AmazonS3EncryptionV2 v2Client = AmazonS3EncryptionClientV2.encryptionBuilder()
+          .withEncryptionMaterialsProvider(materialsProvider)
+          .withCryptoConfiguration(cryptoConfigurationV2)
+          .build();
+        v2Client.putObject(BUCKET, objectKey, input);
+
+        GetObjectOutput output = client.getObject(GetObjectInput.builder()
+          .clientID(s3ECId)
+          .bucket(BUCKET)
+          .key(objectKey)
+          .build());
+
+        assertEquals(input, new String(output.getBody().array()));
+
     }
 }
