@@ -178,7 +178,6 @@ public class ExhaustiveRoundTripTests1_25 {
 
         S3ECTestServerClient encClient = TestUtils.testServerClientFor(encLang);
         final String objectKey = "encrypt-kc-gcm-decrypt-improved-test-key-" + encLang;
-        final String objectKey2 = "encrypt-kc-gcm-decrypt-improved-test-key-Go-V4";
         final String input = "simple-test-input";
         KeyMaterial kmsKeyArn = KeyMaterial.builder()
                 .kmsKeyId(TestUtils.KMS_KEY_ARN)
