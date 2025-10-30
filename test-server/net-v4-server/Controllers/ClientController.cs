@@ -99,6 +99,7 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             Models.CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT => Amazon.Extensions.S3.Encryption.CommitmentPolicy.RequireEncryptRequireDecrypt,
             Models.CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT => Amazon.Extensions.S3.Encryption.CommitmentPolicy.RequireEncryptAllowDecrypt,
             Models.CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT => Amazon.Extensions.S3.Encryption.CommitmentPolicy.ForbidEncryptAllowDecrypt,
+            _ => Amazon.Extensions.S3.Encryption.CommitmentPolicy.RequireEncryptRequireDecrypt
         };
     }
 
