@@ -91,7 +91,7 @@ public class CreateClientOperationImpl implements CreateClientOperation {
         throw new RuntimeException("No KeyMaterial found!");
       }
       // V4-Improved (FireEgg Improved) server configuration
-      S3EncryptionClient.Builder clientBuilder = S3EncryptionClient.builder()
+      S3EncryptionClient.Builder clientBuilder = S3EncryptionClient.builderV4()
         .keyring(keyring);
 
       // Configure commitment policy if provided (FireEgg feature)
