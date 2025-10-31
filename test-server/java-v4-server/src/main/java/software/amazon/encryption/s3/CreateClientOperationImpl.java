@@ -2,6 +2,7 @@ package software.amazon.encryption.s3;
 
 import software.amazon.awssdk.core.traits.Trait;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.encryption.s3.internal.InstructionFileConfig;
 import software.amazon.encryption.s3.S3EncryptionClient;
 import software.amazon.encryption.s3.materials.AesKeyring;
 import software.amazon.encryption.s3.materials.Keyring;
