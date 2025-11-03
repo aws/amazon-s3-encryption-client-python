@@ -22,31 +22,28 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.model.ObjectMetadata;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
 import org.junit.jupiter.params.provider.Arguments;
 import com.amazonaws.regions.Region;
 import com.amazonaws.regions.Regions;
-import software.amazon.smithy.java.aws.client.restjson.RestJsonClientProtocol;
-import software.amazon.smithy.java.client.core.ClientConfig;
-import software.amazon.smithy.java.client.core.ClientProtocol;
-import software.amazon.smithy.java.client.core.endpoint.EndpointResolver;
-import software.amazon.encryption.s3.client.S3ECTestServerClient;
 import software.amazon.encryption.s3.model.EncryptionAlgorithm;
 import software.amazon.encryption.s3.model.GetObjectInput;
 import software.amazon.encryption.s3.model.GetObjectOutput;
 import software.amazon.encryption.s3.model.PutObjectInput;
 import software.amazon.encryption.s3.model.PutObjectOutput;
-import software.amazon.encryption.s3.model.S3ECConfig;
-import software.amazon.encryption.s3.model.S3ECTestServerApiService;
 import software.amazon.encryption.s3.model.S3EncryptionClientError;
+import software.amazon.smithy.java.aws.client.restjson.RestJsonClientProtocol;
+import software.amazon.smithy.java.client.core.ClientConfig;
+import software.amazon.smithy.java.client.core.ClientProtocol;
+import software.amazon.smithy.java.client.core.endpoint.EndpointResolver;
+import software.amazon.encryption.s3.client.S3ECTestServerClient;
+import software.amazon.encryption.s3.model.S3ECTestServerApiService;
 import software.amazon.smithy.java.http.api.HttpRequest;
 import software.amazon.smithy.java.http.api.HttpResponse;
-
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.amazonaws.services.s3.model.GetObjectMetadataRequest;
 
 public class TestUtils {
 
@@ -109,6 +106,10 @@ public class TestUtils {
     // Not implemented yet in Python.
     public static final Set<String> INSTRUCTION_FILE_GET_UNSUPPORTED =
       Set.of(PYTHON_V3);
+
+    // Until all languages work, just test these for now
+    public static final Set<String> INSTRUCTION_FILE_ROUNDTRIP_SUPPORTED =
+      Set.of(JAVA_V3_CURRENT, JAVA_V3_TRANSITION, RUBY_V2_TRANSITION, RUBY_V3);
 
     public static final Set<String> CURRENT_VERSIONS =
         Set.of(
@@ -299,7 +300,7 @@ public class TestUtils {
     public static void validateServersRunning() {
         for (LanguageServerTarget server : serverMap.values()) {
             if (!serverListening(server.getServerURI())) {
-                throw new RuntimeException(String.format("Test Server for %s is not running at endpoint: %s", 
+                throw new RuntimeException(String.format("Test Server for %s is not running at endpoint: %s",
                     server.getLanguageName(), server.getServerURI()));
             }
         }
@@ -443,7 +444,7 @@ public class TestUtils {
                 return EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF;
             }
         }
-        
+
         throw new RuntimeException("Need to support instruction files!");
     }
 
@@ -469,7 +470,7 @@ public class TestUtils {
 
         crossLanguageObjects.add(objectKey);
     }
-    
+
     public static void Decrypt(
         S3ECTestServerClient client,
         String S3ECId, List<String> crossLanguageObjects,
@@ -481,7 +482,7 @@ public class TestUtils {
             .bucket(TestUtils.BUCKET)
             .key(objectKey)
             .build());
-            
+
             // Then: Pass
             assertEquals(objectKey, new String(output.getBody().array()));
             assertEquals(
@@ -491,7 +492,7 @@ public class TestUtils {
             );
         }
     }
-    
+
     public static void Decrypt_fails(
         S3ECTestServerClient client,
         String S3ECId, List<String> crossLanguageObjects,

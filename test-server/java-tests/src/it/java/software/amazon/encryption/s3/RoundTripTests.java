@@ -16,18 +16,15 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Stream;
 
 import com.amazonaws.services.s3.AmazonS3EncryptionClientV2;
 import com.amazonaws.services.s3.AmazonS3EncryptionV2;
 import com.amazonaws.services.s3.model.CryptoConfigurationV2;
-import com.amazonaws.services.s3.model.EncryptionMaterials;
 import com.amazonaws.services.s3.model.KMSEncryptionMaterials;
-import com.amazonaws.services.s3.model.StaticEncryptionMaterialsProvider;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.opentest4j.TestAbortedException;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
@@ -35,6 +32,7 @@ import software.amazon.encryption.s3.client.S3ECTestServerClient;
 import software.amazon.encryption.s3.model.CommitmentPolicy;
 import software.amazon.encryption.s3.model.CreateClientInput;
 import software.amazon.encryption.s3.model.CreateClientOutput;
+import software.amazon.encryption.s3.model.EncryptionAlgorithm;
 import software.amazon.encryption.s3.model.GetObjectInput;
 import software.amazon.encryption.s3.model.GetObjectOutput;
 import software.amazon.encryption.s3.model.InstructionFileConfig;
@@ -48,7 +46,6 @@ import com.amazonaws.services.s3.AmazonS3EncryptionClient;
 import com.amazonaws.services.s3.model.CryptoConfiguration;
 import com.amazonaws.services.s3.model.CryptoMode;
 import com.amazonaws.services.s3.model.CryptoStorageMode;
-import software.amazon.encryption.s3.TestUtils.*;
 import com.amazonaws.services.s3.model.EncryptionMaterialsProvider;
 import com.amazonaws.services.s3.model.KMSEncryptionMaterialsProvider;
 
@@ -472,16 +469,22 @@ public class RoundTripTests {
     @MethodSource("software.amazon.encryption.s3.TestUtils#crossLanguageClients")
     public void instructionFileWriteAndRead(LanguageServerTarget encLang, LanguageServerTarget decLang) {
         if (INSTRUCTION_FILE_PUT_UNSUPPORTED.contains(encLang.getLanguageName())) {
-            return;
+            throw new TestAbortedException("not testing " + encLang.getLanguageName());
         }
         if (INSTRUCTION_FILE_GET_UNSUPPORTED.contains(decLang.getLanguageName())) {
-            return;
+            throw new TestAbortedException("not testing " + encLang.getLanguageName());
         }
         if (KMS_INSTRUCTION_FILE_UNSUPPORTED.contains(encLang.getLanguageName())) {
-            return;
+            throw new TestAbortedException("not testing " + encLang.getLanguageName());
         }
         if (KMS_INSTRUCTION_FILE_UNSUPPORTED.contains(decLang.getLanguageName())) {
-            return;
+            throw new TestAbortedException("not testing " + encLang.getLanguageName());
+        }
+        if (!INSTRUCTION_FILE_ROUNDTRIP_SUPPORTED.contains(encLang.getLanguageName())) {
+            throw new TestAbortedException("not testing " + encLang.getLanguageName());
+        }
+        if (!INSTRUCTION_FILE_ROUNDTRIP_SUPPORTED.contains(decLang.getLanguageName())) {
+            throw new TestAbortedException("not testing " + decLang.getLanguageName());
         }
         S3ECTestServerClient encClient = testServerClientFor(encLang);
         S3ECTestServerClient decClient = testServerClientFor(decLang);
@@ -497,6 +500,7 @@ public class RoundTripTests {
               .enableInstructionFilePutObject(true)
               .build())
             .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
             .build())
           .build());
         String encS3ECId = encOutput.getClientId();
@@ -518,14 +522,17 @@ public class RoundTripTests {
 
         // Assert using Java plaintext client that an instruction file exists
         ResponseBytes<GetObjectResponse> ptInstFile;
-      try (S3Client ptS3Client = S3Client.create()) {
-        ptInstFile = ptS3Client.getObjectAsBytes(builder -> builder
-          .bucket(BUCKET)
-          .key(objectKey + ".instruction")
-          .build());
-      }
-      // Check for inst file key
-        assertTrue(ptInstFile.response().metadata().containsKey("x-amz-crypto-instr-file"));
+        try (S3Client ptS3Client = S3Client.create()) {
+            ptInstFile = ptS3Client.getObjectAsBytes(builder -> builder
+              .bucket(BUCKET)
+              .key(objectKey + ".instruction")
+              .build());
+        }
+        // Check for inst file key
+        if (!encLang.getLanguageName().contains("Ruby")) {
+            // Ruby doesn't include it :(
+            assertTrue(ptInstFile.response().metadata().containsKey("x-amz-crypto-instr-file"));
+        }
         assertFalse(ptInstFile.asUtf8String().isEmpty());
 
         // Read should be enabled by default
