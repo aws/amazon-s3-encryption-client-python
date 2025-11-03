@@ -39,9 +39,14 @@ class ClientManager
           else
             raise "Unsupported commitment_policy " + config['commitmentPolicy']
           end
+        if config['commitmentPolicy'] == 'FORBID_ENCRYPT_ALLOW_DECRYPT' && config['encryptionAlgorithm'].nil?
+          hash[:content_encryption_schema] = :aes_gcm_no_padding
+        end
       end
       if !config['enableLegacyWrappingAlgorithms'].nil? || !config['enableLegacyUnauthenticatedModes'].nil?
-        hash[:legacy_modes] = config['enableLegacyWrappingAlgorithms'] || config['enableLegacyUnauthenticatedModes']
+        legacy_modes = config['enableLegacyWrappingAlgorithms'] || config['enableLegacyUnauthenticatedModes']
+        # Set security profile based on legacy wrapping algorithms setting
+        hash[:security_profile] = legacy_modes ? :v3_and_legacy : :v3
       end
     end
 
