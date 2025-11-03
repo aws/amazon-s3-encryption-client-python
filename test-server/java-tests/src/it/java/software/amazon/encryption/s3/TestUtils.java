@@ -97,11 +97,11 @@ public class TestUtils {
     // .NET only supports decrypting instruction files using AES and RSA.
     // Python MUST support decrypting KMS instruction files, but does not yet.
     public static final Set<String> KMS_INSTRUCTION_FILE_UNSUPPORTED =
-      Set.of(NET_V2_CURRENT, NET_V2_TRANSITION, NET_V3, PYTHON_V3);
+      Set.of(NET_V2_CURRENT, NET_V2_TRANSITION, NET_V3);
 
     // Go does not write with instruction files
     public static final Set<String> INSTRUCTION_FILE_PUT_UNSUPPORTED =
-      Set.of(GO_V3_CURRENT, GO_V3_TRANSITION, GO_V4);
+      Set.of(GO_V3_CURRENT, GO_V3_TRANSITION, GO_V4, PYTHON_V3);
 
     // Not implemented yet in Python.
     public static final Set<String> INSTRUCTION_FILE_GET_UNSUPPORTED =
@@ -109,7 +109,11 @@ public class TestUtils {
 
     // Until all languages work, just test these for now
     public static final Set<String> INSTRUCTION_FILE_ROUNDTRIP_SUPPORTED =
-      Set.of(JAVA_V3_CURRENT, JAVA_V3_TRANSITION, RUBY_V2_TRANSITION, RUBY_V3);
+      Set.of(JAVA_V3_CURRENT, JAVA_V3_TRANSITION, RUBY_V2_TRANSITION, RUBY_V3
+        // PHP doesn't work yet
+//        PHP_V2_CURRENT, PHP_V2_TRANSITION, PHP_V3)
+        , GO_V3_CURRENT, GO_V4
+      );
 
     public static final Set<String> CURRENT_VERSIONS =
         Set.of(
