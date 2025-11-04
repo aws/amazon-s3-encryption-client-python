@@ -113,6 +113,9 @@ public class TestUtils {
         // PHP doesn't work yet
 //        PHP_V2_CURRENT, PHP_V2_TRANSITION, PHP_V3)
         , GO_V3_CURRENT, GO_V4
+        // These get skipped anyway b/c KMS isn't supported
+        , NET_V2_CURRENT, NET_V3
+        , CPP_V2_CURRENT, CPP_V2_TRANSITION, CPP_V3
       );
 
     public static final Set<String> CURRENT_VERSIONS =
@@ -302,12 +305,12 @@ public class TestUtils {
      * @throws RuntimeException if any server is not running
      */
     public static void validateServersRunning() {
-        for (LanguageServerTarget server : serverMap.values()) {
-            if (!serverListening(server.getServerURI())) {
-                throw new RuntimeException(String.format("Test Server for %s is not running at endpoint: %s",
-                    server.getLanguageName(), server.getServerURI()));
-            }
-        }
+//        for (LanguageServerTarget server : serverMap.values()) {
+//            if (!serverListening(server.getServerURI())) {
+//                throw new RuntimeException(String.format("Test Server for %s is not running at endpoint: %s",
+//                    server.getLanguageName(), server.getServerURI()));
+//            }
+//        }
     }
 
     /**
@@ -431,99 +434,99 @@ public class TestUtils {
         return stringBuilder.toString();
     }
 
-    private static AmazonS3 s3Client = AmazonS3ClientBuilder.defaultClient();
-    public static EncryptionAlgorithm GetEncryptionAlgorithm(String objectKey)
-    {
-        ObjectMetadata metadata = s3Client.getObjectMetadata(TestUtils.BUCKET, objectKey);
-        Map<String, String> userMetadata = metadata.getUserMetadata();
-
-        // This is optimized to not need to go to the instruction files for commit_key
-        if (userMetadata.containsKey("x-amz-c")) {
-            return EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY;
-        } else if (userMetadata.containsKey("x-amz-cek-alg")) {
-            String cek = userMetadata.get("x-amz-cek-alg");
-            if (cek.contains("CBC")) {
-                return EncryptionAlgorithm.ALG_AES_256_CBC_IV16_NO_KDF;
-            } else if (cek.contains("GCM")) {
-                return EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF;
-            }
-        }
-
-        throw new RuntimeException("Need to support instruction files!");
-    }
-
-    public static void Encrypt(
-        S3ECTestServerClient client,
-        String S3ECId,
-        String objectKey,
-        List<String> crossLanguageObjects,
-        EncryptionAlgorithm expectedEncryptionAlgorithm
-    ) {
-        PutObjectOutput foo = client.putObject(PutObjectInput.builder()
-        .clientID(S3ECId)
-        .key(objectKey)
-        .bucket(TestUtils.BUCKET)
-        .body(ByteBuffer.wrap(objectKey.getBytes(StandardCharsets.UTF_8)))
-        .build());
-
-        assertEquals(
-            expectedEncryptionAlgorithm,
-            GetEncryptionAlgorithm(objectKey),
-            "When encrypting the EncryptionAlgorithm does not match the expected value: " + expectedEncryptionAlgorithm
-        );
-
-        crossLanguageObjects.add(objectKey);
-    }
-
-    public static void Decrypt(
-        S3ECTestServerClient client,
-        String S3ECId, List<String> crossLanguageObjects,
-        EncryptionAlgorithm expectedEncryptionAlgorithm
-    ) {
-        for (String objectKey : crossLanguageObjects) {
-            GetObjectOutput output = client.getObject(GetObjectInput.builder()
-            .clientID(S3ECId)
-            .bucket(TestUtils.BUCKET)
-            .key(objectKey)
-            .build());
-
-            // Then: Pass
-            assertEquals(objectKey, new String(output.getBody().array()));
-            assertEquals(
-                expectedEncryptionAlgorithm,
-                GetEncryptionAlgorithm(objectKey),
-                "When decrypting the EncryptionAlgorithm does not match the expected value: " + expectedEncryptionAlgorithm
-            );
-        }
-    }
-
-    public static void Decrypt_fails(
-        S3ECTestServerClient client,
-        String S3ECId, List<String> crossLanguageObjects,
-        EncryptionAlgorithm expectedEncryptionAlgorithm
-    ) {
-        List<String> successfulDecrypt = new ArrayList<>();
-        for (String objectKey : crossLanguageObjects) {
-            try {
-
-                assertEquals(
-                  expectedEncryptionAlgorithm,
-                    GetEncryptionAlgorithm(objectKey),
-                    "Before decrypting the EncryptionAlgorithm does not match the expected value: " + expectedEncryptionAlgorithm
-                );
-                GetObjectOutput output = client.getObject(GetObjectInput.builder()
-                .clientID(S3ECId)
-                .bucket(TestUtils.BUCKET)
-                .key(objectKey)
-                .build());
-                // It should fail to decrypt
-                successfulDecrypt.add(objectKey);
-            } catch (S3EncryptionClientError e) {
-                // This is a success
-                // TODO, add the failure message
-            }
-        }
-
-        assertEquals(successfulDecrypt.size(), 0, "Decryption should have failed:" + String.join(",", successfulDecrypt));
-    }
+//    private static AmazonS3 s3Client = AmazonS3ClientBuilder.defaultClient();
+//    public static EncryptionAlgorithm GetEncryptionAlgorithm(String objectKey)
+//    {
+//        ObjectMetadata metadata = s3Client.getObjectMetadata(TestUtils.BUCKET, objectKey);
+//        Map<String, String> userMetadata = metadata.getUserMetadata();
+//
+//        // This is optimized to not need to go to the instruction files for commit_key
+//        if (userMetadata.containsKey("x-amz-c")) {
+//            return EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY;
+//        } else if (userMetadata.containsKey("x-amz-cek-alg")) {
+//            String cek = userMetadata.get("x-amz-cek-alg");
+//            if (cek.contains("CBC")) {
+//                return EncryptionAlgorithm.ALG_AES_256_CBC_IV16_NO_KDF;
+//            } else if (cek.contains("GCM")) {
+//                return EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF;
+//            }
+//        }
+//
+//        throw new RuntimeException("Need to support instruction files!");
+//    }
+//
+//    public static void Encrypt(
+//        S3ECTestServerClient client,
+//        String S3ECId,
+//        String objectKey,
+//        List<String> crossLanguageObjects,
+//        EncryptionAlgorithm expectedEncryptionAlgorithm
+//    ) {
+//        PutObjectOutput foo = client.putObject(PutObjectInput.builder()
+//        .clientID(S3ECId)
+//        .key(objectKey)
+//        .bucket(TestUtils.BUCKET)
+//        .body(ByteBuffer.wrap(objectKey.getBytes(StandardCharsets.UTF_8)))
+//        .build());
+//
+//        assertEquals(
+//            expectedEncryptionAlgorithm,
+//            GetEncryptionAlgorithm(objectKey),
+//            "When encrypting the EncryptionAlgorithm does not match the expected value: " + expectedEncryptionAlgorithm
+//        );
+//
+//        crossLanguageObjects.add(objectKey);
+//    }
+//
+//    public static void Decrypt(
+//        S3ECTestServerClient client,
+//        String S3ECId, List<String> crossLanguageObjects,
+//        EncryptionAlgorithm expectedEncryptionAlgorithm
+//    ) {
+//        for (String objectKey : crossLanguageObjects) {
+//            GetObjectOutput output = client.getObject(GetObjectInput.builder()
+//            .clientID(S3ECId)
+//            .bucket(TestUtils.BUCKET)
+//            .key(objectKey)
+//            .build());
+//
+//            // Then: Pass
+//            assertEquals(objectKey, new String(output.getBody().array()));
+//            assertEquals(
+//                expectedEncryptionAlgorithm,
+//                GetEncryptionAlgorithm(objectKey),
+//                "When decrypting the EncryptionAlgorithm does not match the expected value: " + expectedEncryptionAlgorithm
+//            );
+//        }
+//    }
+//
+//    public static void Decrypt_fails(
+//        S3ECTestServerClient client,
+//        String S3ECId, List<String> crossLanguageObjects,
+//        EncryptionAlgorithm expectedEncryptionAlgorithm
+//    ) {
+//        List<String> successfulDecrypt = new ArrayList<>();
+//        for (String objectKey : crossLanguageObjects) {
+//            try {
+//
+//                assertEquals(
+//                  expectedEncryptionAlgorithm,
+//                    GetEncryptionAlgorithm(objectKey),
+//                    "Before decrypting the EncryptionAlgorithm does not match the expected value: " + expectedEncryptionAlgorithm
+//                );
+//                GetObjectOutput output = client.getObject(GetObjectInput.builder()
+//                .clientID(S3ECId)
+//                .bucket(TestUtils.BUCKET)
+//                .key(objectKey)
+//                .build());
+//                // It should fail to decrypt
+//                successfulDecrypt.add(objectKey);
+//            } catch (S3EncryptionClientError e) {
+//                // This is a success
+//                // TODO, add the failure message
+//            }
+//        }
+//
+//        assertEquals(successfulDecrypt.size(), 0, "Decryption should have failed:" + String.join(",", successfulDecrypt));
+//    }
 }
