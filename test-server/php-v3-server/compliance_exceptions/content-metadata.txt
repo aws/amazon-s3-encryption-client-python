@@ -25,3 +25,15 @@
 //= ../specification/s3-encryption/data-format/content-metadata.md#v1-v2-shared
 //= type=exception
 //# This string MAY be encoded by the esoteric double-encoding scheme used by the S3 web server.
+
+//= ../specification/s3-encryption/data-format/content-metadata.md#determining-s3ec-object-status
+//= type=exception
+//# - If the metadata contains "x-amz-iv" and "x-amz-key" then the object MUST be considered as an S3EC-encrypted object using the V1 format.
+
+//= ../specification/s3-encryption/data-format/content-metadata.md#determining-s3ec-object-status
+//= type=exception
+//# If the object matches none of the V1/V2/V3 formats, the S3EC MUST attempt to get the instruction file.
+
+//= ../specification/s3-encryption/data-format/content-metadata.md#v3-only
+//= type=exception
+//# The Material Description MUST be used for wrapping algorithms `AES/GCM` (`02`) and `RSA-OAEP-SHA1` (`22`).
