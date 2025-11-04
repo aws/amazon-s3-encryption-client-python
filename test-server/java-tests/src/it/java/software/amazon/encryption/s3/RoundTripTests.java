@@ -483,11 +483,8 @@ public class RoundTripTests {
         if (KMS_INSTRUCTION_FILE_UNSUPPORTED.contains(decLang.getLanguageName())) {
             throw new TestAbortedException("not testing " + encLang.getLanguageName());
         }
-        if (!INSTRUCTION_FILE_ROUNDTRIP_SUPPORTED.contains(encLang.getLanguageName())) {
+        if (INSTRUCTION_FILE_ROUNDTRIP_TEMP_UNSUPPORTED.contains(encLang.getLanguageName())) {
             throw new TestAbortedException("not testing " + encLang.getLanguageName());
-        }
-        if (!INSTRUCTION_FILE_ROUNDTRIP_SUPPORTED.contains(decLang.getLanguageName())) {
-            throw new TestAbortedException("not testing " + decLang.getLanguageName());
         }
         S3ECTestServerClient encClient = testServerClientFor(encLang);
         S3ECTestServerClient decClient = testServerClientFor(decLang);
