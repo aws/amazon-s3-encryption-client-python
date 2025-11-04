@@ -428,7 +428,10 @@ public class RoundTripTests {
     @MethodSource("software.amazon.encryption.s3.TestUtils#clientsForTest")
     public void instructionFileReadV2Format(TestUtils.LanguageServerTarget language) {
         if (KMS_INSTRUCTION_FILE_UNSUPPORTED.contains(language.getLanguageName())) {
-            return;
+            throw new TestAbortedException(String.format("%s does not support KMS instruction files", language.getLanguageName()));
+        }
+        if (INSTRUCTION_FILE_GET_UNSUPPORTED.contains(language.getLanguageName())) {
+            throw new TestAbortedException(String.format("%s does not support instruction file Gets", language.getLanguageName()));
         }
         S3ECTestServerClient client = testServerClientFor(language);
         final String objectKey = appendTestSuffix("read-instruction-file-v2-" + language);
