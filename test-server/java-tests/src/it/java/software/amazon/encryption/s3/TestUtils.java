@@ -101,22 +101,17 @@ public class TestUtils {
 
     // Go does not write with instruction files
     public static final Set<String> INSTRUCTION_FILE_PUT_UNSUPPORTED =
-      Set.of(GO_V3_CURRENT, GO_V3_TRANSITION, GO_V4, PYTHON_V3);
+      Set.of(GO_V3_CURRENT, GO_V3_TRANSITION, GO_V4, PYTHON_V3
+        // Apparently C++ V2 Current does not work, even though it should
+      , CPP_V2_CURRENT);
 
     // Not implemented yet in Python.
     public static final Set<String> INSTRUCTION_FILE_GET_UNSUPPORTED =
       Set.of(PYTHON_V3);
 
-    // Until all languages work, just test these for now
-    public static final Set<String> INSTRUCTION_FILE_ROUNDTRIP_SUPPORTED =
-      Set.of(JAVA_V3_CURRENT, JAVA_V3_TRANSITION, RUBY_V2_TRANSITION, RUBY_V3
-        // PHP doesn't work yet
-//        PHP_V2_CURRENT, PHP_V2_TRANSITION, PHP_V3)
-        , GO_V3_CURRENT, GO_V4
-        // These get skipped anyway b/c KMS isn't supported
-        , NET_V2_CURRENT, NET_V3
-        , CPP_V2_CURRENT, CPP_V2_TRANSITION, CPP_V3
-      );
+    // PHP doesn't work but it should, temporarily disable
+    public static final Set<String> INSTRUCTION_FILE_ROUNDTRIP_TEMP_UNSUPPORTED =
+      Set.of(PHP_V2_CURRENT, PHP_V2_TRANSITION, PHP_V3);
 
     public static final Set<String> CURRENT_VERSIONS =
         Set.of(
