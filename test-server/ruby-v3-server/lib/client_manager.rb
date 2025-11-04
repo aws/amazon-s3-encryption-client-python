@@ -21,7 +21,7 @@ class ClientManager
 
     # translate between canonical AlgSuite and Ruby symbols
     if content_alg.nil? || content_alg == 'ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY'
-        content_alg = :aes_gcm_with_commitment
+        content_alg = :alg_aes_256_gcm_hkdf_sha512_commit_key
     elsif content_alg == 'ALG_AES_256_GCM_IV12_TAG16_NO_KDF'
         content_alg = :aes_gcm_no_padding
     else
