@@ -86,7 +86,7 @@ MHD_Result handle_create_client(struct MHD_Connection *connection,
     auto materials =
         std::make_shared<KMSWithContextEncryptionMaterials>(kms_key_id);
     CryptoConfigurationV2 config(materials);
-    if (legacy1 || legacy2) {
+    if (legacy1 || legacy2)
       config.SetSecurityProfile(SecurityProfile::V2_AND_LEGACY);
 
     auto encryption_client = std::make_shared<S3EncryptionClientV2>(config);
