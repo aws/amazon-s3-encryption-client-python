@@ -16,7 +16,7 @@
 using json = nlohmann::json;
 using namespace Aws::S3Encryption;
 using Aws::S3Encryption::Materials::KMSWithContextEncryptionMaterials;
-std::unordered_map<std::string, std::shared_ptr<S3EncryptionClientV2>>
+std::unordered_map<std::string, std::shared_ptr<S3EncryptionClientV3>>
     client_cache;
 
 std::string generate_uuid() {
@@ -50,12 +50,10 @@ std::string make_error(const std::string &message, int status_code) {
          message + "\"}";
 }
 
-bool unsupported(std::string& commitmentPolicy, std::string& encryptionAlgorithm)
-{
-  if (encryptionAlgorithm == "ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY") return true;
-  if (commitmentPolicy == "REQUIRE_ENCRYPT_REQUIRE_DECRYPT") return true;
-  if (commitmentPolicy == "REQUIRE_ENCRYPT_ALLOW_DECRYPT") return true;
-  return false;
+MHD_Result unsupported(struct MHD_Connection *connection, std::string & commitmentPolicy, std::string & encryptionAlgorithm) {
+    fprintf(stderr, "Unsupported %s %s\n",commitmentPolicy.c_str(), encryptionAlgorithm.c_str() );
+    send_response(connection, 404, "{\"error\":\"Unsupported Option.\"}");
+    return MHD_YES;
 }
 
 std::string get_config(json & request, const char * x)
@@ -71,25 +69,32 @@ MHD_Result handle_create_client(struct MHD_Connection *connection,
                                 const std::string &body) {
   try {
     json request = json::parse(body);
-    std::string commitmentPolicy = get_config(request, "commitmentPolicy");
-    std::string encryptionAlgorithm = get_config(request, "encryptionAlgorithm");
-    
-    if (unsupported(commitmentPolicy, encryptionAlgorithm)) {
-      send_response(connection, 404, "{\"error\":\"Unsupported Option.\"}");
-      return MHD_YES;
-    }
-
     std::string kms_key_id = request["config"]["keyMaterial"]["kmsKeyId"];
     bool legacy1 = request["config"]["enableLegacyWrappingAlgorithms"];
     bool legacy2 = request["config"]["enableLegacyUnauthenticatedModes"];
 
     auto materials =
         std::make_shared<KMSWithContextEncryptionMaterials>(kms_key_id);
-    CryptoConfigurationV2 config(materials);
-    if (legacy1 || legacy2) {
-      config.SetSecurityProfile(SecurityProfile::V2_AND_LEGACY);
+    CryptoConfigurationV3 config(materials);
+    if (legacy1 || legacy2)
+      config.AllowLegacy();
 
-    auto encryption_client = std::make_shared<S3EncryptionClientV2>(config);
+    std::string commitmentPolicy = get_config(request, "commitmentPolicy");
+    std::string encryptionAlgorithm = get_config(request, "encryptionAlgorithm");
+  
+    if (commitmentPolicy == "REQUIRE_ENCRYPT_REQUIRE_DECRYPT") {
+      if (encryptionAlgorithm == "ALG_AES_256_GCM_IV12_TAG16_NO_KDF") return unsupported(connection, commitmentPolicy, encryptionAlgorithm);
+      if (encryptionAlgorithm == "ALG_AES_256_CBC_IV16_NO_KDF") return unsupported(connection, commitmentPolicy, encryptionAlgorithm);
+      config.SetCommitmentPolicy(CommitmentPolicy::REQUIRE_ENCRYPT_REQUIRE_DECRYPT);
+    } else if (commitmentPolicy == "REQUIRE_ENCRYPT_ALLOW_DECRYPT") {
+      if (encryptionAlgorithm == "ALG_AES_256_GCM_IV12_TAG16_NO_KDF") return unsupported(connection, commitmentPolicy, encryptionAlgorithm);
+      config.SetCommitmentPolicy(CommitmentPolicy::REQUIRE_ENCRYPT_ALLOW_DECRYPT);
+    } else if (commitmentPolicy == "FORBID_ENCRYPT_ALLOW_DECRYPT") {
+      if (encryptionAlgorithm == "ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY") return unsupported(connection, commitmentPolicy, encryptionAlgorithm);
+      config.SetCommitmentPolicy(CommitmentPolicy::FORBID_ENCRYPT_ALLOW_DECRYPT);
+    }
+
+    auto encryption_client = std::make_shared<S3EncryptionClientV3>(config);
 
     std::string client_id = generate_uuid();
     client_cache[client_id] = encryption_client;
@@ -97,8 +102,9 @@ MHD_Result handle_create_client(struct MHD_Connection *connection,
     json response = {{"clientId", client_id}};
     return send_response(connection, 200, response.dump());
   } catch (const std::exception &e) {
+    fprintf(stderr, "handle_create_client exception %s\n", e.what());
     return send_response(connection, 500,
-                         "{\"error\":\"An exception was thrown.\"}");
+                        "{\"error\":\"An exception was thrown.\"}");
   } catch (...) {
     return send_response(connection, 500, "{\"error\":\"Unknown error\"}");
   }
@@ -192,9 +198,11 @@ MHD_Result handle_get_object(struct MHD_Connection *connection,
       return send_response(connection, 200, content);
     } else {
       auto msg = make_error(outcome.GetError().GetMessage(), 500);
+    fprintf(stderr, "handle_get_object error %s\n", msg.c_str());
       return send_response(connection, 500, msg);
     }
   } catch (const std::exception &e) {
+    fprintf(stderr, "handle_get_object exception %s\n", e.what());
     auto msg = make_error("An exception was thrown", 500);
     return send_response(connection, 500, msg);
   }
@@ -227,9 +235,11 @@ MHD_Result handle_put_object(struct MHD_Connection *connection,
       return send_response(connection, 200, response.dump());
     } else {
       auto msg = make_error(outcome.GetError().GetMessage(), 500);
+    fprintf(stderr, "handle_put_object error %s\n", msg.c_str());
       return send_response(connection, 500, msg);
     }
   } catch (const std::exception &e) {
+    fprintf(stderr, "handle_put_object exception %s\n", e.what());
     auto msg = make_error(e.what(), 500);
     return send_response(connection, 500, msg);
   }
@@ -290,7 +300,7 @@ MHD_Result request_handler(void *cls, struct MHD_Connection *connection,
 int main() {
   Aws::SDKOptions options;
   Aws::InitAPI(options);
-  int port = 8097;
+  int port = 8091;
 
   struct MHD_Daemon *daemon =
       MHD_start_daemon(MHD_USE_SELECT_INTERNALLY, port, NULL, NULL,
