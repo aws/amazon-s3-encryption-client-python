@@ -16,7 +16,7 @@ pattern = "aws-sdk-cpp/src/aws-cpp-sdk-core/include/aws/core/utils/crypto/*.cpp"
 pattern = "compliance.txt"
 
 [[specification]]
-source = "../specification/s3-encryption/data-format/client.md"
+source = "../specification/s3-encryption/client.md"
 [[specification]]
 source = "../specification/s3-encryption/data-format/content-metadata.md"
 [[specification]]
