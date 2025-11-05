@@ -24,6 +24,10 @@
 	url = git@github.com:aws/private-amazon-s3-encryption-client-java-staging.git
 	branch = imabhichow/add-kc
 ; 	branch = s3ec/improved
+[submodule "test-server/java-v4-server/specification"]
+	path = test-server/java-v4-server/specification
+	url = git@github.com:awslabs/private-aws-encryption-sdk-specification-staging.git
+	branch = fire-egg-staging
 [submodule "test-server/specification"]
 	path = test-server/specification
 	url = git@github.com:awslabs/private-aws-encryption-sdk-specification-staging.git
