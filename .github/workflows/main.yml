@@ -28,6 +28,10 @@ jobs:
     secrets: inherit
 
   run-duvet:
+    permissions:
+      id-token: write
+      contents: read
+      pages: write
     name: Run Duvet
     uses: ./.github/workflows/duvet.yml
     secrets: inherit
