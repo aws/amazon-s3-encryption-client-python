@@ -18,6 +18,9 @@ jobs:
     uses: ./.github/workflows/lint.yml
 
   run-tests:
+    permissions:
+      id-token: write
+      contents: read
     name: Run Tests
     uses: ./.github/workflows/test.yml
     with:
@@ -25,6 +28,10 @@ jobs:
     secrets: inherit
 
   run-duvet:
+    permissions:
+      id-token: write
+      contents: read
+      pages: write
     name: Run Duvet
     uses: ./.github/workflows/duvet.yml
     secrets: inherit
