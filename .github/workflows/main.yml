@@ -18,6 +18,9 @@ jobs:
     uses: ./.github/workflows/lint.yml
 
   run-tests:
+    permissions:
+      id-token: write
+      contents: read
     name: Run Tests
     uses: ./.github/workflows/test.yml
     with:
