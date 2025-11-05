@@ -1,0 +1,25 @@
+We're not doing double encoding yet
+
+//= ../specification/s3-encryption/data-format/metadata-strategy.md#object-metadata
+//= type=exception
+//# The S3EC SHOULD support decoding the S3 Server's "double encoding".
+
+
+
+Yes, this is how we do prefixes. 
+
+//= ../specification/s3-encryption/data-format/content-metadata.md#content-metadata-mapkeys
+//= type=exception
+//# The "x-amz-meta-" prefix is automatically added by the S3 server and MUST NOT be included in implementation code.
+
+//= ../specification/s3-encryption/data-format/content-metadata.md#content-metadata-mapkeys
+//= type=exception
+//# The "x-amz-" prefix denotes that the metadata is owned by an Amazon product and MUST be prepended to all S3EC metadata mapkeys.
+
+
+
+We do not support  a custom Instruction File suffix under any circumstances.
+
+//= ../specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
+//= type=exception
+//# The S3EC MUST NOT support providing a custom Instruction File suffix on ordinary writes; custom suffixes MUST only be used during re-encryption.
