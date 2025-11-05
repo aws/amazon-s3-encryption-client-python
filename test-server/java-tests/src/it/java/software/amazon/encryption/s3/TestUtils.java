@@ -110,7 +110,7 @@ public class TestUtils {
     public static final Set<String> TRANSITION_VERSIONS =
         Set.of(
             // JAVA_V3_TRANSITION,
-            // GO_V3_TRANSITION,
+            GO_V3_TRANSITION,
             // NET_V2_TRANSITION,
             CPP_V2_TRANSITION,
             // PHP_V2_TRANSITION,
