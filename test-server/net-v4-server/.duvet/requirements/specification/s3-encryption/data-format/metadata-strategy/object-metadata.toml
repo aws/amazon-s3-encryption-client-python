@@ -1,0 +1,28 @@
+target = "../specification/s3-encryption/data-format/metadata-strategy.md#object-metadata"
+
+# Object Metadata
+#
+# Object Metadata refers to the set of mapkey-value pairs stored alongside an object in S3.
+# By default, the S3EC MUST store content metadata in the S3 Object Metadata.
+# When an encrypted object is stored in S3 with non-US-ASCII Materials Description or Encryption Context, the S3 Server will apply an esoteric "double encoding" to the metadata.
+# The S3EC SHOULD support decoding the S3 Server's "double encoding".
+# If the S3EC does not support decoding the S3 Server's "double encoding" then it MUST return the content metadata untouched.
+
+[[spec]]
+level = "MUST"
+quote = '''
+By default, the S3EC MUST store content metadata in the S3 Object Metadata.
+'''
+
+[[spec]]
+level = "SHOULD"
+quote = '''
+The S3EC SHOULD support decoding the S3 Server's "double encoding".
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+If the S3EC does not support decoding the S3 Server's "double encoding" then it MUST return the content metadata untouched.
+'''
+

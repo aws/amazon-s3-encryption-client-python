@@ -1,0 +1,60 @@
+target = "../specification/s3-encryption/data-format/content-metadata.md#determining-s3ec-object-status"
+
+# Determining S3EC Object Status
+#
+# Whether or not an object is determined to be a valid object encrypted by S3EC is done via the following logic:
+# 
+# V1:
+# 
+# - If the metadata contains "x-amz-iv" and "x-amz-key" then the object MUST be considered as an S3EC-encrypted object using the V1 format.
+# 
+# V2:
+# 
+# - If the metadata contains "x-amz-iv" and "x-amz-metadata-x-amz-key-v2" then the object MUST be considered as an S3EC-encrypted object using the V2 format.
+# 
+# V3:
+# 
+# - If the metadata contains "x-amz-3" and "x-amz-d" and "x-amz-i" then the object MUST be considered an S3EC-encrypted object using the V3 format.
+# 
+# This logic applies only to objects using ObjectMetadata to store cryptographic metadata.
+# If the object matches none of the V1/V2/V3 formats, the S3EC MUST attempt to get the instruction file.
+# 
+# If there are multiple mapkeys which are meant to be exclusive, such as "x-amz-key", "x-amz-key-v2", and "x-amz-3" then the S3EC SHOULD throw an exception.
+# In general, if there is any deviation from the above format, with the exception of additional unrelated mapkeys, then the S3EC SHOULD throw an exception.
+
+[[spec]]
+level = "MUST"
+quote = '''
+- If the metadata contains "x-amz-iv" and "x-amz-key" then the object MUST be considered as an S3EC-encrypted object using the V1 format.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+- If the metadata contains "x-amz-iv" and "x-amz-metadata-x-amz-key-v2" then the object MUST be considered as an S3EC-encrypted object using the V2 format.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+- If the metadata contains "x-amz-3" and "x-amz-d" and "x-amz-i" then the object MUST be considered an S3EC-encrypted object using the V3 format.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+If the object matches none of the V1/V2/V3 formats, the S3EC MUST attempt to get the instruction file.
+'''
+
+[[spec]]
+level = "SHOULD"
+quote = '''
+If there are multiple mapkeys which are meant to be exclusive, such as "x-amz-key", "x-amz-key-v2", and "x-amz-3" then the S3EC SHOULD throw an exception.
+'''
+
+[[spec]]
+level = "SHOULD"
+quote = '''
+In general, if there is any deviation from the above format, with the exception of additional unrelated mapkeys, then the S3EC SHOULD throw an exception.
+'''
+

@@ -1,0 +1,33 @@
+target = "../specification/s3-encryption/client.md#enable-legacy-wrapping-algorithms"
+
+# Enable Legacy Wrapping Algorithms
+#
+# The S3EC MUST support the option to enable or disable legacy wrapping algorithms.
+# The option to enable legacy wrapping algorithms MUST be set to false by default.
+# When enabled, the S3EC MUST be able to decrypt objects encrypted with all supported wrapping algorithms (both legacy and fully supported).
+# When disabled, the S3EC MUST NOT decrypt objects encrypted using legacy wrapping algorithms; it MUST throw an exception when attempting to decrypt an object encrypted with a legacy wrapping algorithm.
+
+[[spec]]
+level = "MUST"
+quote = '''
+The S3EC MUST support the option to enable or disable legacy wrapping algorithms.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+The option to enable legacy wrapping algorithms MUST be set to false by default.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+When enabled, the S3EC MUST be able to decrypt objects encrypted with all supported wrapping algorithms (both legacy and fully supported).
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+When disabled, the S3EC MUST NOT decrypt objects encrypted using legacy wrapping algorithms; it MUST throw an exception when attempting to decrypt an object encrypted with a legacy wrapping algorithm.
+'''
+

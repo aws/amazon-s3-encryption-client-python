@@ -1,0 +1,14 @@
+target = "../specification/s3-encryption/encryption.md#alg-aes-256-ctr-hkdf-sha512-commit-key"
+
+# ALG_AES_256_CTR_HKDF_SHA512_COMMIT_KEY
+#
+# Encryption using AES-CTR is not supported.
+# This algorithm suite is only used to decrypt ranges of a ciphertext encrypted using key committing AES-GCM.
+# Attempts to encrypt using key committing AES-CTR MUST fail.
+
+[[spec]]
+level = "MUST"
+quote = '''
+Attempts to encrypt using key committing AES-CTR MUST fail.
+'''
+

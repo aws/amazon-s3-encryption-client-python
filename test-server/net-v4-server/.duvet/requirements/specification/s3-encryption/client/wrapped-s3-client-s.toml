@@ -1,0 +1,19 @@
+target = "../specification/s3-encryption/client.md#wrapped-s3-client-s"
+
+# Wrapped S3 Client(s)
+#
+# The S3EC MUST support the option to provide an SDK S3 client instance during its initialization.
+# The S3EC MUST NOT support use of S3EC as the provided S3 client during its initialization; it MUST throw an exception in this case.
+
+[[spec]]
+level = "MUST"
+quote = '''
+The S3EC MUST support the option to provide an SDK S3 client instance during its initialization.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+The S3EC MUST NOT support use of S3EC as the provided S3 client during its initialization; it MUST throw an exception in this case.
+'''
+

@@ -1,0 +1,26 @@
+target = "../specification/s3-encryption/client.md#encryption-algorithm"
+
+# Encryption Algorithm
+#
+# The S3EC MUST support configuration of the encryption algorithm (or algorithm suite) during its initialization.
+# The S3EC MUST validate that the configured encryption algorithm is not legacy.
+# If the configured encryption algorithm is legacy, then the S3EC MUST throw an exception.
+
+[[spec]]
+level = "MUST"
+quote = '''
+The S3EC MUST support configuration of the encryption algorithm (or algorithm suite) during its initialization.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+The S3EC MUST validate that the configured encryption algorithm is not legacy.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+If the configured encryption algorithm is legacy, then the S3EC MUST throw an exception.
+'''
+

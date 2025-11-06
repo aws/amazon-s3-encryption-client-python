@@ -1,0 +1,33 @@
+target = "../specification/s3-encryption/client.md#enable-legacy-unauthenticated-modes"
+
+# Enable Legacy Unauthenticated Modes
+#
+# The S3EC MUST support the option to enable or disable legacy unauthenticated modes (content encryption algorithms).
+# The option to enable legacy unauthenticated modes MUST be set to false by default.
+# When enabled, the S3EC MUST be able to decrypt objects encrypted with all content encryption algorithms (both legacy and fully supported).
+# When disabled, the S3EC MUST NOT decrypt objects encrypted using legacy content encryption algorithms; it MUST throw an exception when attempting to decrypt an object encrypted with a legacy content encryption algorithm.
+
+[[spec]]
+level = "MUST"
+quote = '''
+The S3EC MUST support the option to enable or disable legacy unauthenticated modes (content encryption algorithms).
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+The option to enable legacy unauthenticated modes MUST be set to false by default.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+When enabled, the S3EC MUST be able to decrypt objects encrypted with all content encryption algorithms (both legacy and fully supported).
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+When disabled, the S3EC MUST NOT decrypt objects encrypted using legacy content encryption algorithms; it MUST throw an exception when attempting to decrypt an object encrypted with a legacy content encryption algorithm.
+'''
+

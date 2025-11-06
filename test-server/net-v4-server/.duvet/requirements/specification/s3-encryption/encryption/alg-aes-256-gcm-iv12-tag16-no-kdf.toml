@@ -1,0 +1,26 @@
+target = "../specification/s3-encryption/encryption.md#alg-aes-256-gcm-iv12-tag16-no-kdf"
+
+# ALG_AES_256_GCM_IV12_TAG16_NO_KDF
+#
+# The client MUST initialize the cipher, or call an AES-GCM encryption API, with the plaintext data key, the generated IV, and the tag length defined in the Algorithm Suite when encrypting with ALG_AES_256_GCM_IV12_TAG16_NO_KDF.
+# The client MUST NOT provide any AAD when encrypting with ALG_AES_256_GCM_IV12_TAG16_NO_KDF.
+# The client MUST append the GCM auth tag to the ciphertext if the underlying crypto provider does not do so automatically.
+
+[[spec]]
+level = "MUST"
+quote = '''
+The client MUST initialize the cipher, or call an AES-GCM encryption API, with the plaintext data key, the generated IV, and the tag length defined in the Algorithm Suite when encrypting with ALG_AES_256_GCM_IV12_TAG16_NO_KDF.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+The client MUST NOT provide any AAD when encrypting with ALG_AES_256_GCM_IV12_TAG16_NO_KDF.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+The client MUST append the GCM auth tag to the ciphertext if the underlying crypto provider does not do so automatically.
+'''
+

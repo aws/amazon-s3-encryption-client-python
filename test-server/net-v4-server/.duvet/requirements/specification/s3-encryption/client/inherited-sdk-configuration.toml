@@ -1,0 +1,34 @@
+target = "../specification/s3-encryption/client.md#inherited-sdk-configuration"
+
+# Inherited SDK Configuration
+#
+# The S3EC MAY support directly configuring the wrapped SDK clients through its initialization.
+# For example, the S3EC MAY accept a credentials provider instance during its initialization.
+# If the S3EC accepts SDK client configuration, the configuration MUST be applied to all wrapped S3 clients.
+# If the S3EC accepts SDK client configuration, the configuration MUST be applied to all wrapped SDK clients including the KMS client.
+# If the S3EC accepts any SDK client configuration options, then the S3EC should support all possible configuration options.
+
+[[spec]]
+level = "MAY"
+quote = '''
+The S3EC MAY support directly configuring the wrapped SDK clients through its initialization.
+'''
+
+[[spec]]
+level = "MAY"
+quote = '''
+For example, the S3EC MAY accept a credentials provider instance during its initialization.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+If the S3EC accepts SDK client configuration, the configuration MUST be applied to all wrapped S3 clients.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+If the S3EC accepts SDK client configuration, the configuration MUST be applied to all wrapped SDK clients including the KMS client.
+'''
+

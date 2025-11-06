@@ -1,0 +1,26 @@
+target = "../specification/s3-encryption/client.md#set-buffer-size"
+
+# Set Buffer Size
+#
+# The S3EC SHOULD accept a configurable buffer size which refers to the maximum ciphertext length in bytes to store in memory when Delayed Authentication mode is disabled.
+# If Delayed Authentication mode is enabled, and the buffer size has been set to a value other than its default, the S3EC MUST throw an exception.
+# If Delayed Authentication mode is disabled, and no buffer size is provided, the S3EC MUST set the buffer size to a reasonable default.
+
+[[spec]]
+level = "SHOULD"
+quote = '''
+The S3EC SHOULD accept a configurable buffer size which refers to the maximum ciphertext length in bytes to store in memory when Delayed Authentication mode is disabled.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+If Delayed Authentication mode is enabled, and the buffer size has been set to a value other than its default, the S3EC MUST throw an exception.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+If Delayed Authentication mode is disabled, and no buffer size is provided, the S3EC MUST set the buffer size to a reasonable default.
+'''
+

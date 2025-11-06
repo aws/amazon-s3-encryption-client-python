@@ -1,0 +1,43 @@
+target = "../specification/s3-encryption/encryption.md#content-encryption"
+
+# Content Encryption
+#
+# The S3EC MUST use the encryption algorithm configured during [client](./client.md) initialization.
+# 
+# Once the requisite encryption materials have been provided, the client proceeds to encrypting the plaintext object content.
+# 
+# The client MUST validate that the length of the plaintext bytes does not exceed the algorithm suite's cipher's maximum content length in bytes.
+# 
+# For algorithm suites which support Key Commitment, a fixed IV is used for GCM content encryption.
+# Instead of generating an IV, committing algorithm suites use a Message ID which is used as input to the HKDF.
+# Otherwise, the IV and the Message ID are similar in some ways.
+# For example, the Message ID, like the IV, is stored in the persisted content metadata.
+# When implementing the S3EC, it is useful to generate the Message ID by the same process that generates the IV in non-committing algorithm suites.
+# The client MUST generate an IV or Message ID using the length of the IV or Message ID defined in the algorithm suite.
+# 
+# The generated IV or Message ID MUST be set or returned from the encryption process such that it can be included in the content metadata.
+
+[[spec]]
+level = "MUST"
+quote = '''
+The S3EC MUST use the encryption algorithm configured during [client](./client.md) initialization.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+The client MUST validate that the length of the plaintext bytes does not exceed the algorithm suite's cipher's maximum content length in bytes.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+The client MUST generate an IV or Message ID using the length of the IV or Message ID defined in the algorithm suite.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+The generated IV or Message ID MUST be set or returned from the encryption process such that it can be included in the content metadata.
+'''
+

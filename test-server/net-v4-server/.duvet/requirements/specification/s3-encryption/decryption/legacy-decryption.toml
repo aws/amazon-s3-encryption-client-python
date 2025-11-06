@@ -1,0 +1,19 @@
+target = "../specification/s3-encryption/decryption.md#legacy-decryption"
+
+# Legacy Decryption
+#
+# The S3EC MUST NOT decrypt objects encrypted using legacy unauthenticated algorithm suites unless specifically configured to do so.
+# If the S3EC is not configured to enable legacy unauthenticated content decryption, the client MUST throw an exception when attempting to decrypt an object encrypted with a legacy unauthenticated algorithm suite.
+
+[[spec]]
+level = "MUST"
+quote = '''
+The S3EC MUST NOT decrypt objects encrypted using legacy unauthenticated algorithm suites unless specifically configured to do so.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+If the S3EC is not configured to enable legacy unauthenticated content decryption, the client MUST throw an exception when attempting to decrypt an object encrypted with a legacy unauthenticated algorithm suite.
+'''
+

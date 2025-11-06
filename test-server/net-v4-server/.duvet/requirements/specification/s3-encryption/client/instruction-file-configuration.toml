@@ -1,0 +1,26 @@
+target = "../specification/s3-encryption/client.md#instruction-file-configuration"
+
+# Instruction File Configuration
+#
+# The S3EC MAY support the option to provide Instruction File Configuration during its initialization.
+# If the S3EC in a given language supports Instruction Files, then it MUST accept Instruction File Configuration during its initialization.
+# In this case, the Instruction File Configuration SHOULD be optional, such that its default configuration is used when none is provided.
+
+[[spec]]
+level = "MAY"
+quote = '''
+The S3EC MAY support the option to provide Instruction File Configuration during its initialization.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+If the S3EC in a given language supports Instruction Files, then it MUST accept Instruction File Configuration during its initialization.
+'''
+
+[[spec]]
+level = "SHOULD"
+quote = '''
+In this case, the Instruction File Configuration SHOULD be optional, such that its default configuration is used when none is provided.
+'''
+

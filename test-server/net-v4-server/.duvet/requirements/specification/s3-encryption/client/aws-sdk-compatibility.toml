@@ -1,0 +1,27 @@
+target = "../specification/s3-encryption/client.md#aws-sdk-compatibility"
+
+# AWS SDK Compatibility
+#
+# The S3EC MUST adhere to the same interface for API operations as the conventional AWS SDK S3 client.
+# In other words, the SDK's conventional S3 client is able to be substituted for the S3EC.
+# The S3EC SHOULD support invoking operations unrelated to client-side encryption e.g. CopyObject as the conventional AWS SDK S3 client would.
+# The S3EC MUST provide a different set of configuration options than the conventional S3 client.
+
+[[spec]]
+level = "MUST"
+quote = '''
+The S3EC MUST adhere to the same interface for API operations as the conventional AWS SDK S3 client.
+'''
+
+[[spec]]
+level = "SHOULD"
+quote = '''
+The S3EC SHOULD support invoking operations unrelated to client-side encryption e.g.
+'''
+
+[[spec]]
+level = "MUST"
+quote = '''
+The S3EC MUST provide a different set of configuration options than the conventional S3 client.
+'''
+
