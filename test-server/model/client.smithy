@@ -40,6 +40,17 @@ enum EncryptionAlgorithm {
     ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
 }
 
+structure InstructionFileConfig {
+    /// This allows specifying a (non-encrypted) client for languages which
+    /// support this for instruction files.
+    /// In general, languages should not require specifying it,
+    /// so it is best to leave it null until there's a good reason not to.
+    /// This also requires a way to create non-encrypted clients which we don't have yet.
+    clientId: String,
+    enableInstructionFilePutObject: Boolean = false,
+    disableInstructionFile: Boolean = false
+}
+
 structure S3ECConfig {
     enableLegacyUnauthenticatedModes: Boolean = false,
     enableDelayedAuthenticationMode: Boolean = false,
@@ -48,4 +59,5 @@ structure S3ECConfig {
     keyMaterial: KeyMaterial,
     commitmentPolicy: CommitmentPolicy,
     encryptionAlgorithm: EncryptionAlgorithm,
+    instructionFileConfig: InstructionFileConfig,
 }
