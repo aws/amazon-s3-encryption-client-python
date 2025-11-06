@@ -153,6 +153,14 @@ public class TestUtils {
         servers.put(PHP_V2_TRANSITION, new LanguageServerTarget(PHP_V2_TRANSITION, "8099"));
         servers.put(JAVA_V4, new LanguageServerTarget(JAVA_V4, "8090"));
         serverMap = filterServers(servers);
+
+        System.out.println("=== Configured Test Servers ===");
+        System.out.println("\nServers:");
+        serverMap.forEach((name, target) -> {
+            System.out.println("  " + name + " -> " + target.getServerURI());
+        });
+        System.out.println("\nTotal servers configured: " + serverMap.size());
+        System.out.println("================================");
     }
 
     public static class LanguageServerTarget {
