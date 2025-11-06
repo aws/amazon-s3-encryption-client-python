@@ -19,6 +19,12 @@ function handleCreateClient()
     $legacyAlgorithms = $configData["enableLegacyWrappingAlgorithms"] ?? false;
     $clientId = Uuid::uuid4()->toString();
     $kmsKeyId = $keyMaterial["kmsKeyId"] ?? null;
+    $instFileConfig = $configData['instructionFileConfig'] ?? null;
+    $instFilePut = false;
+    if ($instFileConfig != null) {
+        $instFilePut = $instFileConfig['enableInstructionFilePutObject'] ?? false;
+    }
+
 
     if (empty($configData)) {
         return GenericServerError("Invalid config in request body", 400);
@@ -55,6 +61,7 @@ function handleCreateClient()
         ],
         'kmsKeyId' => $kmsKeyId,
         'legacy' => $legacyAlgorithms,
+        'instFilePut' => $instFilePut,
         'created' => time()
     ];
 

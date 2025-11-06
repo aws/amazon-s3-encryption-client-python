@@ -2,6 +2,7 @@ package software.amazon.encryption.s3;
 
 import software.amazon.awssdk.core.traits.Trait;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.encryption.s3.internal.InstructionFileConfig;
 import software.amazon.encryption.s3.S3EncryptionClient;
 import software.amazon.encryption.s3.materials.AesKeyring;
 import software.amazon.encryption.s3.materials.Keyring;
@@ -88,7 +89,17 @@ public class CreateClientOperationImpl implements CreateClientOperation {
       } else {
         throw new RuntimeException("No KeyMaterial found!");
       }
+
+      // Client Creation
+      boolean instFilePut = false;
+      if (input.getConfig().getInstructionFileConfig() != null) {
+        instFilePut = input.getConfig().getInstructionFileConfig().isEnableInstructionFilePutObject();
+      }
       S3Client s3Client = S3EncryptionClient.builder()
+        .instructionFileConfig(InstructionFileConfig.builder()
+          .instructionFileClient(S3Client.create())
+          .enableInstructionFilePutObject(instFilePut)
+          .build())
         .keyring(keyring)
         .build();
       UUID uuid = UUID.randomUUID();
