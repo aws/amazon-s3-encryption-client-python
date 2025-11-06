@@ -12,6 +12,8 @@ import static software.amazon.encryption.s3.TestUtils.*;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +24,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.opentest4j.TestAbortedException;
 import software.amazon.encryption.s3.client.S3ECTestServerClient;
 import software.amazon.encryption.s3.model.CommitmentPolicy;
 import software.amazon.encryption.s3.model.CreateClientInput;
@@ -415,5 +418,49 @@ public class RoundTripTests {
               assertTrue(e.getMessage().contains("Enable legacy wrapping algorithms to use legacy key wrapping algorithm: kms"));
             }
         }
+    }
+
+    @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
+    @MethodSource("software.amazon.encryption.s3.TestUtils#crossLanguageClients")
+    public void rsaRoundTrip(LanguageServerTarget encLang, LanguageServerTarget decLang) throws Exception {
+        if (!RAW_SUPPORTED.contains(encLang.getLanguageName())) {
+            throw new TestAbortedException("not encrypting raw keyrings with: " + encLang.getLanguageName());
+        }
+        if (!RAW_SUPPORTED.contains(decLang.getLanguageName())) {
+            throw new TestAbortedException("not decrypting raw keyrings with: " + decLang.getLanguageName());
+        }
+        S3ECTestServerClient encClient = testServerClientFor(encLang);
+        S3ECTestServerClient decClient = testServerClientFor(decLang);
+        final String objectKey = appendTestSuffix(String.format("rsa-write-%s-read-%s", encLang.getLanguageName(), decLang.getLanguageName()));
+        final String input = "simple-test-input-rsa";
+        KeyPairGenerator keyPairGen = KeyPairGenerator.getInstance("RSA");
+        keyPairGen.initialize(2048);
+        KeyPair RSA_KEY_PAIR_1 = keyPairGen.generateKeyPair();
+
+        KeyMaterial rsaKeyOne = KeyMaterial.builder()
+          .rsaKey(ByteBuffer.wrap(RSA_KEY_PAIR_1.getPrivate().getEncoded()))
+          .build();
+        CreateClientOutput encClientOutput = encClient.createClient(CreateClientInput.builder()
+          .config(S3ECConfig.builder()
+            .keyMaterial(rsaKeyOne).build())
+          .build());
+        String encS3ECId = encClientOutput.getClientId();
+        CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
+          .config(S3ECConfig.builder()
+            .keyMaterial(rsaKeyOne).build())
+          .build());
+        String decS3ECId = decClientOutput.getClientId();
+        encClient.putObject(PutObjectInput.builder()
+          .clientID(encS3ECId)
+          .key(objectKey)
+          .bucket(BUCKET)
+          .body(ByteBuffer.wrap(input.getBytes(StandardCharsets.UTF_8)))
+          .build());
+        GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
+          .clientID(decS3ECId)
+          .bucket(BUCKET)
+          .key(objectKey)
+          .build());
+        assertEquals(input, new String(output.getBody().array()));
     }
 }

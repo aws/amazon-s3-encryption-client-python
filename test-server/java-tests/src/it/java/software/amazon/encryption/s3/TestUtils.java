@@ -97,6 +97,12 @@ public class TestUtils {
     public static final Set<String> ENCRYPTION_CONTEXT_ON_ENCRYPT_UNSUPPORTED =
         Set.of(NET_V2_CURRENT, NET_V3);
 
+    // For now, only .NET and Java have AES and RSA support
+    public static final Set<String> RAW_SUPPORTED =
+      Set.of(JAVA_V3_CURRENT, JAVA_V3_TRANSITION, JAVA_V4
+        , NET_V2_CURRENT, NET_V3
+      );
+
     public static final Set<String> CURRENT_VERSIONS =
         Set.of(
             JAVA_V3_CURRENT,
@@ -286,7 +292,7 @@ public class TestUtils {
     public static void validateServersRunning() {
         for (LanguageServerTarget server : serverMap.values()) {
             if (!serverListening(server.getServerURI())) {
-                throw new RuntimeException(String.format("Test Server for %s is not running at endpoint: %s", 
+                throw new RuntimeException(String.format("Test Server for %s is not running at endpoint: %s",
                     server.getLanguageName(), server.getServerURI()));
             }
         }
@@ -430,7 +436,7 @@ public class TestUtils {
                 return EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF;
             }
         }
-        
+
         throw new RuntimeException("Need to support instruction files!");
     }
 
@@ -456,7 +462,7 @@ public class TestUtils {
 
         crossLanguageObjects.add(objectKey);
     }
-    
+
     public static void Decrypt(
         S3ECTestServerClient client,
         String S3ECId, List<String> crossLanguageObjects,
@@ -468,7 +474,7 @@ public class TestUtils {
             .bucket(TestUtils.BUCKET)
             .key(objectKey)
             .build());
-            
+
             // Then: Pass
             assertEquals(objectKey, new String(output.getBody().array()));
             assertEquals(
@@ -478,7 +484,7 @@ public class TestUtils {
             );
         }
     }
-    
+
     public static void Decrypt_fails(
         S3ECTestServerClient client,
         String S3ECId, List<String> crossLanguageObjects,
