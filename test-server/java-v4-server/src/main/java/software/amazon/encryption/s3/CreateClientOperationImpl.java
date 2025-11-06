@@ -90,7 +90,7 @@ public class CreateClientOperationImpl implements CreateClientOperation {
         throw new RuntimeException("No KeyMaterial found!");
       }
       // Configure commitment policy if provided
-      software.amazon.encryption.s3.CommitmentPolicy policy = REQUIRE_ENCRYPT_ALLOW_DECRYPT;
+      software.amazon.encryption.s3.CommitmentPolicy policy = CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT;
       if (input.getConfig().getCommitmentPolicy() != null) {
         policy = getCommitmentPolicy(input.getConfig().getCommitmentPolicy());
       }
