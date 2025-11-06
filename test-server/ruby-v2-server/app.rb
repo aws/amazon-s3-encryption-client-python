@@ -5,6 +5,7 @@ require_relative 'lib/metadata_utils'
 require_relative 'lib/error_handlers'
 require_relative 'lib/logger'
 
+# See: https://github.com/ruby/openssl/issues/949
 Aws.use_bundled_cert!
 
 class S3ECRubyServer < Sinatra::Base
