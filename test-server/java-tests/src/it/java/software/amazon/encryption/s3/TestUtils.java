@@ -140,7 +140,9 @@ public class TestUtils {
         servers.put(CPP_V2_CURRENT, new LanguageServerTarget(CPP_V2_CURRENT, "8085"));
         servers.put(CPP_V2_TRANSITION, new LanguageServerTarget(CPP_V2_TRANSITION, "8097"));
         servers.put(CPP_V3, new LanguageServerTarget(CPP_V3, "8091"));
-        // servers.put(RUBY_V2_CURRENT, new LanguageServerTarget(RUBY_V2_CURRENT, "8086"));
+        // servers.put(RUBY_V2_TRANSITION, new LanguageServerTarget(RUBY_V2_CURRENT, "8086"));
+        servers.put(RUBY_V2_TRANSITION, new LanguageServerTarget(RUBY_V2_TRANSITION, "8098"));
+        servers.put(RUBY_V3, new LanguageServerTarget(RUBY_V3, "8092"));
         servers.put(PHP_V2_CURRENT, new LanguageServerTarget(PHP_V2_CURRENT, "8087"));
         servers.put(GO_V4, new LanguageServerTarget(GO_V4, "8089"));
         servers.put(RUBY_V3, new LanguageServerTarget(RUBY_V3, "8092"));
