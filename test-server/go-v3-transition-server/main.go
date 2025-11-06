@@ -11,6 +11,7 @@ import (
 
 	"github.com/aws/amazon-s3-encryption-client-go/v3/client"
 	"github.com/aws/amazon-s3-encryption-client-go/v3/materials"
+	"github.com/aws/amazon-s3-encryption-client-go/v3/commitment"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
