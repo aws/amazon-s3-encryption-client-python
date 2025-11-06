@@ -6,7 +6,23 @@ pattern = "aws-sdk-cpp/src/aws-cpp-sdk-s3-encryption/**/*.cpp"
 [[source]]
 pattern = "aws-sdk-cpp/src/aws-cpp-sdk-s3-encryption/**/*.h"
 
-# Include required specifications here
+[[source]]
+pattern = "aws-sdk-cpp/src/aws-cpp-sdk-core/include/aws/core/utils/crypto/*.h"
+
+[[source]]
+pattern = "aws-sdk-cpp/src/aws-cpp-sdk-core/include/aws/core/utils/crypto/*.cpp"
+
+[[source]]
+pattern = "aws-sdk-cpp/tests/aws-cpp-sdk-s3-encryption-tests/*.cpp"
+
+[[source]]
+pattern = "aws-sdk-cpp/tests/aws-cpp-sdk-s3-encryption-integration-tests/*.cpp"
+
+[[source]]
+pattern = "compliance.txt"
+
+[[specification]]
+source = "../specification/s3-encryption/client.md"
 [[specification]]
 source = "../specification/s3-encryption/data-format/content-metadata.md"
 [[specification]]
@@ -14,7 +30,12 @@ source = "../specification/s3-encryption/data-format/metadata-strategy.md"
 [[specification]]
 source = "../specification/s3-encryption/encryption.md"
 [[specification]]
+source = "../specification/s3-encryption/decryption.md"
+[[specification]]
 source = "../specification/s3-encryption/key-derivation.md"
+[[specification]]
+source = "../specification/s3-encryption/key-commitment.md"
+
 
 [report.html]
 enabled = true
