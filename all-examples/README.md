@@ -7,24 +7,23 @@ This directory contains example projects for the Amazon S3 Encryption Client acr
 Each language has subdirectories for different major versions of the S3 Encryption Client:
 
 - `cpp/` - C++ examples
-  - `v2/` - S3EC C++ v2 example
-  - `v3/` - S3EC C++ v3 example
+  - `v2/` - S3EC C++ v2 example (transitional)
+  - `v3/` - S3EC C++ v3 example (improved)
 - `dotnet/` - .NET examples
-  - `v2/` - S3EC .NET v2 example
-  - `v3/` - S3EC .NET v3 example
-  - `v4/` - S3EC .NET v4 example
+  - `v3/` - S3EC .NET v3 example (transitional)
+  - `v4/` - S3EC .NET v4 example (improved)
 - `go/` - Go examples
-  - `v3/` - S3EC Go v3 example
-  - `v4/` - S3EC Go v4 example
+  - `v3/` - S3EC Go v3 example (transitional)
+  - `v4/` - S3EC Go v4 example (improved)
 - `java/` - Java examples
-  - `v3/` - S3EC Java v3 example
-  - `v4/` - S3EC Java v4 example
+  - `v3/` - S3EC Java v3 example (transitional)
+  - `v4/` - S3EC Java v4 example (improved)
 - `php/` - PHP examples
-  - `v2/` - S3EC PHP v2 example
-  - `v3/` - S3EC PHP v3 example
+  - `v2/` - S3EC PHP v2 example (transitional)
+  - `v3/` - S3EC PHP v3 example (improved)
 - `ruby/` - Ruby examples
-  - `v2/` - S3EC Ruby v2 example
-  - `v3/` - S3EC Ruby v3 example
+  - `v2/` - S3EC Ruby v2 example (transitional)
+  - `v3/` - S3EC Ruby v3 example (improved)
 
 ## Setup Instructions
 

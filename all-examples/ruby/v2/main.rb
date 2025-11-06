@@ -31,7 +31,7 @@ def main
     puts "Data length: #{test_data.length} bytes"
     puts
 
-    puts "--- Step 1: Initialize S3 Encryption Client v2 ---"
+    puts "--- Initialize S3 Encryption Client v2 ---"
     
     # Create regular S3 client
     s3_client = Aws::S3::Client.new(region: region)
@@ -49,16 +49,10 @@ def main
       security_profile: :v2
     )
     
-    puts "✅ Successfully initialized S3 Encryption Client v2"
-    puts "   KMS Key ID: #{kms_key_id}"
-    puts "   Key Wrap Schema: kms_context"
-    puts "   Content Encryption Schema: aes_gcm_no_padding"
-    puts "   Security Profile: v2"
-    puts
-
-    puts "--- Step 2: Encrypt and Upload Object to S3 ---"
+    puts "Successfully initialized S3 Encryption Client v2"
+    puts "--- Encrypt and Upload Object to S3 ---"
     
-    # Optional: Add encryption context for additional security
+    # Add encryption context for additional security
     encryption_context = {
       'purpose' => 'example',
       'version' => 'v2',
@@ -73,14 +67,13 @@ def main
       kms_encryption_context: encryption_context
     })
     
-    puts "✅ Successfully uploaded encrypted object to S3!"
+    puts "Successfully uploaded encrypted object to S3!"
     puts "   Bucket: #{bucket_name}"
     puts "   Key: #{object_key}"
-    puts "   ETag: #{put_response.etag}"
     puts "   Encryption Context: #{encryption_context}"
     puts
 
-    puts "--- Step 3: Download and Decrypt Object from S3 ---"
+    puts "--- Download and Decrypt Object from S3 ---"
     
     # Download and decrypt object using S3 Encryption Client
     get_response = encryption_client.get_object({
@@ -92,71 +85,57 @@ def main
     # Read the decrypted data
     decrypted_data = get_response.body.read
     
-    puts "✅ Successfully downloaded and decrypted object from S3!"
+    puts "Successfully downloaded and decrypted object from S3!"
     puts "   Object size: #{decrypted_data.length} bytes"
     puts "   Decrypted data: #{decrypted_data}"
     puts
 
-    puts "--- Step 4: Verify Roundtrip Success ---"
+    puts "--- Verify Roundtrip Success ---"
     
     # Verify the roundtrip was successful
     if decrypted_data == test_data
-      puts "🎉 SUCCESS: Roundtrip encryption/decryption completed successfully!"
-      puts "   ✅ Original data matches decrypted data"
-      puts "   ✅ Data integrity verified"
+      puts "SUCCESS: Roundtrip encryption/decryption completed successfully!"
+      puts "   Original data matches decrypted data"
+      puts "   Data integrity verified"
     else
-      puts "❌ ERROR: Roundtrip failed - data mismatch"
+      puts "ERROR: Roundtrip failed - data mismatch"
       puts "   Original: #{test_data}"
       puts "   Decrypted: #{decrypted_data}"
       exit 1
     end
-    
-    puts
 
-    puts "--- Step 5: Cleanup ---"
-    
+    # Optionally Delete the Object
+    #puts "--- Cleanup ---"
     # Clean up the test object using regular S3 client
     # s3_client.delete_object({
     #   bucket: bucket_name,
     #   key: object_key
     # })
-    
-    puts "✅ Test object deleted from S3"
+    # puts "Test object deleted from S3"
     
     puts
     puts "=== Example completed successfully! ==="
-    puts
-    puts "📝 This example demonstrates the Amazon S3 Encryption Client v2 for Ruby"
-    puts "performing a complete roundtrip of encrypting data during upload and"
-    puts "decrypting it during download, using AWS KMS for key management."
-    puts
-    puts "Key features demonstrated:"
-    puts "• Client-side encryption using AES-GCM"
-    puts "• KMS integration for key wrapping"
-    puts "• Encryption context for additional security"
-    puts "• Automatic key rotation and management"
-    puts "• Secure roundtrip data integrity verification"
 
   rescue Aws::S3::Errors::NoSuchBucket => e
-    puts "❌ Error: S3 bucket '#{bucket_name}' does not exist or is not accessible"
+    puts "Error: S3 bucket '#{bucket_name}' does not exist or is not accessible"
     puts "   #{e.message}"
     exit 1
   rescue Aws::KMS::Errors::NotFoundException => e
-    puts "❌ Error: KMS key '#{kms_key_id}' not found or not accessible"
+    puts "Error: KMS key '#{kms_key_id}' not found or not accessible"
     puts "   #{e.message}"
     exit 1
   rescue Aws::S3::EncryptionV2::Errors::EncryptionError => e
-    puts "❌ S3 Encryption Error: #{e.message}"
+    puts "S3 Encryption Error: #{e.message}"
     exit 1
   rescue Aws::S3::EncryptionV2::Errors::DecryptionError => e
-    puts "❌ S3 Decryption Error: #{e.message}"
+    puts "S3 Decryption Error: #{e.message}"
     exit 1
   rescue Aws::Errors::ServiceError => e
-    puts "❌ AWS Service Error: #{e.message}"
+    puts "AWS Service Error: #{e.message}"
     puts "   Error Code: #{e.code}" if e.respond_to?(:code)
     exit 1
   rescue StandardError => e
-    puts "❌ Unexpected error: #{e.message}"
+    puts "Unexpected error: #{e.message}"
     puts e.backtrace.first(5)
     exit 1
   end
