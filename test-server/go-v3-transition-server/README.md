@@ -1,6 +1,6 @@
-# S3EC Go V4 Test Server
+# S3EC Go V3 Transition Test Server
 
-This is the Go implementation of the S3ECTestServer framework for S3EC Go V4. It provides a server implementation for testing Go S3 Encryption Client V4 functionality.
+This is the Go implementation of the S3ECTestServer framework for S3EC Go V3 Transition. It provides a server implementation for testing Go S3 Encryption Client V3 Transition functionality.
 
 ## Overview
 
@@ -18,6 +18,6 @@ To run the server:
 go run .
 ```
 
-This will start the server running on port `8089`.
+This will start the server running on port `8095`.
 
 The server is used as part of the testing framework to verify cross-language compatibility of the S3 Encryption Client implementations.
