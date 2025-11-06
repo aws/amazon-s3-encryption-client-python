@@ -37,3 +37,7 @@
 //= ../specification/s3-encryption/data-format/content-metadata.md#v3-only
 //= type=exception
 //# The Material Description MUST be used for wrapping algorithms `AES/GCM` (`02`) and `RSA-OAEP-SHA1` (`22`).
+
+//= ../specification/s3-encryption/data-format/content-metadata.md#v3-only
+//= type=exception
+//# If the mapkey is not present, the default Material Description value MUST be set to an empty map (`{}`).

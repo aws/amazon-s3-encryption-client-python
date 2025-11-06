@@ -1,0 +1,23 @@
+//= ../specification/s3-encryption/data-format/metadata-strategy.md#object-metadata
+//= type=exception
+//# The S3EC SHOULD support decoding the S3 Server's "double encoding".
+
+//= ../specification/s3-encryption/data-format/metadata-strategy.md#object-metadata
+//= type=exception
+//# If the S3EC does not support decoding the S3 Server's "double encoding" then it MUST return the content metadata untouched.
+
+//= ../specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
+//= type=exception
+//# The S3EC MAY support re-encryption/key rotation via Instruction Files.
+
+//= ../specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
+//= type=exception
+//# The S3EC MUST NOT support providing a custom Instruction File suffix on ordinary writes; custom suffixes MUST only be used during re-encryption.
+
+//= ../specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
+//= type=exception
+//# The S3EC SHOULD support providing a custom Instruction File suffix on GetObject requests, regardless of whether or not re-encryption is supported.
+
+//= ../specification/s3-encryption/data-format/metadata-strategy.md#v3-instruction-files
+//= type=exception
+//# - The V3 message format MUST store the mapkey "x-amz-m" and its value (when present in the content metadata) in the Instruction File.
