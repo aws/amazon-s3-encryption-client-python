@@ -113,6 +113,11 @@ operation ReEncrypt {
         @required
         @notProperty
         clientID: String
+
+        /// Custom instruction file suffix
+        @httpHeader("InstructionFileSuffix")
+        @notProperty
+        instructionFileSuffix: String
     } 
 
     output := for Object {

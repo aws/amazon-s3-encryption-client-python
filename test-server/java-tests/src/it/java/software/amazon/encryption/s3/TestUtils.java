@@ -22,31 +22,28 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.model.ObjectMetadata;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
 import org.junit.jupiter.params.provider.Arguments;
 import com.amazonaws.regions.Region;
 import com.amazonaws.regions.Regions;
-import software.amazon.smithy.java.aws.client.restjson.RestJsonClientProtocol;
-import software.amazon.smithy.java.client.core.ClientConfig;
-import software.amazon.smithy.java.client.core.ClientProtocol;
-import software.amazon.smithy.java.client.core.endpoint.EndpointResolver;
-import software.amazon.encryption.s3.client.S3ECTestServerClient;
 import software.amazon.encryption.s3.model.EncryptionAlgorithm;
 import software.amazon.encryption.s3.model.GetObjectInput;
 import software.amazon.encryption.s3.model.GetObjectOutput;
 import software.amazon.encryption.s3.model.PutObjectInput;
 import software.amazon.encryption.s3.model.PutObjectOutput;
-import software.amazon.encryption.s3.model.S3ECConfig;
-import software.amazon.encryption.s3.model.S3ECTestServerApiService;
 import software.amazon.encryption.s3.model.S3EncryptionClientError;
+import software.amazon.smithy.java.aws.client.restjson.RestJsonClientProtocol;
+import software.amazon.smithy.java.client.core.ClientConfig;
+import software.amazon.smithy.java.client.core.ClientProtocol;
+import software.amazon.smithy.java.client.core.endpoint.EndpointResolver;
+import software.amazon.encryption.s3.client.S3ECTestServerClient;
+import software.amazon.encryption.s3.model.S3ECTestServerApiService;
 import software.amazon.smithy.java.http.api.HttpRequest;
 import software.amazon.smithy.java.http.api.HttpResponse;
-
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.amazonaws.services.s3.model.GetObjectMetadataRequest;
 
 public class TestUtils {
 
@@ -96,6 +93,25 @@ public class TestUtils {
     
     public static final Set<String> ENCRYPTION_CONTEXT_ON_ENCRYPT_UNSUPPORTED =
         Set.of(NET_V2_CURRENT, NET_V3);
+
+    // .NET only supports decrypting instruction files using AES and RSA.
+    // Python MUST support decrypting KMS instruction files, but does not yet.
+    public static final Set<String> KMS_INSTRUCTION_FILE_UNSUPPORTED =
+      Set.of(NET_V2_CURRENT, NET_V2_TRANSITION, NET_V3);
+
+    // Go does not write with instruction files
+    public static final Set<String> INSTRUCTION_FILE_PUT_UNSUPPORTED =
+      Set.of(GO_V3_CURRENT, GO_V3_TRANSITION, GO_V4, PYTHON_V3
+        // Apparently C++ V2 Current does not work, even though it should
+      , CPP_V2_CURRENT);
+
+    // Not implemented yet in Python.
+    public static final Set<String> INSTRUCTION_FILE_GET_UNSUPPORTED =
+      Set.of(PYTHON_V3);
+
+    // PHP doesn't work but it should, temporarily disable
+    public static final Set<String> INSTRUCTION_FILE_ROUNDTRIP_TEMP_UNSUPPORTED =
+      Set.of(PHP_V2_CURRENT, PHP_V2_TRANSITION, PHP_V3);
 
     public static final Set<String> CURRENT_VERSIONS =
         Set.of(
@@ -286,7 +302,7 @@ public class TestUtils {
     public static void validateServersRunning() {
         for (LanguageServerTarget server : serverMap.values()) {
             if (!serverListening(server.getServerURI())) {
-                throw new RuntimeException(String.format("Test Server for %s is not running at endpoint: %s", 
+                throw new RuntimeException(String.format("Test Server for %s is not running at endpoint: %s",
                     server.getLanguageName(), server.getServerURI()));
             }
         }
@@ -430,7 +446,7 @@ public class TestUtils {
                 return EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF;
             }
         }
-        
+
         throw new RuntimeException("Need to support instruction files!");
     }
 
@@ -456,7 +472,7 @@ public class TestUtils {
 
         crossLanguageObjects.add(objectKey);
     }
-    
+
     public static void Decrypt(
         S3ECTestServerClient client,
         String S3ECId, List<String> crossLanguageObjects,
@@ -468,7 +484,7 @@ public class TestUtils {
             .bucket(TestUtils.BUCKET)
             .key(objectKey)
             .build());
-            
+
             // Then: Pass
             assertEquals(objectKey, new String(output.getBody().array()));
             assertEquals(
@@ -478,7 +494,7 @@ public class TestUtils {
             );
         }
     }
-    
+
     public static void Decrypt_fails(
         S3ECTestServerClient client,
         String S3ECId, List<String> crossLanguageObjects,

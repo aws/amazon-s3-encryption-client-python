@@ -57,12 +57,19 @@ MHD_Result handle_create_client(struct MHD_Connection *connection,
     std::string kms_key_id = request["config"]["keyMaterial"]["kmsKeyId"];
     bool legacy1 = request["config"]["enableLegacyWrappingAlgorithms"];
     bool legacy2 = request["config"]["enableLegacyUnauthenticatedModes"];
+    bool inst_put = false;
+    if (request["config"].contains("instructionFileConfig") &&
+        request["config"]["instructionFileConfig"].contains("enableInstructionFilePutObject")) {
+        inst_put = request["config"]["instructionFileConfig"]["enableInstructionFilePutObject"];
+    }
 
     auto materials =
         std::make_shared<KMSWithContextEncryptionMaterials>(kms_key_id);
     CryptoConfigurationV2 config(materials);
     if (legacy1 || legacy2)
       config.SetSecurityProfile(SecurityProfile::V2_AND_LEGACY);
+    if (inst_put)
+      config.SetStorageMethod(StorageMethod::INSTRUCTION_FILE);
 
     auto encryption_client = std::make_shared<S3EncryptionClientV2>(config);
 

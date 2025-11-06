@@ -17,6 +17,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter:5.13.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("com.amazonaws:aws-java-sdk:1.12.788")
+    testImplementation("software.amazon.awssdk:s3:2.37.1")
     testImplementation("org.bouncycastle:bcprov-jdk15on:1.70")
 }
 
