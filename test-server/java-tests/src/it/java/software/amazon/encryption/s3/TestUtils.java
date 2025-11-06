@@ -213,6 +213,8 @@ public class TestUtils {
             return allServers; // No filtering - use all servers
         }
 
+        System.out.println("Filtering with: " + maybeFilter);
+
         final String[] filters = Arrays.stream(maybeFilter.split(","))
             .map(String::trim)
             .map(String::toLowerCase)
@@ -221,6 +223,7 @@ public class TestUtils {
         return allServers.entrySet().stream()
             .filter(entry -> {
                 String key = entry.getKey().toLowerCase();
+                System.out.println("Checking server name:" + key);
                 return Arrays.stream(filters).anyMatch(key::contains);
             })
             .collect(Collectors.toMap(
