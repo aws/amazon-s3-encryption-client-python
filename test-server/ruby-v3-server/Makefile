@@ -11,7 +11,7 @@ start-server:
 		exit 1; \
 	fi;
 	@echo "Starting Ruby V3 server..."
-	gem install openssl
+# 	gem install openssl
 	bundle install
 	AWS_ACCESS_KEY_ID="$$AWS_ACCESS_KEY_ID" \
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
