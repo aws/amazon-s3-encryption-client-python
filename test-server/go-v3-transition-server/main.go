@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/aws/amazon-s3-encryption-client-go/v4/client"
-	"github.com/aws/amazon-s3-encryption-client-go/v4/materials"
+	"github.com/aws/amazon-s3-encryption-client-go/v3/client"
+	"github.com/aws/amazon-s3-encryption-client-go/v3/materials"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
@@ -21,7 +21,7 @@ import (
 
 // Server represents the Go test server
 type Server struct {
-	clientCache map[string]*client.S3EncryptionClientV4
+	clientCache map[string]*client.S3EncryptionClientV3
 	kmsClient   *kms.Client
 }
 
@@ -72,7 +72,7 @@ func NewServer() (*Server, error) {
 	}
 
 	return &Server{
-		clientCache: make(map[string]*client.S3EncryptionClientV4),
+		clientCache: make(map[string]*client.S3EncryptionClientV3),
 		kmsClient:   kms.NewFromConfig(cfg),
 	}, nil
 }
@@ -80,7 +80,7 @@ func NewServer() (*Server, error) {
 // createGenericServerError creates a generic server error response
 func (s *Server) createGenericServerError(w http.ResponseWriter, message string, statusCode int) {
 	// Echo error to console
-	log.Printf("[Go V4] GenericServerError: %s (Status: %d)", message, statusCode)
+	log.Printf("[Go V3-Transition] GenericServerError: %s (Status: %d)", message, statusCode)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
@@ -93,7 +93,7 @@ func (s *Server) createGenericServerError(w http.ResponseWriter, message string,
 // createS3EncryptionClientError creates an S3 encryption client error response
 func (s *Server) createS3EncryptionClientError(w http.ResponseWriter, message string, statusCode int) {
 	// Echo error to console
-	log.Printf("[Go V4] S3EncryptionClientError: %s (Status: %d)", message, statusCode)
+	log.Printf("[Go V3-Transition] S3EncryptionClientError: %s (Status: %d)", message, statusCode)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
@@ -160,7 +160,7 @@ func (s *Server) createClient(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create S3 encryption client
-	var s3EncryptionClient *client.S3EncryptionClientV4
+	var s3EncryptionClient *client.S3EncryptionClientV3
 	s3PlaintextClient := s3.NewFromConfig(cfg)
 	s3EncryptionClient, err = client.New(s3PlaintextClient, cmm)
 
@@ -240,7 +240,7 @@ func (s *Server) putObject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("[Go V4] PutObject SUCCESS: Bucket=%s, Key=%s", bucket, key)
+	log.Printf("[Go V3-Transition] PutObject SUCCESS: Bucket=%s, Key=%s", bucket, key)
 
 	// Return response
 	w.Header().Set("Content-Type", "application/json")
@@ -323,7 +323,7 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request) {
 
 	metadataStr := strings.Join(metadataList, ",")
 
-	log.Printf("[Go V4] GetObject SUCCESS: Bucket=%s, Key=%s", bucket, key)
+	log.Printf("[Go V3-Transition] GetObject SUCCESS: Bucket=%s, Key=%s", bucket, key)
 
 	// Set response headers
 	w.Header().Set("Content-Metadata", metadataStr)
@@ -335,7 +335,7 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request) {
 func main() {
 	server, err := NewServer()
 	if err != nil {
-		log.Fatalf("[Go V4] Failed to create Go V4 server: %v", err)
+		log.Fatalf("[Go V3-Transition] Failed to create Go V3 Transition server: %v", err)
 	}
 
 	r := mux.NewRouter()
@@ -345,6 +345,6 @@ func main() {
 	r.HandleFunc("/object/{bucket}/{key}", server.putObject).Methods("PUT")
 	r.HandleFunc("/object/{bucket}/{key}", server.getObject).Methods("GET")
 
-	fmt.Println("[Go V4] Starting Go V4 server on :8089...")
-	log.Fatal(http.ListenAndServe(":8089", r))
+	fmt.Println("[Go V3-Transition] Starting Go V3 Transition server on :8095...")
+	log.Fatal(http.ListenAndServe(":8095", r))
 }
