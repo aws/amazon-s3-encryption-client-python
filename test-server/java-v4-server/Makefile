@@ -3,7 +3,7 @@
 .PHONY: start-server stop-server wait-for-server build-s3ec
 
 PID_FILE := server.pid
-PORT := 8090
+PORT := 8088
 
 build-s3ec:
 	@echo "Building S3EC from source..."
