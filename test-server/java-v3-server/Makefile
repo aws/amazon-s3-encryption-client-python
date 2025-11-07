@@ -24,6 +24,7 @@ wait-for-server:
 	$(MAKE) -C .. wait-for-port PORT=$(PORT)
 
 duvet:
+	ln -sf ../specification specification
 	duvet report
 
 view-report-mac:

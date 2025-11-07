@@ -28,19 +28,8 @@ stop-server:
 wait-for-server:
 	$(MAKE) -C .. wait-for-port PORT=$(PORT)
 
-duvet: | duvet_extract duvet_report
-
-duvet_extract:
-	rm -rf .duvet
-	$(foreach file, $(shell find specification/s3-encryption -name '*.md' ! -path "*/materials/*"), duvet extract -o .duvet/requirements -f MARKDOWN $(file);)
-
-duvet_report:
-	duvet \
-		report \
-		--spec-pattern ".duvet/requirements/**/*.toml" \
-		--source-pattern "s3ec-staging/src/**/*.java" \
-		--source-pattern "s3ec-staging/compliance_exceptions/*.txt" \
-		--html .duvet/reports/report.html
+duvet:
+	duvet report
 
 view-report-mac:
 	open .duvet/reports/report.html
