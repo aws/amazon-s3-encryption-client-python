@@ -43,3 +43,7 @@
 	path = test-server/go-v3-transition-server/local-go-s3ec
 	url = https://github.com/aws/private-amazon-s3-encryption-client-go-staging
 	branch = v3-strip
+[submodule "test-server/net-v3-transition-server/s3ec-v3-transition-branch"]
+	path = test-server/net-v3-transition-server/s3ec-v3-transition-branch
+	url = https://github.com/aws/private-amazon-s3-encryption-client-dotnet-staging.git
+	branch = rishav/key-commitment
