@@ -3,7 +3,7 @@
 .PHONY: start-server stop-server wait-for-server
 
 PID_FILE := server.pid
-PORT := 8097
+PORT := 8091
 
 build/s3ec-server: 
 	brew install libmicrohttpd nlohmann-json ossp-uuid
@@ -27,3 +27,9 @@ stop-server:
 
 wait-for-server:
 	$(MAKE) -C .. wait-for-port PORT=$(PORT)
+
+duvet:
+	duvet report
+
+view-report-mac:
+	open .duvet/reports/report.html

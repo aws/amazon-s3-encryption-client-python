@@ -6,20 +6,20 @@ PID_FILE := server.pid
 PORT := 8085
 
 build/s3ec-server: 
-# 	brew install libmicrohttpd nlohmann-json ossp-uuid
-# 	git clone --recurse-submodules https://github.com/aws/aws-sdk-cpp.git
-# 	cd aws-sdk-cpp
-# 	mkdir -p build && cd build && cmake ..
+	brew install libmicrohttpd nlohmann-json ossp-uuid
+	git clone --recurse-submodules https://github.com/aws/aws-sdk-cpp.git
+	cd aws-sdk-cpp
+	mkdir -p build && cd build && cmake ..
 
 start-server: | build/s3ec-server
-# 	@echo "Starting Cpp V2 server..."
-# 	cd build && make && \
-# 	AWS_ACCESS_KEY_ID="$$AWS_ACCESS_KEY_ID" \
-# 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
-# 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
-# 	AWS_REGION="us-west-2" \
-# 	./s3ec-server & echo $$! > $(PID_FILE)
-# 	@echo "Cpp V2 server starting..."
+	@echo "Starting Cpp V2 server..."
+	cd build && make && \
+	AWS_ACCESS_KEY_ID="$$AWS_ACCESS_KEY_ID" \
+	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
+	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
+	AWS_REGION="us-west-2" \
+	./s3ec-server & echo $$! > $(PID_FILE)
+	@echo "Cpp V2 server starting..."
 
 stop-server:
 	@if [ -f $(PID_FILE) ]; then \
@@ -29,9 +29,3 @@ stop-server:
 
 wait-for-server:
 	$(MAKE) -C .. wait-for-port PORT=$(PORT)
-
-duvet:
-	duvet report
-
-view-report-mac:
-	open .duvet/reports/report.html

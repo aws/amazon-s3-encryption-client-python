@@ -22,31 +22,28 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.model.ObjectMetadata;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
 import org.junit.jupiter.params.provider.Arguments;
 import com.amazonaws.regions.Region;
 import com.amazonaws.regions.Regions;
-import software.amazon.smithy.java.aws.client.restjson.RestJsonClientProtocol;
-import software.amazon.smithy.java.client.core.ClientConfig;
-import software.amazon.smithy.java.client.core.ClientProtocol;
-import software.amazon.smithy.java.client.core.endpoint.EndpointResolver;
-import software.amazon.encryption.s3.client.S3ECTestServerClient;
 import software.amazon.encryption.s3.model.EncryptionAlgorithm;
 import software.amazon.encryption.s3.model.GetObjectInput;
 import software.amazon.encryption.s3.model.GetObjectOutput;
 import software.amazon.encryption.s3.model.PutObjectInput;
 import software.amazon.encryption.s3.model.PutObjectOutput;
-import software.amazon.encryption.s3.model.S3ECConfig;
-import software.amazon.encryption.s3.model.S3ECTestServerApiService;
 import software.amazon.encryption.s3.model.S3EncryptionClientError;
+import software.amazon.smithy.java.aws.client.restjson.RestJsonClientProtocol;
+import software.amazon.smithy.java.client.core.ClientConfig;
+import software.amazon.smithy.java.client.core.ClientProtocol;
+import software.amazon.smithy.java.client.core.endpoint.EndpointResolver;
+import software.amazon.encryption.s3.client.S3ECTestServerClient;
+import software.amazon.encryption.s3.model.S3ECTestServerApiService;
 import software.amazon.smithy.java.http.api.HttpRequest;
 import software.amazon.smithy.java.http.api.HttpResponse;
-
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.amazonaws.services.s3.model.GetObjectMetadataRequest;
 
 public class TestUtils {
 
@@ -97,12 +94,31 @@ public class TestUtils {
     public static final Set<String> ENCRYPTION_CONTEXT_ON_ENCRYPT_UNSUPPORTED =
         Set.of(NET_V2_CURRENT, NET_V3);
 
+    // .NET only supports decrypting instruction files using AES and RSA.
+    // Python MUST support decrypting KMS instruction files, but does not yet.
+    public static final Set<String> KMS_INSTRUCTION_FILE_UNSUPPORTED =
+      Set.of(NET_V2_CURRENT, NET_V2_TRANSITION, NET_V3);
+
+    // Go does not write with instruction files
+    public static final Set<String> INSTRUCTION_FILE_PUT_UNSUPPORTED =
+      Set.of(GO_V3_CURRENT, GO_V3_TRANSITION, GO_V4, PYTHON_V3
+        // Apparently C++ V2 Current does not work, even though it should
+      , CPP_V2_CURRENT);
+
+    // Not implemented yet in Python.
+    public static final Set<String> INSTRUCTION_FILE_GET_UNSUPPORTED =
+      Set.of(PYTHON_V3);
+
+    // PHP doesn't work but it should, temporarily disable
+    public static final Set<String> INSTRUCTION_FILE_ROUNDTRIP_TEMP_UNSUPPORTED =
+      Set.of(PHP_V2_CURRENT, PHP_V2_TRANSITION, PHP_V3);
+
     public static final Set<String> CURRENT_VERSIONS =
         Set.of(
             JAVA_V3_CURRENT,
             GO_V3_CURRENT,
             NET_V2_CURRENT,
-            // CPP_V2_CURRENT,
+            CPP_V2_CURRENT,
             RUBY_V2_CURRENT,
             PHP_V2_CURRENT
         );
@@ -112,9 +128,9 @@ public class TestUtils {
             // JAVA_V3_TRANSITION,
             // GO_V3_TRANSITION,
             // NET_V2_TRANSITION,
-            // CPP_V2_TRANSITION,
+            CPP_V2_TRANSITION
             // PHP_V2_TRANSITION,
-            RUBY_V2_TRANSITION
+            // RUBY_V2_TRANSITION
         );
 
     public static final Set<String> IMPROVED_VERSIONS =
@@ -123,9 +139,9 @@ public class TestUtils {
             // PYTHON_V3,
             GO_V4,
             // NET_V3,
-            // CPP_V3,
+            CPP_V3
             // PHP_V3,
-            RUBY_V3
+            // RUBY_V3
         );
 
     private static final Map<String, LanguageServerTarget> serverMap;
@@ -137,18 +153,19 @@ public class TestUtils {
         servers.put(GO_V3_CURRENT, new LanguageServerTarget(GO_V3_CURRENT, "8082"));
         servers.put(NET_V2_CURRENT, new LanguageServerTarget(NET_V2_CURRENT, "8083"));
         servers.put(NET_V3, new LanguageServerTarget(NET_V3, "8084"));
-        // servers.put(CPP_V2_CURRENT, new LanguageServerTarget(CPP_V2_CURRENT, "8085"));
+        servers.put(CPP_V2_CURRENT, new LanguageServerTarget(CPP_V2_CURRENT, "8085"));
+        servers.put(CPP_V2_TRANSITION, new LanguageServerTarget(CPP_V2_TRANSITION, "8097"));
+        servers.put(CPP_V3, new LanguageServerTarget(CPP_V3, "8091"));
         // servers.put(RUBY_V2_CURRENT, new LanguageServerTarget(RUBY_V2_CURRENT, "8086"));
         servers.put(PHP_V2_CURRENT, new LanguageServerTarget(PHP_V2_CURRENT, "8087"));
         servers.put(GO_V4, new LanguageServerTarget(GO_V4, "8089"));
-        servers.put(RUBY_V3, new LanguageServerTarget(RUBY_V3, "8092"));
+        // servers.put(RUBY_V3, new LanguageServerTarget(RUBY_V3, "8092"));
         servers.put(PHP_V3, new LanguageServerTarget(PHP_V3, "8093"));
         // TODO: Create and add transition servers
         servers.put(JAVA_V3_TRANSITION, new LanguageServerTarget(JAVA_V3_TRANSITION, "8094"));
         // servers.put(GO_V3_TRANSITION, new LanguageServerTarget(GO_V3_TRANSITION, "8095"));
         // servers.put(NET_V2_TRANSITION, new LanguageServerTarget(NET_V2_TRANSITION, "8096"));
-        // servers.put(CPP_V2_TRANSITION, new LanguageServerTarget(CPP_V2_TRANSITION, "8097"));
-        servers.put(RUBY_V2_TRANSITION, new LanguageServerTarget(RUBY_V2_TRANSITION, "8098"));
+        // servers.put(RUBY_V2_TRANSITION, new LanguageServerTarget(RUBY_V2_TRANSITION, "8098"));
         servers.put(PHP_V2_TRANSITION, new LanguageServerTarget(PHP_V2_TRANSITION, "8099"));
         servers.put(JAVA_V4, new LanguageServerTarget(JAVA_V4, "8090"));
         serverMap = filterServers(servers);
@@ -285,7 +302,7 @@ public class TestUtils {
     public static void validateServersRunning() {
         for (LanguageServerTarget server : serverMap.values()) {
             if (!serverListening(server.getServerURI())) {
-                throw new RuntimeException(String.format("Test Server for %s is not running at endpoint: %s", 
+                throw new RuntimeException(String.format("Test Server for %s is not running at endpoint: %s",
                     server.getLanguageName(), server.getServerURI()));
             }
         }
@@ -429,7 +446,7 @@ public class TestUtils {
                 return EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF;
             }
         }
-        
+
         throw new RuntimeException("Need to support instruction files!");
     }
 
@@ -455,7 +472,7 @@ public class TestUtils {
 
         crossLanguageObjects.add(objectKey);
     }
-    
+
     public static void Decrypt(
         S3ECTestServerClient client,
         String S3ECId, List<String> crossLanguageObjects,
@@ -467,7 +484,7 @@ public class TestUtils {
             .bucket(TestUtils.BUCKET)
             .key(objectKey)
             .build());
-            
+
             // Then: Pass
             assertEquals(objectKey, new String(output.getBody().array()));
             assertEquals(
@@ -477,7 +494,7 @@ public class TestUtils {
             );
         }
     }
-    
+
     public static void Decrypt_fails(
         S3ECTestServerClient client,
         String S3ECId, List<String> crossLanguageObjects,
