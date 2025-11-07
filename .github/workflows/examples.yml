@@ -111,5 +111,5 @@ jobs:
         run: make run
         env:
           AWS_REGION: us-west-2
-          TEST_BUCKET: ${{ vars.TEST_SERVER_S3_BUCKET }}
-          TEST_KMS_KEY: ${{ vars.TEST_SERVER_KMS_KEY_ARN }}
+          BUCKET_NAME: ${{ vars.TEST_SERVER_S3_BUCKET }}
+          KMS_KEY_ID: ${{ vars.TEST_SERVER_KMS_KEY_ARN }}
