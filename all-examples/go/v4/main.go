@@ -92,7 +92,6 @@ func main() {
 		Bucket:   aws.String(bucketName),
 		Key:      aws.String(objectKey),
 		Body:     strings.NewReader(testData),
-		Metadata: encryptionContext,
 	}
 
 	_, err = encryptionClient.PutObject(ctx, putInput)
