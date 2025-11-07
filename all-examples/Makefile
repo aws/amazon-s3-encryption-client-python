@@ -16,7 +16,7 @@ install:
 	for dir in $(EXAMPLE_DIRS); do \
 		echo ""; \
 		echo "=== Installing dependencies in $$dir ==="; \
-		if cd $$dir && $(MAKE) install && cd - > /dev/null; then \
+		if (cd $$dir && $(MAKE) install); then \
 			echo "✓ Successfully installed dependencies in $$dir"; \
 		else \
 			echo "✗ Failed to install dependencies in $$dir"; \
@@ -38,7 +38,7 @@ clean:
 	for dir in $(EXAMPLE_DIRS); do \
 		echo ""; \
 		echo "=== Cleaning $$dir ==="; \
-		if cd $$dir && $(MAKE) clean && cd - > /dev/null; then \
+		if (cd $$dir && $(MAKE) clean); then \
 			echo "✓ Successfully cleaned $$dir"; \
 		else \
 			echo "✗ Failed to clean $$dir"; \
@@ -60,7 +60,7 @@ run:
 	for dir in $(EXAMPLE_DIRS); do \
 		echo ""; \
 		echo "=== Running example in $$dir ==="; \
-		if cd $$dir && $(MAKE) run && cd - > /dev/null; then \
+		if (cd $$dir && $(MAKE) run); then \
 			echo "✓ Successfully ran example in $$dir"; \
 		else \
 			echo "✗ Failed to run example in $$dir"; \
