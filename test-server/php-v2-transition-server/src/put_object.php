@@ -1,5 +1,7 @@
 <?php
 
+use Aws\S3\Crypto\InstructionFileMetadataStrategy;
+
 require_once __DIR__ . '/errors.php';
 
 function handlePutObject($params)
@@ -31,6 +33,7 @@ function handlePutObject($params)
         return GenericServerError("Invalid bucket or key parameters", 400);
     }
 
+    $s3Client = $s3ecClientTuple["s3Client"];
     $s3ec = $s3ecClientTuple["encryptionClient"];
     $materialProvider = $s3ecClientTuple["materialsProvider"];
     $cipherOptions = [
@@ -44,17 +47,32 @@ function handlePutObject($params)
     } else {
         $legacy = "V2_AND_LEGACY";
     }
-
+    $instructionFileConfig = $s3ecClientTuple["config"]["instFilePut"] ?? false;
+    $result = null;
     try {
-        $result = $s3ec->putObject([
-            '@SecurityProfile' => $legacy,
-            '@MaterialsProvider' => $materialProvider,
-            '@KmsEncryptionContext' => $encryptionContext,
-            '@CipherOptions' => $cipherOptions,
-            'Bucket' => $bucket,
-            'Key' => $key,
-            'Body' => $rawBody,
-        ]);
+        if (!$instructionFileConfig) {
+            $result = $s3ec->putObject([
+                '@SecurityProfile' => $legacy,
+                '@MaterialsProvider' => $materialProvider,
+                '@KmsEncryptionContext' => $encryptionContext,
+                '@CipherOptions' => $cipherOptions,
+                'Bucket' => $bucket,
+                'Key' => $key,
+                'Body' => $rawBody,
+            ]);
+        } else {
+            $strategy = new InstructionFileMetadataStrategy($s3Client);
+            $result = $s3ec->putObject([
+                '@SecurityProfile' => $legacy,
+                '@MaterialsProvider' => $materialProvider,
+                '@KmsEncryptionContext' => $encryptionContext,
+                '@MetadataStrategy' => $strategy,
+                '@CipherOptions' => $cipherOptions,
+                'Bucket' => $bucket,
+                'Key' => $key,
+                'Body' => $rawBody,
+            ]);
+        }
 
         header("Content-Type: application/json");
         return json_encode([

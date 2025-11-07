@@ -483,9 +483,6 @@ public class RoundTripTests {
         if (KMS_INSTRUCTION_FILE_UNSUPPORTED.contains(decLang.getLanguageName())) {
             throw new TestAbortedException("not testing " + encLang.getLanguageName());
         }
-        if (INSTRUCTION_FILE_ROUNDTRIP_TEMP_UNSUPPORTED.contains(encLang.getLanguageName())) {
-            throw new TestAbortedException("not testing " + encLang.getLanguageName());
-        }
         S3ECTestServerClient encClient = testServerClientFor(encLang);
         S3ECTestServerClient decClient = testServerClientFor(decLang);
         final String objectKey = appendTestSuffix(String.format("write-%s-read-%s-instruction-file", encLang.getLanguageName(), decLang.getLanguageName()));
@@ -529,8 +526,9 @@ public class RoundTripTests {
               .build());
         }
         // Check for inst file key
-        if (!encLang.getLanguageName().contains("Ruby")) {
-            // Ruby doesn't include it :(
+        if (!encLang.getLanguageName().startsWith("Ruby") && !encLang.getLanguageName().startsWith("PHP-V3")) {
+            // Ruby and PHP do not include it :(
+            System.out.println(encLang.getLanguageName());
             assertTrue(ptInstFile.response().metadata().containsKey("x-amz-crypto-instr-file"));
         }
         assertFalse(ptInstFile.asUtf8String().isEmpty());
