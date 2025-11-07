@@ -78,7 +78,7 @@ function handleGetObject($params)
         if (ob_get_level()) {
             ob_end_clean();
         }
-        if (strpos($e->getMessage(), "@SecurityProfile=V2") !== false) {
+        if (strpos($e->getMessage(), "@SecurityProfile=V3") !== false) {
             return S3EncryptionClientError($e->getMessage());
         } elseif (strpos($e->getMessage(), "Provided encryption context does not match information retrieved from S3") !== false) {
             return S3EncryptionClientError($e->getMessage());
