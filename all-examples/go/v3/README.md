@@ -4,7 +4,7 @@ This example demonstrates how to use the Amazon S3 Encryption Client v3 for Go t
 
 ## Prerequisites
 
-1. **Go**: Requires Go 1.21 or later
+1. **Go**: Requires Go 1.24 or later
 2. **AWS Credentials**: Configure your AWS credentials using one of the following methods:
    - AWS CLI: `aws configure`
    - Environment variables: `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`

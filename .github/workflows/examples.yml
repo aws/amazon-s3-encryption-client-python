@@ -1,0 +1,115 @@
+name: Run Examples
+
+on:
+  workflow_call:
+
+jobs:
+  run-examples:
+    runs-on: macos-14-large
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          submodules: true
+          token: ${{ secrets.PAT_FOR_PRIVATE_RUBY }}
+
+      - name: Checkout CPP code for cpp-v2-transition
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          token: ${{ secrets.PAT_FOR_CPP }}
+          repository: awslabs/aws-sdk-cpp-staging
+          ref: fire-egg-dev
+          path: test-server/cpp-v2-transition-server/aws-sdk-cpp/
+
+      - name: Checkout CPP code cpp-v3
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          token: ${{ secrets.PAT_FOR_CPP }}
+          repository: awslabs/aws-sdk-cpp-staging
+          ref: fire-egg-dev
+          path: test-server/cpp-v3-server/aws-sdk-cpp/
+
+      - name: Checkout .NET V2 code
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.PAT_FOR_DOTNET }}
+          repository: aws/private-amazon-s3-encryption-client-dotnet-staging
+          ref: v3sdk-development 
+          path: test-server/net-v2-v3-server/s3ec-net-v2/
+
+      - name: Checkout .NET V3 code
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.PAT_FOR_DOTNET }}
+          repository: aws/private-amazon-s3-encryption-client-dotnet-staging
+          ref: s3ec-v3
+          path: test-server/net-v2-v3-server/s3ec-net-v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+
+      - name: Set up PHP with Composer
+        uses: shivammathur/setup-php@verbose
+        with:
+          php-version: "8.1"
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.25
+
+      # Cache uv dependencies
+      - name: Cache uv dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('./test-server/python-v3-server/**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      - name: Install Uv
+        run: pip install uv
+
+      # Cache Gradle dependencies and build outputs
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            test-server/java-v3-server/.gradle
+            test-server/java-tests/.gradle
+          key: ${{ runner.os }}-gradle-${{ hashFiles('test-server/java-v3-server/**/*.gradle*', 'test-server/java-tests/**/gradle-wrapper.properties', 'test-server/java-tests/**/*.gradle*', 'test-server/java-v3-server/**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::370957321024:role/S3EC-Python-Github-test-role
+          aws-region: us-west-2
+
+      - name: Install dependencies for all examples
+        working-directory: ./all-examples
+        run: make install
+
+      - name: Run all examples
+        working-directory: ./all-examples
+        run: make run
+        env:
+          AWS_REGION: us-west-2
+          TEST_BUCKET: ${{ vars.TEST_SERVER_S3_BUCKET }}
+          TEST_KMS_KEY: ${{ vars.TEST_SERVER_KMS_KEY_ARN }}
