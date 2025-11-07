@@ -99,7 +99,7 @@ public class TestUtils {
     // .NET only supports decrypting instruction files using AES and RSA.
     // Python MUST support decrypting KMS instruction files, but does not yet.
     public static final Set<String> KMS_INSTRUCTION_FILE_UNSUPPORTED =
-      Set.of(NET_V2_CURRENT, NET_V2_TRANSITION, NET_V3_TRANSITION, NET_V4);
+      Set.of(NET_V2_CURRENT, NET_V2_TRANSITION, NET_V3_TRANSITION, NET_V3_TRANSITION, NET_V4);
 
     // Go does not write with instruction files
     public static final Set<String> INSTRUCTION_FILE_PUT_UNSUPPORTED =
