@@ -3,6 +3,7 @@ package software.amazon.encryption.s3;
 import software.amazon.awssdk.core.traits.Trait;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.encryption.s3.S3EncryptionClient;
+import software.amazon.encryption.s3.internal.InstructionFileConfig;
 import software.amazon.encryption.s3.materials.AesKeyring;
 import software.amazon.encryption.s3.materials.Keyring;
 import software.amazon.encryption.s3.materials.KmsKeyring;
@@ -54,6 +55,7 @@ public class CreateClientOperationImpl implements CreateClientOperation {
   @Override
   public CreateClientOutput createClient(CreateClientInput input, RequestContext context) {
     try {
+      // Key Material / Keyring Creation
       KeyMaterial key = input.getConfig().getKeyMaterial();
       if (!onlyOneNonNull(key.getAesKey(), key.getKmsKeyId(), key.getRsaKey())) {
         throw new RuntimeException("KeyMaterial must be only one, non-null input!");
@@ -88,7 +90,17 @@ public class CreateClientOperationImpl implements CreateClientOperation {
       } else {
         throw new RuntimeException("No KeyMaterial found!");
       }
+
+      // Client Creation
+      boolean instFilePut = false;
+      if (input.getConfig().getInstructionFileConfig() != null) {
+        instFilePut = input.getConfig().getInstructionFileConfig().isEnableInstructionFilePutObject();
+      }
       S3Client s3Client = S3EncryptionClient.builder()
+        .instructionFileConfig(InstructionFileConfig.builder()
+          .instructionFileClient(S3Client.create())
+          .enableInstructionFilePutObject(instFilePut)
+          .build())
         .keyring(keyring)
         .build();
       UUID uuid = UUID.randomUUID();
