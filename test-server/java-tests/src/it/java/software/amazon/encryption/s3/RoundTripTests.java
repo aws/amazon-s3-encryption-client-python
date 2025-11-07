@@ -531,7 +531,6 @@ public class RoundTripTests {
         // Check for inst file key
         if (!encLang.getLanguageName().startsWith("Ruby") && !encLang.getLanguageName().startsWith("PHP")) {
             // Ruby and PHP do not include it :(
-            System.out.println(encLang.getLanguageName());
             assertTrue(ptInstFile.response().metadata().containsKey("x-amz-crypto-instr-file"));
         }
         assertFalse(ptInstFile.asUtf8String().isEmpty());
