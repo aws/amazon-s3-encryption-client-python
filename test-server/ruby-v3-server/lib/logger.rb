@@ -11,7 +11,7 @@ class S3ECLogger
     @logger = Logger.new(STDOUT)
     @logger.level = ENV['LOG_LEVEL'] ? Logger.const_get(ENV['LOG_LEVEL'].upcase) : Logger::INFO
     @logger.formatter = proc do |severity, datetime, progname, msg|
-      "[#{datetime.strftime('%Y-%m-%d %H:%M:%S')}] #{severity}: #{msg}\n"
+      "[RUBY IMPROVED #{datetime.strftime('%Y-%m-%d %H:%M:%S')}] #{severity}: #{msg}\n"
     end
   end
 
