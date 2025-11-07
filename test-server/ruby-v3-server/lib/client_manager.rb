@@ -16,7 +16,18 @@ class ClientManager
   def create_client(config)
     # Extract configuration
     kms_key_id = config.dig('keyMaterial', 'kmsKeyId')
-    
+    inst_file_put = config.dig('instructionFileConfig', 'enableInstructionFilePutObject')
+    content_alg = config.dig('encryptionAlgorithm')
+
+    # translate between canonical AlgSuite and Ruby symbols
+    if content_alg.nil? || content_alg == 'ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY'
+        content_alg = :alg_aes_256_gcm_hkdf_sha512_commit_key
+    elsif content_alg == 'ALG_AES_256_GCM_IV12_TAG16_NO_KDF'
+        content_alg = :aes_gcm_no_padding
+    else
+        raise 'Unknown content encryption algorithm provided: ' + content_alg
+    end
+
     raise 'KMS Key ID is required' if kms_key_id.nil? || kms_key_id.empty?
 
     # Create S3 encryption client configuration
@@ -24,7 +35,8 @@ class ClientManager
       kms_key_id: kms_key_id,
       kms_client: @kms_client,
       key_wrap_schema: :kms_context,
-      # content_encryption_schema: :aes_gcm_no_padding,
+      envelope_location: inst_file_put ? :instruction_file : :metadata,
+      content_encryption_schema: content_alg
     }.tap do |hash|
       if !config['commitmentPolicy'].nil?
         hash[:commitment_policy] = case config['commitmentPolicy']

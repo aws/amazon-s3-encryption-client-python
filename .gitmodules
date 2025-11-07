@@ -44,3 +44,7 @@
 	path = test-server/net-v2-v3-server/s3ec-net-v3
 	url = https://github.com/aws/private-amazon-s3-encryption-client-dotnet-staging.git
 	branch = s3ec-v3
+[submodule "test-server/net-v3-transition-server/s3ec-v3-transition-branch"]
+	path = test-server/net-v3-transition-server/s3ec-v3-transition-branch
+	url = https://github.com/aws/private-amazon-s3-encryption-client-dotnet-staging.git
+	branch = rishav/key-commitment

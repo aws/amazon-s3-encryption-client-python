@@ -16,6 +16,7 @@ class ClientManager
   def create_client(config)
     # Extract configuration
     kms_key_id = config.dig('keyMaterial', 'kmsKeyId')
+    inst_file_put = config.dig('instructionFileConfig', 'enableInstructionFilePutObject')
     
     raise 'KMS Key ID is required' if kms_key_id.nil? || kms_key_id.empty?
 
@@ -25,6 +26,7 @@ class ClientManager
       kms_client: @kms_client,
       key_wrap_schema: :kms_context,
       content_encryption_schema: :aes_gcm_no_padding,
+      envelope_location: inst_file_put ? :instruction_file : :metadata
     }.tap do |hash|
       if !config['enableLegacyWrappingAlgorithms'].nil? || !config['enableLegacyUnauthenticatedModes'].nil?
         legacy_modes = config['enableLegacyWrappingAlgorithms'] || config['enableLegacyUnauthenticatedModes']

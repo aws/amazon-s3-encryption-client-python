@@ -2,6 +2,8 @@ package software.amazon.encryption.s3;
 
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.encryption.s3.algorithms.AlgorithmSuite;
+import software.amazon.encryption.s3.internal.InstructionFileConfig;
+import software.amazon.encryption.s3.S3EncryptionClient;
 import software.amazon.encryption.s3.materials.AesKeyring;
 import software.amazon.encryption.s3.materials.Keyring;
 import software.amazon.encryption.s3.materials.KmsKeyring;
@@ -88,18 +90,28 @@ public class CreateClientOperationImpl implements CreateClientOperation {
       } else {
         throw new RuntimeException("No KeyMaterial found!");
       }
-      // V3-Transitional (FireEgg Transition) server configuration
+
+        boolean instFilePut = false;
+        if (input.getConfig().getInstructionFileConfig() != null) {
+            instFilePut = input.getConfig().getInstructionFileConfig().isEnableInstructionFilePutObject();
+        }
+      
+      // V3-Transitional server configuration
       S3EncryptionClient.Builder clientBuilder = S3EncryptionClient.builder()
+              .instructionFileConfig(InstructionFileConfig.builder()
+                      .instructionFileClient(S3Client.create())
+                      .enableInstructionFilePutObject(instFilePut)
+                      .build())
         .keyring(keyring);
 
-      // Configure commitment policy if provided (FireEgg feature)
+      // Configure commitment policy if provided ( feature)
       if (input.getConfig().getCommitmentPolicy() != null) {
         CommitmentPolicy policy = getCommitmentPolicy(input);
         clientBuilder.commitmentPolicy(policy);
       }
       // V3-Transitional default: No commitment policy (null) for backward compatibility
 
-      // Configure encryption algorithm if provided (FireEgg feature)
+      // Configure encryption algorithm if provided ( feature)
       if (input.getConfig().getEncryptionAlgorithm() != null) {
         AlgorithmSuite algorithm = getAlgorithmSuite(input);
         clientBuilder.encryptionAlgorithm(algorithm);

@@ -1,6 +1,8 @@
 package software.amazon.encryption.s3;
 
+import software.amazon.awssdk.core.traits.Trait;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.encryption.s3.internal.InstructionFileConfig;
 import software.amazon.encryption.s3.algorithms.AlgorithmSuite;
 import software.amazon.encryption.s3.materials.AesKeyring;
 import software.amazon.encryption.s3.materials.Keyring;
@@ -89,6 +91,14 @@ public class CreateClientOperationImpl implements CreateClientOperation {
       } else {
         throw new RuntimeException("No KeyMaterial found!");
       }
+
+
+        // Client Creation
+        boolean instFilePut = false;
+        if (input.getConfig().getInstructionFileConfig() != null) {
+            instFilePut = input.getConfig().getInstructionFileConfig().isEnableInstructionFilePutObject();
+        }
+
       // Configure commitment policy if provided
       software.amazon.encryption.s3.CommitmentPolicy policy = CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT;
       if (input.getConfig().getCommitmentPolicy() != null) {
@@ -103,6 +113,10 @@ public class CreateClientOperationImpl implements CreateClientOperation {
 
       // V4-Improved server configuration
       S3EncryptionClient s3Client = S3EncryptionClient.builderV4()
+              .instructionFileConfig(InstructionFileConfig.builder()
+                      .instructionFileClient(S3Client.create())
+                      .enableInstructionFilePutObject(instFilePut)
+                      .build())
               .keyring(keyring)
               .commitmentPolicy(policy)
               .encryptionAlgorithm(algorithm)

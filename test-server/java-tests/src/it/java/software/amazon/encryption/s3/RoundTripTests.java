@@ -6,6 +6,7 @@
 package software.amazon.encryption.s3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static software.amazon.encryption.s3.TestUtils.*;
@@ -15,13 +16,18 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Stream;
 
+import com.amazonaws.services.s3.AmazonS3EncryptionClientV2;
+import com.amazonaws.services.s3.AmazonS3EncryptionV2;
+import com.amazonaws.services.s3.model.CryptoConfigurationV2;
 import com.amazonaws.services.s3.model.KMSEncryptionMaterials;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.opentest4j.TestAbortedException;
+import software.amazon.awssdk.core.ResponseBytes;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.encryption.s3.client.S3ECTestServerClient;
 import software.amazon.encryption.s3.model.CommitmentPolicy;
 import software.amazon.encryption.s3.model.CreateClientInput;
@@ -29,6 +35,7 @@ import software.amazon.encryption.s3.model.CreateClientOutput;
 import software.amazon.encryption.s3.model.EncryptionAlgorithm;
 import software.amazon.encryption.s3.model.GetObjectInput;
 import software.amazon.encryption.s3.model.GetObjectOutput;
+import software.amazon.encryption.s3.model.InstructionFileConfig;
 import software.amazon.encryption.s3.model.KeyMaterial;
 import software.amazon.encryption.s3.model.PutObjectInput;
 import software.amazon.encryption.s3.model.S3ECConfig;
@@ -39,7 +46,6 @@ import com.amazonaws.services.s3.AmazonS3EncryptionClient;
 import com.amazonaws.services.s3.model.CryptoConfiguration;
 import com.amazonaws.services.s3.model.CryptoMode;
 import com.amazonaws.services.s3.model.CryptoStorageMode;
-import software.amazon.encryption.s3.TestUtils.*;
 import com.amazonaws.services.s3.model.EncryptionMaterialsProvider;
 import com.amazonaws.services.s3.model.KMSEncryptionMaterialsProvider;
 
@@ -414,7 +420,7 @@ public class RoundTripTests {
               .build());
             fail("Expected Exception");
         } catch (S3EncryptionClientError e) {
-            if (language.getLanguageName().equals(NET_V3) || language.getLanguageName().equals(NET_V2_CURRENT) 
+            if (language.getLanguageName().equals(NET_V3_CURRENT) || language.getLanguageName().equals(NET_V2_CURRENT) || language.getLanguageName().equals(NET_V3_TRANSITION) 
             || language.getLanguageName().equals(CPP_V2_CURRENT) || language.getLanguageName().equals(CPP_V2_TRANSITION) || language.getLanguageName().equals(CPP_V3)) {
               assertTrue(e.getMessage().contains(
                 "The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration"
@@ -427,5 +433,126 @@ public class RoundTripTests {
               assertTrue(e.getMessage().contains("Enable legacy wrapping algorithms to use legacy key wrapping algorithm: kms"));
             }
         }
+    }
+
+    @ParameterizedTest(name = "{displayName} for Encrypt: Java, Decrypt: {0}")
+    @MethodSource("software.amazon.encryption.s3.TestUtils#clientsForTest")
+    public void instructionFileReadV2Format(TestUtils.LanguageServerTarget language) {
+        if (KMS_INSTRUCTION_FILE_UNSUPPORTED.contains(language.getLanguageName())) {
+            throw new TestAbortedException(String.format("%s does not support KMS instruction files", language.getLanguageName()));
+        }
+        if (INSTRUCTION_FILE_GET_UNSUPPORTED.contains(language.getLanguageName())) {
+            throw new TestAbortedException(String.format("%s does not support instruction file Gets", language.getLanguageName()));
+        }
+        S3ECTestServerClient client = testServerClientFor(language);
+        final String objectKey = appendTestSuffix("read-instruction-file-v2-" + language);
+        final String input = "simple-test-input";
+        KeyMaterial kmsKeyArn = KeyMaterial.builder()
+          .kmsKeyId(KMS_KEY_ARN)
+          .build();
+        CreateClientOutput output1 = client.createClient(CreateClientInput.builder()
+          .config(S3ECConfig.builder()
+            .enableLegacyWrappingAlgorithms(true)
+            .keyMaterial(kmsKeyArn)
+            .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .build())
+          .build());
+        String s3ECId = output1.getClientId();
+
+        // Write with instruction file using V2 client
+        EncryptionMaterialsProvider materialsProvider = new KMSEncryptionMaterialsProvider(KMS_KEY_ARN);
+        CryptoConfigurationV2 cryptoConfigurationV2 = new CryptoConfigurationV2();
+        cryptoConfigurationV2.setStorageMode(CryptoStorageMode.InstructionFile);
+        AmazonS3EncryptionV2 v2Client = AmazonS3EncryptionClientV2.encryptionBuilder()
+          .withEncryptionMaterialsProvider(materialsProvider)
+          .withCryptoConfiguration(cryptoConfigurationV2)
+          .build();
+        v2Client.putObject(BUCKET, objectKey, input);
+
+        // Read should be enabled by default
+        GetObjectOutput output = client.getObject(GetObjectInput.builder()
+          .clientID(s3ECId)
+          .bucket(BUCKET)
+          .key(objectKey)
+          .build());
+
+        assertEquals(input, new String(output.getBody().array()));
+    }
+
+    @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
+    @MethodSource("software.amazon.encryption.s3.TestUtils#crossLanguageClients")
+    public void instructionFileWriteAndRead(LanguageServerTarget encLang, LanguageServerTarget decLang) {
+        if (INSTRUCTION_FILE_PUT_UNSUPPORTED.contains(encLang.getLanguageName())) {
+            throw new TestAbortedException("not testing " + encLang.getLanguageName());
+        }
+        if (INSTRUCTION_FILE_GET_UNSUPPORTED.contains(decLang.getLanguageName())) {
+            throw new TestAbortedException("not testing " + encLang.getLanguageName());
+        }
+        if (KMS_INSTRUCTION_FILE_UNSUPPORTED.contains(encLang.getLanguageName())) {
+            throw new TestAbortedException("not testing " + encLang.getLanguageName());
+        }
+        if (KMS_INSTRUCTION_FILE_UNSUPPORTED.contains(decLang.getLanguageName())) {
+            throw new TestAbortedException("not testing " + encLang.getLanguageName());
+        }
+        if (INSTRUCTION_FILE_ROUNDTRIP_TEMP_UNSUPPORTED.contains(encLang.getLanguageName())) {
+            throw new TestAbortedException("not testing " + encLang.getLanguageName());
+        }
+        S3ECTestServerClient encClient = testServerClientFor(encLang);
+        S3ECTestServerClient decClient = testServerClientFor(decLang);
+        final String objectKey = appendTestSuffix(String.format("write-%s-read-%s-instruction-file", encLang.getLanguageName(), decLang.getLanguageName()));
+        final String input = "simple-test-input";
+        KeyMaterial kmsKeyArn = KeyMaterial.builder()
+          .kmsKeyId(KMS_KEY_ARN)
+          .build();
+        CreateClientOutput encOutput = encClient.createClient(CreateClientInput.builder()
+          .config(S3ECConfig.builder()
+            .keyMaterial(kmsKeyArn)
+            .instructionFileConfig(InstructionFileConfig.builder()
+              .enableInstructionFilePutObject(true)
+              .build())
+            .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
+            .build())
+          .build());
+        String encS3ECId = encOutput.getClientId();
+        CreateClientOutput decOutput = decClient.createClient(CreateClientInput.builder()
+          .config(S3ECConfig.builder()
+            .keyMaterial(kmsKeyArn)
+            .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .build())
+          .build());
+        String decS3ECId = decOutput.getClientId();
+
+        // Write with instruction file
+        encClient.putObject(PutObjectInput.builder()
+          .clientID(encS3ECId)
+          .bucket(BUCKET)
+          .key(objectKey)
+          .body(ByteBuffer.wrap(input.getBytes(StandardCharsets.UTF_8)))
+          .build());
+
+        // Assert using Java plaintext client that an instruction file exists
+        ResponseBytes<GetObjectResponse> ptInstFile;
+        try (S3Client ptS3Client = S3Client.create()) {
+            ptInstFile = ptS3Client.getObjectAsBytes(builder -> builder
+              .bucket(BUCKET)
+              .key(objectKey + ".instruction")
+              .build());
+        }
+        // Check for inst file key
+        if (!encLang.getLanguageName().contains("Ruby")) {
+            // Ruby doesn't include it :(
+            assertTrue(ptInstFile.response().metadata().containsKey("x-amz-crypto-instr-file"));
+        }
+        assertFalse(ptInstFile.asUtf8String().isEmpty());
+
+        // Read should be enabled by default
+        GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
+          .clientID(decS3ECId)
+          .bucket(BUCKET)
+          .key(objectKey)
+          .build());
+
+        assertEquals(input, new String(output.getBody().array()));
     }
 }
