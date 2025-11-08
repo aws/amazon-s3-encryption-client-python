@@ -30,6 +30,7 @@ Each language has subdirectories for different major versions of the S3 Encrypti
 ### Prerequisites
 
 1. **Git Submodules**: Some examples depend on staging versions of the S3EC libraries that are included as git submodules. Initialize and update submodules:
+
    ```bash
    git submodule update --init --recursive
    ```
@@ -55,6 +56,7 @@ Each language directory contains specific setup instructions in its README file.
 ## Usage
 
 Each example directory contains:
+
 - Build configuration files (e.g., `build.gradle.kts`, `go.mod`, `composer.json`)
 - Source code demonstrating basic S3EC usage
 - README with specific setup and run instructions
@@ -62,6 +64,7 @@ Each example directory contains:
 ## Dependencies
 
 Examples use different dependency sources based on version:
+
 - **Released versions**: Use public package repositories (Maven Central, npm, etc.)
 - **Staging versions**: Use git submodules pointing to staging repositories
 - **Local versions**: Reference locally built libraries
