@@ -1,5 +1,8 @@
 <?php
 
+use Aws\S3\Crypto\HeadersMetadataStrategy;
+use Aws\S3\Crypto\InstructionFileMetadataStrategy;
+
 require_once __DIR__ . '/errors.php';
 
 function handlePutObject($params)
@@ -31,6 +34,7 @@ function handlePutObject($params)
         return GenericServerError("Invalid bucket or key parameters", 400);
     }
 
+    $s3Client = $s3ecClientTuple["s3Client"];
     $s3ec = $s3ecClientTuple["encryptionClient"];
     $materialProvider = $s3ecClientTuple["materialsProvider"];
     $cipherOptions = [
@@ -45,13 +49,17 @@ function handlePutObject($params)
         $legacy = "V2_AND_LEGACY";
     }
     $commitmentPolicy = $s3ecClientTuple['config']['commitmentPolicy'];
-
+    $strategy = $s3ecClientTuple["config"]["instFilePut"] ?
+        new InstructionFileMetadataStrategy($s3Client) :
+        new HeadersMetadataStrategy();
+  
     try {
         $result = $s3ec->putObject([
             '@SecurityProfile' => $legacy,
             '@MaterialsProvider' => $materialProvider,
             '@CommitmentPolicy' => $commitmentPolicy,
             '@KmsEncryptionContext' => $encryptionContext,
+            '@MetadataStrategy' => $strategy,
             '@CipherOptions' => $cipherOptions,
             'Bucket' => $bucket,
             'Key' => $key,

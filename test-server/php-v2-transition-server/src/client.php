@@ -20,6 +20,7 @@ function handleCreateClient()
     $clientId = Uuid::uuid4()->toString();
     $kmsKeyId = $keyMaterial["kmsKeyId"] ?? null;
     $commitmentPolicy = $configData['commitmentPolicy'] ?? "FORBID_ENCRYPT_ALLOW_DECRYPT";
+    $instFileConfig = $configData['instructionFileConfig'] ?? null;
     $instFilePut = false;
     if ($instFileConfig != null) {
         $instFilePut = $instFileConfig['enableInstructionFilePutObject'] ?? false;

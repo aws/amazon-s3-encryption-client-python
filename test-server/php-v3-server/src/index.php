@@ -163,6 +163,7 @@ function getCachedClient($clientId)
     $materialsProvider = new KmsMaterialsProviderV3($kmsClient, $config['kmsKeyId']);
 
     return [
+        's3Client' => $s3Client,
         'encryptionClient' => $encryptionClient,
         'materialsProvider' => $materialsProvider,
         'config' => $config
