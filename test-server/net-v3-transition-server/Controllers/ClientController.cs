@@ -36,7 +36,6 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
                 logger.LogInformation(
                     "[NET-V3-Transitional] Created EncryptionMaterialsV2: KMS={KmsKeyId}",
                     kmsKeyId);
-                kmsKeyId);
             }
             else if (request.Config.KeyMaterial.RsaKey != null)
             {
