@@ -14,7 +14,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
         with:
-          submodules: recursive
+          submodules: true
           token: ${{ secrets.PAT_FOR_PRIVATE_RUBY }}
 
       - name: Checkout CPP code for cpp-v2-transition
