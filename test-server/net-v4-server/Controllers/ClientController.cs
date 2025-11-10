@@ -107,7 +107,7 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
         {
             Models.EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF => ContentEncryptionAlgorithm.AesGcm,
             Models.EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY => ContentEncryptionAlgorithm.AesGcmWithCommitment,
-            _ => ContentEncryptionAlgorithm.AesGcm
+            _ => ContentEncryptionAlgorithm.AesGcmWithCommitment
         };
     }
 }
