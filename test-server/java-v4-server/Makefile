@@ -3,12 +3,11 @@
 .PHONY: start-server stop-server wait-for-server build-s3ec
 
 PID_FILE := server.pid
-PORT := 8090
+PORT := 8088
 
 build-s3ec:
 	@echo "Building S3EC from source..."
-	cd s3ec-staging && mvn --batch-mode -no-transfer-progress clean compile
-	cd s3ec-staging && mvn -B -ntp install -DskipTests
+	cd s3ec-staging && mvn --batch-mode -no-transfer-progress clean compile && mvn -B -ntp install -DskipTests
 	@echo "S3EC build completed."
 
 start-server: build-s3ec
@@ -28,3 +27,9 @@ stop-server:
 
 wait-for-server:
 	$(MAKE) -C .. wait-for-port PORT=$(PORT)
+
+duvet:
+	duvet report
+
+view-report-mac:
+	open .duvet/reports/report.html
