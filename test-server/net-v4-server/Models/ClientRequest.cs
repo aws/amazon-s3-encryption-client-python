@@ -40,6 +40,7 @@ public enum CommitmentPolicy
     FORBID_ENCRYPT_ALLOW_DECRYPT
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum EncryptionAlgorithm
 {
     ALG_AES_256_CBC_IV16_NO_KDF,
