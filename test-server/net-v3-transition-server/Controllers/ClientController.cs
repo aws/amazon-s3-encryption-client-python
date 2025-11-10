@@ -45,7 +45,6 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
 
             logger.LogInformation("[NET-V3-Transitional] Created securityProfile= {securityProfile}", securityProfile.ToString());
 
-            // Currently, tests does not send EncryptionAlgorithm. Tests only validates EncryptionAlgorithm from metadata of the response.
             var encryptionAlgorithm = MapEncryptionAlgorithm(request.Config.EncryptionAlgorithm);
             // var encryptionAlgorithm = commitmentPolicy == Amazon.Extensions.S3.Encryption.CommitmentPolicy.ForbidEncryptAllowDecrypt ? ContentEncryptionAlgorithm.AesGcm : ContentEncryptionAlgorithm.AesGcmWithCommitment;
             logger.LogInformation("[NET-V3-Transitional] Created commitmentPolicy= {commitmentPolicy}", commitmentPolicy);
