@@ -49,9 +49,7 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             var enableLegacyMode = enableLegacyUnauthenticatedModes || enableLegacyWrappingAlgorithms;
             var securityProfile = enableLegacyMode ? SecurityProfile.V4AndLegacy : SecurityProfile.V4;
 
-            // Currently, tests does not send EncryptionAlgorithm
-            // var encryptionAlgorithm = MapEncryptionAlgorithm(request.Config.EncryptionAlgorithm);
-            var encryptionAlgorithm = commitmentPolicy == Amazon.Extensions.S3.Encryption.CommitmentPolicy.ForbidEncryptAllowDecrypt ? ContentEncryptionAlgorithm.AesGcm : ContentEncryptionAlgorithm.AesGcmWithCommitment;
+            var encryptionAlgorithm = MapEncryptionAlgorithm(request.Config.EncryptionAlgorithm);
             
             if (!useDefaultConf)
             {
