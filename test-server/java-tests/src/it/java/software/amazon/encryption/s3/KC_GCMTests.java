@@ -157,6 +157,7 @@ class KC_GCMTests {
         .config(S3ECConfig.builder()
         .keyMaterial(kmsKeyArn)
         .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+        .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
         .build())
         .build());
         String S3ECId = clientOutput.getClientId();
