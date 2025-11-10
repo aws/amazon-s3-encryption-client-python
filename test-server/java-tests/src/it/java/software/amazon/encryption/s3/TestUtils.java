@@ -139,7 +139,7 @@ public class TestUtils {
 
     public static final Set<String> IMPROVED_VERSIONS =
         Set.of(
-            // JAVA_V4,
+            JAVA_V4,
             // PYTHON_V3,
             GO_V4,
             // NET_V4,
@@ -166,12 +166,12 @@ public class TestUtils {
         servers.put(RUBY_V3, new LanguageServerTarget(RUBY_V3, "8092"));
         servers.put(PHP_V3, new LanguageServerTarget(PHP_V3, "8093"));
         // TODO: Create and add transition servers
-        servers.put(JAVA_V3_TRANSITION, new LanguageServerTarget(JAVA_V3_TRANSITION, "8094"));
+        // servers.put(JAVA_V3_TRANSITION, new LanguageServerTarget(JAVA_V3_TRANSITION, "8094"));
         // servers.put(GO_V3_TRANSITION, new LanguageServerTarget(GO_V3_TRANSITION, "8095"));
         // servers.put(NET_V2_TRANSITION, new LanguageServerTarget(NET_V2_TRANSITION, "8096"));
         servers.put(RUBY_V2_TRANSITION, new LanguageServerTarget(RUBY_V2_TRANSITION, "8098"));
         servers.put(PHP_V2_TRANSITION, new LanguageServerTarget(PHP_V2_TRANSITION, "8099"));
-        servers.put(JAVA_V4, new LanguageServerTarget(JAVA_V4, "8090"));
+        servers.put(JAVA_V4, new LanguageServerTarget(JAVA_V4, "8088"));
         servers.put(NET_V3_TRANSITION, new LanguageServerTarget(NET_V3_TRANSITION, "8100"));
         serverMap = filterServers(servers);
 
