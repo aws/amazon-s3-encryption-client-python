@@ -1,6 +1,7 @@
 <?php
 
 use Aws\S3\Crypto\InstructionFileMetadataStrategy;
+use Aws\S3\Crypto\HeadersMetadataStrategy;
 
 require_once __DIR__ . '/errors.php';
 
@@ -47,32 +48,20 @@ function handlePutObject($params)
     } else {
         $legacy = "V2_AND_LEGACY";
     }
-    $instructionFileConfig = $s3ecClientTuple["config"]["instFilePut"] ?? false;
-    $result = null;
+    $strategy = $s3ecClientTuple["config"]["instFilePut"] ?
+        new InstructionFileMetadataStrategy($s3Client) :
+        new HeadersMetadataStrategy();
     try {
-        if (!$instructionFileConfig) {
-            $result = $s3ec->putObject([
-                '@SecurityProfile' => $legacy,
-                '@MaterialsProvider' => $materialProvider,
-                '@KmsEncryptionContext' => $encryptionContext,
-                '@CipherOptions' => $cipherOptions,
-                'Bucket' => $bucket,
-                'Key' => $key,
-                'Body' => $rawBody,
-            ]);
-        } else {
-            $strategy = new InstructionFileMetadataStrategy($s3Client);
-            $result = $s3ec->putObject([
-                '@SecurityProfile' => $legacy,
-                '@MaterialsProvider' => $materialProvider,
-                '@KmsEncryptionContext' => $encryptionContext,
-                '@MetadataStrategy' => $strategy,
-                '@CipherOptions' => $cipherOptions,
-                'Bucket' => $bucket,
-                'Key' => $key,
-                'Body' => $rawBody,
-            ]);
-        }
+        $result = $s3ec->putObject([
+            '@SecurityProfile' => $legacy,
+            '@MaterialsProvider' => $materialProvider,
+            '@KmsEncryptionContext' => $encryptionContext,
+            '@MetadataStrategy' => $strategy,
+            '@CipherOptions' => $cipherOptions,
+            'Bucket' => $bucket,
+            'Key' => $key,
+            'Body' => $rawBody,
+        ]);
 
         header("Content-Type: application/json");
         return json_encode([
