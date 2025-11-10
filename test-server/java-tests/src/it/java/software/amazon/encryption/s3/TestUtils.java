@@ -65,8 +65,10 @@ public class TestUtils {
     public static final String GO_V4 = "Go-V4";
 
     public static final String NET_V2_CURRENT = "NET-V2-Current";
+    public static final String NET_V3_CURRENT = "NET-V3-Current";
     public static final String NET_V2_TRANSITION = "NET-V2-Transition";
-    public static final String NET_V3 = "NET-V3";
+    public static final String NET_V3_TRANSITION = "NET-V3-Transition";
+    public static final String NET_V4 = "NET-V4";
 
     public static final String CPP_V2_CURRENT = "CPP-V2-Current";
     public static final String CPP_V2_TRANSITION = "CPP-V2-Transition";
@@ -89,15 +91,15 @@ public class TestUtils {
 
     // Sets of unsupported features by language
     public static final Set<String> ENCRYPTION_CONTEXT_ON_DECRYPT_UNSUPPORTED =
-        Set.of(GO_V3_CURRENT, PHP_V2_CURRENT, PHP_V2_TRANSITION, PHP_V3, NET_V2_CURRENT, NET_V3);
+        Set.of(GO_V3_CURRENT, PHP_V2_CURRENT, PHP_V2_TRANSITION, PHP_V3, NET_V2_CURRENT, NET_V3_CURRENT, NET_V3_TRANSITION);
     
     public static final Set<String> ENCRYPTION_CONTEXT_ON_ENCRYPT_UNSUPPORTED =
-        Set.of(NET_V2_CURRENT, NET_V3);
+        Set.of(NET_V2_CURRENT, NET_V3_CURRENT, NET_V3_TRANSITION);
 
     // .NET only supports decrypting instruction files using AES and RSA.
     // Python MUST support decrypting KMS instruction files, but does not yet.
     public static final Set<String> KMS_INSTRUCTION_FILE_UNSUPPORTED =
-      Set.of(NET_V2_CURRENT, NET_V2_TRANSITION, NET_V3);
+      Set.of(NET_V2_CURRENT, NET_V2_TRANSITION, NET_V3_CURRENT, NET_V3_TRANSITION, NET_V4);
 
     // Go does not write with instruction files
     public static final Set<String> INSTRUCTION_FILE_PUT_UNSUPPORTED =
@@ -118,6 +120,7 @@ public class TestUtils {
             JAVA_V3_CURRENT,
             GO_V3_CURRENT,
             NET_V2_CURRENT,
+            NET_V3_CURRENT,
             CPP_V2_CURRENT,
             RUBY_V2_CURRENT,
             PHP_V2_CURRENT
@@ -128,20 +131,21 @@ public class TestUtils {
             // JAVA_V3_TRANSITION,
             // GO_V3_TRANSITION,
             // NET_V2_TRANSITION,
-            CPP_V2_TRANSITION
+            NET_V3_TRANSITION,
+            CPP_V2_TRANSITION,
             // PHP_V2_TRANSITION,
-            // RUBY_V2_TRANSITION
+            RUBY_V2_TRANSITION
         );
 
     public static final Set<String> IMPROVED_VERSIONS =
         Set.of(
-            // JAVA_V4,
+            JAVA_V4,
             // PYTHON_V3,
             GO_V4,
-            // NET_V3,
-            CPP_V3
+            // NET_V4,
+            CPP_V3,
             // PHP_V3,
-            // RUBY_V3
+            RUBY_V3
         );
 
     private static final Map<String, LanguageServerTarget> serverMap;
@@ -152,23 +156,32 @@ public class TestUtils {
         servers.put(PYTHON_V3, new LanguageServerTarget(PYTHON_V3, "8081"));
         servers.put(GO_V3_CURRENT, new LanguageServerTarget(GO_V3_CURRENT, "8082"));
         servers.put(NET_V2_CURRENT, new LanguageServerTarget(NET_V2_CURRENT, "8083"));
-        servers.put(NET_V3, new LanguageServerTarget(NET_V3, "8084"));
+        servers.put(NET_V3_CURRENT, new LanguageServerTarget(NET_V3_CURRENT, "8084"));
         servers.put(CPP_V2_CURRENT, new LanguageServerTarget(CPP_V2_CURRENT, "8085"));
         servers.put(CPP_V2_TRANSITION, new LanguageServerTarget(CPP_V2_TRANSITION, "8097"));
         servers.put(CPP_V3, new LanguageServerTarget(CPP_V3, "8091"));
         // servers.put(RUBY_V2_CURRENT, new LanguageServerTarget(RUBY_V2_CURRENT, "8086"));
         servers.put(PHP_V2_CURRENT, new LanguageServerTarget(PHP_V2_CURRENT, "8087"));
         servers.put(GO_V4, new LanguageServerTarget(GO_V4, "8089"));
-        // servers.put(RUBY_V3, new LanguageServerTarget(RUBY_V3, "8092"));
+        servers.put(RUBY_V3, new LanguageServerTarget(RUBY_V3, "8092"));
         servers.put(PHP_V3, new LanguageServerTarget(PHP_V3, "8093"));
         // TODO: Create and add transition servers
-        servers.put(JAVA_V3_TRANSITION, new LanguageServerTarget(JAVA_V3_TRANSITION, "8094"));
+        // servers.put(JAVA_V3_TRANSITION, new LanguageServerTarget(JAVA_V3_TRANSITION, "8094"));
         // servers.put(GO_V3_TRANSITION, new LanguageServerTarget(GO_V3_TRANSITION, "8095"));
         // servers.put(NET_V2_TRANSITION, new LanguageServerTarget(NET_V2_TRANSITION, "8096"));
-        // servers.put(RUBY_V2_TRANSITION, new LanguageServerTarget(RUBY_V2_TRANSITION, "8098"));
+        servers.put(RUBY_V2_TRANSITION, new LanguageServerTarget(RUBY_V2_TRANSITION, "8098"));
         servers.put(PHP_V2_TRANSITION, new LanguageServerTarget(PHP_V2_TRANSITION, "8099"));
-        servers.put(JAVA_V4, new LanguageServerTarget(JAVA_V4, "8090"));
+        servers.put(JAVA_V4, new LanguageServerTarget(JAVA_V4, "8088"));
+        servers.put(NET_V3_TRANSITION, new LanguageServerTarget(NET_V3_TRANSITION, "8100"));
         serverMap = filterServers(servers);
+
+        System.out.println("=== Configured Test Servers ===");
+        System.out.println("\nServers:");
+        serverMap.forEach((name, target) -> {
+            System.out.println("  " + name + " -> " + target.getServerURI());
+        });
+        System.out.println("\nTotal servers configured: " + serverMap.size());
+        System.out.println("================================");
     }
 
     public static class LanguageServerTarget {
@@ -221,6 +234,8 @@ public class TestUtils {
             return allServers; // No filtering - use all servers
         }
 
+        System.out.println("Filtering with: " + maybeFilter);
+
         final String[] filters = Arrays.stream(maybeFilter.split(","))
             .map(String::trim)
             .map(String::toLowerCase)
@@ -229,6 +244,7 @@ public class TestUtils {
         return allServers.entrySet().stream()
             .filter(entry -> {
                 String key = entry.getKey().toLowerCase();
+                System.out.println("Checking server name:" + key);
                 return Arrays.stream(filters).anyMatch(key::contains);
             })
             .collect(Collectors.toMap(

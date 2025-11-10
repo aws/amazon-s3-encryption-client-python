@@ -55,6 +55,10 @@ Each language directory contains specific setup instructions in its README file.
 ## Usage
 
 Each example directory contains:
+<<<<<<< HEAD
+=======
+
+>>>>>>> fireegg-test-servers
 - Build configuration files (e.g., `build.gradle.kts`, `go.mod`, `composer.json`)
 - Source code demonstrating basic S3EC usage
 - README with specific setup and run instructions
@@ -62,6 +66,10 @@ Each example directory contains:
 ## Dependencies
 
 Examples use different dependency sources based on version:
+<<<<<<< HEAD
+=======
+
+>>>>>>> fireegg-test-servers
 - **Released versions**: Use public package repositories (Maven Central, npm, etc.)
 - **Staging versions**: Use git submodules pointing to staging repositories
 - **Local versions**: Reference locally built libraries

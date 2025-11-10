@@ -19,6 +19,7 @@ function handleCreateClient()
     $legacyAlgorithms = $configData["enableLegacyWrappingAlgorithms"] ?? false;
     $clientId = Uuid::uuid4()->toString();
     $kmsKeyId = $keyMaterial["kmsKeyId"] ?? null;
+    $instFileConfig = $configData['instructionFileConfig'] ?? null;
     $instFilePut = false;
     if ($instFileConfig != null) {
         $instFilePut = $instFileConfig['enableInstructionFilePutObject'] ?? false;

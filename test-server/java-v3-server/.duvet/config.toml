@@ -1,17 +1,17 @@
 '$schema' = "https://awslabs.github.io/duvet/config/v0.4.0.json"
 
 [[source]]
-pattern = "**/*.java"
+pattern = "s3ec-staging/*.java"
 
 # Include required specifications here
 [[specification]]
-source = "../specification/s3-encryption/data-format/content-metadata.md"
+source = "specification/s3-encryption/data-format/content-metadata.md"
 [[specification]]
-source = "../specification/s3-encryption/data-format/metadata-strategy.md"
+source = "specification/s3-encryption/data-format/metadata-strategy.md"
 [[specification]]
-source = "../specification/s3-encryption/encryption.md"
+source = "specification/s3-encryption/encryption.md"
 [[specification]]
-source = "../specification/s3-encryption/key-derivation.md"
+source = "specification/s3-encryption/key-derivation.md"
 
 [report.html]
 enabled = true

@@ -7,18 +7,17 @@ PORT := 8094
 
 build-s3ec:
 	@echo "Building S3EC from source..."
-	cd s3ec-staging && mvn --batch-mode -no-transfer-progress clean compile
-	cd s3ec-staging && mvn -B -ntp install -DskipTests
+	cd s3ec-staging && mvn --batch-mode -no-transfer-progress clean compile && mvn -B -ntp install -DskipTests
 	@echo "S3EC build completed."
 
 start-server: build-s3ec
-	@echo "Starting Java V3 server..."
+	@echo "Starting Java V3 Transition server..."
 	AWS_ACCESS_KEY_ID="$$AWS_ACCESS_KEY_ID" \
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
 	./gradlew --build-cache --parallel run & echo $$! > $(PID_FILE)
-	@echo "Java V3 server starting..."
+	@echo "Java V3 Transition server starting..."
 
 stop-server:
 	@if [ -f $(PID_FILE) ]; then \
@@ -28,3 +27,9 @@ stop-server:
 
 wait-for-server:
 	$(MAKE) -C .. wait-for-port PORT=$(PORT)
+
+duvet:
+	duvet report
+
+view-report-mac:
+	open .duvet/reports/report.html

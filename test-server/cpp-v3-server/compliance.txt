@@ -1,3 +1,12 @@
+** The C++ S3EC does not support re-encryption, nor custom instruction file suffixes
+//= ../specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
+//= type=exception
+//# The S3EC MAY support re-encryption/key rotation via Instruction Files.
+
+//= ../specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
+//= type=exception
+//# The S3EC SHOULD support providing a custom Instruction File suffix on GetObject requests, regardless of whether or not re-encryption is supported.
+
 ** We're not doing double encoding yet
 //= ../specification/s3-encryption/data-format/metadata-strategy.md#object-metadata
 //= type=exception
@@ -10,6 +19,10 @@
 //= ../specification/s3-encryption/data-format/content-metadata.md#v3-only
 //= type=exception
 //# This encryption context string MAY be encoded by the esoteric double-encoding scheme used by the S3 web server.
+
+//= ../specification/s3-encryption/data-format/content-metadata.md#v1-v2-shared
+//= type=exception
+//# This string MAY be encoded by the esoteric double-encoding scheme used by the S3 web server.
 
 
 ** The C++ S3EC does not support key rings nor cmms

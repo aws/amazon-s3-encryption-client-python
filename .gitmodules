@@ -18,11 +18,16 @@
 [submodule "test-server/java-v3-transition-server/s3ec-staging"]
 	path = test-server/java-v3-transition-server/s3ec-staging
 	url = git@github.com:aws/private-amazon-s3-encryption-client-java-staging.git
-	branch = s3ec/transitional
+	branch = imabhichow/s3ec-transition
 [submodule "test-server/java-v4-server/s3ec-staging"]
 	path = test-server/java-v4-server/s3ec-staging
 	url = git@github.com:aws/private-amazon-s3-encryption-client-java-staging.git
-	branch = s3ec/improved
+	branch = imabhichow/add-kc
+; 	branch = s3ec/improved
+[submodule "test-server/java-v4-server/specification"]
+	path = test-server/java-v4-server/specification
+	url = git@github.com:awslabs/private-aws-encryption-sdk-specification-staging.git
+	branch = fire-egg-staging
 [submodule "test-server/specification"]
 	path = test-server/specification
 	url = git@github.com:awslabs/private-aws-encryption-sdk-specification-staging.git
@@ -42,3 +47,7 @@
 [submodule "all-examples/ruby/v2/local-ruby-sdk"]
 	path = all-examples/ruby/v2/local-ruby-sdk
 	url = git@github.com:aws/aws-sdk-ruby-staging.git
+[submodule "test-server/net-v3-transition-server/s3ec-v3-transition-branch"]
+	path = test-server/net-v3-transition-server/s3ec-v3-transition-branch
+	url = https://github.com/aws/private-amazon-s3-encryption-client-dotnet-staging.git
+	branch = rishav/key-commitment

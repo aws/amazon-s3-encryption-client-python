@@ -70,6 +70,7 @@ public class RoundTripTests {
             .builder()
             .keyMaterial(kmsKeyArn)
             .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
             .build()
           )
           .build());
@@ -85,6 +86,7 @@ public class RoundTripTests {
           .config(S3ECConfig.builder()
             .keyMaterial(kmsKeyArn)
             .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
             .build()
           )
           .build());
@@ -120,6 +122,7 @@ public class RoundTripTests {
           .config(S3ECConfig.builder()
             .keyMaterial(kmsKeyArn)
             .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
             .build()
           )
           .build());
@@ -137,6 +140,7 @@ public class RoundTripTests {
           .config(S3ECConfig.builder()
             .keyMaterial(kmsKeyArn)
             .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
             .build()
           )
           .build());
@@ -176,6 +180,7 @@ public class RoundTripTests {
                 .config(S3ECConfig.builder()
                         .keyMaterial(kmsKeyArn)
                         .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+                        .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
                         .build())
                 .build());
         String encS3ECId = encClientOutput.getClientId();
@@ -192,6 +197,7 @@ public class RoundTripTests {
                 .config(S3ECConfig.builder()
                   .keyMaterial(kmsKeyArn)
                   .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+                  .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
                   .build()
                 )
                 .build());
@@ -232,6 +238,7 @@ public class RoundTripTests {
           .config(S3ECConfig.builder()
             .keyMaterial(kmsKeyArn)
             .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
             .build()
           )
           .build());
@@ -249,6 +256,7 @@ public class RoundTripTests {
           .config(S3ECConfig.builder()
             .keyMaterial(kmsKeyArn)
             .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
             .build()
           )
           .build());
@@ -288,6 +296,7 @@ public class RoundTripTests {
             .enableLegacyWrappingAlgorithms(true)
             .keyMaterial(kmsKeyArn)
             .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
             .build())
           .build());
         String s3ECId = output1.getClientId();
@@ -331,6 +340,7 @@ public class RoundTripTests {
             .enableLegacyWrappingAlgorithms(true)
             .keyMaterial(kmsKeyArn)
             .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
             .build())
           .build());
         String s3ECId = output1.getClientId();
@@ -381,6 +391,7 @@ public class RoundTripTests {
             .enableLegacyWrappingAlgorithms(false)
             .keyMaterial(kmsKeyArn)
             .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
             .build())
           .build());
         String s3ECId = output1.getClientId();
@@ -409,7 +420,7 @@ public class RoundTripTests {
               .build());
             fail("Expected Exception");
         } catch (S3EncryptionClientError e) {
-            if (language.getLanguageName().equals(NET_V3) || language.getLanguageName().equals(NET_V2_CURRENT) 
+            if (language.getLanguageName().equals(NET_V3_CURRENT) || language.getLanguageName().equals(NET_V2_CURRENT) || language.getLanguageName().equals(NET_V3_TRANSITION) 
             || language.getLanguageName().equals(CPP_V2_CURRENT) || language.getLanguageName().equals(CPP_V2_TRANSITION) || language.getLanguageName().equals(CPP_V3)) {
               assertTrue(e.getMessage().contains(
                 "The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration"
@@ -444,6 +455,7 @@ public class RoundTripTests {
             .enableLegacyWrappingAlgorithms(true)
             .keyMaterial(kmsKeyArn)
             .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
             .build())
           .build());
         String s3ECId = output1.getClientId();
@@ -508,6 +520,7 @@ public class RoundTripTests {
           .config(S3ECConfig.builder()
             .keyMaterial(kmsKeyArn)
             .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
             .build())
           .build());
         String decS3ECId = decOutput.getClientId();
@@ -529,8 +542,8 @@ public class RoundTripTests {
               .build());
         }
         // Check for inst file key
-        if (!encLang.getLanguageName().contains("Ruby")) {
-            // Ruby doesn't include it :(
+        if (!encLang.getLanguageName().startsWith("Ruby") && !encLang.getLanguageName().startsWith("PHP")) {
+            // Ruby and PHP do not include it :(
             assertTrue(ptInstFile.response().metadata().containsKey("x-amz-crypto-instr-file"));
         }
         assertFalse(ptInstFile.asUtf8String().isEmpty());

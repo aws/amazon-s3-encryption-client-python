@@ -52,7 +52,7 @@ def main
     puts "Successfully initialized S3 Encryption Client v2"
     puts "--- Encrypt and Upload Object to S3 ---"
     
-    # Add encryption context for additional security
+    # Add encryption context
     encryption_context = {
       'purpose' => 'example',
       'version' => 'v2',
