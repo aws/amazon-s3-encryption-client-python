@@ -99,7 +99,7 @@ public class TestUtils {
     // For now, only .NET and Java have RSA support
     public static final Set<String> RAW_SUPPORTED =
       Set.of(JAVA_V3_CURRENT, JAVA_V3_TRANSITION, JAVA_V4
-        , NET_V2_CURRENT, NET_V3
+        , NET_V2_CURRENT, NET_V3_CURRENT, NET_V3_TRANSITION
       );
 
     // .NET only supports decrypting instruction files using AES and RSA.
