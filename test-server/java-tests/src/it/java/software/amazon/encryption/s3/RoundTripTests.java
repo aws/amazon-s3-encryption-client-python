@@ -461,6 +461,7 @@ public class RoundTripTests {
           .config(S3ECConfig.builder()
             // TODO: use this for now to satisfy current. think about long term soln for this
             .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
+            .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
             .keyMaterial(rsaKeyOne).build())
           .build());
         String encS3ECId = encClientOutput.getClientId();
