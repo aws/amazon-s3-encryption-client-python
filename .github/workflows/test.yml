@@ -41,15 +41,31 @@ jobs:
           git config --global credential.helper store
           echo "https://x-token-auth:${{ secrets.PAT_FOR_PRIVATE_RUBY }}@github.com" > ~/.git-credentials
 
-      - name: Checkout submodules with jobs
-        run: |
-          git submodule update --init --depth 1 --jobs ${{ steps.cpu-count.outputs.count }}
+      - name: Cache git submodules
+        uses: actions/cache@v4
+        with:
+          path: |
+            .git/modules
+            test-server/*/.git
+          key: ${{ runner.os }}-submodules-${{ hashFiles('.gitmodules') }}
+          restore-keys: |
+            ${{ runner.os }}-submodules-
 
-      - name: Update cpp submodules recursively
+      - name: Optimize git for performance
         run: |
-          git submodule update --init --depth 1 --recursive \
+          git config --global fetch.parallel ${{ steps.cpu-count.outputs.count }}
+          git config --global submodule.fetchJobs ${{ steps.cpu-count.outputs.count }}
+
+      - name: Checkout all submodules (use --jobs)
+        run: |
+          # Non-recursive for most submodules
+          git submodule update --init --depth 1 --jobs ${{ steps.cpu-count.outputs.count }}
+          
+          # Recursive only for C++ SDK submodules with blobless clone
+          git submodule update --init --recursive \
+            --depth 1 \
+            --filter=blob:none \
             --jobs ${{ steps.cpu-count.outputs.count }} \
-            --force \
             test-server/cpp-v2-transition-server/aws-sdk-cpp \
             test-server/cpp-v3-server/aws-sdk-cpp \
             test-server/cpp-v2-server/aws-sdk-cpp
