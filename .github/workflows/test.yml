@@ -130,7 +130,7 @@ jobs:
             test-server/java-tests/.gradle
             test-server/java-v3-transition-server/.gradle
             test-server/java-v4-server/.gradle
-          key: ${{ runner.os }}-gradle-${{ hashFiles('test-server/**/gradle-wrapper.properties', 'test-server/**/*.gradle*') }}
+          key: ${{ runner.os }}-gradle-${{ hashFiles('test-server/java-*/gradle-wrapper.properties', 'test-server/java-*/*.gradle*') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
 
@@ -141,7 +141,7 @@ jobs:
           path: |
             ~/go/pkg/mod
             ~/.cache/go-build
-          key: ${{ runner.os }}-go-${{ hashFiles('test-server/**/go.sum') }}
+          key: ${{ runner.os }}-go-${{ hashFiles('test-server/go-*/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
 
@@ -150,7 +150,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('test-server/**/*.csproj', 'test-server/**/*.fsproj') }}
+          key: ${{ runner.os }}-nuget-${{ hashFiles('test-server/net-*/*.csproj', 'test-server/net-*/*.fsproj') }}
           restore-keys: |
             ${{ runner.os }}-nuget-
 
@@ -159,7 +159,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.gem
-          key: ${{ runner.os }}-gems-${{ hashFiles('test-server/**/Gemfile.lock') }}
+          key: ${{ runner.os }}-gems-${{ hashFiles('test-server/ruby-*/Gemfile.lock') }}
           restore-keys: |
             ${{ runner.os }}-gems-
 
@@ -168,7 +168,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.composer/cache
-          key: ${{ runner.os }}-composer-${{ hashFiles('test-server/**/composer.lock') }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('test-server/php-*/composer.lock') }}
           restore-keys: |
             ${{ runner.os }}-composer-
 

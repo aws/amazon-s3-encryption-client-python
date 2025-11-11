@@ -1,6 +1,6 @@
 # Makefile for S3 Encryption Client Testing
 
-.PHONY: all start-servers run-tests stop-servers clean ci check-env help
+.PHONY: all start-servers run-tests stop-servers clean ci check-env help install-shared-deps
 
 # Default target
 all: start-all-servers wait-all-servers run-tests
@@ -24,6 +24,7 @@ install-shared-deps:
 	@echo "Shared dependencies installed"
 
 # Start all servers in parallel for maximum speed
+# Java tests will handle server readiness validation
 start-servers: install-shared-deps
 	@echo "Starting all servers in parallel..."
 	@echo "Server directories: $(SERVER_DIRS)"
@@ -36,15 +37,8 @@ start-servers: install-shared-deps
 			echo "Error: no Makefile found in $$dir"; \
 		fi; \
 	done
-	@echo "All servers starting in parallel, waiting for them to be ready..."
-	@# Wait for all servers to be ready
-	@for dir in $(SERVER_DIRS); do \
-		if [ -f $$dir/Makefile ]; then \
-			echo "Waiting for server in $$dir..."; \
-			$(MAKE) -C $$dir wait-for-server; \
-		fi; \
-	done
-	@echo "All servers are ready!"
+	@echo "All servers started in parallel"
+	@echo "Note: Java tests will validate server readiness before running"
 
 # Keep the original sequential method as backup
 start-all-servers: $(START_SERVER_TARGETS)
@@ -54,7 +48,7 @@ $(START_SERVER_TARGETS): start-%:
 		echo "Starting server in $*..."; \
 		$(MAKE) -C $* start-server; \
 	else \
-		echo "❌ Error: no Makefile found in $*"; \
+		echo "Error: no Makefile found in $*"; \
 		exit 1; \
 	fi; \
 
@@ -65,10 +59,9 @@ $(WAIT_SERVER_TARGETS): wait-%:
 		echo "Waiting server in $*..."; \
 		$(MAKE) -C $* wait-for-server; \
 	else \
-		echo "❌ Error: no Makefile found in $*"; \
+		echo "Error: no Makefile found in $*"; \
 		exit 1; \
 	fi; \
-
 
 # Run the Java tests
 run-tests:
@@ -115,7 +108,7 @@ TIMEOUT := 360
 
 wait-for-port:
 	@if [ -z "$(PORT)" ]; then \
-		echo "❌ Error: PORT is required"; \
+		echo "Error: PORT is required"; \
 		exit 1; \
 	fi
 	@for i in $$(seq 1 $(TIMEOUT)); do \

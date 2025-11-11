@@ -14,6 +14,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -312,16 +313,83 @@ public class TestUtils {
     }
 
     /**
-     * Validates that all servers in the server map are running
-     * @throws RuntimeException if any server is not running
+     * Validates that all servers in the server map are running with parallel waiting and timeouts
+     * @throws RuntimeException if any server is not running after timeout
      */
     public static void validateServersRunning() {
+        validateServersRunning(6 * 60); // 6 minutes default timeout
+    }
+
+    /**
+     * Validates that all servers are running with specified timeout
+     * Uses parallel threads to wait for each server independently
+     * @param timeoutSeconds Maximum time to wait for each server
+     * @throws RuntimeException if any server is not running after timeout
+     */
+    public static void validateServersRunning(int timeoutSeconds) {
+        System.out.println("Waiting for " + serverMap.size() + " servers to be ready (timeout: " + timeoutSeconds + "s each)...");
+        
+        List<Thread> waitThreads = new ArrayList<>();
+        List<String> failedServers = Collections.synchronizedList(new ArrayList<>());
+        List<String> readyServers = Collections.synchronizedList(new ArrayList<>());
+        
+        // Start a thread for each server to wait independently
         for (LanguageServerTarget server : serverMap.values()) {
-            if (!serverListening(server.getServerURI())) {
-                throw new RuntimeException(String.format("Test Server for %s is not running at endpoint: %s",
-                    server.getLanguageName(), server.getServerURI()));
+            Thread waitThread = new Thread(() -> {
+                String serverName = server.getLanguageName();
+                URI serverURI = server.getServerURI();
+                
+                System.out.println("Waiting for server: " + serverName + " at " + serverURI);
+                
+                long startTime = System.currentTimeMillis();
+                long timeoutMillis = timeoutSeconds * 1000L;
+                
+                while (System.currentTimeMillis() - startTime < timeoutMillis) {
+                    if (serverListening(serverURI)) {
+                        readyServers.add(serverName);
+                        System.out.println("Server ready: " + serverName + " (took " + 
+                            (System.currentTimeMillis() - startTime) / 1000 + "s)");
+                        return;
+                    }
+                    
+                    try {
+                        Thread.sleep(2000); // Check every 2 seconds
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        failedServers.add(serverName + " (interrupted)");
+                        return;
+                    }
+                }
+                
+                // Timeout reached
+                failedServers.add(serverName + " (timeout after " + timeoutSeconds + "s)");
+                System.err.println("Timeout waiting for server: " + serverName + " at " + serverURI);
+            });
+            
+            waitThread.setName("ServerWaiter-" + server.getLanguageName());
+            waitThread.start();
+            waitThreads.add(waitThread);
+        }
+        
+        // Wait for all threads to complete
+        for (Thread thread : waitThreads) {
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Interrupted while waiting for servers", e);
             }
         }
+        
+        // Report results
+        System.out.println("Server readiness check complete:");
+        System.out.println("  Ready servers (" + readyServers.size() + "): " + readyServers);
+        if (!failedServers.isEmpty()) {
+            System.err.println("  Failed servers (" + failedServers.size() + "): " + failedServers);
+            throw new RuntimeException("Failed to start servers: " + failedServers);
+        }
+        
+        System.out.println("All " + serverMap.size() + " servers are ready!");
     }
 
     /**
