@@ -23,47 +23,15 @@ install-shared-deps:
 	fi
 	@echo "Shared dependencies installed"
 
-# Start servers with optimized strategy: C++ first (resource-intensive), then others in parallel
-# Java tests will handle server readiness validation
+# Start all servers sequentially (original approach)
 start-servers: install-shared-deps
-	@echo "Starting servers with optimized strategy..."
-	@echo "Server directories: $(SERVER_DIRS)"
-	$(MAKE) start-cpp-servers-sequential
-	$(MAKE) start-remaining-servers-parallel
-	@echo "All servers started"
-	@echo "Note: Java tests will validate server readiness before running"
-
-# Identify C++ servers and other servers
-CPP_SERVERS := $(filter cpp-%,$(SERVER_DIRS))
-NON_CPP_SERVERS := $(filter-out cpp-%,$(SERVER_DIRS))
-
-# Start C++ servers sequentially (resource-intensive builds) and wait for each to be ready
-start-cpp-servers-sequential:
-	@echo "Starting C++ servers sequentially (resource-intensive builds)..."
-	@for dir in $(CPP_SERVERS); do \
-		if [ -f $$dir/Makefile ]; then \
-			echo "Building and starting C++ server in $$dir..."; \
-			$(MAKE) -C $$dir start-server; \
-			echo "Waiting for C++ server in $$dir to be ready..."; \
-			$(MAKE) -C $$dir wait-for-server; \
-		else \
-			echo "Error: no Makefile found in $$dir"; \
-		fi; \
+	@echo "Starting all servers..."
+	$(MAKE) start-all-servers
+	@echo "Waiting for servers to start..."
+	@for dir in $(SERVER_DIRS); do \
+		echo "Waiting for server in $$dir..."; \
+		$(MAKE) -C $$dir wait-for-server; \
 	done
-	@echo "All C++ servers built and ready"
-
-# Start remaining servers in parallel (lightweight)
-start-remaining-servers-parallel:
-	@echo "Starting remaining servers in parallel..."
-	@for dir in $(NON_CPP_SERVERS); do \
-		if [ -f $$dir/Makefile ]; then \
-			echo "Starting server in $$dir..."; \
-			$(MAKE) -C $$dir start-server & \
-		else \
-			echo "Error: no Makefile found in $$dir"; \
-		fi; \
-	done
-	@echo "Non-C++ servers started in parallel"
 
 # Keep the original sequential method as backup
 start-all-servers: $(START_SERVER_TARGETS)
