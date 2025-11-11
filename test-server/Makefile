@@ -1,6 +1,6 @@
 # Makefile for S3 Encryption Client Testing
 
-export MAKEFLAGS=-j$(shell nproc)
+export MAKEFLAGS=-j$(shell sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo 1)
 
 .PHONY: all start-servers run-tests stop-servers clean ci check-env help
 
@@ -96,6 +96,7 @@ wait-for-port:
 		echo "❌ Error: PORT is required"; \
 		exit 1; \
 	fi
+	echo "Starting to wait for $$PORT to start"; \
 	@for i in $$(seq 1 $(TIMEOUT)); do \
 		if nc -z localhost $$PORT; then \
 			echo "Ports are open, waiting for servers to initialize..."; \
