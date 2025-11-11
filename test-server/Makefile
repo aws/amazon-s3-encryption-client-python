@@ -1,5 +1,7 @@
 # Makefile for S3 Encryption Client Testing
 
+export MAKEFLAGS=-j$(shell nproc)
+
 .PHONY: all start-servers run-tests stop-servers clean ci check-env help
 
 # Default target
