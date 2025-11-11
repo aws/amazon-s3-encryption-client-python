@@ -21,12 +21,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
         with:
-          submodules: recursive
+          submodules: true
           # This is Ryan Emery's (seebees) PAT.
           # To grant this workflow access to a new private repo,
           # ask Ryan to edit this PAT's permissions to add access to a new private repo.
           token: ${{ secrets.PAT_FOR_PRIVATE_RUBY }}
 
+      - name: Update cpp submodules recursively
+        run: |
+          git submodule update --init --recursive --force test-server/cpp-v2-transition-server/aws-sdk-cpp
+          git submodule update --init --recursive --force test-server/cpp-v3-server/aws-sdk-cpp
+          git submodule update --init --recursive --force test-server/cpp-v2-server/aws-sdk-cpp
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
