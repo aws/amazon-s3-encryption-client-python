@@ -78,6 +78,8 @@ class CBCDecryptTests {
         .build();
         
         v1Client.putObject(TestUtils.BUCKET, sharedObjectKey, sharedObjectKey);
+
+        validateServersRunning();
     }
 
     @ParameterizedTest(name = "{0}: Transition configured with the default should decrypt CBC")
