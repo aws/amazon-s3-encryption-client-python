@@ -56,16 +56,18 @@ jobs:
           git config --global fetch.parallel ${{ steps.cpu-count.outputs.count }}
           git config --global submodule.fetchJobs ${{ steps.cpu-count.outputs.count }}
 
-      - name: Checkout all submodules (use --jobs)
+      - name: Checkout submodules with --jobs
         run: |
-          # Non-recursive for most submodules
-          git submodule update --init --depth 1 --jobs ${{ steps.cpu-count.outputs.count }}
-          
-          # Recursive only for C++ SDK submodules with blobless clone
+          git submodule update --init --depth 1 --no-tags --jobs ${{ steps.cpu-count.outputs.count }}
+
+      - name: Update cpp submodules recursively with --jobs
+        run: |
           git submodule update --init --recursive \
             --depth 1 \
             --filter=blob:none \
+            --no-tags \
             --jobs ${{ steps.cpu-count.outputs.count }} \
+            --force \
             test-server/cpp-v2-transition-server/aws-sdk-cpp \
             test-server/cpp-v3-server/aws-sdk-cpp \
             test-server/cpp-v2-server/aws-sdk-cpp

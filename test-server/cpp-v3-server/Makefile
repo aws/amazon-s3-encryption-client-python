@@ -10,7 +10,7 @@ build/s3ec-server:
 
 start-server: | build/s3ec-server
 	@echo "Building Cpp V3 server..."
-	cd build && make && \
+	cd build && make
 	@echo "Starting Cpp V3 server..."
 	AWS_ACCESS_KEY_ID="$$AWS_ACCESS_KEY_ID" \
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
