@@ -19,6 +19,7 @@ function handleCreateClient()
     $legacyAlgorithms = $configData["enableLegacyWrappingAlgorithms"] ?? false;
     $clientId = Uuid::uuid4()->toString();
     $kmsKeyId = $keyMaterial["kmsKeyId"] ?? null;
+    $commitmentPolicy = $configData['commitmentPolicy'] ?? "REQUIRE_ENCRYPT_REQUIRE_DECRYPT";
     $instFileConfig = $configData['instructionFileConfig'] ?? null;
     $instFilePut = false;
     if ($instFileConfig != null) {
@@ -61,6 +62,7 @@ function handleCreateClient()
         ],
         'kmsKeyId' => $kmsKeyId,
         'legacy' => $legacyAlgorithms,
+        'commitmentPolicy' => $commitmentPolicy,
         'instFilePut' => $instFilePut,
         'created' => time()
     ];
