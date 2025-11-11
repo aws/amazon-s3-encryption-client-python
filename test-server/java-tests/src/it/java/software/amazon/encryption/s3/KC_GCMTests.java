@@ -64,7 +64,12 @@ class KC_GCMTests {
     .kmsKeyId(TestUtils.KMS_KEY_ARN)
     .build();
     private static List<String> crossLanguageObjects = new ArrayList<>();
-    
+
+    @BeforeAll
+    public static void setup() {
+        validateServersRunning();
+    }
+
     @Order(1)
     @ParameterizedTest(name = "{0}: Improved configured with RequireEncryptAllowDecrypt should encrypt KC-GCM")
     @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")

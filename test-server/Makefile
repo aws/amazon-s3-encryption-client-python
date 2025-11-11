@@ -23,13 +23,37 @@ install-shared-deps:
 	fi
 	@echo "Shared dependencies installed"
 
-# Start all servers in parallel for maximum speed
+# Start servers with optimized strategy: C++ first (resource-intensive), then others in parallel
 # Java tests will handle server readiness validation
 start-servers: install-shared-deps
-	@echo "Starting all servers in parallel..."
+	@echo "Starting servers with optimized strategy..."
 	@echo "Server directories: $(SERVER_DIRS)"
-	@# Start all servers in parallel
-	@for dir in $(SERVER_DIRS); do \
+	$(MAKE) start-cpp-servers-sequential
+	$(MAKE) start-remaining-servers-parallel
+	@echo "All servers started"
+	@echo "Note: Java tests will validate server readiness before running"
+
+# Identify C++ servers and other servers
+CPP_SERVERS := $(filter cpp-%,$(SERVER_DIRS))
+NON_CPP_SERVERS := $(filter-out cpp-%,$(SERVER_DIRS))
+
+# Start C++ servers sequentially (resource-intensive builds)
+start-cpp-servers-sequential:
+	@echo "Starting C++ servers sequentially (resource-intensive builds)..."
+	@for dir in $(CPP_SERVERS); do \
+		if [ -f $$dir/Makefile ]; then \
+			echo "Building and starting C++ server in $$dir..."; \
+			$(MAKE) -C $$dir start-server; \
+		else \
+			echo "Error: no Makefile found in $$dir"; \
+		fi; \
+	done
+	@echo "C++ servers started"
+
+# Start remaining servers in parallel (lightweight)
+start-remaining-servers-parallel:
+	@echo "Starting remaining servers in parallel..."
+	@for dir in $(NON_CPP_SERVERS); do \
 		if [ -f $$dir/Makefile ]; then \
 			echo "Starting server in $$dir..."; \
 			$(MAKE) -C $$dir start-server & \
@@ -37,8 +61,7 @@ start-servers: install-shared-deps
 			echo "Error: no Makefile found in $$dir"; \
 		fi; \
 	done
-	@echo "All servers started in parallel"
-	@echo "Note: Java tests will validate server readiness before running"
+	@echo "Non-C++ servers started in parallel"
 
 # Keep the original sequential method as backup
 start-all-servers: $(START_SERVER_TARGETS)
