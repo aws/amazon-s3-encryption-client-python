@@ -29,9 +29,7 @@ jobs:
 
       - name: Update cpp submodules recursively
         run: |
-          git submodule update --init --recursive --force test-server/cpp-v2-transition-server/aws-sdk-cpp
-          git submodule update --init --recursive --force test-server/cpp-v3-server/aws-sdk-cpp
-          git submodule update --init --recursive --force test-server/cpp-v2-server/aws-sdk-cpp
+          git submodule update --init --recursive --jobs 4 --force test-server/cpp-v2-transition-server/aws-sdk-cpp test-server/cpp-v3-server/aws-sdk-cpp test-server/cpp-v2-server/aws-sdk-cpp
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
