@@ -1,0 +1,50 @@
+//
+// The PHP V3 implementation is missing the following features:
+//
+// - Instruction file fallback when object doesn't match V1/V2/V3 formats
+// - S3 Server "double encoding" scheme support
+// - Writing raw keyring formats (RSA, AES)
+
+//= ../specification/s3-encryption/data-format/content-metadata.md#content-metadata-mapkeys
+//= type=exception
+//# - The mapkey "x-amz-key" MUST be present for V1 format objects.
+
+//= ../specification/s3-encryption/data-format/content-metadata.md#content-metadata-mapkeys
+//= type=exception
+//# - The mapkey "x-amz-m" SHOULD be present for V3 format objects that use Raw Keyring Material Description.
+
+//= ../specification/s3-encryption/data-format/content-metadata.md#v3-only
+//= type=exception
+//# This material description string MAY be encoded by the esoteric double-encoding scheme used by the S3 web server.
+
+//= ../specification/s3-encryption/data-format/content-metadata.md#v3-only
+//= type=exception
+//# This encryption context string MAY be encoded by the esoteric double-encoding scheme used by the S3 web server.
+
+//= ../specification/s3-encryption/data-format/content-metadata.md#v3-only
+//= type=exception
+//# - The wrapping algorithm value "02" MUST be translated to AES/GCM upon retrieval, and vice versa on write.
+
+//= ../specification/s3-encryption/data-format/content-metadata.md#v3-only
+//= type=exception
+//# - The wrapping algorithm value "22" MUST be translated to RSA-OAEP-SHA1 upon retrieval, and vice versa on write.
+
+//= ../specification/s3-encryption/data-format/content-metadata.md#v1-v2-shared
+//= type=exception
+//# This string MAY be encoded by the esoteric double-encoding scheme used by the S3 web server.
+
+//= ../specification/s3-encryption/data-format/content-metadata.md#determining-s3ec-object-status
+//= type=exception
+//# - If the metadata contains "x-amz-iv" and "x-amz-key" then the object MUST be considered as an S3EC-encrypted object using the V1 format.
+
+//= ../specification/s3-encryption/data-format/content-metadata.md#determining-s3ec-object-status
+//= type=exception
+//# If the object matches none of the V1/V2/V3 formats, the S3EC MUST attempt to get the instruction file.
+
+//= ../specification/s3-encryption/data-format/content-metadata.md#v3-only
+//= type=exception
+//# The Material Description MUST be used for wrapping algorithms `AES/GCM` (`02`) and `RSA-OAEP-SHA1` (`22`).
+
+//= ../specification/s3-encryption/data-format/content-metadata.md#v3-only
+//= type=exception
+//# If the mapkey is not present, the default Material Description value MUST be set to an empty map (`{}`).
