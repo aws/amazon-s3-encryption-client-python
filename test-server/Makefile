@@ -37,18 +37,20 @@ start-servers: install-shared-deps
 CPP_SERVERS := $(filter cpp-%,$(SERVER_DIRS))
 NON_CPP_SERVERS := $(filter-out cpp-%,$(SERVER_DIRS))
 
-# Start C++ servers sequentially (resource-intensive builds)
+# Start C++ servers sequentially (resource-intensive builds) and wait for each to be ready
 start-cpp-servers-sequential:
 	@echo "Starting C++ servers sequentially (resource-intensive builds)..."
 	@for dir in $(CPP_SERVERS); do \
 		if [ -f $$dir/Makefile ]; then \
 			echo "Building and starting C++ server in $$dir..."; \
 			$(MAKE) -C $$dir start-server; \
+			echo "Waiting for C++ server in $$dir to be ready..."; \
+			$(MAKE) -C $$dir wait-for-server; \
 		else \
 			echo "Error: no Makefile found in $$dir"; \
 		fi; \
 	done
-	@echo "C++ servers started"
+	@echo "All C++ servers built and ready"
 
 # Start remaining servers in parallel (lightweight)
 start-remaining-servers-parallel:
