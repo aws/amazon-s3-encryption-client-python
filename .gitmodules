@@ -52,3 +52,11 @@
 	path = test-server/net-v3-transition-server/s3ec-v3-transition-branch
 	url = https://github.com/aws/private-amazon-s3-encryption-client-dotnet-staging.git
 	branch = rishav/key-commitment
+[submodule "test-server/cpp-v2-transition-server/aws-sdk-cpp"]
+	path = test-server/cpp-v2-transition-server/aws-sdk-cpp
+	url = git@github.com:awslabs/aws-sdk-cpp-staging.git
+	branch = fire-egg-dev
+[submodule "test-server/cpp-v3-server/aws-sdk-cpp"]
+	path = test-server/cpp-v3-server/aws-sdk-cpp
+	url = git@github.com:awslabs/aws-sdk-cpp-staging.git
+	branch = fire-egg-dev
