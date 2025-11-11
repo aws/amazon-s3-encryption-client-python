@@ -77,7 +77,7 @@ func main() {
 	fmt.Println("Successfully initialized S3 Encryption Client v3")
 	fmt.Println("--- Encrypt and Upload Object to S3 ---")
 
-	// Add encryption context for additional security
+	// Add encryption context
 	encryptionContext := map[string]string{
 		"purpose":  "example",
 		"version":  "v3",
