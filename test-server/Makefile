@@ -8,7 +8,11 @@ export MAKEFLAGS=-j$(shell sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null ||
 all: start-all-servers wait-all-servers run-tests
 
 # CI target for GitHub Actions
-ci: start-all-servers wait-all-servers run-tests stop-servers
+ci:
+	$(MAKE) start-all-servers
+	$(MAKE) wait-all-servers
+	$(MAKE) run-tests
+	$(MAKE) stop-servers
 
 SERVER_DIRS := $(shell find . -maxdepth 1 -type d -name '*-server' | sed 's|^\./||' | $(if $(FILTER),grep -E "$$(echo '$(FILTER)' | sed 's/,/|/g')",cat) | sort)
 
@@ -99,8 +103,8 @@ wait-for-port:
 		echo "❌ Error: PORT is required"; \
 		exit 1; \
 	fi
-	echo "Starting to wait for $$PORT to start"; \
-	@for i in $$(seq 1 $(TIMEOUT)); do \
+	@echo "Starting to wait for $$PORT to start"; \
+	for i in $$(seq 1 $(TIMEOUT)); do \
 		if nc -z localhost $$PORT; then \
 			echo "Ports are open, waiting for servers to initialize..."; \
 			sleep 5; \
