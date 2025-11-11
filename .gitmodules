@@ -60,3 +60,6 @@
 	path = test-server/cpp-v3-server/aws-sdk-cpp
 	url = git@github.com:awslabs/aws-sdk-cpp-staging.git
 	branch = fire-egg-dev
+[submodule "test-server/cpp-v2-server/aws-sdk-cpp"]
+	path = test-server/cpp-v2-server/aws-sdk-cpp
+	url = git@github.com:awslabs/aws-sdk-cpp-staging.git

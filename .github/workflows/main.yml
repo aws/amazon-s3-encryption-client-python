@@ -21,7 +21,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    name: Run Tests
+    name: Run Interoperability Tests
     uses: ./.github/workflows/test.yml
     with:
       python-version: ${{ inputs.python-version || '3.11' }}
