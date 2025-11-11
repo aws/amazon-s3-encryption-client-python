@@ -4,6 +4,9 @@ require 'aws-sdk-s3'
 require 'aws-sdk-kms'
 require 'json'
 
+# See: https://github.com/ruby/openssl/issues/949
+Aws.use_bundled_cert!
+
 def main
   # Check command line arguments
   if ARGV.length != 4
