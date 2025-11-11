@@ -13,8 +13,18 @@ SERVER_DIRS := $(shell find . -maxdepth 1 -type d -name '*-server' | sed 's|^\./
 START_SERVER_TARGETS := $(addprefix start-, $(SERVER_DIRS))
 WAIT_SERVER_TARGETS := $(addprefix wait-, $(SERVER_DIRS))
 
+# Install shared dependencies to avoid conflicts during parallel startup
+install-shared-deps:
+	@echo "Installing shared dependencies..."
+	@# Install brew packages needed by C++ servers to avoid parallel conflicts
+	@if command -v brew >/dev/null 2>&1; then \
+		echo "Installing C++ dependencies via brew..."; \
+		brew install libmicrohttpd nlohmann-json ossp-uuid || true; \
+	fi
+	@echo "Shared dependencies installed"
+
 # Start all servers in parallel for maximum speed
-start-servers:
+start-servers: install-shared-deps
 	@echo "Starting all servers in parallel..."
 	@echo "Server directories: $(SERVER_DIRS)"
 	@# Start all servers in parallel
@@ -23,7 +33,7 @@ start-servers:
 			echo "Starting server in $$dir..."; \
 			$(MAKE) -C $$dir start-server & \
 		else \
-			echo "❌ Error: no Makefile found in $$dir"; \
+			echo "Error: no Makefile found in $$dir"; \
 		fi; \
 	done
 	@echo "All servers starting in parallel, waiting for them to be ready..."

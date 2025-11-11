@@ -6,7 +6,6 @@ PID_FILE := server.pid
 PORT := 8097
 
 build/s3ec-server: 
-	brew install libmicrohttpd nlohmann-json ossp-uuid
 	mkdir -p build && cd build && cmake ..
 
 start-server: | build/s3ec-server
