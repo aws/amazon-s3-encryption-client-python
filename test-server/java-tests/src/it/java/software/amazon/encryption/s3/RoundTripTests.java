@@ -459,6 +459,8 @@ public class RoundTripTests {
           .build();
         CreateClientOutput encClientOutput = encClient.createClient(CreateClientInput.builder()
           .config(S3ECConfig.builder()
+            // TODO: use this for now to satisfy current. think about long term soln for this
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
             .keyMaterial(rsaKeyOne).build())
           .build());
         String encS3ECId = encClientOutput.getClientId();
