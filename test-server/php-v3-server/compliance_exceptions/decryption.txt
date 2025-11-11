@@ -1,3 +1,9 @@
+//
+// The PHP V3 implementation is missing the following features:
+//
+// - Support for "range" parameter on GetObject for partial downloads and decryption
+//
+
 //= ../specification/s3-encryption/decryption.md#ranged-gets
 //= type=exception
 //# The S3EC MAY support the "range" parameter on GetObject which specifies a subset of bytes to download and decrypt.

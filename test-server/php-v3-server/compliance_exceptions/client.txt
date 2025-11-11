@@ -1,3 +1,21 @@
+//
+// The PHP V3 implementation is missing the following features:
+//
+// 1. Client Configuration Options:
+//    - Legacy algorithm support controls (wrapping algorithms, unauthenticated modes)
+//      - Uses V3/V3_AND_LEGACY instead
+//    - Delayed authentication mode configuration
+//    - Buffer size configuration for memory management
+//    - Raw keyring material (RSA, AES)
+//    - SDK client configuration inheritance (credentials, KMS client config)
+//    - Custom randomness source configuration
+//
+// 2. Api Operations:
+//    - DeleteObject and DeleteObjects (with instruction file cleanup)
+//    - Multipart upload operations (UploadPart, CompleteMultipartUpload, AbortMultipartUpload)
+//    - ReEncryptInstructionFile for key rotation
+//    - Non-encryption related S3 operations
+
 //= ../specification/s3-encryption/client.md#aws-sdk-compatibility
 //= type=exception
 //# The S3EC SHOULD support invoking operations unrelated to client-side encryption e.g.

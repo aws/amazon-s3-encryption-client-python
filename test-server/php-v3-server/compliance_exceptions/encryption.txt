@@ -1,3 +1,14 @@
+//
+// The PHP V3 implementation is missing the following features:
+//
+// - Support for "range" parameter on GetObject for partial downloads and decryption
+//
+// The PHP V3 implementation has an extra "feature".
+// NOTE that using this feature will cause the message to be unable to be decrypted by other language implementations.
+
+// - Support for AAD during content encryption
+//
+
 //= ../specification/s3-encryption/encryption.md#alg-aes-256-ctr-iv16-tag16-no-kdf
 //= type=exception
 //# Attempts to encrypt using AES-CTR MUST fail.
