@@ -36,19 +36,19 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             // So, we are passing empty dictionary.
             var encryptionContext = new Dictionary<string, string>();
             var encryptionMaterial = new EncryptionMaterialsV2(kmsKeyId, KmsType.KmsContext, encryptionContext);
-            logger.LogInformation(
-                "[NET-V3-Transitional] Created EncryptionMaterialsV2: KMS={KmsKeyId}",
-                kmsKeyId);
+            // logger.LogInformation(
+            //     "[NET-V3-Transitional] Created EncryptionMaterialsV2: KMS={KmsKeyId}",
+            //     kmsKeyId);
             // SecurityProfile V2AndLegacy can decrypt from legacy S3EC but V2 cannot
             var enableLegacyMode = enableLegacyUnauthenticatedModes || enableLegacyWrappingAlgorithms;
             var securityProfile = enableLegacyMode ? SecurityProfile.V2AndLegacy : SecurityProfile.V2;
 
-            logger.LogInformation("[NET-V3-Transitional] Created securityProfile= {securityProfile}", securityProfile.ToString());
+            // logger.LogInformation("[NET-V3-Transitional] Created securityProfile= {securityProfile}", securityProfile.ToString());
 
             var encryptionAlgorithm = MapEncryptionAlgorithm(request.Config.EncryptionAlgorithm);
             // var encryptionAlgorithm = commitmentPolicy == Amazon.Extensions.S3.Encryption.CommitmentPolicy.ForbidEncryptAllowDecrypt ? ContentEncryptionAlgorithm.AesGcm : ContentEncryptionAlgorithm.AesGcmWithCommitment;
-            logger.LogInformation("[NET-V3-Transitional] Created commitmentPolicy= {commitmentPolicy}", commitmentPolicy);
-            logger.LogInformation("[NET-V3-Transitional] Created encryptionAlgorithm= {encryptionAlgorithm}", encryptionAlgorithm);
+            // logger.LogInformation("[NET-V3-Transitional] Created commitmentPolicy= {commitmentPolicy}", commitmentPolicy);
+            // logger.LogInformation("[NET-V3-Transitional] Created encryptionAlgorithm= {encryptionAlgorithm}", encryptionAlgorithm);
 
             var configuration = new AmazonS3CryptoConfigurationV2(securityProfile, commitmentPolicy, encryptionAlgorithm);
             // Create S3 encryption client

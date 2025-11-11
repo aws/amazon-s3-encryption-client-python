@@ -35,14 +35,14 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             // So, we are passing empty dictionary.
             var encryptionContext = new Dictionary<string, string>();
             var encryptionMaterial = new EncryptionMaterialsV2(kmsKeyId, KmsType.KmsContext, encryptionContext);
-            logger.LogInformation(
-                "Created EncryptionMaterialsV2: KMS={KmsKeyId}",
-                kmsKeyId);
+            // logger.LogInformation(
+            //     "Created EncryptionMaterialsV2: KMS={KmsKeyId}",
+            //     kmsKeyId);
             // SecurityProfile V2AndLegacy can decrypt from legacy S3EC but V2 cannot
             var enableLegacyMode = enableLegacyUnauthenticatedModes || enableLegacyWrappingAlgorithms;
             var securityProfile = enableLegacyMode ? SecurityProfile.V2AndLegacy : SecurityProfile.V2;
 
-            logger.LogInformation("Created securityProfile= {securityProfile}", securityProfile.ToString());
+            // logger.LogInformation("Created securityProfile= {securityProfile}", securityProfile.ToString());
 
             var configuration = new AmazonS3CryptoConfigurationV2(securityProfile);
             // Create S3 encryption client

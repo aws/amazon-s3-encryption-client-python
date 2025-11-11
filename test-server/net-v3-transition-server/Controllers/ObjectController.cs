@@ -13,7 +13,7 @@ public class ObjectController(IClientCacheService clientCacheService, ILogger<Ob
     [HttpPut("{bucket}/{key}")]
     public async Task<IActionResult> PutObject(string bucket, string key)
     {
-        logger.LogInformation("Starting PutObject");
+        // logger.LogInformation("Starting PutObject");
         var clientId = Request.Headers["clientId"].FirstOrDefault();
         if (string.IsNullOrEmpty(clientId))
             return BadRequest(new GenericServerError { Message = "[NET-V3-Transitional] ClientID header is required" });
@@ -62,7 +62,7 @@ public class ObjectController(IClientCacheService clientCacheService, ILogger<Ob
     [HttpGet("{bucket}/{key}")]
     public async Task<IActionResult> GetObject(string bucket, string key)
     {
-        logger.LogInformation("Starting GetObject");
+        // logger.LogInformation("Starting GetObject");
         var clientId = Request.Headers["clientId"].FirstOrDefault();
         if (string.IsNullOrEmpty(clientId))
             return BadRequest(new GenericServerError { Message = "[NET-V3-Transitional] ClientID header is required" });

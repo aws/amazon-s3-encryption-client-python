@@ -16,14 +16,14 @@ function getSessionIdFromCookiesFile()
     $cookiesFile = __DIR__ . '/../cookies.txt';
 
     if (!file_exists($cookiesFile)) {
-        error_log("cookies.txt file does not exist, will be created when first client is created");
+        // error_log("cookies.txt file does not exist, will be created when first client is created");
         return null;
     }
 
     $lines = file($cookiesFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 
     if ($lines === false) {
-        error_log("Failed to read cookies.txt file");
+        // error_log("Failed to read cookies.txt file");
         return null;
     }
 
@@ -36,12 +36,12 @@ function getSessionIdFromCookiesFile()
         // Parse cookie line: domain, flag, path, secure, expiration, name, value
         $parts = explode("\t", $line);
         if (count($parts) >= 7 && $parts[5] === 'PHPSESSID') {
-            error_log("Found session ID in cookies.txt: " . $parts[6]);
+            // error_log("Found session ID in cookies.txt: " . $parts[6]);
             return $parts[6]; // Return the session ID value
         }
     }
 
-    error_log("No PHPSESSID found in cookies.txt file");
+    // error_log("No PHPSESSID found in cookies.txt file");
     return null;
 }
 
@@ -62,11 +62,11 @@ function writeSessionIdToCookiesFile($sessionId)
     $result = file_put_contents($cookiesFile, $content);
 
     if ($result === false) {
-        error_log("Failed to write session ID to cookies.txt file: $cookiesFile");
+        // error_log("Failed to write session ID to cookies.txt file: $cookiesFile");
         return false;
     }
 
-    error_log("Successfully wrote session ID to cookies.txt: $sessionId");
+    // error_log("Successfully wrote session ID to cookies.txt: $sessionId");
     return true;
 }
 

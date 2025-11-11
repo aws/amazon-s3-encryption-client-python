@@ -51,7 +51,7 @@ std::string make_error(const std::string &message, int status_code) {
 }
 
 MHD_Result unsupported(struct MHD_Connection *connection, std::string & commitmentPolicy, std::string & encryptionAlgorithm) {
-    fprintf(stderr, "Unsupported %s %s\n",commitmentPolicy.c_str(), encryptionAlgorithm.c_str() );
+    // fprintf(stderr, "Unsupported %s %s\n",commitmentPolicy.c_str(), encryptionAlgorithm.c_str() );
     send_response(connection, 404, "{\"error\":\"Unsupported Option.\"}");
     return MHD_YES;
 }
@@ -109,7 +109,7 @@ MHD_Result handle_create_client(struct MHD_Connection *connection,
     json response = {{"clientId", client_id}};
     return send_response(connection, 200, response.dump());
   } catch (const std::exception &e) {
-    fprintf(stderr, "handle_create_client exception %s\n", e.what());
+    // fprintf(stderr, "handle_create_client exception %s\n", e.what());
     return send_response(connection, 500,
                         "{\"error\":\"An exception was thrown.\"}");
   } catch (...) {
@@ -205,11 +205,11 @@ MHD_Result handle_get_object(struct MHD_Connection *connection,
       return send_response(connection, 200, content);
     } else {
       auto msg = make_error(outcome.GetError().GetMessage(), 500);
-    fprintf(stderr, "handle_get_object error %s\n", msg.c_str());
+    // fprintf(stderr, "handle_get_object error %s\n", msg.c_str());
       return send_response(connection, 500, msg);
     }
   } catch (const std::exception &e) {
-    fprintf(stderr, "handle_get_object exception %s\n", e.what());
+    // fprintf(stderr, "handle_get_object exception %s\n", e.what());
     auto msg = make_error("An exception was thrown", 500);
     return send_response(connection, 500, msg);
   }
@@ -242,11 +242,11 @@ MHD_Result handle_put_object(struct MHD_Connection *connection,
       return send_response(connection, 200, response.dump());
     } else {
       auto msg = make_error(outcome.GetError().GetMessage(), 500);
-    fprintf(stderr, "handle_put_object error %s\n", msg.c_str());
+    // fprintf(stderr, "handle_put_object error %s\n", msg.c_str());
       return send_response(connection, 500, msg);
     }
   } catch (const std::exception &e) {
-    fprintf(stderr, "handle_put_object exception %s\n", e.what());
+    // fprintf(stderr, "handle_put_object exception %s\n", e.what());
     auto msg = make_error(e.what(), 500);
     return send_response(connection, 500, msg);
   }

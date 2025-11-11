@@ -80,7 +80,7 @@ func NewServer() (*Server, error) {
 // createGenericServerError creates a generic server error response
 func (s *Server) createGenericServerError(w http.ResponseWriter, message string, statusCode int) {
 	// Echo error to console
-	log.Printf("[Go V3] GenericServerError: %s (Status: %d)", message, statusCode)
+	// log.Printf("[Go V3] GenericServerError: %s (Status: %d)", message, statusCode)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
@@ -93,7 +93,7 @@ func (s *Server) createGenericServerError(w http.ResponseWriter, message string,
 // createS3EncryptionClientError creates an S3 encryption client error response
 func (s *Server) createS3EncryptionClientError(w http.ResponseWriter, message string, statusCode int) {
 	// Echo error to console
-	log.Printf("[Go V3] S3EncryptionClientError: %s (Status: %d)", message, statusCode)
+	// log.Printf("[Go V3] S3EncryptionClientError: %s (Status: %d)", message, statusCode)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
