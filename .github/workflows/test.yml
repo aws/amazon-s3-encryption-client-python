@@ -42,7 +42,6 @@ jobs:
           echo "https://x-token-auth:${{ secrets.PAT_FOR_PRIVATE_RUBY }}@github.com" > ~/.git-credentials
           git submodule update --init --jobs ${{ steps.cpu-count.outputs.count }}
 
-
       - name: Update cpp submodules recursively
         run: |
           git submodule update --init --recursive \
@@ -81,6 +80,10 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: 1.25
+
+      - name: Install C++ dependencies
+        run: |
+          brew install libmicrohttpd nlohmann-json ossp-uuid
 
       # Legacy Python tests:
       # - name: Set up Python

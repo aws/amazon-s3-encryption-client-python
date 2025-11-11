@@ -5,8 +5,7 @@
 PID_FILE := server.pid
 PORT := 8085
 
-build/s3ec-server: 
-	brew install libmicrohttpd nlohmann-json ossp-uuid
+build/s3ec-server:
 	cd aws-sdk-cpp
 	mkdir -p build && cd build && cmake ..
 
