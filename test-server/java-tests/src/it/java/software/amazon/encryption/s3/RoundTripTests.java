@@ -429,7 +429,7 @@ public class RoundTripTests {
               assertTrue(e.getMessage().contains(
                 "The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration security_profile = :v2. Retry with :v2_and_legacy or re-encrypt the object."
                 ), "Actual error:" + e.getMessage());
-            } else if (language.getLanguageName().equals(PHP_V2_CURRENT) || language.getLanguageName().equals(PHP_V3)) {
+            } else if (language.getLanguageName().equals(PHP_V3)) {
               assertTrue(e.getMessage().contains("The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration @SecurityProfile=V3. Retry with V3_AND_LEGACY enabled or reencrypt the object."));; 
             } else {
               assertTrue(e.getMessage().contains("Enable legacy wrapping algorithms to use legacy key wrapping algorithm: kms"));
