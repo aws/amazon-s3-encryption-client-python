@@ -16,7 +16,13 @@ dependencies {
     // Test dependencies
     testImplementation("org.junit.jupiter:junit-jupiter:5.13.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    testImplementation("com.amazonaws:aws-java-sdk:1.12.788")
+    
+    // AWS SDK v1 - Only include S3 and KMS modules instead of entire SDK
+    testImplementation("com.amazonaws:aws-java-sdk-core:1.12.788")
+    testImplementation("com.amazonaws:aws-java-sdk-s3:1.12.788")
+    testImplementation("com.amazonaws:aws-java-sdk-kms:1.12.788")
+    
+    // AWS SDK v2 - S3 module
     testImplementation("software.amazon.awssdk:s3:2.37.1")
     testImplementation("org.bouncycastle:bcprov-jdk15on:1.70")
 }
@@ -49,31 +55,17 @@ tasks {
         classpath = sourceSets["it"].runtimeClasspath
         outputs.upToDateWhen { false }
         outputs.cacheIf { false }
-        
-        // Optimize test execution for performance
-        maxParallelForks = Runtime.getRuntime().availableProcessors()
-        forkEvery = 100
-        
-        // JVM optimizations for faster test execution
-        jvmArgs = listOf(
-            "-XX:+UseG1GC",
-            "-XX:MaxGCPauseMillis=100",
-            "-Xmx2g",
-            "-XX:+TieredCompilation",
-            "-XX:TieredStopAtLevel=1"
-        )
-        
         // Passing information from Gradle into the tests so that we can filter our servers
         systemProperty("test.filter.servers", System.getProperty("test.filter.servers"))
-        
-        // Disable AWS SDK v1 deprecation warnings for cleaner output
-        systemProperty("aws.java.v1.disableDeprecationAnnouncement", "true")
-        
-        // For debugging (uncomment if needed)
+        // For debugging
+        // // Enable System.out output
         // testLogging {
         //     events("passed", "skipped", "failed", "standardOut", "standardError")
         //     showStandardStreams = true
         // }
+
+        // // Disable AWS SDK v1 deprecation warnings
+        // systemProperty("aws.java.v1.disableDeprecationAnnouncement", "true")
     }
 }
 
