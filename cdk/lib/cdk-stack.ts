@@ -101,6 +101,7 @@ export class S3ECPythonGithub extends cdk.Stack {
             new PolicyStatement({
               effect: Effect.ALLOW,
               actions: [
+                "s3:HeadObject", // Only get object metadata
                 "s3:PutObject",
                 "s3:GetObject",
                 "s3:DeleteObject",
