@@ -38,6 +38,7 @@ jobs:
       - name: Checkout submodules with PAT
         run: |
           git config --global url."https://x-token-auth:${{ secrets.PAT_FOR_PRIVATE_RUBY }}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://x-token-auth:${{ secrets.PAT_FOR_PRIVATE_RUBY }}@github.com/".insteadOf "git@github.com:"
           git submodule update --init --jobs ${{ steps.cpu-count.outputs.count }}
 
       - name: Update cpp submodules recursively
