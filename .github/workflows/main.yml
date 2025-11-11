@@ -35,3 +35,11 @@ jobs:
     name: Run Duvet
     uses: ./.github/workflows/duvet.yml
     secrets: inherit
+
+  run-examples:
+    permissions:
+      id-token: write
+      contents: read
+    name: Run Examples
+    uses: ./.github/workflows/examples.yml
+    secrets: inherit
