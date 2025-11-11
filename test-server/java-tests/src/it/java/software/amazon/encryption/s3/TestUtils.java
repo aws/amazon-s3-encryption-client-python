@@ -140,7 +140,7 @@ public class TestUtils {
             // NET_V2_TRANSITION,
             NET_V3_TRANSITION,
             CPP_V2_TRANSITION,
-            // PHP_V2_TRANSITION,
+            PHP_V2_TRANSITION,
             RUBY_V2_TRANSITION
         );
 
@@ -151,7 +151,7 @@ public class TestUtils {
             GO_V4,
             // NET_V4,
             CPP_V3,
-            // PHP_V3,
+            PHP_V3,
             RUBY_V3
         );
 

@@ -38,6 +38,7 @@ function handleGetObject($params)
     } else {
         $legacy = "V2_AND_LEGACY";
     }
+    $commitmentPolicy = $s3ecClientTuple['config']['commitmentPolicy'];
 
     try {
         // Start output buffering before the AWS call to capture any unwanted output
@@ -47,6 +48,7 @@ function handleGetObject($params)
             '@SecurityProfile' => $legacy,
             '@MaterialsProvider' => $materialProvider,
             '@KmsEncryptionContext' => $encryptionContext,
+            '@CommitmentPolicy' => $commitmentPolicy,
             'Bucket' => $bucket,
             'Key' => $key,
         ]);
@@ -79,6 +81,7 @@ function handleGetObject($params)
         if (strpos($e->getMessage(), "@SecurityProfile=V2") !== false) {
             return S3EncryptionClientError($e->getMessage() . " " . "Enable legacy wrapping algorithms to use legacy key wrapping algorithm: kms");
         } else {
+            error_log("This is the error: " . $e->getMessage());
             return GenericServerError("Server error: " . $e->getMessage(), 500);
         }
     }

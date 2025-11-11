@@ -5,7 +5,7 @@
 .PHONY: all install clean run help list-examples
 
 # Find all directories with Makefiles
-EXAMPLE_DIRS := $(shell find . -name Makefile -not -path "./Makefile" | xargs dirname | sed 's|^\./||' | $(if $(FILTER),grep -E "$$(echo '$(FILTER)' | sed 's/,/|/g')",cat) | sort)
+EXAMPLE_DIRS := $(shell find . -name Makefile -not -path "./Makefile" -not -path "./cpp/aws-sdk-cpp/**" -not -path "./cpp/build/**" | xargs dirname | sed 's|^\./||' | $(if $(FILTER),grep -E "$$(echo '$(FILTER)' | sed 's/,/|/g')",cat) | sort)
 
 all: install
 
