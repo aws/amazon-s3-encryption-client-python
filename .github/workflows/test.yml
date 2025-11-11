@@ -135,7 +135,7 @@ jobs:
           aws-region: us-west-2
 
       - name: Run test-server tests
-        run: cd test-server && make ci FILTER=ruby,go
+        run: cd test-server && make ci FILTER=ruby,go,cpp
         env:
           AWS_REGION: us-west-2
           TEST_SERVER_S3_BUCKET: ${{ vars.TEST_SERVER_S3_BUCKET }}
