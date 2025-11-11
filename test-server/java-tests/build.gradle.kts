@@ -49,17 +49,31 @@ tasks {
         classpath = sourceSets["it"].runtimeClasspath
         outputs.upToDateWhen { false }
         outputs.cacheIf { false }
+        
+        // Optimize test execution for performance
+        maxParallelForks = Runtime.getRuntime().availableProcessors()
+        forkEvery = 100
+        
+        // JVM optimizations for faster test execution
+        jvmArgs = listOf(
+            "-XX:+UseG1GC",
+            "-XX:MaxGCPauseMillis=100",
+            "-Xmx2g",
+            "-XX:+TieredCompilation",
+            "-XX:TieredStopAtLevel=1"
+        )
+        
         // Passing information from Gradle into the tests so that we can filter our servers
         systemProperty("test.filter.servers", System.getProperty("test.filter.servers"))
-        // For debugging
-        // // Enable System.out output
+        
+        // Disable AWS SDK v1 deprecation warnings for cleaner output
+        systemProperty("aws.java.v1.disableDeprecationAnnouncement", "true")
+        
+        // For debugging (uncomment if needed)
         // testLogging {
         //     events("passed", "skipped", "failed", "standardOut", "standardError")
         //     showStandardStreams = true
         // }
-
-        // // Disable AWS SDK v1 deprecation warnings
-        // systemProperty("aws.java.v1.disableDeprecationAnnouncement", "true")
     }
 }
 

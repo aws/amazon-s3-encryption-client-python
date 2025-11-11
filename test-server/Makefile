@@ -13,16 +13,30 @@ SERVER_DIRS := $(shell find . -maxdepth 1 -type d -name '*-server' | sed 's|^\./
 START_SERVER_TARGETS := $(addprefix start-, $(SERVER_DIRS))
 WAIT_SERVER_TARGETS := $(addprefix wait-, $(SERVER_DIRS))
 
-# Start all servers in parallel
+# Start all servers in parallel for maximum speed
 start-servers:
-	@echo "Starting all servers..."
-	$(MAKE) start-all-servers
-	@echo "Waiting for servers to start..."
+	@echo "Starting all servers in parallel..."
+	@echo "Server directories: $(SERVER_DIRS)"
+	@# Start all servers in parallel
 	@for dir in $(SERVER_DIRS); do \
-		echo "Waiting for server in $$dir..."; \
-		$(MAKE) -C $$dir wait-for-server; \
+		if [ -f $$dir/Makefile ]; then \
+			echo "Starting server in $$dir..."; \
+			$(MAKE) -C $$dir start-server & \
+		else \
+			echo "❌ Error: no Makefile found in $$dir"; \
+		fi; \
 	done
+	@echo "All servers starting in parallel, waiting for them to be ready..."
+	@# Wait for all servers to be ready
+	@for dir in $(SERVER_DIRS); do \
+		if [ -f $$dir/Makefile ]; then \
+			echo "Waiting for server in $$dir..."; \
+			$(MAKE) -C $$dir wait-for-server; \
+		fi; \
+	done
+	@echo "All servers are ready!"
 
+# Keep the original sequential method as backup
 start-all-servers: $(START_SERVER_TARGETS)
 
 $(START_SERVER_TARGETS): start-%:
@@ -63,7 +77,7 @@ run-tests:
 stop-servers:
 	@echo "Stopping servers..."
 	@for dir in $(SERVER_DIRS); do \
-		echo "Starting server in $$dir..."; \
+		echo "Stopping server in $$dir..."; \
 		$(MAKE) -C $$dir stop-server; \
 	done
 	@echo "Servers stopped"

@@ -107,19 +107,19 @@ jobs:
         with:
           go-version: 1.25
 
-      # Cache uv dependencies
+      # Enhanced caching for multiple language dependencies
       - name: Cache uv dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.cache/uv
-          key: ${{ runner.os }}-uv-${{ hashFiles('./test-server/python-v3-server/**/pyproject.toml') }}
+          key: ${{ runner.os }}-uv-${{ hashFiles('./test-server/python-v3-server/**/pyproject.toml', './pyproject.toml') }}
           restore-keys: |
             ${{ runner.os }}-uv-
 
       - name: Install Uv
         run: pip install uv
 
-      # Cache Gradle dependencies and build outputs
+      # Enhanced Gradle caching with build cache
       - name: Cache Gradle packages
         uses: actions/cache@v4
         with:
@@ -128,9 +128,49 @@ jobs:
             ~/.gradle/wrapper
             test-server/java-v3-server/.gradle
             test-server/java-tests/.gradle
-          key: ${{ runner.os }}-gradle-${{ hashFiles('test-server/java-v3-server/**/*.gradle*', 'test-server/java-tests/**/gradle-wrapper.properties', 'test-server/java-tests/**/*.gradle*', 'test-server/java-v3-server/**/gradle-wrapper.properties') }}
+            test-server/java-v3-transition-server/.gradle
+            test-server/java-v4-server/.gradle
+          key: ${{ runner.os }}-gradle-${{ hashFiles('test-server/**/gradle-wrapper.properties', 'test-server/**/*.gradle*') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
+
+      # Cache Go modules
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-${{ hashFiles('test-server/**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      # Cache .NET packages
+      - name: Cache .NET packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('test-server/**/*.csproj', 'test-server/**/*.fsproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      # Cache Ruby gems
+      - name: Cache Ruby gems
+        uses: actions/cache@v4
+        with:
+          path: ~/.gem
+          key: ${{ runner.os }}-gems-${{ hashFiles('test-server/**/Gemfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-gems-
+
+      # Cache PHP Composer dependencies
+      - name: Cache PHP Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: ${{ runner.os }}-composer-${{ hashFiles('test-server/**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
 
       - name: Install dependencies
         run: make install
