@@ -17,23 +17,14 @@ jobs:
           submodules: true
           token: ${{ secrets.PAT_FOR_PRIVATE_RUBY }}
 
-      - name: Checkout CPP code for cpp-v2-transition
+      - name: Checkout CPP code cpp-examples
         uses: actions/checkout@v5
         with:
           submodules: recursive
           token: ${{ secrets.PAT_FOR_CPP }}
           repository: awslabs/aws-sdk-cpp-staging
           ref: fire-egg-dev
-          path: test-server/cpp-v2-transition-server/aws-sdk-cpp/
-
-      - name: Checkout CPP code cpp-v3
-        uses: actions/checkout@v5
-        with:
-          submodules: recursive
-          token: ${{ secrets.PAT_FOR_CPP }}
-          repository: awslabs/aws-sdk-cpp-staging
-          ref: fire-egg-dev
-          path: test-server/cpp-v3-server/aws-sdk-cpp/
+          path: all-examples/cpp/aws-sdk-cpp/
 
       - name: Checkout .NET V2 code
         uses: actions/checkout@v5
