@@ -8,7 +8,7 @@ export MAKEFLAGS=-j$(shell sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null ||
 all: start-all-servers wait-all-servers run-tests
 
 # CI target for GitHub Actions
-ci: start-servers run-tests stop-servers
+ci: start-all-servers wait-all-servers run-tests stop-servers
 
 SERVER_DIRS := $(shell find . -maxdepth 1 -type d -name '*-server' | sed 's|^\./||' | $(if $(FILTER),grep -E "$$(echo '$(FILTER)' | sed 's/,/|/g')",cat) | sort)
 
@@ -36,7 +36,10 @@ $(START_SERVER_TARGETS): start-%:
 		exit 1; \
 	fi; \
 
-wait-all-servers: $(WAIT_SERVER_TARGETS)
+wait-all-servers:
+	@echo "Waiting for all servers to be ready..."
+	$(MAKE) $(WAIT_SERVER_TARGETS)
+	@echo "All servers are ready!"
 
 $(WAIT_SERVER_TARGETS): wait-%:
 	@if [ -f $*/Makefile ]; then \
