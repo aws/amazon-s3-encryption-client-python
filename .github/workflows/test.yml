@@ -21,15 +21,33 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
         with:
-          submodules: true
+          submodules: false
           # This is Ryan Emery's (seebees) PAT.
           # To grant this workflow access to a new private repo,
           # ask Ryan to edit this PAT's permissions to add access to a new private repo.
           token: ${{ secrets.PAT_FOR_PRIVATE_RUBY }}
 
+      # There are a lot of submodules here
+      # This initializes the checkouts in parallel (--jobs)
+      # rather than in series the way actions/checkout@v5 does it.
+
+      - name: Get CPU count
+        id: cpu-count
+        run: echo "count=$(node -p 'require("os").cpus().length')" >> $GITHUB_OUTPUT
+
+      - name: Checkout submodules with PAT
+        run: |
+          git config --global url."https://x-token-auth:${{ secrets.PAT_FOR_PRIVATE_RUBY }}@github.com/".insteadOf "https://github.com/"
+          git submodule update --init --jobs ${{ steps.cpu-count.outputs.count }}
+
       - name: Update cpp submodules recursively
         run: |
-          git submodule update --init --recursive --jobs 4 --force test-server/cpp-v2-transition-server/aws-sdk-cpp test-server/cpp-v3-server/aws-sdk-cpp test-server/cpp-v2-server/aws-sdk-cpp
+          git submodule update --init --recursive \
+            --jobs ${{ steps.cpu-count.outputs.count }} \
+            --force \
+            test-server/cpp-v2-transition-server/aws-sdk-cpp \
+            test-server/cpp-v3-server/aws-sdk-cpp \
+            test-server/cpp-v2-server/aws-sdk-cpp
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
