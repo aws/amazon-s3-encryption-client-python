@@ -21,7 +21,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
         with:
-          submodules: true
+          submodules: recursive
           # This is Ryan Emery's (seebees) PAT.
           # To grant this workflow access to a new private repo,
           # ask Ryan to edit this PAT's permissions to add access to a new private repo.
@@ -45,32 +45,32 @@ jobs:
       #     ref: fire-egg-dev
       #     path: test-server/cpp-v3-server/aws-sdk-cpp/
 
-      - name: Checkout .NET V2 code
-        uses: actions/checkout@v5
-        with:
-          token: ${{ secrets.PAT_FOR_DOTNET }}
-          repository: aws/private-amazon-s3-encryption-client-dotnet-staging
-          # This is the branch for S3EC .NET V2
-          ref: v3sdk-development 
-          path: test-server/net-v2-v3-server/s3ec-net-v2/
+      # - name: Checkout .NET V2 code
+      #   uses: actions/checkout@v5
+      #   with:
+      #     token: ${{ secrets.PAT_FOR_DOTNET }}
+      #     repository: aws/private-amazon-s3-encryption-client-dotnet-staging
+      #     # This is the branch for S3EC .NET V2
+      #     ref: v3sdk-development 
+      #     path: test-server/net-v2-v3-server/s3ec-net-v2/
 
-      - name: Checkout .NET V3 code
-        uses: actions/checkout@v5
-        with:
-          token: ${{ secrets.PAT_FOR_DOTNET }}
-          repository: aws/private-amazon-s3-encryption-client-dotnet-staging
-          # This is the branch for S3EC .NET V3
-          ref: s3ec-v3
-          path: test-server/net-v2-v3-server/s3ec-net-v3
+      # - name: Checkout .NET V3 code
+      #   uses: actions/checkout@v5
+      #   with:
+      #     token: ${{ secrets.PAT_FOR_DOTNET }}
+      #     repository: aws/private-amazon-s3-encryption-client-dotnet-staging
+      #     # This is the branch for S3EC .NET V3
+      #     ref: s3ec-v3
+      #     path: test-server/net-v2-v3-server/s3ec-net-v3
 
-      - name: Checkout .NET V3 code (Transition)
-        uses: actions/checkout@v5
-        with:
-          token: ${{ secrets.PAT_FOR_DOTNET }}
-          repository: aws/private-amazon-s3-encryption-client-dotnet-staging
-          # This is the branch for S3EC .NET V3 transition
-          ref: rishav/key-commitment
-          path: test-server/net-v3-transition-server/s3ec-v3-transition-branch
+      # - name: Checkout .NET V3 code (Transition)
+      #   uses: actions/checkout@v5
+      #   with:
+      #     token: ${{ secrets.PAT_FOR_DOTNET }}
+      #     repository: aws/private-amazon-s3-encryption-client-dotnet-staging
+      #     # This is the branch for S3EC .NET V3 transition
+      #     ref: rishav/key-commitment
+      #     path: test-server/net-v3-transition-server/s3ec-v3-transition-branch
 
       - name: Set up Python
         uses: actions/setup-python@v5
