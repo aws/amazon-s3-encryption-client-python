@@ -176,7 +176,7 @@ public class ExhaustiveRoundTripTests1_25 {
     @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
     @MethodSource("software.amazon.encryption.s3.TestUtils#encryptImprovedDecryptImproved")
     public void GIVEN_KCGCMEncryptedData_AND_ImprovedClientDecryptingWithForbidEncryptAllowDecrypt_WHEN_Decrypt_THEN_Pass(
-            LanguageServerTarget encLang, LanguageServerTarget decLang
+            TestUtils.LanguageServerTarget encLang, TestUtils.LanguageServerTarget decLang
     ) {
 
         S3ECTestServerClient encClient = TestUtils.testServerClientFor(encLang);
