@@ -129,14 +129,12 @@ public class TestUtils {
     public static final Set<String> TRANSITION_VERSIONS =
         Set.of(
             // JAVA_V3_TRANSITION,
-            // GO_V3_TRANSITION,
-            // NET_V2_TRANSITION
+            GO_V3_TRANSITION,
+            NET_V2_TRANSITION,
+            NET_V3_TRANSITION,
+            CPP_V2_TRANSITION,
             PHP_V2_TRANSITION,
             RUBY_V2_TRANSITION
-            GO_V3_TRANSITION,
-            // NET_V2_TRANSITION,
-            NET_V3_TRANSITION,
-            CPP_V2_TRANSITION
         );
 
     public static final Set<String> IMPROVED_VERSIONS =
@@ -144,7 +142,6 @@ public class TestUtils {
             JAVA_V4,
             // PYTHON_V3,
             GO_V4,
-            // NET_V3,
             CPP_V3,
             PHP_V3,
             // NET_V4,
