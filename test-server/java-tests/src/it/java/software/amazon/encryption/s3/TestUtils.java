@@ -273,7 +273,6 @@ public class TestUtils {
         try (Socket ignored = new Socket(uri.getHost(), uri.getPort())) {
             return true;
         } catch (Exception e) {
-            e.printStackTrace();
             return false;
         }
     }
