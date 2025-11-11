@@ -35,16 +35,19 @@ jobs:
         id: cpu-count
         run: echo "count=$(node -p 'require("os").cpus().length')" >> $GITHUB_OUTPUT
 
-      - name: Checkout submodules with PAT
+      - name: Setup git submodules with PAT
         run: |
           git config --global url."https://github.com/".insteadOf "git@github.com:"
           git config --global credential.helper store
           echo "https://x-token-auth:${{ secrets.PAT_FOR_PRIVATE_RUBY }}@github.com" > ~/.git-credentials
-          git submodule update --init --jobs ${{ steps.cpu-count.outputs.count }}
+
+      - name: Checkout submodules with jobs
+        run: |
+          git submodule update --init --depth 1 --jobs ${{ steps.cpu-count.outputs.count }}
 
       - name: Update cpp submodules recursively
         run: |
-          git submodule update --init --recursive \
+          git submodule update --init --depth 1 --recursive \
             --jobs ${{ steps.cpu-count.outputs.count }} \
             --force \
             test-server/cpp-v2-transition-server/aws-sdk-cpp \
