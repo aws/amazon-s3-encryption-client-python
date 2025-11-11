@@ -27,7 +27,7 @@ public class KeyMaterial
 {
     public byte[]? RsaKey { get; set; }
     public byte[]? AesKey { get; set; }
-    public string KmsKeyId { get; set; }
+    public string? KmsKeyId { get; set; }
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter))]
