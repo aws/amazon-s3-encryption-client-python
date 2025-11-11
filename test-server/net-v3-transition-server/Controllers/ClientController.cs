@@ -1,3 +1,5 @@
+using System.Net;
+using System.Security.Cryptography;
 using System.Text.Json;
 using Amazon.Extensions.S3.Encryption;
 using Amazon.Extensions.S3.Encryption.Primitives;
@@ -19,30 +21,44 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             return StatusCode(501, new GenericServerError { Message = "EnableDelayedAuthenticationMode not supported" });
         if (request.Config.SetBufferSize.HasValue)
             return StatusCode(501, new GenericServerError { Message = "SetBufferSize not supported" });
-        if (request.Config.KeyMaterial.RsaKey != null)
-            return StatusCode(501, new GenericServerError { Message = "RsaKey not supported" });
         if (request.Config.KeyMaterial.AesKey != null)
             return StatusCode(501, new GenericServerError { Message = "AesKey not supported" });
         
         try
         {
-            var kmsKeyId = request.Config.KeyMaterial.KmsKeyId;
+            EncryptionMaterialsV2 encryptionMaterial;
+            if (request.Config.KeyMaterial.KmsKeyId != null)
+            {
+                // The POST request does not contain encryption context.
+                // However, encryption context is a required field when using KMS.
+                // So, we are passing empty dictionary.
+                var encryptionContext = new Dictionary<string, string>();
+                var kmsKeyId = request.Config.KeyMaterial.KmsKeyId;
+                encryptionMaterial = new EncryptionMaterialsV2(kmsKeyId, KmsType.KmsContext, encryptionContext);
+                logger.LogInformation(
+                    "[NET-V3-Transitional] Created EncryptionMaterialsV2: KMS={KmsKeyId}",
+                    kmsKeyId);
+            }
+            else if (request.Config.KeyMaterial.RsaKey != null)
+            {
+                var rsaKeyBytes = request.Config.KeyMaterial.RsaKey;
+                var rsaKey = RSA.Create();
+                rsaKey.ImportPkcs8PrivateKey(new ReadOnlySpan<byte>(rsaKeyBytes), out _);
+                encryptionMaterial = new EncryptionMaterialsV2(rsaKey, AsymmetricAlgorithmType.RsaOaepSha1);
+                logger.LogInformation(
+                    "Created EncryptionMaterialsV2: RSA");
+            } else
+            {
+                return StatusCode(501, new GenericServerError { Message = "Unknown or missing key material!" });
+            }
+
             var enableLegacyUnauthenticatedModes = request.Config.EnableLegacyUnauthenticatedModes;
             var enableLegacyWrappingAlgorithms = request.Config.EnableLegacyWrappingAlgorithms;
             var commitmentPolicy = MapCommitmentPolicy(request.Config.CommitmentPolicy);
             
-            // The POST request does not contain encryption context. 
-            // However, encryption context is a required field when using KMS.
-            // So, we are passing empty dictionary.
-            var encryptionContext = new Dictionary<string, string>();
-            var encryptionMaterial = new EncryptionMaterialsV2(kmsKeyId, KmsType.KmsContext, encryptionContext);
-            logger.LogInformation(
-                "[NET-V3-Transitional] Created EncryptionMaterialsV2: KMS={KmsKeyId}",
-                kmsKeyId);
             // SecurityProfile V2AndLegacy can decrypt from legacy S3EC but V2 cannot
             var enableLegacyMode = enableLegacyUnauthenticatedModes || enableLegacyWrappingAlgorithms;
             var securityProfile = enableLegacyMode ? SecurityProfile.V2AndLegacy : SecurityProfile.V2;
-
             logger.LogInformation("[NET-V3-Transitional] Created securityProfile= {securityProfile}", securityProfile.ToString());
 
             var encryptionAlgorithm = MapEncryptionAlgorithm(request.Config.EncryptionAlgorithm);
