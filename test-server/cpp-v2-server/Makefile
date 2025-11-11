@@ -11,13 +11,14 @@ build/s3ec-server:
 
 start-server: | build/s3ec-server
 	@echo "Building Cpp V2 server..."
-	cd build && make
-	@echo "Starting Cpp V2 server..."
+	cd build && \
+	make && \
+	echo "Starting Cpp V2 server..." && \
 	AWS_ACCESS_KEY_ID="$$AWS_ACCESS_KEY_ID" \
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
-	./s3ec-server & echo $$! > $(PID_FILE)
+	./s3ec-server & echo $$! > ../$(PID_FILE)
 	@echo "Cpp V2 server starting..."
 
 stop-server:
