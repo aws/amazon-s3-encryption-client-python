@@ -1,3 +1,14 @@
+//
+// The PHP V3 implementation is missing the following features:
+//
+// 1. METADATA ENCODING:
+//    - S3 Server "double encoding" support for proper metadata decoding
+//
+// 2. INSTRUCTION FILE OPERATIONS:
+//    - Re-encryption/key rotation via instruction files
+//    - Custom instruction file suffix support for GetObject requests
+//
+
 //= ../specification/s3-encryption/data-format/metadata-strategy.md#object-metadata
 //= type=exception
 //# The S3EC SHOULD support decoding the S3 Server's "double encoding".

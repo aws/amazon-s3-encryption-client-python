@@ -1,3 +1,10 @@
+//
+// The PHP V3 implementation is missing the following features:
+//
+// - Instruction file fallback when object doesn't match V1/V2/V3 formats
+// - S3 Server "double encoding" scheme support
+// - Writing raw keyring formats (RSA, AES)
+
 //= ../specification/s3-encryption/data-format/content-metadata.md#content-metadata-mapkeys
 //= type=exception
 //# - The mapkey "x-amz-key" MUST be present for V1 format objects.
