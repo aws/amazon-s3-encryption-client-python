@@ -72,6 +72,15 @@ jobs:
           ref: rishav/key-commitment
           path: test-server/net-v3-transition-server/s3ec-v3-transition-branch
 
+      - name: Checkout .NET V4 (Improved) code
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.PAT_FOR_DOTNET }}
+          repository: aws/private-amazon-s3-encryption-client-dotnet-staging
+          # This is the branch for S3EC .NET V4 (improved)
+          ref: s3ec-v4-WIP
+          path: test-server/net-v4-server/s3ec-net-v4-improved
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
