@@ -56,7 +56,7 @@
 	path = all-examples/net/v4/s3ec-v4-local
 	url = https://github.com/aws/private-amazon-s3-encryption-client-dotnet-staging.git
 	branch = s3ec-v4-WIP
-[submodule "all-examples/net/v2/s3ec-v2-local"]
-	path = all-examples/net/v2/s3ec-v2-local
+[submodule "all-examples/net/v3/s3ec-v3-local"]
+	path = all-examples/net/v3/s3ec-v3-local
 	url = https://github.com/aws/private-amazon-s3-encryption-client-dotnet-staging.git
 	branch = rishav/key-commitment
