@@ -14,23 +14,23 @@ all: install
 
 # Install dependencies using .NET modules
 install:
-	@echo "Installing .NET dependencies..."
+	@echo "[NET V3] Installing .NET dependencies..."
 	dotnet restore
-	@echo "Dependencies installed successfully!"
+	@echo "[NET V3] Dependencies installed successfully!"
 
 # Clean .NET artifacts
 clean:
-	@echo "Cleaning .NET artifacts..."
+	@echo "[NET V3] Cleaning .NET artifacts..."
 	dotnet clean
-	@echo "Clean completed!"
+	@echo "[NET V3] Clean completed!"
 
 # Run the example with default arguments
 run: install
-	@echo "Running S3 Encryption Client v3 .NET example..."
-	@echo "Bucket: $(BUCKET_NAME)"
-	@echo "Object Key: $(OBJECT_KEY)"
-	@echo "KMS Key ID: $(KMS_KEY_ID)"
-	@echo "Region: $(AWS_REGION)"
+	@echo "[NET V3] Running S3 Encryption Client v3 .NET example..."
+	@echo "[NET V3] Bucket: $(BUCKET_NAME)"
+	@echo "[NET V3] Object Key: $(OBJECT_KEY)"
+	@echo "[NET V3] KMS Key ID: $(KMS_KEY_ID)"
+	@echo "[NET V3] Region: $(AWS_REGION)"
 	@echo ""
 	@dotnet run -- $(BUCKET_NAME) $(OBJECT_KEY) $(KMS_KEY_ID) $(AWS_REGION)
 

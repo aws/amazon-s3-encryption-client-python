@@ -17,7 +17,7 @@ namespace S3EncryptionClientV4Example
         {
             if (args.Length != 4)
             {
-                Console.WriteLine("Usage: dotnet run <bucket-name> <object-key> <kms-key-id> <region>");
+                Console.WriteLine("[NET V4] Usage: dotnet run <bucket-name> <object-key> <kms-key-id> <region>");
                 Environment.Exit(1);
             }
 
@@ -43,15 +43,15 @@ namespace S3EncryptionClientV4Example
 
                 if (decryptedData != testData)
                 {
-                    Console.WriteLine("ERROR: Roundtrip failed - data mismatch");
+                    Console.WriteLine("[NET V4] ERROR: Roundtrip failed - data mismatch");
                     Environment.Exit(1);
                 }
 
-                Console.WriteLine("SUCCESS: Roundtrip encryption/decryption completed successfully!");
+                Console.WriteLine("[NET V4] SUCCESS: Roundtrip encryption/decryption completed successfully!");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error: {ex.Message}");
+                Console.WriteLine($"[NET V4] Error: {ex.Message}");
                 Environment.Exit(1);
             }
         }
