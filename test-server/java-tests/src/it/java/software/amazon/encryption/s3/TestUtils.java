@@ -91,10 +91,10 @@ public class TestUtils {
 
     // Sets of unsupported features by language
     public static final Set<String> ENCRYPTION_CONTEXT_ON_DECRYPT_UNSUPPORTED =
-        Set.of(GO_V3_CURRENT, PHP_V2_CURRENT, PHP_V2_TRANSITION, PHP_V3, NET_V2_CURRENT, NET_V3_CURRENT, NET_V3_TRANSITION);
+        Set.of(GO_V3_CURRENT, PHP_V2_CURRENT, PHP_V2_TRANSITION, PHP_V3, NET_V2_CURRENT, NET_V3_CURRENT, NET_V3_TRANSITION, NET_V4);
     
     public static final Set<String> ENCRYPTION_CONTEXT_ON_ENCRYPT_UNSUPPORTED =
-        Set.of(NET_V2_CURRENT, NET_V3_CURRENT, NET_V3_TRANSITION);
+        Set.of(NET_V2_CURRENT, NET_V3_CURRENT, NET_V3_TRANSITION, NET_V4);
 
     // For now, only .NET and Java have RSA support
     public static final Set<String> RAW_SUPPORTED =
@@ -148,7 +148,7 @@ public class TestUtils {
             JAVA_V4,
             // PYTHON_V3,
             GO_V4,
-            // NET_V4,
+            NET_V4,
             CPP_V3,
             PHP_V3,
             RUBY_V3
@@ -169,6 +169,7 @@ public class TestUtils {
         // servers.put(RUBY_V2_CURRENT, new LanguageServerTarget(RUBY_V2_CURRENT, "8086"));
         servers.put(PHP_V2_CURRENT, new LanguageServerTarget(PHP_V2_CURRENT, "8087"));
         servers.put(GO_V4, new LanguageServerTarget(GO_V4, "8089"));
+        servers.put(NET_V4, new LanguageServerTarget(NET_V4, "8090"));
         servers.put(RUBY_V3, new LanguageServerTarget(RUBY_V3, "8092"));
         servers.put(PHP_V3, new LanguageServerTarget(PHP_V3, "8093"));
         // TODO: Create and add transition servers

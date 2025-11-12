@@ -44,6 +44,10 @@
 	path = test-server/net-v2-v3-server/s3ec-net-v3
 	url = https://github.com/aws/private-amazon-s3-encryption-client-dotnet-staging.git
 	branch = s3ec-v3
+[submodule "test-server/net-v4-server/s3ec-net-v4-improved"]
+	path = test-server/net-v4-server/s3ec-net-v4-improved
+	url = https://github.com/aws/private-amazon-s3-encryption-client-dotnet-staging.git
+	branch = s3ec-v4-WIP
 [submodule "test-server/go-v3-transition-server/local-go-s3ec"]
 	path = test-server/go-v3-transition-server/local-go-s3ec
 	url = https://github.com/aws/private-amazon-s3-encryption-client-go-staging
