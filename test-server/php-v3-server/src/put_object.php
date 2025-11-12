@@ -31,7 +31,7 @@ function handlePutObject($params)
     $key = $params['key'] ?? null;
 
     if (is_null($bucket) || is_null($key)) {
-        return GenericServerError("Invalidb bucket or key parameters", 400);
+        return GenericServerError("Invalid bucket or key parameters", 400);
     }
 
     $s3Client = $s3ecClientTuple["s3Client"];
@@ -48,13 +48,16 @@ function handlePutObject($params)
     } else {
         $legacy = "V2_AND_LEGACY";
     }
+    $commitmentPolicy = $s3ecClientTuple['config']['commitmentPolicy'];
     $strategy = $s3ecClientTuple["config"]["instFilePut"] ?
         new InstructionFileMetadataStrategy($s3Client) :
         new HeadersMetadataStrategy();
+  
     try {
         $result = $s3ec->putObject([
             '@SecurityProfile' => $legacy,
             '@MaterialsProvider' => $materialProvider,
+            '@CommitmentPolicy' => $commitmentPolicy,
             '@KmsEncryptionContext' => $encryptionContext,
             '@MetadataStrategy' => $strategy,
             '@CipherOptions' => $cipherOptions,
