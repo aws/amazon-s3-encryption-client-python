@@ -469,6 +469,8 @@ public class RoundTripTests {
         String encS3ECId = encClientOutput.getClientId();
         CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
           .config(S3ECConfig.builder()
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
+            .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
             .keyMaterial(rsaKeyOne).build())
           .build());
         String decS3ECId = decClientOutput.getClientId();
