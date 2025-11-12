@@ -73,6 +73,8 @@ function handleGetObject($params)
             ob_end_clean();
         }
         return GenericServerError("Invalid argument: " . $e->getMessage(), 400);
+    } catch (CryptoException $e) {
+        return S3EncryptionClientError("Crypto error: " . $e->getMessage());
     } catch (Exception $e) {
         // Clean up output buffer if still active
         if (ob_get_level()) {
