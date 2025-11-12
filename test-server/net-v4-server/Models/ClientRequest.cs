@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
-namespace NetV3TransitionServer.Models;
+namespace NetV4Server.Models;
 
 public class ClientRequest
 {
@@ -11,9 +11,9 @@ public class ClientRequest
 
 public class ClientConfig
 {
-    public bool EnableLegacyUnauthenticatedModes { get; set; } = false;
-    public bool EnableLegacyWrappingAlgorithms { get; set; } = false;
-    public bool EnableDelayedAuthenticationMode { get; set; } = false;
+    public bool? EnableLegacyUnauthenticatedModes { get; set; }
+    public bool? EnableLegacyWrappingAlgorithms { get; set; } 
+    public bool? EnableDelayedAuthenticationMode { get; set; }
     public long? SetBufferSize { get; set; }
     [Required]
     public KeyMaterial KeyMaterial { get; set; } = new();
@@ -27,7 +27,9 @@ public class KeyMaterial
 {
     public byte[]? RsaKey { get; set; }
     public byte[]? AesKey { get; set; }
-    public string? KmsKeyId { get; set; }
+
+    [Required]
+    public string KmsKeyId { get; set; } = string.Empty;
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter))]
