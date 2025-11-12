@@ -422,7 +422,7 @@ public class RoundTripTests {
               .build());
             fail("Expected Exception");
         } catch (S3EncryptionClientError e) {
-            if (language.getLanguageName().equals(NET_V3_CURRENT) || language.getLanguageName().equals(NET_V2_CURRENT) || language.getLanguageName().equals(NET_V3_TRANSITION) 
+            if (language.getLanguageName().equals(NET_V3_CURRENT) || language.getLanguageName().equals(NET_V2_CURRENT) || language.getLanguageName().equals(NET_V3_TRANSITION) || language.getLanguageName().equals(NET_V4)
             || language.getLanguageName().equals(CPP_V2_CURRENT) || language.getLanguageName().equals(CPP_V2_TRANSITION) || language.getLanguageName().equals(CPP_V3)) {
               assertTrue(e.getMessage().contains(
                 "The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration"
@@ -469,6 +469,8 @@ public class RoundTripTests {
         String encS3ECId = encClientOutput.getClientId();
         CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
           .config(S3ECConfig.builder()
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
+            .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
             .keyMaterial(rsaKeyOne).build())
           .build());
         String decS3ECId = decClientOutput.getClientId();
