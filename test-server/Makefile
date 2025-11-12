@@ -1,7 +1,5 @@
 # Makefile for S3 Encryption Client Testing
 
-export MAKEFLAGS=-j$(shell sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo 1)
-
 .PHONY: all start-servers run-tests stop-servers clean ci check-env help
 
 # Default target
@@ -9,6 +7,7 @@ all: start-all-servers wait-all-servers run-tests
 
 # CI target for GitHub Actions
 ci:
+	$(MAKE) build-all-servers
 	$(MAKE) start-all-servers
 	$(MAKE) wait-all-servers
 	$(MAKE) run-tests
@@ -16,11 +15,27 @@ ci:
 
 SERVER_DIRS := $(shell find . -maxdepth 1 -type d -name '*-server' | sed 's|^\./||' | $(if $(FILTER),grep -E "$$(echo '$(FILTER)' | sed 's/,/|/g')",cat) | sort)
 
+BUILD_SERVER_TARGETS := $(addprefix build-, $(SERVER_DIRS))
 START_SERVER_TARGETS := $(addprefix start-, $(SERVER_DIRS))
 WAIT_SERVER_TARGETS := $(addprefix wait-, $(SERVER_DIRS))
 
-# Start all servers in parallel
+# Build all servers in parallel
+build-all-servers: export MAKEFLAGS=-j$(shell sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo 1)
+build-all-servers: $(BUILD_SERVER_TARGETS)
+
+$(BUILD_SERVER_TARGETS): build-%:
+	@if [ -f $*/Makefile ]; then \
+		echo "Building server in $*..."; \
+		$(MAKE) -C $* build-server; \
+	else \
+		echo "❌ Error: no Makefile found in $*"; \
+		exit 1; \
+	fi
+
+# Build and start all servers
 start-servers:
+	@echo "Building all servers..."
+	$(MAKE) build-all-servers
 	@echo "Starting all servers..."
 	$(MAKE) start-all-servers
 	@echo "Waiting for servers to start..."
@@ -29,7 +44,9 @@ start-servers:
 		$(MAKE) -C $$dir wait-for-server; \
 	done
 
-start-all-servers: $(START_SERVER_TARGETS)
+# Start servers sequentially (no parallel execution)
+start-all-servers:
+	@$(MAKE) MAKEFLAGS= $(START_SERVER_TARGETS)
 
 $(START_SERVER_TARGETS): start-%:
 	@if [ -f $*/Makefile ]; then \
@@ -38,7 +55,7 @@ $(START_SERVER_TARGETS): start-%:
 	else \
 		echo "❌ Error: no Makefile found in $*"; \
 		exit 1; \
-	fi; \
+	fi;
 
 wait-all-servers:
 	@echo "Waiting for all servers to be ready..."
@@ -52,7 +69,7 @@ $(WAIT_SERVER_TARGETS): wait-%:
 	else \
 		echo "❌ Error: no Makefile found in $*"; \
 		exit 1; \
-	fi; \
+	fi;
 
 
 # Run the Java tests
@@ -72,7 +89,7 @@ run-tests:
 stop-servers:
 	@echo "Stopping servers..."
 	@for dir in $(SERVER_DIRS); do \
-		echo "Starting server in $$dir..."; \
+		echo "Stopping server in $$dir..."; \
 		$(MAKE) -C $$dir stop-server; \
 	done
 	@echo "Servers stopped"

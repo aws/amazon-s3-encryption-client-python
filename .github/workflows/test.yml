@@ -155,19 +155,24 @@ jobs:
           role-to-assume: arn:aws:iam::370957321024:role/S3EC-Python-Github-test-role
           aws-region: us-west-2
 
+      - name: Build the servers
+        run: cd test-server && make build-all-servers FILTER=ruby,go
+        env:
+          AWS_REGION: us-west-2
+
       - name: Start the servers
-        run: cd test-server && make start-servers FILTER=ruby,go
+        run: cd test-server && make start-all-servers FILTER=ruby,go
         env:
           AWS_REGION: us-west-2
           TEST_SERVER_S3_BUCKET: ${{ vars.TEST_SERVER_S3_BUCKET }}
           TEST_SERVER_KMS_KEY_ARN: ${{ vars.TEST_SERVER_KMS_KEY_ARN }}
 
-      # - name: Wait for servers to start
-      #   run: cd test-server && make wait-all-servers FILTER=ruby,go
-      #   env:
-      #     AWS_REGION: us-west-2
-      #     TEST_SERVER_S3_BUCKET: ${{ vars.TEST_SERVER_S3_BUCKET }}
-      #     TEST_SERVER_KMS_KEY_ARN: ${{ vars.TEST_SERVER_KMS_KEY_ARN }}
+      - name: Wait for servers to start
+        run: cd test-server && make wait-all-servers FILTER=ruby,go
+        env:
+          AWS_REGION: us-west-2
+          TEST_SERVER_S3_BUCKET: ${{ vars.TEST_SERVER_S3_BUCKET }}
+          TEST_SERVER_KMS_KEY_ARN: ${{ vars.TEST_SERVER_KMS_KEY_ARN }}
 
       - name: Run run-tests
         run: cd test-server && make run-tests FILTER=ruby,go
@@ -176,6 +181,16 @@ jobs:
           TEST_SERVER_S3_BUCKET: ${{ vars.TEST_SERVER_S3_BUCKET }}
           TEST_SERVER_KMS_KEY_ARN: ${{ vars.TEST_SERVER_KMS_KEY_ARN }}
           GRADLE_OPTS: "-Dorg.gradle.daemon=true -Dorg.gradle.parallel=true -Dorg.gradle.caching=true"
+
+      - name: Upload server logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-logs
+          path: |
+            test-server/*/server.log
+            test-server/*/net-v2-server.log
+            test-server/*/net-v3-server.log
 
       - name: Stop the servers
         run: cd test-server && make stop-servers FILTER=ruby,go

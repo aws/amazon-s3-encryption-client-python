@@ -1,6 +1,6 @@
 # Makefile for S3 Encryption Client Testing
 
-.PHONY: start-server stop-server wait-for-server
+.PHONY: build-server start-server stop-server wait-for-server
 
 PID_FILE := server.pid
 PORT := 8085
@@ -9,9 +9,11 @@ build/s3ec-server:
 	cd aws-sdk-cpp
 	mkdir -p build && cd build && cmake ..
 
-start-server: | build/s3ec-server
+build-server: | build/s3ec-server
 	@echo "Building Cpp V2 server..."
 	cd build && make
+
+start-server:
 	@echo "Starting Cpp V2 server..."
 	cd build && \
 	AWS_ACCESS_KEY_ID="$$AWS_ACCESS_KEY_ID" \
@@ -22,10 +24,15 @@ start-server: | build/s3ec-server
 	@echo "Cpp V2 server starting..."
 
 stop-server:
+	@echo "Stopping server on port $(PORT)..."
+	@lsof -ti:$(PORT) | xargs kill -9 2>/dev/null || true
 	@if [ -f $(PID_FILE) ]; then \
-		kill $$(cat $(PID_FILE)) 2>/dev/null || true; \
-		rm $(PID_FILE); \
+		pkill -P $$(cat $(PID_FILE)) 2>/dev/null || true; \
+		kill -9 $$(cat $(PID_FILE)) 2>/dev/null || true; \
+		rm -f $(PID_FILE); \
 	fi
+	@rm -f build/server.log
+	@echo "Server stopped"
 
 wait-for-server:
 	$(MAKE) -C .. wait-for-port PORT=$(PORT)
