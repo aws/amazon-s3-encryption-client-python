@@ -29,7 +29,7 @@ public class KeyMaterial
     public byte[]? AesKey { get; set; }
 
     [Required]
-    public string KmsKeyId { get; set; } = string.Empty;
+    public string? KmsKeyId { get; set; }
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter))]
