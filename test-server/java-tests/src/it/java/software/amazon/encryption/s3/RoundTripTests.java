@@ -172,7 +172,7 @@ public class RoundTripTests {
 
     @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {0}")
     @MethodSource("software.amazon.encryption.s3.TestUtils#transitionClientsForTest")
-    public void improvedV3MessageDecryptionFailsWhenKcIncorrect(TestUtils.LanguageServerTarget language) {
+    public void transitionV3MessageDecryptionFailsWhenKcIncorrect(TestUtils.LanguageServerTarget language) {
         S3ECTestServerClient client = testServerClientFor(language);
         final String objectKey = appendTestSuffix("improved-v3-message-fails-when-kc-incorrect" + language);
         final String input = "simple-test-input";
