@@ -5,8 +5,8 @@ require_once __DIR__ . '/vendor/autoload.php';
 
 use Aws\S3\S3Client;
 use Aws\Kms\KmsClient;
-use Aws\S3\Crypto\S3EncryptionClientV2;
-use Aws\Crypto\KmsMaterialsProviderV2;
+use Aws\S3\Crypto\S3EncryptionClientV3;
+use Aws\Crypto\KmsMaterialsProviderV3;
 use Aws\Exception\AwsException;
 
 function main() {
@@ -52,8 +52,8 @@ function main() {
         
         // Create S3 Encryption Client v3
         // Create S3 Encryption Client v2
-        $encryptionClient = new S3EncryptionClientV2($s3Client);
-        $materialsProvider = new KmsMaterialsProviderV2($kmsClient, $kmsKeyId);
+        $encryptionClient = new S3EncryptionClientV3($s3Client);
+        $materialsProvider = new KmsMaterialsProviderV3($kmsClient, $kmsKeyId);
         
         echo "Successfully initialized S3 Encryption Client v3\n";
         echo "--- Encrypt and Upload Object to S3 ---\n";
@@ -77,6 +77,7 @@ function main() {
             'Body' => $testData,
             '@MaterialsProvider' => $materialsProvider,
             '@KmsEncryptionContext' => $encryptionContext,
+            '@CommitmentPolicy' => "REQUIRE_ENCRYPT_REQUIRE_DECRYPT",
             '@CipherOptions' => $cipherOptions,
         ]);
         
@@ -94,7 +95,8 @@ function main() {
             'Key' => $objectKey,
             '@KmsEncryptionContext' => $encryptionContext,
             '@MaterialsProvider' => $materialsProvider,
-            '@SecurityProfile' => 'V2'
+            '@CommitmentPolicy' => "REQUIRE_ENCRYPT_REQUIRE_DECRYPT",
+            '@SecurityProfile' => 'V3'
         ]);
         
         // Read the decrypted data

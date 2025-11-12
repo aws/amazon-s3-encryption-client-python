@@ -93,6 +93,7 @@ function main() {
             'Key' => $objectKey,
             '@KmsEncryptionContext' => $encryptionContext,
             '@MaterialsProvider' => $materialsProvider,
+            '@CommitmentPolicy' => 'FORBID_ENCRYPT_ALLOW_DECRYPT',
             '@SecurityProfile' => 'V2'
         ]);
         
