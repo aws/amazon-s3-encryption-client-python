@@ -170,32 +170,42 @@ public class RoundTripTests {
         }
     }
 
-    @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {0}")
-    @MethodSource("software.amazon.encryption.s3.TestUtils#transitionClientsForTest")
-    public void transitionV3MessageDecryptionFailsWhenKcIncorrect(TestUtils.LanguageServerTarget language) {
-        S3ECTestServerClient client = testServerClientFor(language);
-        final String objectKey = appendTestSuffix("improved-v3-message-fails-when-kc-incorrect" + language);
+    @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
+    @MethodSource("software.amazon.encryption.s3.TestUtils#encryptImprovedDecryptTransition")
+    public void transitionV3MessageDecryptionFailsWhenKcIncorrect(
+            TestUtils.LanguageServerTarget encLang, TestUtils.LanguageServerTarget decLang
+    ) {
+        S3ECTestServerClient encClient = testServerClientFor(encLang);
+        S3ECTestServerClient decClient = testServerClientFor(decLang);
+        final String objectKey = appendTestSuffix("transition-v3-message-fails-when-kc-incorrect" + encLang);
         final String input = "simple-test-input";
         KeyMaterial kmsKeyArn = KeyMaterial.builder()
           .kmsKeyId(KMS_KEY_ARN)
           .build();
-        CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+        CreateClientOutput encClientOutput = encClient.createClient(CreateClientInput.builder()
           .config(S3ECConfig.builder()
             .keyMaterial(kmsKeyArn)
             .build())
           .build());
-        String s3ECId = clientOutput.getClientId();
+        String encS3ECId = encClientOutput.getClientId();
 
-        client.putObject(PutObjectInput.builder()
-          .clientID(s3ECId)
+        encClient.putObject(PutObjectInput.builder()
+          .clientID(encS3ECId)
           .key(objectKey)
           .bucket(BUCKET)
           .body(ByteBuffer.wrap(input.getBytes(StandardCharsets.UTF_8)))
           .build());
 
+        CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
+          .config(S3ECConfig.builder()
+            .keyMaterial(kmsKeyArn)
+            .build())
+          .build());
+        String decS3ECId = decClientOutput.getClientId();
+
         // First, verify we can get the object successfully
-        GetObjectOutput output = client.getObject(GetObjectInput.builder()
-          .clientID(s3ECId)
+        GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
+          .clientID(decS3ECId)
           .bucket(BUCKET)
           .key(objectKey)
           .build());
@@ -224,8 +234,8 @@ public class RoundTripTests {
 
         // Now try to get the object again - this should fail due to corrupted metadata
         try {
-            client.getObject(GetObjectInput.builder()
-              .clientID(s3ECId)
+            decClient.getObject(GetObjectInput.builder()
+              .clientID(decS3ECId)
               .bucket(BUCKET)
               .key(objectKey)
               .build());
