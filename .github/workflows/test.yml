@@ -158,6 +158,7 @@ jobs:
       - name: Build the servers
         run: cd test-server && make build-all-servers FILTER=ruby,go
         env:
+          MAKEFLAGS: -j${{ steps.cpu-count.outputs.count }}
           AWS_REGION: us-west-2
 
       - name: Start the servers
