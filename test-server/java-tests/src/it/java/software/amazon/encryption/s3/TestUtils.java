@@ -18,6 +18,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -120,6 +121,24 @@ public class TestUtils {
     // PHP doesn't work but it should, temporarily disable
     public static final Set<String> INSTRUCTION_FILE_ROUNDTRIP_TEMP_UNSUPPORTED =
       Set.of(PHP_V2_CURRENT, PHP_V2_TRANSITION, PHP_V3);
+
+    public static final Set<String> RANGED_GET_CURRENT_VERSIONS =
+            Set.of(
+                    JAVA_V3_CURRENT,
+                    CPP_V2_CURRENT
+            );
+
+    public static final Set<String> RANGED_GET_TRANSITION_VERSIONS =
+            Set.of(
+                    JAVA_V3_TRANSITION,
+                    CPP_V2_TRANSITION
+            );
+
+    public static final Set<String> RANGED_GET_IMPROVED_VERSIONS =
+            Set.of(
+                    JAVA_V4,
+                    CPP_V3
+            );
 
     public static final Set<String> CURRENT_VERSIONS =
         Set.of(
@@ -440,6 +459,34 @@ public class TestUtils {
     }
 
     /**
+     * Get stream of arguments for current version clients which support ranged gets for testing.
+     */
+    public static Stream<Arguments> rangedGetCurrentClientsForTest() {
+        return serverMap.values().stream()
+                .filter(target -> RANGED_GET_CURRENT_VERSIONS.contains(target.getLanguageName()))
+                .map(Arguments::of);
+    }
+
+    /**
+     * Get stream of arguments for transition version clients for testing.
+     */
+    public static Stream<Arguments> rangedGetTransitionClientsForTest() {
+        return serverMap.values().stream()
+                .filter(target -> RANGED_GET_TRANSITION_VERSIONS.contains(target.getLanguageName()))
+                .map(Arguments::of);
+    }
+
+    /**
+     * Get stream of arguments for improved version clients for testing.
+     */
+    public static Stream<Arguments> rangedGetImprovedClientsForTest() {
+        return serverMap.values().stream()
+                .filter(target -> RANGED_GET_IMPROVED_VERSIONS.contains(target.getLanguageName()))
+                .map(Arguments::of);
+    }
+
+
+    /**
      * For a given string, append a suffix to distinguish it from
      * simultaneous test runs.
      * @param s The string to append the suffix to
@@ -514,6 +561,34 @@ public class TestUtils {
                 expectedEncryptionAlgorithm,
                 GetEncryptionAlgorithm(objectKey),
                 "When decrypting the EncryptionAlgorithm does not match the expected value: " + expectedEncryptionAlgorithm
+            );
+        }
+    }
+
+    public static void DecryptWithRangedGet(
+            S3ECTestServerClient client,
+            String S3ECId, List<String> crossLanguageObjects,
+            EncryptionAlgorithm expectedEncryptionAlgorithm
+    ) {
+        Random rand = new Random();
+        for (String objectKey : crossLanguageObjects) {
+            // Get random range within the object length
+            int max = objectKey.length() - 1;
+            int begin = rand.nextInt(max), end = rand.nextInt(max - begin) + begin + 1;
+            String range = "bytes=" + begin + "-" + end;
+            GetObjectOutput output = client.getObject(GetObjectInput.builder()
+                    .clientID(S3ECId)
+                    .bucket(TestUtils.BUCKET)
+                    .range(range)
+                    .key(objectKey)
+                    .build());
+
+            // Then: Pass
+            assertEquals(objectKey.substring(begin, end + 1), output.getBody().toString());
+            assertEquals(
+                    expectedEncryptionAlgorithm,
+                    GetEncryptionAlgorithm(objectKey),
+                    "When decrypting the EncryptionAlgorithm does not match the expected value: " + expectedEncryptionAlgorithm
             );
         }
     }

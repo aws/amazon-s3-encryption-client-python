@@ -37,6 +37,7 @@ public class GetObjectOperationImpl implements GetObjectOperation {
         ResponseBytes<GetObjectResponse> resp = s3Client.getObjectAsBytes(builder -> builder
           .bucket(input.getBucket())
           .key(input.getKey())
+          .range(input.getRange())
           .overrideConfiguration(withAdditionalConfiguration(ecMap)));
 
         List<String> mdAsList = metadataMapToList(resp.response().metadata());

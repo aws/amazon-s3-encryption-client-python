@@ -80,6 +80,10 @@ operation GetObject {
         @required
         @notProperty
         clientID: String
+
+        @httpHeader("Range")
+        @notProperty
+        range: String
     } 
 
     output := for Object {

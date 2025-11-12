@@ -5,48 +5,24 @@
 
 package software.amazon.encryption.s3;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
-import static software.amazon.encryption.s3.TestUtils.*;
+import static software.amazon.encryption.s3.TestUtils.appendTestSuffix;
 
-import java.lang.annotation.ElementType;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Stream;
 
-import com.amazonaws.services.s3.model.KMSEncryptionMaterials;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+
 import software.amazon.encryption.s3.client.S3ECTestServerClient;
 import software.amazon.encryption.s3.model.CommitmentPolicy;
 import software.amazon.encryption.s3.model.CreateClientInput;
 import software.amazon.encryption.s3.model.CreateClientOutput;
 import software.amazon.encryption.s3.model.EncryptionAlgorithm;
-import software.amazon.encryption.s3.model.GetObjectInput;
-import software.amazon.encryption.s3.model.GetObjectOutput;
 import software.amazon.encryption.s3.model.KeyMaterial;
-import software.amazon.encryption.s3.model.PutObjectInput;
 import software.amazon.encryption.s3.model.S3ECConfig;
-import software.amazon.encryption.s3.model.S3EncryptionClientError;
-
-import com.amazonaws.services.s3.AmazonS3Encryption;
-import com.amazonaws.services.s3.AmazonS3EncryptionClient;
-import com.amazonaws.services.s3.model.CryptoConfiguration;
-import com.amazonaws.services.s3.model.CryptoMode;
-import com.amazonaws.services.s3.model.CryptoStorageMode;
-import software.amazon.encryption.s3.TestUtils.*;
-import com.amazonaws.services.s3.model.EncryptionMaterialsProvider;
-import com.amazonaws.services.s3.model.KMSEncryptionMaterialsProvider;
 
 /**
 * Exhaustive tests for S3 Encryption Client round-trip operations.
@@ -159,6 +135,7 @@ class GCMTests {
         .config(S3ECConfig.builder()
         .keyMaterial(kmsKeyArn)
         .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+        .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
         .build())
         .build());
         String S3ECId = clientOutput.getClientId();
@@ -193,6 +170,95 @@ class GCMTests {
         .config(S3ECConfig.builder()
         .keyMaterial(kmsKeyArn)
         .commitmentPolicy(CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT)
+        .build())
+        .build());
+        String S3ECId = clientOutput.getClientId();
+        
+        TestUtils.Decrypt_fails(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF);
+    }
+
+    // Ranged Get Tests - using existing GCM encrypted objects with ranged-get-supported clients
+
+    @Order(21)
+    @ParameterizedTest(name = "{0}: Transition configured with the default can ranged get GCM")
+    @MethodSource("software.amazon.encryption.s3.TestUtils#rangedGetTransitionClientsForTest")
+    void transition_configured_with_the_default_can_ranged_get_gcm(TestUtils.LanguageServerTarget language) {
+        S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+        CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+        .config(S3ECConfig.builder()
+        .keyMaterial(kmsKeyArn)
+        .enableLegacyUnauthenticatedModes(true)
+        // .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+        .build())
+        .build());
+        String S3ECId = clientOutput.getClientId();
+        
+        TestUtils.DecryptWithRangedGet(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF);
+    }
+
+    @Order(22)
+    @ParameterizedTest(name = "{0}: Transition configured with ForbidEncryptAllowDecrypt can ranged get GCM")
+    @MethodSource("software.amazon.encryption.s3.TestUtils#rangedGetTransitionClientsForTest")
+    void transition_configured_with_forbid_encrypt_allow_decrypt_can_ranged_get_gcm(TestUtils.LanguageServerTarget language) {
+        S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+        CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+        .config(S3ECConfig.builder()
+        .keyMaterial(kmsKeyArn)
+        .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+        .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
+        .enableLegacyUnauthenticatedModes(true)
+        .build())
+        .build());
+        String S3ECId = clientOutput.getClientId();
+        
+        TestUtils.DecryptWithRangedGet(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF);
+    }
+
+    @Order(23)
+    @ParameterizedTest(name = "{0}: Improved configured with ForbidEncryptAllowDecrypt can ranged get GCM")
+    @MethodSource("software.amazon.encryption.s3.TestUtils#rangedGetImprovedClientsForTest")
+    void improved_configured_with_forbid_encrypt_allow_decrypt_can_ranged_get_gcm(TestUtils.LanguageServerTarget language) {
+        S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+        CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+        .config(S3ECConfig.builder()
+        .keyMaterial(kmsKeyArn)
+        .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+        .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
+        .enableLegacyUnauthenticatedModes(true)
+        .build())
+        .build());
+        String S3ECId = clientOutput.getClientId();
+        
+        TestUtils.DecryptWithRangedGet(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF);
+    }
+
+    @Order(24)
+    @ParameterizedTest(name = "{0}: Improved configured with RequireEncryptAllowDecrypt can ranged get GCM")
+    @MethodSource("software.amazon.encryption.s3.TestUtils#rangedGetImprovedClientsForTest")
+    void improved_configured_with_require_encrypt_allow_decrypt_can_ranged_get_gcm(TestUtils.LanguageServerTarget language) {
+        S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+        CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+        .config(S3ECConfig.builder()
+        .keyMaterial(kmsKeyArn)
+        .commitmentPolicy(CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT)
+        .enableLegacyUnauthenticatedModes(true)
+        .build())
+        .build());
+        String S3ECId = clientOutput.getClientId();
+        
+        TestUtils.DecryptWithRangedGet(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF);
+    }
+
+    @Order(25)
+    @ParameterizedTest(name = "{0}: Improved configured with RequireEncryptRequireDecrypt should fail to ranged get GCM")
+    @MethodSource("software.amazon.encryption.s3.TestUtils#rangedGetImprovedClientsForTest")
+    void improved_configured_with_require_encrypt_require_decrypt_should_fail_to_ranged_get_gcm(TestUtils.LanguageServerTarget language) {
+        S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+        CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+        .config(S3ECConfig.builder()
+        .keyMaterial(kmsKeyArn)
+        .commitmentPolicy(CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT)
+        .enableLegacyUnauthenticatedModes(true)
         .build())
         .build());
         String S3ECId = clientOutput.getClientId();
