@@ -156,18 +156,18 @@ jobs:
           aws-region: us-west-2
 
       - name: Start the servers
-        run: cd test-server && make start-all-servers FILTER=ruby,go
+        run: cd test-server && make start-servers FILTER=ruby,go
         env:
           AWS_REGION: us-west-2
           TEST_SERVER_S3_BUCKET: ${{ vars.TEST_SERVER_S3_BUCKET }}
           TEST_SERVER_KMS_KEY_ARN: ${{ vars.TEST_SERVER_KMS_KEY_ARN }}
 
-      - name: Wait for servers to start
-        run: cd test-server && make wait-all-servers FILTER=ruby,go
-        env:
-          AWS_REGION: us-west-2
-          TEST_SERVER_S3_BUCKET: ${{ vars.TEST_SERVER_S3_BUCKET }}
-          TEST_SERVER_KMS_KEY_ARN: ${{ vars.TEST_SERVER_KMS_KEY_ARN }}
+      # - name: Wait for servers to start
+      #   run: cd test-server && make wait-all-servers FILTER=ruby,go
+      #   env:
+      #     AWS_REGION: us-west-2
+      #     TEST_SERVER_S3_BUCKET: ${{ vars.TEST_SERVER_S3_BUCKET }}
+      #     TEST_SERVER_KMS_KEY_ARN: ${{ vars.TEST_SERVER_KMS_KEY_ARN }}
 
       - name: Run run-tests
         run: cd test-server && make run-tests FILTER=ruby,go
