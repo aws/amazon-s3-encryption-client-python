@@ -103,8 +103,8 @@ wait-for-port:
 		echo "❌ Error: PORT is required"; \
 		exit 1; \
 	fi
-	@echo "Starting to wait for $$PORT to start"; \
-	for i in $$(seq 1 $(TIMEOUT)); do \
+	@echo "Starting to wait for $$PORT to start";
+	@for i in $$(seq 1 $(TIMEOUT)); do \
 		if nc -z localhost $$PORT; then \
 			echo "Ports are open, waiting for servers to initialize..."; \
 			sleep 5; \
