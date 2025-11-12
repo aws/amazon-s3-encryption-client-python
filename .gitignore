@@ -52,3 +52,6 @@ gradle-app.setting
 
 .DS_Store
 smithy-java-core/out
+
+# test server
+*.pid

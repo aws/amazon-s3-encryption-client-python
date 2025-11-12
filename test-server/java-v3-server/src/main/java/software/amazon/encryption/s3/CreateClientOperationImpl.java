@@ -22,8 +22,11 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
+import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.RSAPublicKeySpec;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
@@ -74,13 +77,25 @@ public class CreateClientOperationImpl implements CreateClientOperation {
           key.getRsaKey().get(keyBytes);
           PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(keyBytes);
           KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+          RSAPrivateCrtKey privateKey = (RSAPrivateCrtKey) keyFactory.generatePrivate(keySpec);
+          RSAPublicKeySpec publicKeySpec = new RSAPublicKeySpec(
+            privateKey.getModulus(),
+            privateKey.getPublicExponent()
+          );
+
+          // Generate public key
+          PublicKey publicKey = keyFactory.generatePublic(publicKeySpec);
+
           keyring = RsaKeyring.builder()
             .enableLegacyWrappingAlgorithms(input.getConfig().isEnableLegacyWrappingAlgorithms())
             .wrappingKeyPair(PartialRsaKeyPair.builder()
-              .privateKey(keyFactory.generatePrivate(keySpec)).build())
+              .publicKey(publicKey)
+              .privateKey(privateKey).build())
             .build();
         } catch (NoSuchAlgorithmException | InvalidKeySpecException nse) {
-          throw new RuntimeException(nse);
+          throw GenericServerError.builder()
+            .message(nse.getMessage())
+            .build();
         }
       } else if (key.getKmsKeyId() != null) {
         keyring = KmsKeyring.builder()

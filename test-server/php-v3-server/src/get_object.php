@@ -34,10 +34,11 @@ function handleGetObject($params)
     $legacyConfig = $clientConfig["legacy"] ?? false;
     $legacy = null;
     if ($legacyConfig === false) {
-        $legacy = "V2";
+        $legacy = "V3";
     } else {
-        $legacy = "V2_AND_LEGACY";
+        $legacy = "V3_AND_LEGACY";
     }
+    $commitmentPolicy = $s3ecClientTuple['config']['commitmentPolicy'];
 
     try {
         // Start output buffering before the AWS call to capture any unwanted output
@@ -47,6 +48,7 @@ function handleGetObject($params)
             '@SecurityProfile' => $legacy,
             '@MaterialsProvider' => $materialProvider,
             '@KmsEncryptionContext' => $encryptionContext,
+            '@CommitmentPolicy' => $commitmentPolicy,
             'Bucket' => $bucket,
             'Key' => $key,
         ]);
@@ -76,9 +78,14 @@ function handleGetObject($params)
         if (ob_get_level()) {
             ob_end_clean();
         }
-        if (strpos($e->getMessage(), "@SecurityProfile=V2") !== false) {
-            return S3EncryptionClientError($e->getMessage() . " " . "Enable legacy wrapping algorithms to use legacy key wrapping algorithm: kms");
+        if (strpos($e->getMessage(), "@SecurityProfile=V3") !== false) {
+            return S3EncryptionClientError($e->getMessage());
+        } elseif (strpos($e->getMessage(), "Provided encryption context does not match information retrieved from S3") !== false) {
+            return S3EncryptionClientError($e->getMessage());
+        } elseif (strpos($e->getMessage(), "Message is encrypted with a non commiting algorithm but commitment policy is set to REQUIRE_ENCRYPT_REQUIRE_DECRYPT. Select a valid commitment policy to decrypt this object.") !== false) {
+            return S3EncryptionClientError($e->getMessage());
         } else {
+            error_log("This is the error: " . $e->getMessage());
             return GenericServerError("Server argument: " . $e->getMessage(), 500);
         }
     }

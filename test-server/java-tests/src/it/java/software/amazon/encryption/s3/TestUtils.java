@@ -96,6 +96,12 @@ public class TestUtils {
     public static final Set<String> ENCRYPTION_CONTEXT_ON_ENCRYPT_UNSUPPORTED =
         Set.of(NET_V2_CURRENT, NET_V3_CURRENT, NET_V3_TRANSITION);
 
+    // For now, only .NET and Java have RSA support
+    public static final Set<String> RAW_SUPPORTED =
+      Set.of(JAVA_V3_CURRENT, JAVA_V3_TRANSITION, JAVA_V4
+        , NET_V2_CURRENT, NET_V3_CURRENT, NET_V3_TRANSITION
+      );
+
     // .NET only supports decrypting instruction files using AES and RSA.
     // Python MUST support decrypting KMS instruction files, but does not yet.
     public static final Set<String> KMS_INSTRUCTION_FILE_UNSUPPORTED =
@@ -133,7 +139,7 @@ public class TestUtils {
             // NET_V2_TRANSITION,
             NET_V3_TRANSITION,
             CPP_V2_TRANSITION,
-            // PHP_V2_TRANSITION,
+            PHP_V2_TRANSITION,
             RUBY_V2_TRANSITION
         );
 
@@ -144,7 +150,7 @@ public class TestUtils {
             GO_V4,
             // NET_V4,
             CPP_V3,
-            // PHP_V3,
+            PHP_V3,
             RUBY_V3
         );
 

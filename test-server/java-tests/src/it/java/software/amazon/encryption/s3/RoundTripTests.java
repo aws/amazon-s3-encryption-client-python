@@ -13,6 +13,8 @@ import static software.amazon.encryption.s3.TestUtils.*;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -174,40 +176,40 @@ public class RoundTripTests {
         encCtx.put("user-defined-enc-ctx-key-2", "user-defined-enc-ctx-value-2");
         final List<String> mdAsList = metadataMapToList(encCtx);
         KeyMaterial kmsKeyArn = KeyMaterial.builder()
-                .kmsKeyId(KMS_KEY_ARN)
-                .build();
+          .kmsKeyId(KMS_KEY_ARN)
+          .build();
         CreateClientOutput encClientOutput = encClient.createClient(CreateClientInput.builder()
-                .config(S3ECConfig.builder()
-                        .keyMaterial(kmsKeyArn)
-                        .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
-                        .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
-                        .build())
-                .build());
+          .config(S3ECConfig.builder()
+            .keyMaterial(kmsKeyArn)
+            .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
+            .build())
+          .build());
         String encS3ECId = encClientOutput.getClientId();
 
         encClient.putObject(PutObjectInput.builder()
-                .clientID(encS3ECId)
-                .key(objectKey)
-                .bucket(BUCKET)
-                .metadata(mdAsList)
-                .body(ByteBuffer.wrap(input.getBytes(StandardCharsets.UTF_8)))
-                .build());
+          .clientID(encS3ECId)
+          .key(objectKey)
+          .bucket(BUCKET)
+          .metadata(mdAsList)
+          .body(ByteBuffer.wrap(input.getBytes(StandardCharsets.UTF_8)))
+          .build());
         S3ECTestServerClient decClient = testServerClientFor(decLang);
         CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
-                .config(S3ECConfig.builder()
-                  .keyMaterial(kmsKeyArn)
-                  .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
-                  .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
-                  .build()
-                )
-                .build());
+          .config(S3ECConfig.builder()
+            .keyMaterial(kmsKeyArn)
+            .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
+            .build()
+          )
+          .build());
         String decS3ECId = decClientOutput.getClientId();
         try {
             decClient.getObject(GetObjectInput.builder()
-                    .clientID(decS3ECId)
-                    .bucket(BUCKET)
-                    .key(objectKey)
-                    .build());
+              .clientID(decS3ECId)
+              .bucket(BUCKET)
+              .key(objectKey)
+              .build());
             fail("Expected exception!");
         } catch (S3EncryptionClientError e) {
             if (decLang.getLanguageName().equals(RUBY_V3) || decLang.getLanguageName().equals(RUBY_V2_CURRENT) || decLang.getLanguageName().equals(RUBY_V2_TRANSITION)) {
@@ -275,9 +277,9 @@ public class RoundTripTests {
             fail("Expected exception!");
         } catch (S3EncryptionClientError e) {
             if (decLang.getLanguageName().equals(RUBY_V3) || decLang.getLanguageName().equals(RUBY_V2_CURRENT) || decLang.getLanguageName().equals(RUBY_V2_TRANSITION)) {
-              assertTrue(e.getMessage().contains("Value of encryption context from envelope does not match the provided encryption context"));
+                assertTrue(e.getMessage().contains("Value of encryption context from envelope does not match the provided encryption context"));
             } else {
-              assertTrue(e.getMessage().contains("Provided encryption context does not match information retrieved from S3"));
+                assertTrue(e.getMessage().contains("Provided encryption context does not match information retrieved from S3"));
             }
         }
     }
@@ -426,13 +428,62 @@ public class RoundTripTests {
                 "The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration"
               ));
             } else if (language.getLanguageName().equals(RUBY_V3) || language.getLanguageName().equals(RUBY_V2_CURRENT) || language.getLanguageName().equals(RUBY_V2_TRANSITION)) {
-              assertTrue(e.getMessage().contains(
-                "The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration security_profile = :v2. Retry with :v2_and_legacy or re-encrypt the object."
+                assertTrue(e.getMessage().contains(
+                  "The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration security_profile = :v2. Retry with :v2_and_legacy or re-encrypt the object."
                 ), "Actual error:" + e.getMessage());
+            } else if (language.getLanguageName().equals(PHP_V3)) {
+              assertTrue(e.getMessage().contains("The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration @SecurityProfile=V3. Retry with V3_AND_LEGACY enabled or reencrypt the object."));; 
             } else {
-              assertTrue(e.getMessage().contains("Enable legacy wrapping algorithms to use legacy key wrapping algorithm: kms"));
+                assertTrue(e.getMessage().contains("Enable legacy wrapping algorithms to use legacy key wrapping algorithm: kms"));
             }
         }
+    }
+
+    @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
+    @MethodSource("software.amazon.encryption.s3.TestUtils#crossLanguageClients")
+    public void rsaRoundTrip(LanguageServerTarget encLang, LanguageServerTarget decLang) throws Exception {
+        if (!RAW_SUPPORTED.contains(encLang.getLanguageName())) {
+            throw new TestAbortedException("not encrypting raw keyrings with: " + encLang.getLanguageName());
+        }
+        if (!RAW_SUPPORTED.contains(decLang.getLanguageName())) {
+            throw new TestAbortedException("not decrypting raw keyrings with: " + decLang.getLanguageName());
+        }
+        S3ECTestServerClient encClient = testServerClientFor(encLang);
+        S3ECTestServerClient decClient = testServerClientFor(decLang);
+        final String objectKey = appendTestSuffix(String.format("rsa-write-%s-read-%s", encLang.getLanguageName(), decLang.getLanguageName()));
+        final String input = "simple-test-input-rsa";
+        KeyPairGenerator keyPairGen = KeyPairGenerator.getInstance("RSA");
+        keyPairGen.initialize(2048);
+        KeyPair RSA_KEY_PAIR_1 = keyPairGen.generateKeyPair();
+
+        KeyMaterial rsaKeyOne = KeyMaterial.builder()
+          .rsaKey(ByteBuffer.wrap(RSA_KEY_PAIR_1.getPrivate().getEncoded()))
+          .build();
+        CreateClientOutput encClientOutput = encClient.createClient(CreateClientInput.builder()
+          .config(S3ECConfig.builder()
+            // TODO: use this for now to satisfy current. think about long term soln for this
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
+            .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+            .keyMaterial(rsaKeyOne).build())
+          .build());
+        String encS3ECId = encClientOutput.getClientId();
+        CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
+          .config(S3ECConfig.builder()
+            .keyMaterial(rsaKeyOne).build())
+          .build());
+        String decS3ECId = decClientOutput.getClientId();
+        encClient.putObject(PutObjectInput.builder()
+          .clientID(encS3ECId)
+          .key(objectKey)
+          .bucket(BUCKET)
+          .body(ByteBuffer.wrap(input.getBytes(StandardCharsets.UTF_8)))
+          .build());
+        GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
+          .clientID(decS3ECId)
+          .bucket(BUCKET)
+          .key(objectKey)
+          .build());
+        assertEquals(input, new String(output.getBody().array()));
     }
 
     @ParameterizedTest(name = "{displayName} for Encrypt: Java, Decrypt: {0}")
@@ -545,16 +596,15 @@ public class RoundTripTests {
         if (!encLang.getLanguageName().startsWith("Ruby") && !encLang.getLanguageName().startsWith("PHP")) {
             // Ruby and PHP do not include it :(
             assertTrue(ptInstFile.response().metadata().containsKey("x-amz-crypto-instr-file"));
+            assertFalse(ptInstFile.asUtf8String().isEmpty());
+            // Read should be enabled by default
+            GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
+              .clientID(decS3ECId)
+              .bucket(BUCKET)
+              .key(objectKey)
+              .build());
+
+            assertEquals(input, new String(output.getBody().array()));
         }
-        assertFalse(ptInstFile.asUtf8String().isEmpty());
-
-        // Read should be enabled by default
-        GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
-          .clientID(decS3ECId)
-          .bucket(BUCKET)
-          .key(objectKey)
-          .build());
-
-        assertEquals(input, new String(output.getBody().array()));
     }
 }
