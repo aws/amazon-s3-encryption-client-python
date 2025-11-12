@@ -9,11 +9,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="**/*.cs" Exclude="s3ec-v2-local/**/*.cs" />
+    <Compile Include="**/*.cs" Exclude="s3ec-v3-local/**/*.cs" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="s3ec-v2-local/src/Amazon.Extensions.S3.Encryption.csproj"/>
+    <ProjectReference Include="s3ec-v3-local/src/Amazon.Extensions.S3.Encryption.csproj"/>
   </ItemGroup>
 
 </Project>
