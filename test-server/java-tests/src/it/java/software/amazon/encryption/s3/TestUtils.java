@@ -584,7 +584,7 @@ public class TestUtils {
                     .build());
 
             // Then: Pass
-            assertEquals(objectKey.substring(begin, end + 1), output.getBody().toString());
+            assertEquals(objectKey.substring(begin, end + 1).getBytes(StandardCharsets.UTF_8), output.getBody().array());
             assertEquals(
                     expectedEncryptionAlgorithm,
                     GetEncryptionAlgorithm(objectKey),
