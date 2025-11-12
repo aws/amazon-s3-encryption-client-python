@@ -19,6 +19,7 @@ function handleCreateClient()
     $legacyAlgorithms = $configData["enableLegacyWrappingAlgorithms"] ?? false;
     $clientId = Uuid::uuid4()->toString();
     $kmsKeyId = $keyMaterial["kmsKeyId"] ?? null;
+    $commitmentPolicy = $configData['commitmentPolicy'] ?? "FORBID_ENCRYPT_ALLOW_DECRYPT";
     $instFileConfig = $configData['instructionFileConfig'] ?? null;
     $instFilePut = false;
     if ($instFileConfig != null) {
@@ -30,6 +31,12 @@ function handleCreateClient()
     }
     if (($keyMaterial || $kmsKeyId) === null) {
         return GenericServerError("Invalid keyMaterial in config", 400);
+    }
+    if ($commitmentPolicy !== "FORBID_ENCRYPT_ALLOW_DECRYPT") {
+        return GenericServerError(
+            "Transition server only supports FORBID_ENCRYPT_ALLOW_DECRYPT"
+            . "commitment policy but received {$commitmentPolicy}"
+        );
     }
 
     // Store client configuration instead of objects (AWS objects can't be serialized)
@@ -60,6 +67,7 @@ function handleCreateClient()
         ],
         'kmsKeyId' => $kmsKeyId,
         'legacy' => $legacyAlgorithms,
+        'commitmentPolicy' => $commitmentPolicy,
         'instFilePut' => $instFilePut,
         'created' => time()
     ];
