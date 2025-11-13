@@ -609,4 +609,74 @@ public class RoundTripTests {
             assertEquals(input, new String(output.getBody().array()));
         }
     }
+
+    @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
+    @MethodSource("software.amazon.encryption.s3.TestUtils#crossLanguageClients")
+    public void rsaWithInstructionFileRoundTrip(LanguageServerTarget encLang, LanguageServerTarget decLang) {
+        if (!RAW_SUPPORTED.contains(encLang.getLanguageName())) {
+            throw new TestAbortedException("not encrypting raw keyrings with: " + encLang.getLanguageName());
+        }
+        if (!RAW_SUPPORTED.contains(decLang.getLanguageName())) {
+            throw new TestAbortedException("not decrypting raw keyrings with: " + decLang.getLanguageName());
+        }
+        S3ECTestServerClient encClient = testServerClientFor(encLang);
+        S3ECTestServerClient decClient = testServerClientFor(decLang);
+        final String objectKey = appendTestSuffix(String.format("rsa-with-ins-file-write-%s-read-%s", encLang.getLanguageName(), decLang.getLanguageName()));
+        final String input = "simple-test-input";
+        KeyPairGenerator keyPairGen = KeyPairGenerator.getInstance("RSA");
+        keyPairGen.initialize(2048);
+        KeyPair RSA_KEY_PAIR_1 = keyPairGen.generateKeyPair();
+
+        CreateClientOutput encClientOutput = encClient.createClient(CreateClientInput.builder()
+          .config(S3ECConfig.builder()
+            .instructionFileConfig(InstructionFileConfig.builder()
+                .enableInstructionFilePutObject(true)
+                .build())
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY)
+            .commitmentPolicy(CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT)
+            .keyMaterial(rsaKeyOne).build())
+          .build());
+        String encS3ECId = encClientOutput.getClientId();
+        CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
+          .config(S3ECConfig.builder()
+            .instructionFileConfig(InstructionFileConfig.builder()
+                .enableInstructionFilePutObject(true)
+                .build())
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY)
+            .commitmentPolicy(CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT)
+            .keyMaterial(rsaKeyOne).build())
+          .build());
+        String decS3ECId = decClientOutput.getClientId();
+
+        // Write with instruction file
+        encClient.putObject(PutObjectInput.builder()
+          .clientID(encS3ECId)
+          .bucket(BUCKET)
+          .key(objectKey)
+          .body(ByteBuffer.wrap(input.getBytes(StandardCharsets.UTF_8)))
+          .build());
+
+        // Assert using Java plaintext client that an instruction file exists
+        ResponseBytes<GetObjectResponse> ptInstFile;
+        try (S3Client ptS3Client = S3Client.create()) {
+            ptInstFile = ptS3Client.getObjectAsBytes(builder -> builder
+              .bucket(BUCKET)
+              .key(objectKey + ".instruction")
+              .build());
+        }
+        // Check for inst file key
+        if (!encLang.getLanguageName().startsWith("Ruby") && !encLang.getLanguageName().startsWith("PHP")) {
+            // Ruby and PHP do not include it :(
+            assertTrue(ptInstFile.response().metadata().containsKey("x-amz-crypto-instr-file"));
+            assertFalse(ptInstFile.asUtf8String().isEmpty());
+            // Read should be enabled by default
+            GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
+              .clientID(decS3ECId)
+              .bucket(BUCKET)
+              .key(objectKey)
+              .build());
+
+            assertEquals(input, new String(output.getBody().array()));
+        }
+    }
 }

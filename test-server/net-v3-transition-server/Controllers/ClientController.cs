@@ -67,6 +67,10 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             logger.LogInformation("[NET-V3-Transitional] Created encryptionAlgorithm= {encryptionAlgorithm}", encryptionAlgorithm);
 
             var configuration = new AmazonS3CryptoConfigurationV2(securityProfile, commitmentPolicy, encryptionAlgorithm);
+            if (request.Config.InstructionFileConfig?.EnableInstructionFilePutObject == true)
+            {
+                configuration.StorageMode = CryptoStorageMode.InstructionFile;
+            }
             // Create S3 encryption client
             var encryptionClient = new AmazonS3EncryptionClientV2(configuration, encryptionMaterial);
             // Add to cache and return client ID
