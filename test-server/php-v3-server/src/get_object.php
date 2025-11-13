@@ -73,8 +73,6 @@ function handleGetObject($params)
             ob_end_clean();
         }
         return GenericServerError("Invalid argument: " . $e->getMessage(), 400);
-    } catch (CryptoException $e) {
-        return S3EncryptionClientError("Crypto error: " . $e->getMessage());
     } catch (Exception $e) {
         // Clean up output buffer if still active
         if (ob_get_level()) {
@@ -85,6 +83,8 @@ function handleGetObject($params)
         } elseif (strpos($e->getMessage(), "Provided encryption context does not match information retrieved from S3") !== false) {
             return S3EncryptionClientError($e->getMessage());
         } elseif (strpos($e->getMessage(), "Message is encrypted with a non commiting algorithm but commitment policy is set to REQUIRE_ENCRYPT_REQUIRE_DECRYPT. Select a valid commitment policy to decrypt this object.") !== false) {
+            return S3EncryptionClientError($e->getMessage());
+        } elseif (strpos($e->getMessage(), "Calculated commitment key does not match expected commitment key value") !== false) {
             return S3EncryptionClientError($e->getMessage());
         } else {
             error_log("This is the error: " . $e->getMessage());
