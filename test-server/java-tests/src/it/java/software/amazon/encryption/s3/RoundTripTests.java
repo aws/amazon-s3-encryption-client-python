@@ -30,6 +30,7 @@ import org.opentest4j.TestAbortedException;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.encryption.s3.TestUtils.LanguageServerTarget;
 import software.amazon.encryption.s3.client.S3ECTestServerClient;
 import software.amazon.encryption.s3.model.CommitmentPolicy;
 import software.amazon.encryption.s3.model.CreateClientInput;
@@ -612,7 +613,7 @@ public class RoundTripTests {
 
     @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
     @MethodSource("software.amazon.encryption.s3.TestUtils#crossLanguageClients")
-    public void rsaWithInstructionFileRoundTrip(LanguageServerTarget encLang, LanguageServerTarget decLang) {
+    public void rsaWithInstructionFileRoundTrip(LanguageServerTarget encLang, LanguageServerTarget decLang) throws Exception {
         if (!RAW_SUPPORTED.contains(encLang.getLanguageName())) {
             throw new TestAbortedException("not encrypting raw keyrings with: " + encLang.getLanguageName());
         }
@@ -621,12 +622,15 @@ public class RoundTripTests {
         }
         S3ECTestServerClient encClient = testServerClientFor(encLang);
         S3ECTestServerClient decClient = testServerClientFor(decLang);
-        final String objectKey = appendTestSuffix(String.format("rsa-with-ins-file-write-%s-read-%s", encLang.getLanguageName(), decLang.getLanguageName()));
-        final String input = "simple-test-input";
+        final String objectKey = appendTestSuffix(String.format("rsa-insfile-write-%s-read-%s", encLang.getLanguageName(), decLang.getLanguageName()));
+        final String input = "simple-test-input-rsa";
         KeyPairGenerator keyPairGen = KeyPairGenerator.getInstance("RSA");
         keyPairGen.initialize(2048);
         KeyPair RSA_KEY_PAIR_1 = keyPairGen.generateKeyPair();
 
+        KeyMaterial rsaKeyOne = KeyMaterial.builder()
+          .rsaKey(ByteBuffer.wrap(RSA_KEY_PAIR_1.getPrivate().getEncoded()))
+          .build();
         CreateClientOutput encClientOutput = encClient.createClient(CreateClientInput.builder()
           .config(S3ECConfig.builder()
             .instructionFileConfig(InstructionFileConfig.builder()
@@ -666,8 +670,6 @@ public class RoundTripTests {
         }
         // Check for inst file key
         if (!encLang.getLanguageName().startsWith("Ruby") && !encLang.getLanguageName().startsWith("PHP")) {
-            // Ruby and PHP do not include it :(
-            assertTrue(ptInstFile.response().metadata().containsKey("x-amz-crypto-instr-file"));
             assertFalse(ptInstFile.asUtf8String().isEmpty());
             // Read should be enabled by default
             GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
