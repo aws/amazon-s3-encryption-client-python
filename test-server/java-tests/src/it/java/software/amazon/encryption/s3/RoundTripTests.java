@@ -143,9 +143,75 @@ public class RoundTripTests {
               .key(objectKey)
               .build());
             
+            // Create new metadata with incorrect x-amz-d value
+            Map<String, String> newMetadata = new HashMap<>(currentObject.response().metadata());
+            newMetadata.put("x-amz-d", "WFWqRjRc5BhBplPYIcvApAC2SYybUZw9T+TR+RmO//8=");
+            
+            // Put the object back with corrupted metadata
+            ptS3Client.putObject(builder -> builder
+              .bucket(BUCKET)
+              .key(objectKey)
+              .metadata(newMetadata)
+              .build(), 
+              software.amazon.awssdk.core.sync.RequestBody.fromBytes(currentObject.asByteArray()));
+        }
+
+        // Now try to get the object again - this should fail due to corrupted metadata
+        try {
+            client.getObject(GetObjectInput.builder()
+              .clientID(s3ECId)
+              .bucket(BUCKET)
+              .key(objectKey)
+              .build());
+            fail("Expected exception due to corrupted metadata!");
+        } catch (S3EncryptionClientError e) {
+            // Expected - the decryption should fail due to corrupted key commitment metadata
+            // TODO: Messages
+        }
+    }
+
+    @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {0}")
+    @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
+    public void improvedV3MessageDecryptionFailsWhenKcIncorrectLength(TestUtils.LanguageServerTarget language) {
+        S3ECTestServerClient client = testServerClientFor(language);
+        final String objectKey = appendTestSuffix("improved-v3-message-fails-when-kc-incorrect" + language);
+        final String input = "simple-test-input";
+        KeyMaterial kmsKeyArn = KeyMaterial.builder()
+          .kmsKeyId(KMS_KEY_ARN)
+          .build();
+        CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+          .config(S3ECConfig.builder()
+            .keyMaterial(kmsKeyArn)
+            .build())
+          .build());
+        String s3ECId = clientOutput.getClientId();
+
+        client.putObject(PutObjectInput.builder()
+          .clientID(s3ECId)
+          .key(objectKey)
+          .bucket(BUCKET)
+          .body(ByteBuffer.wrap(input.getBytes(StandardCharsets.UTF_8)))
+          .build());
+
+        // First, verify we can get the object successfully
+        GetObjectOutput output = client.getObject(GetObjectInput.builder()
+          .clientID(s3ECId)
+          .bucket(BUCKET)
+          .key(objectKey)
+          .build());
+        assertEquals(input, new String(output.getBody().array()));
+
+        // Create a plaintext S3 client to modify the object's metadata
+        try (S3Client ptS3Client = S3Client.create()) {
+            // Get the current object to preserve other metadata
+            ResponseBytes<GetObjectResponse> currentObject = ptS3Client.getObjectAsBytes(builder -> builder
+              .bucket(BUCKET)
+              .key(objectKey)
+              .build());
+            
             // Create new metadata with corrupted x-amz-d value
             Map<String, String> newMetadata = new HashMap<>(currentObject.response().metadata());
-            newMetadata.put("x-amz-d", "HERE");
+            newMetadata.put("x-amz-d", "bad length");
             
             // Put the object back with corrupted metadata
             ptS3Client.putObject(builder -> builder
@@ -219,9 +285,85 @@ public class RoundTripTests {
               .key(objectKey)
               .build());
             
+            // Create new metadata with incorrect x-amz-d value
+            Map<String, String> newMetadata = new HashMap<>(currentObject.response().metadata());
+            newMetadata.put("x-amz-d", "WFWqRjRc5BhBplPYIcvApAC2SYybUZw9T+TR+RmO//8=");
+            
+            // Put the object back with corrupted metadata
+            ptS3Client.putObject(builder -> builder
+              .bucket(BUCKET)
+              .key(objectKey)
+              .metadata(newMetadata)
+              .build(), 
+              software.amazon.awssdk.core.sync.RequestBody.fromBytes(currentObject.asByteArray()));
+        }
+
+        // Now try to get the object again - this should fail due to corrupted metadata
+        try {
+            decClient.getObject(GetObjectInput.builder()
+              .clientID(decS3ECId)
+              .bucket(BUCKET)
+              .key(objectKey)
+              .build());
+            fail("Expected exception due to corrupted metadata!");
+        } catch (S3EncryptionClientError e) {
+            // Expected - the decryption should fail due to corrupted key commitment metadata
+            // TODO: Messages
+        }
+    }
+
+    @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
+    @MethodSource("software.amazon.encryption.s3.TestUtils#encryptImprovedDecryptTransition")
+    public void transitionV3MessageDecryptionFailsWhenKcIncorrectLength(
+            TestUtils.LanguageServerTarget encLang, TestUtils.LanguageServerTarget decLang
+    ) {
+        S3ECTestServerClient encClient = testServerClientFor(encLang);
+        S3ECTestServerClient decClient = testServerClientFor(decLang);
+        final String objectKey = appendTestSuffix("transition-v3-message-fails-when-kc-incorrect" + encLang);
+        final String input = "simple-test-input";
+        KeyMaterial kmsKeyArn = KeyMaterial.builder()
+          .kmsKeyId(KMS_KEY_ARN)
+          .build();
+        CreateClientOutput encClientOutput = encClient.createClient(CreateClientInput.builder()
+          .config(S3ECConfig.builder()
+            .keyMaterial(kmsKeyArn)
+            .build())
+          .build());
+        String encS3ECId = encClientOutput.getClientId();
+
+        encClient.putObject(PutObjectInput.builder()
+          .clientID(encS3ECId)
+          .key(objectKey)
+          .bucket(BUCKET)
+          .body(ByteBuffer.wrap(input.getBytes(StandardCharsets.UTF_8)))
+          .build());
+
+        CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
+          .config(S3ECConfig.builder()
+            .keyMaterial(kmsKeyArn)
+            .build())
+          .build());
+        String decS3ECId = decClientOutput.getClientId();
+
+        // First, verify we can get the object successfully
+        GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
+          .clientID(decS3ECId)
+          .bucket(BUCKET)
+          .key(objectKey)
+          .build());
+        assertEquals(input, new String(output.getBody().array()));
+
+        // Create a plaintext S3 client to modify the object's metadata
+        try (S3Client ptS3Client = S3Client.create()) {
+            // Get the current object to preserve other metadata
+            ResponseBytes<GetObjectResponse> currentObject = ptS3Client.getObjectAsBytes(builder -> builder
+              .bucket(BUCKET)
+              .key(objectKey)
+              .build());
+            
             // Create new metadata with corrupted x-amz-d value
             Map<String, String> newMetadata = new HashMap<>(currentObject.response().metadata());
-            newMetadata.put("x-amz-d", "HERE");
+            newMetadata.put("x-amz-d", "bad length");
             
             // Put the object back with corrupted metadata
             ptS3Client.putObject(builder -> builder
