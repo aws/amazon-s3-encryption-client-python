@@ -30,7 +30,7 @@ start-net-v3-transition-server:
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
-	dotnet run > server.log 2>&1 & echo $$! > net-v3-transition-server.pid
+	dotnet run > server.log 2>&1 & echo $$! > $(PID_FILE_NET_V3_TRANSITION)
 	@echo ".NET V3 transition server starting..."
 
 wait-for-server:

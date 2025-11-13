@@ -5,14 +5,23 @@
 PID_FILE_NET_V4 := net-V4-server.pid
 PORT_NET_V4 := 8090
 
+build-server:
+	@echo "Building .NET V4 improved server..."
+	dotnet build
+
 start-server:
 	$(MAKE) start-net-V4-server; 
 
 stop-server:
+	@echo "Stopping .NET V4 Improved server on port $(PORT_NET_V4)..."
+	@lsof -ti:$(PORT_NET_V4) | xargs kill -9 2>/dev/null || true
 	@if [ -f $(PID_FILE_NET_V4) ]; then \
-		kill $$(cat $(PID_FILE_NET_V4)) 2>/dev/null || true; \
-		rm $(PID_FILE_NET_V4); \
+		pkill -P $$(cat $(PID_FILE_NET_V4)) 2>/dev/null || true; \
+		kill -9 $$(cat $(PID_FILE_NET_V4)) 2>/dev/null || true; \
+		rm -f $(PID_FILE_NET_V4); \
 	fi
+	@rm -f server.log
+	@echo "Server stopped"
 
 # Start .NET V4 server in background
 # This builds first into bin/V4 and runs through dll 
@@ -23,7 +32,7 @@ start-net-V4-server:
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
-	dotnet run & echo $! > net-v3-transition-server.pid
+	dotnet run & echo $! > $(PID_FILE_NET_V4)
 	@echo ".NET V4 server starting..."
 
 wait-for-server:
