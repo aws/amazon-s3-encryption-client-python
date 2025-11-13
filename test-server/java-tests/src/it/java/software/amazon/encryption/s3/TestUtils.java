@@ -117,9 +117,9 @@ public class TestUtils {
     public static final Set<String> INSTRUCTION_FILE_GET_UNSUPPORTED =
       Set.of(PYTHON_V3);
 
-    // PHP doesn't work but it should, temporarily disable
-    public static final Set<String> INSTRUCTION_FILE_ROUNDTRIP_TEMP_UNSUPPORTED =
-      Set.of(PHP_V2_CURRENT, PHP_V2_TRANSITION, PHP_V3);
+    // // PHP doesn't work but it should, temporarily disable
+    // public static final Set<String> INSTRUCTION_FILE_ROUNDTRIP_TEMP_UNSUPPORTED =
+    //   Set.of(PHP_V2_CURRENT, PHP_V2_TRANSITION, PHP_V3);
 
     public static final Set<String> CURRENT_VERSIONS =
         Set.of(
