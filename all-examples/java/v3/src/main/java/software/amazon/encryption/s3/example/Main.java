@@ -32,8 +32,8 @@ public class Main {
     public static void main(String[] args) {
         // Check command line arguments
         if (args.length != 4) {
-            System.out.println("Usage: java -jar build/libs/s3ec-java-v3-example.jar <bucket-name> <object-key> <kms-key-id> <region>");
-            System.out.println("Example: java -jar build/libs/s3ec-java-v3-example.jar avp-21638 s3ec-java-v3 arn:aws:kms:us-east-2:648638458147:key/a47079da-17e4-45a5-b82e-2bac101cad01 us-east-2");
+            System.out.println("Usage: ./gradlew run --args=\"<bucket-name> <object-key> <kms-key-id> <region>\"");
+            System.out.println("Example: ./gradlew run --args=\"avp-21638 s3ec-java-v3 arn:aws:kms:us-east-2:648638458147:key/a47079da-17e4-45a5-b82e-2bac101cad01 us-east-2\"");
             System.exit(1);
         }
 
@@ -82,7 +82,7 @@ public class Main {
                     .build();
 
             // Create S3 Encryption Client v3
-            S3EncryptionClient encryptionClient = S3EncryptionClient.builderV4()
+            S3EncryptionClient encryptionClient = S3EncryptionClient.builder()
                     .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
                     .encryptionAlgorithm(AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
                     .wrappedClient(s3Client)

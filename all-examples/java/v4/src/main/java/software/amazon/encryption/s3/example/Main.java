@@ -4,14 +4,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.swing.plaf.synth.Region;
-
-import software.amazon.encryption.s3.materials.CryptographicMaterialsManager;
-
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Map;
-
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
@@ -38,8 +30,8 @@ public class Main {
     public static void main(String[] args) {
         // Check command line arguments
         if (args.length != 4) {
-            System.out.println("Usage: java -jar build/libs/s3ec-java-v4-example.jar <bucket-name> <object-key> <kms-key-id> <region>");
-            System.out.println("Example: java -jar build/libs/s3ec-java-v4-example.jar avp-21638 s3ec-java-v4 arn:aws:kms:us-east-2:648638458147:key/a47079da-17e4-45a5-b82e-2bac101cad01 us-east-2");
+            System.out.println("Usage: ./gradlew run --args=\"<bucket-name> <object-key> <kms-key-id> <region>\"");
+            System.out.println("Example: ./gradlew run --args=\"avp-21638 s3ec-java-v4 arn:aws:kms:us-east-2:648638458147:key/a47079da-17e4-45a5-b82e-2bac101cad01 us-east-2\"");
             System.exit(1);
         }
 
@@ -87,8 +79,8 @@ public class Main {
                     .keyring(keyring)
                     .build();
 
-            // Create S3 Encryption Client v4 with key commitment enabled
-            S3EncryptionClient encryptionClient = S3EncryptionClient.builder()
+            // Create S3 Encryption Client v4 with key commitment enabled (Defaults to REQUIRE_ENCRYPT_REQUIRE_DECRYPT)
+            S3EncryptionClient encryptionClient = S3EncryptionClient.builderV4()
                     .wrappedClient(s3Client)
                     .cryptoMaterialsManager(cmm)
                     .enableLegacyUnauthenticatedModes(false)
