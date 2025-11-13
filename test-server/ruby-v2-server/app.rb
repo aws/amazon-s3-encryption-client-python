@@ -201,7 +201,7 @@ class S3ECRubyServer < Sinatra::Base
       content_type 'application/octet-stream'
       body
 
-    rescue Aws::S3::EncryptionV2::Errors::DecryptionError => e
+    rescue Aws::S3::EncryptionV2::Errors::DecryptionError, Aws::S3::EncryptionV3::Errors::DecryptionError => e
       S3ECLogger.log_error(e, { endpoint: '/get', error_category: 'DecryptionError' }, @request_id)
       ErrorHandlers.send_s3_encryption_client_error(self, e.message)
     rescue StandardError => e
