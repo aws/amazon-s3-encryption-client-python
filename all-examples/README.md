@@ -9,7 +9,7 @@ Each language has subdirectories for different major versions of the S3 Encrypti
 - `cpp/` - C++ examples
   - `v2/` - S3EC C++ v2 example (transitional)
   - `v3/` - S3EC C++ v3 example (improved)
-- `dotnet/` - .NET examples
+- `net/` - .NET examples
   - `v3/` - S3EC .NET v3 example (transitional)
   - `v4/` - S3EC .NET v4 example (improved)
 - `go/` - Go examples
