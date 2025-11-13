@@ -84,6 +84,8 @@ function handleGetObject($params)
             return S3EncryptionClientError($e->getMessage());
         } elseif (strpos($e->getMessage(), "Message is encrypted with a non commiting algorithm but commitment policy is set to REQUIRE_ENCRYPT_REQUIRE_DECRYPT. Select a valid commitment policy to decrypt this object.") !== false) {
             return S3EncryptionClientError($e->getMessage());
+        } elseif (strpos($e->getMessage(), "Invalid Commitment Key length found in object envelope.") !== false) {
+            return S3EncryptionClientError($e->getMessage());
         } elseif (strpos($e->getMessage(), "Calculated commitment key does not match expected commitment key value") !== false) {
             return S3EncryptionClientError($e->getMessage());
         } else {

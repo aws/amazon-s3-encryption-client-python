@@ -80,6 +80,8 @@ function handleGetObject($params)
         }
         if (strpos($e->getMessage(), "@SecurityProfile=V2") !== false) {
             return S3EncryptionClientError($e->getMessage() . " " . "Enable legacy wrapping algorithms to use legacy key wrapping algorithm: kms");
+        } elseif (strpos($e->getMessage(), "Invalid Commitment Key length found in object envelope.") !== false) {
+            return S3EncryptionClientError($e->getMessage());
         } elseif (strpos($e->getMessage(), "Calculated commitment key does not match expected commitment key value") !== false) {
             return S3EncryptionClientError($e->getMessage());
         } else {
