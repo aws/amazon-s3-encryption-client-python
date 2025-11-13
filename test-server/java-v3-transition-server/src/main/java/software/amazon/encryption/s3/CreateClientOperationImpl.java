@@ -1,8 +1,8 @@
 package software.amazon.encryption.s3;
 
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.encryption.s3.algorithms.AlgorithmSuite;
 import software.amazon.encryption.s3.internal.InstructionFileConfig;
+import software.amazon.encryption.s3.algorithms.AlgorithmSuite;
 import software.amazon.encryption.s3.materials.AesKeyring;
 import software.amazon.encryption.s3.materials.Keyring;
 import software.amazon.encryption.s3.materials.KmsKeyring;
@@ -21,7 +21,10 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
+import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.spec.InvalidKeySpecException;
+import java.security.spec.RSAPublicKeySpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.Map;
 import java.util.UUID;
@@ -31,7 +34,7 @@ import static software.amazon.encryption.s3.CommitmentPolicy.REQUIRE_ENCRYPT_ALL
 import static software.amazon.encryption.s3.CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT;
 
 public class CreateClientOperationImpl implements CreateClientOperation {
-    private Map<String, S3Client> clientCache_;
+    private final Map<String, S3Client> clientCache_;
 
     public CreateClientOperationImpl(Map<String, S3Client> clientCache) {
         clientCache_ = clientCache;
@@ -74,13 +77,25 @@ public class CreateClientOperationImpl implements CreateClientOperation {
                     key.getRsaKey().get(keyBytes);
                     PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(keyBytes);
                     KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+                    RSAPrivateCrtKey privateKey = (RSAPrivateCrtKey) keyFactory.generatePrivate(keySpec);
+                    RSAPublicKeySpec publicKeySpec = new RSAPublicKeySpec(
+                            privateKey.getModulus(),
+                            privateKey.getPublicExponent()
+                    );
+
+                    // Generate public key
+                    PublicKey publicKey = keyFactory.generatePublic(publicKeySpec);
+
                     keyring = RsaKeyring.builder()
                             .enableLegacyWrappingAlgorithms(input.getConfig().isEnableLegacyWrappingAlgorithms())
                             .wrappingKeyPair(PartialRsaKeyPair.builder()
-                                    .privateKey(keyFactory.generatePrivate(keySpec)).build())
+                                    .publicKey(publicKey)
+                                    .privateKey(privateKey).build())
                             .build();
                 } catch (NoSuchAlgorithmException | InvalidKeySpecException nse) {
-                    throw new RuntimeException(nse);
+                    throw GenericServerError.builder()
+                            .message(nse.getMessage())
+                            .build();
                 }
             } else if (key.getKmsKeyId() != null) {
                 keyring = KmsKeyring.builder()
@@ -91,6 +106,8 @@ public class CreateClientOperationImpl implements CreateClientOperation {
                 throw new RuntimeException("No KeyMaterial found!");
             }
 
+
+            // Client Creation
             boolean instFilePut = false;
             if (input.getConfig().getInstructionFileConfig() != null) {
                 instFilePut = input.getConfig().getInstructionFileConfig().isEnableInstructionFilePutObject();
