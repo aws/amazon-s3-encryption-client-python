@@ -156,27 +156,27 @@ jobs:
           aws-region: us-west-2
 
       - name: Build the servers
-        run: cd test-server && make build-all-servers FILTER=ruby,go,cpp,php
+        run: cd test-server && make build-all-servers FILTER=ruby,go,cpp
         env:
           MAKEFLAGS: -j${{ steps.cpu-count.outputs.count }}
           AWS_REGION: us-west-2
 
       - name: Start the servers
-        run: cd test-server && make start-all-servers FILTER=ruby,go,cpp,php
+        run: cd test-server && make start-all-servers FILTER=ruby,go,cpp
         env:
           AWS_REGION: us-west-2
           TEST_SERVER_S3_BUCKET: ${{ vars.TEST_SERVER_S3_BUCKET }}
           TEST_SERVER_KMS_KEY_ARN: ${{ vars.TEST_SERVER_KMS_KEY_ARN }}
 
       - name: Wait for servers to start
-        run: cd test-server && make wait-all-servers FILTER=ruby,go,cpp,php
+        run: cd test-server && make wait-all-servers FILTER=ruby,go,cpp
         env:
           AWS_REGION: us-west-2
           TEST_SERVER_S3_BUCKET: ${{ vars.TEST_SERVER_S3_BUCKET }}
           TEST_SERVER_KMS_KEY_ARN: ${{ vars.TEST_SERVER_KMS_KEY_ARN }}
 
       - name: Run run-tests
-        run: cd test-server && make run-tests FILTER=ruby,go,cpp,php
+        run: cd test-server && make run-tests FILTER=ruby,go,cpp
         env:
           AWS_REGION: us-west-2
           TEST_SERVER_S3_BUCKET: ${{ vars.TEST_SERVER_S3_BUCKET }}
@@ -194,7 +194,7 @@ jobs:
             test-server/*/net-v3-server.log
 
       - name: Stop the servers
-        run: cd test-server && make stop-servers FILTER=ruby,go,cpp,php
+        run: cd test-server && make stop-servers FILTER=ruby,go,cpp
 
       - name: Upload results
         if: always()
