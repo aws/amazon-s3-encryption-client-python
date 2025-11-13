@@ -263,7 +263,7 @@ class GCMTests {
         .build());
         String S3ECId = clientOutput.getClientId();
         
-        TestUtils.Decrypt_fails(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF);
+        TestUtils.DecryptWithRangedGet_fails(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF);
     }
     
 }

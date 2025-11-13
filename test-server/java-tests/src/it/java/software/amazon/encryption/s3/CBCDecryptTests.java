@@ -168,14 +168,15 @@ class CBCDecryptTests {
 
     // Ranged Get Tests - using existing CBC encrypted object with ranged-get-supported clients
 
-    @ParameterizedTest(name = "{0}: Transition clients can ranged get CBC")
+    @ParameterizedTest(name = "{0}: Transition configured with ForbidEncryptAllowDecrypt can ranged get CBC")
     @MethodSource("software.amazon.encryption.s3.TestUtils#rangedGetTransitionClientsForTest")
     void transition_configured_with_forbid_encrypt_allow_decrypt_ranged_get_cbc(TestUtils.LanguageServerTarget language) {
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
         .config(S3ECConfig.builder()
         .keyMaterial(kmsKeyArn)
-        .commitmentPolicy(CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT)
+        .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+        .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
         .enableLegacyUnauthenticatedModes(true)
         .enableLegacyWrappingAlgorithms(true)
         .build())
@@ -185,7 +186,7 @@ class CBCDecryptTests {
         TestUtils.DecryptWithRangedGet(client, S3ECId, Arrays.asList(sharedObjectKey), EncryptionAlgorithm.ALG_AES_256_CBC_IV16_NO_KDF);
     }
 
-    @ParameterizedTest(name = "{0}: Improved (Forbid) clients can ranged get CBC")
+    @ParameterizedTest(name = "{0}: Improved configured with ForbidEncryptAllowDecrypt can ranged get CBC")
     @MethodSource("software.amazon.encryption.s3.TestUtils#rangedGetImprovedClientsForTest")
     void improved_configured_with_forbid_encrypt_allow_decrypt_should_ranged_get_cbc(TestUtils.LanguageServerTarget language) {
         S3ECTestServerClient decClient = TestUtils.testServerClientFor(language);
@@ -203,7 +204,7 @@ class CBCDecryptTests {
         TestUtils.DecryptWithRangedGet(decClient, decS3ECId, Arrays.asList(sharedObjectKey), EncryptionAlgorithm.ALG_AES_256_CBC_IV16_NO_KDF);
     }
 
-    @ParameterizedTest(name = "{0}: Improved (Require/Allow) clients can ranged get CBC")
+    @ParameterizedTest(name = "{0}: Improved configured with RequireEncryptAllowDecrypt should ranged get CBC")
     @MethodSource("software.amazon.encryption.s3.TestUtils#rangedGetImprovedClientsForTest")
     void improved_configured_with_require_encrypt_allow_decrypt_should_ranged_get_cbc(TestUtils.LanguageServerTarget language) {
         S3ECTestServerClient decClient = TestUtils.testServerClientFor(language);
@@ -220,7 +221,7 @@ class CBCDecryptTests {
         TestUtils.DecryptWithRangedGet(decClient, decS3ECId, Arrays.asList(sharedObjectKey), EncryptionAlgorithm.ALG_AES_256_CBC_IV16_NO_KDF);
     }
 
-    @ParameterizedTest(name = "{0}: Improved (Require/Require) clients CANNOT ranged get CBC")
+    @ParameterizedTest(name = "{0}: Improved configured with RequireEncryptRequireDecrypt should FAIL to ranged get CBC")
     @MethodSource("software.amazon.encryption.s3.TestUtils#rangedGetImprovedClientsForTest")
     void improved_configured_with_require_encrypt_require_decrypt_should_ranged_get_cbc(TestUtils.LanguageServerTarget language) {
         S3ECTestServerClient decClient = TestUtils.testServerClientFor(language);
@@ -233,6 +234,6 @@ class CBCDecryptTests {
                 .build());
         String decS3ECId = decClientOutput.getClientId();
 
-        TestUtils.DecryptWithRangedGet(decClient, decS3ECId, Arrays.asList(sharedObjectKey), EncryptionAlgorithm.ALG_AES_256_CBC_IV16_NO_KDF);
+        TestUtils.DecryptWithRangedGet_fails(decClient, decS3ECId, Arrays.asList(sharedObjectKey), EncryptionAlgorithm.ALG_AES_256_CBC_IV16_NO_KDF);
     }
 }

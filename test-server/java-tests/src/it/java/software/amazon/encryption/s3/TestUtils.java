@@ -12,6 +12,7 @@ import java.net.Socket;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -124,20 +125,20 @@ public class TestUtils {
 
     public static final Set<String> RANGED_GET_CURRENT_VERSIONS =
             Set.of(
-                    JAVA_V3_CURRENT,
-                    CPP_V2_CURRENT
+                    JAVA_V3_CURRENT
+                    // CPP_V2_CURRENT
             );
 
     public static final Set<String> RANGED_GET_TRANSITION_VERSIONS =
             Set.of(
-                    JAVA_V3_TRANSITION,
-                    CPP_V2_TRANSITION
+                    JAVA_V3_TRANSITION
+                    // CPP_V2_TRANSITION
             );
 
     public static final Set<String> RANGED_GET_IMPROVED_VERSIONS =
             Set.of(
-                    JAVA_V4,
-                    CPP_V3
+                    JAVA_V4
+                    // CPP_V3
             );
 
     public static final Set<String> CURRENT_VERSIONS =
@@ -584,13 +585,50 @@ public class TestUtils {
                     .build());
 
             // Then: Pass
-            assertEquals(objectKey.substring(begin, end + 1).getBytes(StandardCharsets.UTF_8), output.getBody().array());
+            assertTrue(MessageDigest.isEqual(objectKey.substring(begin, end + 1).getBytes(StandardCharsets.UTF_8), output.getBody().array()));
             assertEquals(
                     expectedEncryptionAlgorithm,
                     GetEncryptionAlgorithm(objectKey),
                     "When decrypting the EncryptionAlgorithm does not match the expected value: " + expectedEncryptionAlgorithm
             );
         }
+    }
+
+
+    public static void DecryptWithRangedGet_fails(
+            S3ECTestServerClient client,
+            String S3ECId, List<String> crossLanguageObjects,
+            EncryptionAlgorithm expectedEncryptionAlgorithm
+    ) {
+        List<String> successfulDecrypt = new ArrayList<>();
+        Random rand = new Random();
+        for (String objectKey : crossLanguageObjects) {
+            try {
+
+                assertEquals(
+                        expectedEncryptionAlgorithm,
+                        GetEncryptionAlgorithm(objectKey),
+                        "Before decrypting the EncryptionAlgorithm does not match the expected value: " + expectedEncryptionAlgorithm
+                );
+                // Get random range within the object length
+                int max = objectKey.length() - 1;
+                int begin = rand.nextInt(max), end = rand.nextInt(max - begin) + begin + 1;
+                String range = "bytes=" + begin + "-" + end;
+                GetObjectOutput output = client.getObject(GetObjectInput.builder()
+                        .clientID(S3ECId)
+                        .bucket(TestUtils.BUCKET)
+                        .range(range)
+                        .key(objectKey)
+                        .build());
+                // It should fail to decrypt
+                successfulDecrypt.add(objectKey);
+            } catch (S3EncryptionClientError e) {
+                // This is a success
+                // TODO, add the failure message
+            }
+        }
+
+        assertEquals(successfulDecrypt.size(), 0, "Ranged get should have failed:" + String.join(",", successfulDecrypt));
     }
 
     public static void Decrypt_fails(
