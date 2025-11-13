@@ -106,37 +106,35 @@ public class CreateClientOperationImpl implements CreateClientOperation {
                 throw new RuntimeException("No KeyMaterial found!");
             }
 
+            // V4-Improved server configuration
+            S3EncryptionClient.Builder s3ClientBuilder = S3EncryptionClient.builderV4()
+                    .keyring(keyring)
+                    .enableLegacyWrappingAlgorithms(input.getConfig().isEnableLegacyWrappingAlgorithms())
+                    .enableLegacyUnauthenticatedModes(input.getConfig().isEnableLegacyUnauthenticatedModes());
 
             // Client Creation
             boolean instFilePut = false;
             if (input.getConfig().getInstructionFileConfig() != null) {
                 instFilePut = input.getConfig().getInstructionFileConfig().isEnableInstructionFilePutObject();
+                s3ClientBuilder.instructionFileConfig(InstructionFileConfig.builder()
+                        .instructionFileClient(S3Client.create())
+                        .enableInstructionFilePutObject(instFilePut)
+                        .build());
             }
 
             // Configure commitment policy if provided
-            software.amazon.encryption.s3.CommitmentPolicy policy = CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT;
             if (input.getConfig().getCommitmentPolicy() != null) {
-                policy = getCommitmentPolicy(input.getConfig().getCommitmentPolicy());
+                CommitmentPolicy policy = getCommitmentPolicy(input.getConfig().getCommitmentPolicy());
+                s3ClientBuilder.commitmentPolicy(policy);
             }
 
             // Configure encryption algorithm if provided
-            AlgorithmSuite algorithm = AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY;
             if (input.getConfig().getEncryptionAlgorithm() != null) {
-                algorithm = getAlgorithmSuite(input.getConfig().getEncryptionAlgorithm());
+                AlgorithmSuite algorithm = getAlgorithmSuite(input.getConfig().getEncryptionAlgorithm());
+                s3ClientBuilder.encryptionAlgorithm(algorithm);
             }
 
-            // V4-Improved server configuration
-            S3EncryptionClient s3Client = S3EncryptionClient.builderV4()
-                    .instructionFileConfig(InstructionFileConfig.builder()
-                            .instructionFileClient(S3Client.create())
-                            .enableInstructionFilePutObject(instFilePut)
-                            .build())
-                    .keyring(keyring)
-                    .commitmentPolicy(policy)
-                    .encryptionAlgorithm(algorithm)
-                    .enableLegacyWrappingAlgorithms(input.getConfig().isEnableLegacyWrappingAlgorithms())
-                    .enableLegacyUnauthenticatedModes(input.getConfig().isEnableLegacyUnauthenticatedModes())
-                    .build();
+            S3Client s3Client = s3ClientBuilder.build();
 
             UUID uuid = UUID.randomUUID();
             String uuidString = uuid.toString();
