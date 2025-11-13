@@ -27,10 +27,6 @@
 	path = test-server/specification
 	url = git@github.com:awslabs/private-aws-encryption-sdk-specification-staging.git
 	branch = fire-egg-staging
-[submodule "test-server/php-v2-transition-server/local-php-sdk"]
-	path = test-server/php-v2-transition-server/local-php-sdk
-	url = git@github.com:aws/private-aws-sdk-php-staging.git
-	branch = s3ec/transitional
 [submodule "test-server/net-v2-v3-server/s3ec-net-v2"]
 	path = test-server/net-v2-v3-server/s3ec-net-v2
 	url = https://github.com/aws/private-amazon-s3-encryption-client-dotnet-staging.git
