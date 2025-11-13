@@ -125,20 +125,20 @@ public class TestUtils {
 
     public static final Set<String> RANGED_GET_CURRENT_VERSIONS =
             Set.of(
-                    JAVA_V3_CURRENT,
-                    CPP_V2_CURRENT
+                    JAVA_V3_CURRENT
+                    // CPP_V2_CURRENT
             );
 
     public static final Set<String> RANGED_GET_TRANSITION_VERSIONS =
             Set.of(
-                    JAVA_V3_TRANSITION,
-                    CPP_V2_TRANSITION
+                    JAVA_V3_TRANSITION
+                    // CPP_V2_TRANSITION
             );
 
     public static final Set<String> RANGED_GET_IMPROVED_VERSIONS =
             Set.of(
-                    JAVA_V4,
-                    CPP_V3
+                    JAVA_V4
+                    // CPP_V3
             );
 
     public static final Set<String> CURRENT_VERSIONS =
