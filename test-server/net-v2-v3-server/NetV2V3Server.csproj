@@ -28,7 +28,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Compile Include="**/*.cs" Exclude="s3ec-net-*/**/*.cs;obj/**;bin/**" />
+        <Compile Include="**/*.cs" Exclude="s3ec-net-*/**/*.cs" />
     </ItemGroup>
 
     <ItemGroup>
