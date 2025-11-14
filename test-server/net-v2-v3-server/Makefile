@@ -11,6 +11,7 @@ build-server:
 	@echo "Building .NET V2 and V3 servers..."
 	rm -rf obj/v2 bin/v2 obj/v3 bin/v3
 	dotnet build -p:S3EncryptionVersion=v2 -o bin/v2 -p:BaseIntermediateOutputPath=obj/v2/
+	rm -rf obj
 	dotnet build -p:S3EncryptionVersion=v3 -o bin/v3 -p:BaseIntermediateOutputPath=obj/v3/
 
 start-server:

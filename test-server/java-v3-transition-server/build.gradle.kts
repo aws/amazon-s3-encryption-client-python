@@ -14,7 +14,7 @@ dependencies {
     implementation("software.amazon.smithy.java:aws-server-restjson:$smithyJavaVersion")
 
     // S3EC from local Maven repository (installed by mvn install)
-    implementation("software.amazon.encryption.s3:amazon-s3-encryption-client-java:3.4.0-TRANSITION")
+    implementation("software.amazon.encryption.s3:amazon-s3-encryption-client-java:3.4.0-read-kc")
 }
 
 // Use that application plugin to start the service via the `run` task.
