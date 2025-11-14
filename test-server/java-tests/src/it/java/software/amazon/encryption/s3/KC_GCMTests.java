@@ -14,34 +14,23 @@ import java.security.KeyPairGenerator;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.amazonaws.services.s3.model.KMSEncryptionMaterials;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
+import org.opentest4j.TestAbortedException;
 import software.amazon.encryption.s3.client.S3ECTestServerClient;
 import software.amazon.encryption.s3.model.CommitmentPolicy;
 import software.amazon.encryption.s3.model.CreateClientInput;
 import software.amazon.encryption.s3.model.CreateClientOutput;
 import software.amazon.encryption.s3.model.EncryptionAlgorithm;
-import software.amazon.encryption.s3.model.GetObjectInput;
-import software.amazon.encryption.s3.model.GetObjectOutput;
+import software.amazon.encryption.s3.model.InstructionFileConfig;
 import software.amazon.encryption.s3.model.KeyMaterial;
-import software.amazon.encryption.s3.model.PutObjectInput;
 import software.amazon.encryption.s3.model.S3ECConfig;
-import software.amazon.encryption.s3.model.S3EncryptionClientError;
 
-import com.amazonaws.services.s3.AmazonS3Encryption;
-import com.amazonaws.services.s3.AmazonS3EncryptionClient;
-import com.amazonaws.services.s3.model.CryptoConfiguration;
-import com.amazonaws.services.s3.model.CryptoMode;
-import com.amazonaws.services.s3.model.CryptoStorageMode;
 import software.amazon.encryption.s3.TestUtils.*;
-import com.amazonaws.services.s3.model.EncryptionMaterialsProvider;
-import com.amazonaws.services.s3.model.KMSEncryptionMaterialsProvider;
 
 /**
 * Exhaustive tests for S3 Encryption Client round-trip operations.
@@ -59,8 +48,7 @@ class KC_GCMTests {
     private static KeyMaterial kmsKeyArn = KeyMaterial.builder()
     .kmsKeyId(TestUtils.KMS_KEY_ARN)
     .build();
-    private static final List<String> crossLanguageObjectsMetaDataMode = new ArrayList<>();
-    private static final List<String> crossLanguageObjectsInstructionFiles = new ArrayList<>();
+    private static final List<String> crossLanguageObjects = new ArrayList<>();
     private static KeyPair RSA_KEY_PAIR_1;
 
     @BeforeAll
@@ -83,7 +71,7 @@ class KC_GCMTests {
         .build());
         String S3ECId = clientOutput.getClientId();
         
-        TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBaseMetaDataMode + language.getLanguageName()), crossLanguageObjectsMetaDataMode, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+        TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBaseMetaDataMode + language.getLanguageName()), crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
     }
 
     @Order(2)
@@ -110,7 +98,7 @@ class KC_GCMTests {
           .build());
         String S3ECId = clientOutput.getClientId();
 
-        TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBaseInsFileMode + language.getLanguageName()), crossLanguageObjectsInstructionFiles, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+        TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBaseInsFileMode + language.getLanguageName()), crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
     }
 
     @Order(2)
@@ -126,7 +114,7 @@ class KC_GCMTests {
         .build());
         String S3ECId = clientOutput.getClientId();
         
-        TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBaseMetaDataMode + language.getLanguageName()), crossLanguageObjectsMetaDataMode, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+        TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBaseMetaDataMode + language.getLanguageName()), crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
     }
 
     @Order(2)
@@ -142,7 +130,7 @@ class KC_GCMTests {
         .build());
         String S3ECId = clientOutput.getClientId();
         
-        TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBaseMetaDataMode + language.getLanguageName()), crossLanguageObjectsMetaDataMode, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+        TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBaseMetaDataMode + language.getLanguageName()), crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
     }
         
     @Order(10)
@@ -159,7 +147,7 @@ class KC_GCMTests {
         .build());
         String S3ECId = clientOutput.getClientId();
         
-        TestUtils.Decrypt(client, S3ECId, crossLanguageObjectsMetaDataMode, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+        TestUtils.Decrypt(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
     }
 
     @Order(11)
@@ -176,7 +164,7 @@ class KC_GCMTests {
         .build());
         String S3ECId = clientOutput.getClientId();
         
-        TestUtils.Decrypt(client, S3ECId, crossLanguageObjectsMetaDataMode, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+        TestUtils.Decrypt(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
     }
 
     @Order(12)
@@ -194,7 +182,7 @@ class KC_GCMTests {
         .build());
         String S3ECId = clientOutput.getClientId();
         
-        TestUtils.Decrypt(client, S3ECId, crossLanguageObjectsMetaDataMode, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+        TestUtils.Decrypt(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
     }
     
     @Order(13)
@@ -211,7 +199,7 @@ class KC_GCMTests {
         .build());
         String S3ECId = clientOutput.getClientId();
         
-        TestUtils.Decrypt(client, S3ECId, crossLanguageObjectsMetaDataMode, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+        TestUtils.Decrypt(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
     }
     
     @Order(14)
@@ -228,7 +216,7 @@ class KC_GCMTests {
         .build());
         String S3ECId = clientOutput.getClientId();
         
-        TestUtils.Decrypt(client, S3ECId, crossLanguageObjectsMetaDataMode, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+        TestUtils.Decrypt(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
     }
 
     @Order(15)
@@ -245,7 +233,7 @@ class KC_GCMTests {
         .build());
         String S3ECId = clientOutput.getClientId();
         
-        TestUtils.Decrypt(client, S3ECId, crossLanguageObjectsMetaDataMode, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+        TestUtils.Decrypt(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
     }
 
     @Order(16)
@@ -272,7 +260,7 @@ class KC_GCMTests {
           .build());
         String S3ECId = clientOutput.getClientId();
 
-        TestUtils.Decrypt(client, S3ECId, crossLanguageObjectsInstructionFiles, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+        TestUtils.Decrypt(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
     }
 
     // Ranged Get Tests - using existing KC-GCM encrypted objects with ranged-get-supported clients
