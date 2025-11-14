@@ -613,12 +613,12 @@ public class RoundTripTests {
 
     @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
     @MethodSource("software.amazon.encryption.s3.TestUtils#crossLanguageClients")
-    public void rsaWithInstructionFileRoundTrip(LanguageServerTarget encLang, LanguageServerTarget decLang) throws Exception {
+    public void instructionFileWriteAndReadWithRSA(LanguageServerTarget encLang, LanguageServerTarget decLang) throws Exception {
         if (!RAW_SUPPORTED.contains(encLang.getLanguageName())) {
-            throw new TestAbortedException("not encrypting raw keyrings with: " + encLang.getLanguageName());
+            throw new TestAbortedException("not encrypting raw keyring with: " + encLang.getLanguageName());
         }
         if (!RAW_SUPPORTED.contains(decLang.getLanguageName())) {
-            throw new TestAbortedException("not decrypting raw keyrings with: " + decLang.getLanguageName());
+            throw new TestAbortedException("not decrypting raw keyring with: " + decLang.getLanguageName());
         }
         S3ECTestServerClient encClient = testServerClientFor(encLang);
         S3ECTestServerClient decClient = testServerClientFor(decLang);
@@ -636,8 +636,8 @@ public class RoundTripTests {
             .instructionFileConfig(InstructionFileConfig.builder()
                 .enableInstructionFilePutObject(true)
                 .build())
-            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY)
-            .commitmentPolicy(CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT)
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
+            .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
             .keyMaterial(rsaKeyOne).build())
           .build());
         String encS3ECId = encClientOutput.getClientId();
@@ -646,8 +646,8 @@ public class RoundTripTests {
             .instructionFileConfig(InstructionFileConfig.builder()
                 .enableInstructionFilePutObject(true)
                 .build())
-            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY)
-            .commitmentPolicy(CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT)
+            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
+            .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
             .keyMaterial(rsaKeyOne).build())
           .build());
         String decS3ECId = decClientOutput.getClientId();
