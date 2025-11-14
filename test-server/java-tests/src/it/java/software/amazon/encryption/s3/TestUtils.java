@@ -193,7 +193,6 @@ public class TestUtils {
         servers.put(NET_V4, new LanguageServerTarget(NET_V4, "8090"));
         servers.put(RUBY_V3, new LanguageServerTarget(RUBY_V3, "8092"));
         servers.put(PHP_V3, new LanguageServerTarget(PHP_V3, "8093"));
-        // TODO: Create and add transition servers
         servers.put(JAVA_V3_TRANSITION, new LanguageServerTarget(JAVA_V3_TRANSITION, "8094"));
         servers.put(GO_V3_TRANSITION, new LanguageServerTarget(GO_V3_TRANSITION, "8095"));
         // servers.put(NET_V2_TRANSITION, new LanguageServerTarget(NET_V2_TRANSITION, "8096"));

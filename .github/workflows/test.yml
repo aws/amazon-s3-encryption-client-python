@@ -21,70 +21,56 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
         with:
-          submodules: true
+          submodules: false
           # This is Ryan Emery's (seebees) PAT.
           # To grant this workflow access to a new private repo,
           # ask Ryan to edit this PAT's permissions to add access to a new private repo.
           token: ${{ secrets.PAT_FOR_PRIVATE_RUBY }}
 
-      - name: Checkout CPP code for cpp-v2-transition
-        uses: actions/checkout@v5
-        with:
-          submodules: recursive
-          token: ${{ secrets.PAT_FOR_CPP }}
-          repository: awslabs/aws-sdk-cpp-staging
-          ref: fire-egg-dev
-          path: test-server/cpp-v2-transition-server/aws-sdk-cpp/
+      # There are a lot of submodules here
+      # This initializes the checkouts in parallel (--jobs)
+      # rather than in series the way actions/checkout@v5 does it.
 
-      - name: Checkout CPP code cpp-v3
-        uses: actions/checkout@v5
-        with:
-          submodules: recursive
-          token: ${{ secrets.PAT_FOR_CPP }}
-          repository: awslabs/aws-sdk-cpp-staging
-          ref: fire-egg-dev
-          path: test-server/cpp-v3-server/aws-sdk-cpp/
+      - name: Get CPU count
+        id: cpu-count
+        run: echo "count=$(node -p 'require("os").cpus().length')" >> $GITHUB_OUTPUT
 
-      - name: Checkout .NET V2 code
-        uses: actions/checkout@v5
-        with:
-          token: ${{ secrets.PAT_FOR_DOTNET }}
-          repository: aws/private-amazon-s3-encryption-client-dotnet-staging
-          # This is the branch for S3EC .NET V2
-          ref: v3sdk-development
-          path: test-server/net-v2-v3-server/s3ec-net-v2/
+      - name: Setup git submodules with PAT
+        run: |
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git config --global credential.helper store
+          echo "https://x-token-auth:${{ secrets.PAT_FOR_PRIVATE_RUBY }}@github.com" > ~/.git-credentials
 
-      - name: Checkout .NET V3 code
-        uses: actions/checkout@v5
+      - name: Cache git submodules
+        uses: actions/cache@v4
         with:
-          token: ${{ secrets.PAT_FOR_DOTNET }}
-          repository: aws/private-amazon-s3-encryption-client-dotnet-staging
-          # This is the branch for S3EC .NET V3
-          ref: s3ec-v3
-          path: test-server/net-v2-v3-server/s3ec-net-v3
+          path: |
+            .git/modules
+            test-server/*/.git
+          key: ${{ runner.os }}-submodules-${{ hashFiles('.gitmodules') }}
+          restore-keys: |
+            ${{ runner.os }}-submodules-
 
-      - name: Checkout .NET V3 code (Transition)
-        uses: actions/checkout@v5
-        with:
-          token: ${{ secrets.PAT_FOR_DOTNET }}
-          repository: aws/private-amazon-s3-encryption-client-dotnet-staging
-          # This is the branch for S3EC .NET V3 transition
-          ref: rishav/key-commitment
-          path: test-server/net-v3-transition-server/s3ec-v3-transition-branch
+      - name: Optimize git for performance
+        run: |
+          git config --global fetch.parallel ${{ steps.cpu-count.outputs.count }}
+          git config --global submodule.fetchJobs ${{ steps.cpu-count.outputs.count }}
+          git config --global remote.origin.tagOpt --no-tags
 
-      - name: Checkout .NET V4 (Improved) code
-        uses: actions/checkout@v5
-        with:
-          token: ${{ secrets.PAT_FOR_DOTNET }}
-          repository: aws/private-amazon-s3-encryption-client-dotnet-staging
-          # This is the branch for S3EC .NET V4 (improved)
-          ref: s3ec-v4-WIP
-          path: test-server/net-v4-server/s3ec-net-v4-improved
+      - name: Checkout submodules with --jobs
+        run: |
+          git submodule update --init --depth 1 --jobs ${{ steps.cpu-count.outputs.count }}
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ inputs.python-version || '3.11' }}
+      - name: Update cpp submodules recursively with --jobs
+        run: |
+          git submodule update --init --recursive \
+            --depth 1 \
+            --filter=blob:none \
+            --jobs ${{ steps.cpu-count.outputs.count }} \
+            --force \
+            test-server/cpp-v2-transition-server/aws-sdk-cpp \
+            test-server/cpp-v3-server/aws-sdk-cpp \
+            test-server/cpp-v2-server/aws-sdk-cpp
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -116,17 +102,39 @@ jobs:
         with:
           go-version: 1.25
 
-      # Cache uv dependencies
-      - name: Cache uv dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/uv
-          key: ${{ runner.os }}-uv-${{ hashFiles('./test-server/python-v3-server/**/pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-uv-
+      - name: Install C++ dependencies
+        run: |
+          brew install libmicrohttpd nlohmann-json ossp-uuid
 
-      - name: Install Uv
-        run: pip install uv
+      # Legacy Python tests:
+      # - name: Set up Python
+      #   uses: actions/setup-python@v5
+      #   with:
+      #     python-version: ${{ inputs.python-version || '3.11' }}
+      # 
+      # # Cache uv dependencies
+      # - name: Cache uv dependencies
+      #   uses: actions/cache@v3
+      #   with:
+      #     path: ~/.cache/uv
+      #     key: ${{ runner.os }}-uv-${{ hashFiles('./test-server/python-v3-server/**/pyproject.toml') }}
+      #     restore-keys: |
+      #       ${{ runner.os }}-uv-
+
+      # - name: Install Uv
+      #   run: pip install uv
+
+      # - name: Install dependencies
+      #   run: make install
+
+      # - name: Run unit tests
+      #   run: make test-unit
+
+      # - name: Run integration tests
+      #   run: make test-integration
+      #   env:
+      #     CI_S3_BUCKET: ${{ vars.CI_S3_BUCKET }}
+      #     CI_KMS_KEY_ALIAS: ${{ vars.CI_KMS_KEY_ALIAS }}
 
       # Cache Gradle dependencies and build outputs
       - name: Cache Gradle packages
@@ -141,31 +149,52 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      - name: Install dependencies
-        run: make install
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::370957321024:role/S3EC-Python-Github-test-role
           aws-region: us-west-2
 
-      - name: Run unit tests
-        run: make test-unit
-
-      - name: Run integration tests
-        run: make test-integration
+      - name: Build the servers
+        run: cd test-server && make build-all-servers FILTER=ruby,go,cpp,php,java
         env:
-          CI_S3_BUCKET: ${{ vars.CI_S3_BUCKET }}
-          CI_KMS_KEY_ALIAS: ${{ vars.CI_KMS_KEY_ALIAS }}
+          MAKEFLAGS: -j${{ steps.cpu-count.outputs.count }}
+          AWS_REGION: us-west-2
 
-      - name: Run test-server tests
-        run: cd test-server && make ci
+      - name: Start the servers
+        run: cd test-server && make start-all-servers FILTER=ruby,go,cpp,php,java
+        env:
+          AWS_REGION: us-west-2
+          TEST_SERVER_S3_BUCKET: ${{ vars.TEST_SERVER_S3_BUCKET }}
+          TEST_SERVER_KMS_KEY_ARN: ${{ vars.TEST_SERVER_KMS_KEY_ARN }}
+
+      - name: Wait for servers to start
+        run: cd test-server && make wait-all-servers FILTER=ruby,go,cpp,php,java
+        env:
+          AWS_REGION: us-west-2
+          TEST_SERVER_S3_BUCKET: ${{ vars.TEST_SERVER_S3_BUCKET }}
+          TEST_SERVER_KMS_KEY_ARN: ${{ vars.TEST_SERVER_KMS_KEY_ARN }}
+
+      - name: Run run-tests
+        run: cd test-server && make run-tests FILTER=ruby,go,cpp,php,java
         env:
           AWS_REGION: us-west-2
           TEST_SERVER_S3_BUCKET: ${{ vars.TEST_SERVER_S3_BUCKET }}
           TEST_SERVER_KMS_KEY_ARN: ${{ vars.TEST_SERVER_KMS_KEY_ARN }}
           GRADLE_OPTS: "-Dorg.gradle.daemon=true -Dorg.gradle.parallel=true -Dorg.gradle.caching=true"
+
+      - name: Upload server logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-logs
+          path: |
+            test-server/*/server.log
+            test-server/*/net-v2-server.log
+            test-server/*/net-v3-server.log
+
+      - name: Stop the servers
+        run: cd test-server && make stop-servers FILTER=ruby,go,cpp,php,java
 
       - name: Upload results
         if: always()
