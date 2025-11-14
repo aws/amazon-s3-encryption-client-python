@@ -16,6 +16,7 @@ public class ClientConfig
     public long? SetBufferSize { get; set; }
     [Required]
     public KeyMaterial KeyMaterial { get; set; } = new();
+    public InstructionFileConfig? InstructionFileConfig { get; set; }
 }
 
 public class KeyMaterial
@@ -23,4 +24,11 @@ public class KeyMaterial
     public byte[]? RsaKey { get; set; }
     public byte[]? AesKey { get; set; }
     public string? KmsKeyId { get; set; }
+}
+
+public class InstructionFileConfig
+{
+    public string? ClientId { get; set; }
+    public bool EnableInstructionFilePutObject { get; set; } = false;
+    public bool DisableInstructionFile { get; set; } = false;
 }
