@@ -2,9 +2,6 @@
 
 .PHONY: all start-servers run-tests stop-servers clean ci check-env help
 
-# Default target
-all: start-all-servers wait-all-servers run-tests
-
 # CI target for GitHub Actions
 ci:
 	$(MAKE) build-all-servers
@@ -19,9 +16,10 @@ BUILD_SERVER_TARGETS := $(addprefix build-, $(SERVER_DIRS))
 START_SERVER_TARGETS := $(addprefix start-, $(SERVER_DIRS))
 WAIT_SERVER_TARGETS := $(addprefix wait-, $(SERVER_DIRS))
 
-# Build all servers in parallel
-build-all-servers: export MAKEFLAGS=-j$(shell sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo 1)
-build-all-servers: $(BUILD_SERVER_TARGETS)
+build-all-servers:
+	@echo "Building all servers..."
+	@$(MAKE) $(BUILD_SERVER_TARGETS)
+	@echo "All servers built"
 
 $(BUILD_SERVER_TARGETS): build-%:
 	@if [ -f $*/Makefile ]; then \
@@ -32,21 +30,11 @@ $(BUILD_SERVER_TARGETS): build-%:
 		exit 1; \
 	fi
 
-# Build and start all servers
-start-servers:
-	@echo "Building all servers..."
-	$(MAKE) build-all-servers
-	@echo "Starting all servers..."
-	$(MAKE) start-all-servers
-	@echo "Waiting for servers to start..."
-	@for dir in $(SERVER_DIRS); do \
-		echo "Waiting for server in $$dir..."; \
-		$(MAKE) -C $$dir wait-for-server; \
-	done
-
 # Start servers sequentially (no parallel execution)
 start-all-servers:
-	@$(MAKE) MAKEFLAGS= $(START_SERVER_TARGETS)
+	@echo "Starting all server processes..."
+	@$(MAKE) $(START_SERVER_TARGETS)
+	@echo "All servers processes started!"
 
 $(START_SERVER_TARGETS): start-%:
 	@if [ -f $*/Makefile ]; then \
