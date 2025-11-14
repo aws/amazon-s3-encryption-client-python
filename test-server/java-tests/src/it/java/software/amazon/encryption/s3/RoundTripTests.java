@@ -599,10 +599,10 @@ public class RoundTripTests {
             assertFalse(ptInstFile.asUtf8String().isEmpty());
             // Read should be enabled by default
             GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
-                .clientID(decS3ECId)
-                .bucket(BUCKET)
-                .key(objectKey)
-                .build());
+               .clientID(decS3ECId)
+               .bucket(BUCKET)
+               .key(objectKey)
+               .build());
 
             assertEquals(input, new String(output.getBody().array()));
         }
