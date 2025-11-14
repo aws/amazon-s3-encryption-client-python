@@ -18,12 +18,11 @@
 [submodule "test-server/java-v3-transition-server/s3ec-staging"]
 	path = test-server/java-v3-transition-server/s3ec-staging
 	url = git@github.com:aws/private-amazon-s3-encryption-client-java-staging.git
-	branch = imabhichow/s3ec-transition
+	branch = imabhichow/transition-read-kc
 [submodule "test-server/java-v4-server/s3ec-staging"]
 	path = test-server/java-v4-server/s3ec-staging
 	url = git@github.com:aws/private-amazon-s3-encryption-client-java-staging.git
 	branch = imabhichow/add-kc
-; 	branch = s3ec/improved
 [submodule "test-server/specification"]
 	path = test-server/specification
 	url = git@github.com:awslabs/private-aws-encryption-sdk-specification-staging.git
