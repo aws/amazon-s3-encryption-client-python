@@ -21,6 +21,7 @@ public class ClientConfig
     public CommitmentPolicy? CommitmentPolicy { get; set; }
     [JsonPropertyName("encryptionAlgorithm")]
     public EncryptionAlgorithm? EncryptionAlgorithm { get; set; }
+    public InstructionFileConfig? InstructionFileConfig { get; set; }
 }
 
 public class KeyMaterial
@@ -44,4 +45,11 @@ public enum EncryptionAlgorithm
     ALG_AES_256_CBC_IV16_NO_KDF,
     ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
     ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+}
+
+public class InstructionFileConfig
+{
+    public string? ClientId { get; set; }
+    public bool EnableInstructionFilePutObject { get; set; } = false;
+    public bool DisableInstructionFile { get; set; } = false;
 }
