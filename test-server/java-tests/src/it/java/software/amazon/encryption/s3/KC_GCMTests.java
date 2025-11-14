@@ -79,7 +79,7 @@ class KC_GCMTests {
         if (!RAW_SUPPORTED.contains(language.getLanguageName())) {
             throw new TestAbortedException("Not encrypting raw keyring with: " + language.getLanguageName());
         }
-        
+
         KeyMaterial rsaKey = KeyMaterial.builder()
           .rsaKey(ByteBuffer.wrap(RSA_KEY_PAIR_1.getPrivate().getEncoded()))
           .build();
