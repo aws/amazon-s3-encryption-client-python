@@ -30,8 +30,6 @@ import software.amazon.encryption.s3.model.InstructionFileConfig;
 import software.amazon.encryption.s3.model.KeyMaterial;
 import software.amazon.encryption.s3.model.S3ECConfig;
 
-import software.amazon.encryption.s3.TestUtils.*;
-
 /**
 * Exhaustive tests for S3 Encryption Client round-trip operations.
 * These tests cover various combinations of client versions, commitment policies, and encryption modes.
