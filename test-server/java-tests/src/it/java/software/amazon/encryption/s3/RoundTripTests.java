@@ -599,86 +599,84 @@ public class RoundTripTests {
         if (!encLang.getLanguageName().startsWith("Ruby") && !encLang.getLanguageName().startsWith("PHP")) {
             // Ruby and PHP do not include it :(
             assertTrue(ptInstFile.response().metadata().containsKey("x-amz-crypto-instr-file"));
-            assertFalse(ptInstFile.asUtf8String().isEmpty());
-            // Read should be enabled by default
-            GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
-              .clientID(decS3ECId)
-              .bucket(BUCKET)
-              .key(objectKey)
-              .build());
-
-            assertEquals(input, new String(output.getBody().array()));
         }
+        assertFalse(ptInstFile.asUtf8String().isEmpty());
+        // Read should be enabled by default
+        GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
+                .clientID(decS3ECId)
+                .bucket(BUCKET)
+                .key(objectKey)
+                .build());
+
+        assertEquals(input, new String(output.getBody().array()));
     }
 
     @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
     @MethodSource("software.amazon.encryption.s3.TestUtils#crossLanguageClients")
     public void instructionFileWriteAndReadWithRSA(LanguageServerTarget encLang, LanguageServerTarget decLang) throws Exception {
+        // Early validation
         if (!RAW_SUPPORTED.contains(encLang.getLanguageName())) {
             throw new TestAbortedException("not encrypting raw keyring with: " + encLang.getLanguageName());
         }
         if (!RAW_SUPPORTED.contains(decLang.getLanguageName())) {
             throw new TestAbortedException("not decrypting raw keyring with: " + decLang.getLanguageName());
         }
-        S3ECTestServerClient encClient = testServerClientFor(encLang);
-        S3ECTestServerClient decClient = testServerClientFor(decLang);
-        final String objectKey = appendTestSuffix(String.format("rsa-insfile-write-%s-read-%s", encLang.getLanguageName(), decLang.getLanguageName()));
-        final String input = "simple-test-input-rsa";
+
         KeyPairGenerator keyPairGen = KeyPairGenerator.getInstance("RSA");
         keyPairGen.initialize(2048);
-        KeyPair RSA_KEY_PAIR_1 = keyPairGen.generateKeyPair();
+        KeyMaterial rsaKeyMaterial = KeyMaterial.builder()
+                .rsaKey(ByteBuffer.wrap(keyPairGen.generateKeyPair().getPrivate().getEncoded()))
+                .build();
 
-        KeyMaterial rsaKeyOne = KeyMaterial.builder()
-          .rsaKey(ByteBuffer.wrap(RSA_KEY_PAIR_1.getPrivate().getEncoded()))
-          .build();
-        CreateClientOutput encClientOutput = encClient.createClient(CreateClientInput.builder()
-          .config(S3ECConfig.builder()
-            .instructionFileConfig(InstructionFileConfig.builder()
-                .enableInstructionFilePutObject(true)
-                .build())
-            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
-            .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
-            .keyMaterial(rsaKeyOne).build())
-          .build());
-        String encS3ECId = encClientOutput.getClientId();
-        CreateClientOutput decClientOutput = decClient.createClient(CreateClientInput.builder()
-          .config(S3ECConfig.builder()
-            .instructionFileConfig(InstructionFileConfig.builder()
-                .enableInstructionFilePutObject(true)
-                .build())
-            .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
-            .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
-            .keyMaterial(rsaKeyOne).build())
-          .build());
-        String decS3ECId = decClientOutput.getClientId();
+        S3ECConfig config = S3ECConfig.builder()
+                .instructionFileConfig(InstructionFileConfig.builder()
+                        .enableInstructionFilePutObject(true)
+                        .build())
+                .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
+                .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+                .keyMaterial(rsaKeyMaterial)
+                .build();
 
-        // Write with instruction file
+        // Create clients
+        S3ECTestServerClient encClient = testServerClientFor(encLang);
+        S3ECTestServerClient decClient = testServerClientFor(decLang);
+
+        String encS3ECId = encClient.createClient(CreateClientInput.builder().config(config).build()).getClientId();
+        String decS3ECId = decClient.createClient(CreateClientInput.builder().config(config).build()).getClientId();
+
+        final String objectKey = appendTestSuffix(String.format("rsa-insfile-write-%s-read-%s",
+                encLang.getLanguageName(), decLang.getLanguageName()));
+        final String input = "simple-test-input-rsa";
+
+        // Encrypt
         encClient.putObject(PutObjectInput.builder()
-          .clientID(encS3ECId)
-          .bucket(BUCKET)
-          .key(objectKey)
-          .body(ByteBuffer.wrap(input.getBytes(StandardCharsets.UTF_8)))
-          .build());
+                .clientID(encS3ECId)
+                .bucket(BUCKET)
+                .key(objectKey)
+                .body(ByteBuffer.wrap(input.getBytes(StandardCharsets.UTF_8)))
+                .build());
 
         // Assert using Java plaintext client that an instruction file exists
         ResponseBytes<GetObjectResponse> ptInstFile;
         try (S3Client ptS3Client = S3Client.create()) {
             ptInstFile = ptS3Client.getObjectAsBytes(builder -> builder
-              .bucket(BUCKET)
-              .key(objectKey + ".instruction")
-              .build());
+                    .bucket(BUCKET)
+                    .key(objectKey + ".instruction")
+                    .build());
         }
         // Check for inst file key
         if (!encLang.getLanguageName().startsWith("Ruby") && !encLang.getLanguageName().startsWith("PHP")) {
-            assertFalse(ptInstFile.asUtf8String().isEmpty());
-            // Read should be enabled by default
-            GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
-              .clientID(decS3ECId)
-              .bucket(BUCKET)
-              .key(objectKey)
-              .build());
-
-            assertEquals(input, new String(output.getBody().array()));
+            // Ruby and PHP do not include it :(
+            assertTrue(ptInstFile.response().metadata().containsKey("x-amz-crypto-instr-file"));
         }
+        assertFalse(ptInstFile.asUtf8String().isEmpty());
+        // Read should be enabled by default
+        GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
+                .clientID(decS3ECId)
+                .bucket(BUCKET)
+                .key(objectKey)
+                .build());
+
+        assertEquals(input, new String(output.getBody().array()));
     }
 }
