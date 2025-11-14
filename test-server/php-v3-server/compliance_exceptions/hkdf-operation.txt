@@ -1,0 +1,4 @@
+//= ../specification/s3-encryption/key-derivation.md#hkdf-operation
+//= type=exception
+//= reason=PHP allows for AAD for content encryption, so if provided it will do AAD + Alg Suite
+//# The client MUST set the AAD to the Algorithm Suite ID represented as bytes.

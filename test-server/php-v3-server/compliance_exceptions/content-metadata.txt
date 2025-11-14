@@ -47,4 +47,9 @@
 
 //= ../specification/s3-encryption/data-format/content-metadata.md#v3-only
 //= type=exception
-//# If the mapkey is not present, the default Material Description value MUST be set to an empty map (`{}`).
+//# If the mapkey x-amz-m is not present, the default Material Description value MUST be set to an empty map (`{}`).
+
+//= ../specification/s3-encryption/data-format/content-metadata.md#v3-only
+//= type=exception
+//= reason=PHP always writes x-amz-t since it only supports a KMS Material Provider.
+//# If the mapkey x-amz-t is not present, the default Material Description value MUST be set to an empty map (`{}`).
