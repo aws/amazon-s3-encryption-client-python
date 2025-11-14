@@ -18,11 +18,11 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
     {
         // Return 501 for not implemented features by the server
         if (request.Config.EnableDelayedAuthenticationMode)
-            return StatusCode(501, new GenericServerError { Message = "EnableDelayedAuthenticationMode not supported" });
+            return StatusCode(501, new GenericServerError { Message = "[NET-current] EnableDelayedAuthenticationMode not supported" });
         if (request.Config.SetBufferSize.HasValue)
-            return StatusCode(501, new GenericServerError { Message = "SetBufferSize not supported" });
+            return StatusCode(501, new GenericServerError { Message = "[NET-current] SetBufferSize not supported" });
         if (request.Config.KeyMaterial.AesKey != null)
-            return StatusCode(501, new GenericServerError { Message = "AesKey not supported" });
+            return StatusCode(501, new GenericServerError { Message = "[NET-current] AesKey not supported" });
 
         try
         {
@@ -36,7 +36,7 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
                 var kmsKeyId = request.Config.KeyMaterial.KmsKeyId;
                 encryptionMaterial = new EncryptionMaterialsV2(kmsKeyId, KmsType.KmsContext, encryptionContext);
                 logger.LogInformation(
-                    "Created EncryptionMaterialsV2: KMS={KmsKeyId}",
+                    "[NET-current] Created EncryptionMaterialsV2: KMS={KmsKeyId}",
                 kmsKeyId);
             }
             else if (request.Config.KeyMaterial.RsaKey != null)
@@ -49,7 +49,7 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
                     "Created EncryptionMaterialsV2: RSA");
             } else
             {
-                return StatusCode(501, new GenericServerError { Message = "Unknown or missing key material!" });
+                return StatusCode(501, new GenericServerError { Message = "[NET-current] Unknown or missing key material!" });
             }
 
             var enableLegacyUnauthenticatedModes = request.Config.EnableLegacyUnauthenticatedModes;
@@ -59,16 +59,21 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             var enableLegacyMode = enableLegacyUnauthenticatedModes || enableLegacyWrappingAlgorithms;
             var securityProfile = enableLegacyMode ? SecurityProfile.V2AndLegacy : SecurityProfile.V2;
 
-            logger.LogInformation("Created securityProfile= {securityProfile}", securityProfile.ToString());
+            logger.LogInformation("[NET-current] Created securityProfile= {securityProfile}", securityProfile.ToString());
 
             var configuration = new AmazonS3CryptoConfigurationV2(securityProfile);
+            if (request.Config.InstructionFileConfig?.EnableInstructionFilePutObject == true)
+            {
+                configuration.StorageMode = CryptoStorageMode.InstructionFile;
+                logger.LogInformation("[NET-current] Created StorageMode= InstructionFile");
+            }
             // Create S3 encryption client
             var encryptionClient = new AmazonS3EncryptionClientV2(configuration, encryptionMaterial);
             // Add to cache and return client ID
             var clientId = clientCacheService.AddClient(encryptionClient);
             var response = new ClientResponse { ClientId = clientId };
 
-            logger.LogInformation("Created S3EC client with ID: {clientId}", clientId);
+            logger.LogInformation("[NET-current] Created S3EC client with ID: {clientId}", clientId);
 
             return new ContentResult
             {
@@ -79,10 +84,10 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to create S3EC client");
+            logger.LogError(ex, "[NET-current] Failed to create S3EC client");
             return StatusCode(500, new S3EncryptionClientError
             {
-                Message = $"Failed to create client: {ex.Message}"
+                Message = $"[NET-current] Failed to create client: {ex.Message}"
             });
         }
     }
