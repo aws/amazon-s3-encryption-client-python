@@ -168,7 +168,8 @@ void fill_context(Aws::Map<Aws::String, Aws::String> &map,
 MHD_Result handle_get_object(struct MHD_Connection *connection,
                              const std::string &bucket, const std::string &key,
                              const std::string &client_id,
-                             const std::string &metadata) {
+                             const std::string &metadata,
+                             const std::string &range) {
   auto it = client_cache.find(client_id);
   if (it == client_cache.end()) {
     return send_response(connection, 404, "{\"error\":\"Client not found\"}");
@@ -178,6 +179,7 @@ MHD_Result handle_get_object(struct MHD_Connection *connection,
     Aws::S3::Model::GetObjectRequest request;
     request.SetBucket(bucket);
     request.SetKey(key);
+    request.SetRange(range);
 
     // S3EncryptionGetObjectOutcome outcome ;
     // if (metadata.empty()) {
@@ -280,8 +282,9 @@ MHD_Result request_handler(void *cls, struct MHD_Connection *connection,
       std::string client_id = get_header_value(connection, "clientid");
 
       std::string metadata = get_header_value(connection, "content-metadata");
+      std::string range = get_header_value(range, "range")
       if (method_str == "GET") {
-        return handle_get_object(connection, bucket, key, client_id, metadata);
+        return handle_get_object(connection, bucket, key, client_id, metadata, range);
       } else if (method_str == "PUT") {
         std::unique_ptr<std::string> body(static_cast<std::string*>(*con_cls));
         *upload_data_size = 0;
