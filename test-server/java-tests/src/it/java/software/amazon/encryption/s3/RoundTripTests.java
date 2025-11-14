@@ -596,16 +596,16 @@ public class RoundTripTests {
         if (!encLang.getLanguageName().startsWith("Ruby") && !encLang.getLanguageName().startsWith("PHP")) {
             // Ruby and PHP do not include it :(
             assertTrue(ptInstFile.response().metadata().containsKey("x-amz-crypto-instr-file"));
-        }
-        assertFalse(ptInstFile.asUtf8String().isEmpty());
-        // Read should be enabled by default
-        GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
-                .clientID(decS3ECId)
-                .bucket(BUCKET)
-                .key(objectKey)
-                .build());
+            assertFalse(ptInstFile.asUtf8String().isEmpty());
+            // Read should be enabled by default
+            GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
+                    .clientID(decS3ECId)
+                    .bucket(BUCKET)
+                    .key(objectKey)
+                    .build());
 
-        assertEquals(input, new String(output.getBody().array()));
+            assertEquals(input, new String(output.getBody().array()));
+        }
     }
 
     @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
@@ -661,11 +661,7 @@ public class RoundTripTests {
                     .key(objectKey + ".instruction")
                     .build());
         }
-        // Check for inst file key
-        if (!encLang.getLanguageName().startsWith("Ruby") && !encLang.getLanguageName().startsWith("PHP")) {
-            // Ruby and PHP do not include it :(
-            assertTrue(ptInstFile.response().metadata().containsKey("x-amz-crypto-instr-file"));
-        }
+        assertTrue(ptInstFile.response().metadata().containsKey("x-amz-crypto-instr-file"));
         assertFalse(ptInstFile.asUtf8String().isEmpty());
         // Read should be enabled by default
         GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
