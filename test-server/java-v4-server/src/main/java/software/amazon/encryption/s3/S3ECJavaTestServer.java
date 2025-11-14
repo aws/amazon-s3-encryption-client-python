@@ -6,13 +6,13 @@
 package software.amazon.encryption.s3;
 
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.encryption.s3.service.S3ECTestServer;
+import software.amazon.smithy.java.server.Server;
 
 import java.net.URI;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
-import software.amazon.smithy.java.server.Server;
-import software.amazon.encryption.s3.service.S3ECTestServer;
 
 public class S3ECJavaTestServer implements Runnable {
     static final URI endpoint = URI.create("http://localhost:8088");
@@ -29,14 +29,14 @@ public class S3ECJavaTestServer implements Runnable {
         Map<String, S3Client> clientCache = new ConcurrentHashMap<>();
 
         Server server = Server.builder()
-          .endpoints(endpoint)
-          .addService(
-            S3ECTestServer.builder()
-              .addCreateClientOperation(new CreateClientOperationImpl(clientCache))
-              .addGetObjectOperation(new GetObjectOperationImpl(clientCache))
-              .addPutObjectOperation(new PutObjectOperationImpl(clientCache))
-              .build())
-          .build();
+                .endpoints(endpoint)
+                .addService(
+                        S3ECTestServer.builder()
+                                .addCreateClientOperation(new CreateClientOperationImpl(clientCache))
+                                .addGetObjectOperation(new GetObjectOperationImpl(clientCache))
+                                .addPutObjectOperation(new PutObjectOperationImpl(clientCache))
+                                .build())
+                .build();
         System.out.println("Starting server...");
         server.start();
         try {
