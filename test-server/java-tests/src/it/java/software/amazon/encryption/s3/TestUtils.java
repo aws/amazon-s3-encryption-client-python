@@ -492,18 +492,33 @@ public class TestUtils {
 
     public static void Decrypt(
         S3ECTestServerClient client,
-        String S3ECId, List<String> crossLanguageObjects,
+        String S3ECId,
+        List<String> crossLanguageObjects,
         EncryptionAlgorithm expectedEncryptionAlgorithm
     ) {
-        for (String objectKey : crossLanguageObjects) {
+        // Call 5-parameter version with crossLanguageObjects as expectedPlaintexts
+        Decrypt(client, S3ECId, crossLanguageObjects, expectedEncryptionAlgorithm, crossLanguageObjects);
+    }
+
+    public static void Decrypt(
+        S3ECTestServerClient client,
+        String S3ECId,
+        List<String> crossLanguageObjects,
+        EncryptionAlgorithm expectedEncryptionAlgorithm,
+        List<String> expectedPlaintexts
+    ) {
+        for (int i = 0; i < crossLanguageObjects.size(); i++) {
+            String objectKey = crossLanguageObjects.get(i);
+            String expectedPlaintext = expectedPlaintexts.get(i);
+            
             GetObjectOutput output = client.getObject(GetObjectInput.builder()
-            .clientID(S3ECId)
-            .bucket(TestUtils.BUCKET)
-            .key(objectKey)
-            .build());
+                .clientID(S3ECId)
+                .bucket(TestUtils.BUCKET)
+                .key(objectKey)
+                .build());
 
             // Then: Pass
-            assertEquals(objectKey, new String(output.getBody().array()));
+            assertEquals(expectedPlaintext, new String(output.getBody().array()));
             assertEquals(
                 expectedEncryptionAlgorithm,
                 GetEncryptionAlgorithm(objectKey),
