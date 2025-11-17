@@ -17,6 +17,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -54,25 +57,46 @@ import software.amazon.encryption.s3.model.S3ECConfig;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class InstructionFileFailures {
-    private static final String sharedObjectKeyBaseMetaDataMode = "test-kc-gcm-kms";
-    private static final String sharedObjectKeyBaseInsFileMode = "test-kc-gcm-kms-instruction-file";
+    private static final String sharedObjectKeyBaseMetaDataMode = "test-instruction-files-cases";
     private static KeyMaterial kmsKeyArn = KeyMaterial.builder()
     .kmsKeyId(TestUtils.KMS_KEY_ARN)
     .build();
-    private static final List<String> crossLanguageObjects = new ArrayList<>();
-    private static KeyPair RSA_KEY_PAIR_1;
+    private static final List<String> crossLanguageObjectsKms = new ArrayList<>();
+    private static final List<String> crossLanguageObjectsRsa = new ArrayList<>();
+    private static final List<String> crossLanguageObjectsAes = new ArrayList<>();
+
+    private static KeyMaterial RSA_KEY;
+    private static KeyMaterial AES_KEY;
 
     @BeforeAll
     static void setupKeys() throws Exception {
         KeyPairGenerator keyPairGen = KeyPairGenerator.getInstance("RSA");
         keyPairGen.initialize(2048);
-        RSA_KEY_PAIR_1 = keyPairGen.generateKeyPair();
+        KeyPair keyPair = keyPairGen.generateKeyPair();
+
+        RSA_KEY = KeyMaterial.builder()
+          .rsaKey(ByteBuffer.wrap(keyPair.getPrivate().getEncoded()))
+          .build();
+
+        KeyGenerator keyGen = KeyGenerator.getInstance("AES");
+        keyGen.init(256);
+        SecretKey aesSecretKey = keyGen.generateKey();
+
+        AES_KEY = KeyMaterial.builder()
+            .aesKey(ByteBuffer.wrap(aesSecretKey.getEncoded()))
+            .build();
     }
 
     public static Stream<Arguments> improvedClientsCanPutKMSWithInstructionFile() {
         return improvedClientsForTest()
             .filter(target -> !INSTRUCTION_FILE_PUT_UNSUPPORTED.contains(((LanguageServerTarget) target.get()[0]).getLanguageName()))
             .filter(target -> !KMS_INSTRUCTION_FILE_UNSUPPORTED.contains(((LanguageServerTarget) target.get()[0]).getLanguageName()));
+    }
+
+    public static Stream<Arguments> improvedClientsCanPutRawWithInstructionFile() {
+        return improvedClientsForTest()
+            .filter(target -> !INSTRUCTION_FILE_PUT_UNSUPPORTED.contains(((LanguageServerTarget) target.get()[0]).getLanguageName()))
+            .filter(target -> RAW_SUPPORTED.contains(((LanguageServerTarget) target.get()[0]).getLanguageName()));
     }
 
     public static Stream<Arguments> clientsCanGetKMSWithInstructionFile() {
@@ -85,6 +109,16 @@ class InstructionFileFailures {
         return Stream.concat(improved, transition);
     }
 
+    public static Stream<Arguments> clientsCanGetRawWithInstructionFile() {
+        Stream<Arguments> improved = improvedClientsForTest()
+            .filter(target -> RAW_SUPPORTED.contains(((LanguageServerTarget) target.get()[0]).getLanguageName()));
+        
+        Stream<Arguments> transition = transitionClientsForTest()
+            .filter(target -> RAW_SUPPORTED.contains(((LanguageServerTarget) target.get()[0]).getLanguageName()));
+        
+        return Stream.concat(improved, transition);
+    }
+
     @Order(1)
     @ParameterizedTest(name = "{0}: Encrypt KMS KC-GCM with instruction files")
     @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#improvedClientsCanPutKMSWithInstructionFile")
@@ -93,7 +127,6 @@ class InstructionFileFailures {
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
         .config(S3ECConfig.builder()
         .keyMaterial(kmsKeyArn)
-        .commitmentPolicy(CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT)
         .instructionFileConfig(
           InstructionFileConfig.builder()
           .enableInstructionFilePutObject(true)
@@ -106,18 +139,77 @@ class InstructionFileFailures {
         TestUtils.Encrypt(
             client,
             S3ECId,
-            appendTestSuffix(sharedObjectKeyBaseMetaDataMode + language.getLanguageName()),
-            crossLanguageObjects,
+            appendTestSuffix(sharedObjectKeyBaseMetaDataMode + "-kms" + language.getLanguageName()),
+            crossLanguageObjectsKms,
             EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
         );
     }
 
     @Order(2)
+    @ParameterizedTest(name = "{0}: Encrypt RSA KC-GCM with instruction files")
+    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#improvedClientsCanPutRawWithInstructionFile")
+    void encrypt_with_instruction_files_rsa_kc_gcm(TestUtils.LanguageServerTarget language) {
+        S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+        CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+          .config(S3ECConfig.builder()
+            .keyMaterial(RSA_KEY)
+            .instructionFileConfig(
+                InstructionFileConfig.builder()
+                .enableInstructionFilePutObject(true)
+                .build()
+            )
+            .build())
+          .build());
+
+        String S3ECId = clientOutput.getClientId();
+
+        TestUtils.Encrypt(
+            client,
+            S3ECId,
+            appendTestSuffix(sharedObjectKeyBaseMetaDataMode + "-rsa" + language.getLanguageName()),
+            crossLanguageObjectsRsa,
+            EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+        );
+    }
+
+    @Order(3)
+    @ParameterizedTest(name = "{0}: Encrypt AES KC-GCM with instruction files")
+    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#improvedClientsCanPutRawWithInstructionFile")
+    void encrypt_with_instruction_files_aes_kc_gcm(TestUtils.LanguageServerTarget language) {
+        S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+        CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+          .config(S3ECConfig.builder()
+            .keyMaterial(AES_KEY)
+            .instructionFileConfig(
+                InstructionFileConfig.builder()
+                .enableInstructionFilePutObject(true)
+                .build()
+            )
+            .build())
+          .build());
+
+        String S3ECId = clientOutput.getClientId();
+
+        TestUtils.Encrypt(
+            client,
+            S3ECId,
+            appendTestSuffix(sharedObjectKeyBaseMetaDataMode + "-aes" + language.getLanguageName()),
+            crossLanguageObjectsRsa,
+            EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+        );
+    }
+
+    @Order(9)
     @Test
-    void make_good_copies_to_verify_we_can() throws Exception {
+    void make_copies_to_verify_things() throws Exception {
         // Create a plaintext S3 client to copy objects with instruction files
         try (S3Client ptS3Client = S3Client.create()) {
-            for (String objectKey : crossLanguageObjects) {
+            List<String> allCrossLanguageObjects = Stream.of(
+                crossLanguageObjectsKms.stream(),
+                crossLanguageObjectsRsa.stream(),
+                crossLanguageObjectsAes.stream()
+            ).flatMap(s -> s).collect(Collectors.toList());
+            for (String objectKey : allCrossLanguageObjects) {
                 // Get the encrypted object
                 ResponseBytes<GetObjectResponse> encryptedObject = ptS3Client.getObjectAsBytes(builder -> builder
                     .bucket(TestUtils.BUCKET)
@@ -134,6 +226,7 @@ class InstructionFileFailures {
                 String instructionFileJson = instructionFile.asUtf8String();
                 Map<String, String> objectMetadata = encryptedObject.response().metadata();
 
+                // Put a strict copy, to verify that we know how to do this
                 putObjectWithInstructionFile(
                     ptS3Client,
                     objectKey + "-good-copy",
@@ -146,10 +239,12 @@ class InstructionFileFailures {
                 Map<String, Object> instructionFileMap = mapper.readValue(instructionFileJson, Map.class);
 
                 instructionFileMap.put("x-amz-c", objectMetadata.get("x-amz-c"));
-                instructionFileMap.put("x-amz-matdesc", objectMetadata.get("x-amz-matdesc"));
+                instructionFileMap.put("x-amz-d", objectMetadata.get("x-amz-d"));
+                instructionFileMap.put("x-amz-i", objectMetadata.get("x-amz-i"));
 
                 String instructionFileWithCommitmentValues = mapper.writeValueAsString(instructionFileMap);
 
+                // Put instruction files that should fail:
                 putObjectWithInstructionFile(
                     ptS3Client,
                     objectKey + "-bad-both-meta-and-instruction",
@@ -165,7 +260,6 @@ class InstructionFileFailures {
                     Map.of(),
                     instructionFileWithCommitmentValues
                 );
-
 
             }
         }
@@ -212,19 +306,19 @@ class InstructionFileFailures {
         TestUtils.Decrypt(
             client,
             S3ECId,
-            crossLanguageObjects,
+            crossLanguageObjectsKms,
             EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
         );
 
         TestUtils.Decrypt(
             client,
             S3ECId,
-            crossLanguageObjects
+            crossLanguageObjectsKms
                 .stream()
                 .map(key -> key + "-good-copy")
                 .collect(Collectors.toList()),
             EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
-            crossLanguageObjects
+            crossLanguageObjectsKms
         );
     }
 
@@ -244,7 +338,7 @@ class InstructionFileFailures {
         TestUtils.Decrypt_fails(
             client,
             S3ECId,
-            crossLanguageObjects
+            crossLanguageObjectsKms
                 .stream()
                 .map(key -> key + "-bad-both-meta-and-instruction")
                 .collect(Collectors.toList()),
@@ -268,7 +362,7 @@ class InstructionFileFailures {
         TestUtils.Decrypt_fails(
             client,
             S3ECId,
-            crossLanguageObjects
+            crossLanguageObjectsKms
                 .stream()
                 .map(key -> key + "-bad-only-instruction")
                 .collect(Collectors.toList()),
@@ -293,7 +387,7 @@ class InstructionFileFailures {
         TestUtils.Decrypt_fails(
             client,
             S3ECId,
-            crossLanguageObjects
+            crossLanguageObjectsKms
                 .stream()
                 .map(key -> key + "-bad-both-meta-and-instruction")
                 .collect(Collectors.toList()),
@@ -318,7 +412,7 @@ class InstructionFileFailures {
         TestUtils.Decrypt_fails(
             client,
             S3ECId,
-            crossLanguageObjects
+            crossLanguageObjectsKms
                 .stream()
                 .map(key -> key + "-bad-only-instruction")
                 .collect(Collectors.toList()),
