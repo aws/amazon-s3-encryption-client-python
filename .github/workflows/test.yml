@@ -41,15 +41,15 @@ jobs:
           git config --global credential.helper store
           echo "https://x-token-auth:${{ secrets.PAT_FOR_PRIVATE_RUBY }}@github.com" > ~/.git-credentials
 
-      - name: Cache git submodules
-        uses: actions/cache@v4
-        with:
-          path: |
-            .git/modules
-            test-server/*/.git
-          key: ${{ runner.os }}-submodules-${{ hashFiles('.gitmodules') }}
-          restore-keys: |
-            ${{ runner.os }}-submodules-
+      # - name: Cache git submodules
+      #   uses: actions/cache@v4
+      #   with:
+      #     path: |
+      #       .git/modules
+      #       test-server/*/.git
+      #     key: ${{ runner.os }}-submodules-${{ hashFiles('.gitmodules') }}
+      #     restore-keys: |
+      #       ${{ runner.os }}-submodules-
 
       - name: Optimize git for performance
         run: |
@@ -59,12 +59,12 @@ jobs:
 
       - name: Checkout submodules with --jobs
         run: |
-          git submodule update --init --depth 1 --jobs ${{ steps.cpu-count.outputs.count }}
+          git submodule update --init --depth 1 --single-branch --jobs ${{ steps.cpu-count.outputs.count }}
 
       - name: Update cpp submodules recursively with --jobs
         run: |
           git submodule update --init --recursive \
-            --depth 1 \
+            --depth 1 --single-branch \
             --filter=blob:none \
             --jobs ${{ steps.cpu-count.outputs.count }} \
             --force \
