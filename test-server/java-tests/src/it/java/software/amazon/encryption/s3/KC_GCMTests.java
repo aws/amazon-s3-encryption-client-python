@@ -1,12 +1,11 @@
 /*
-* Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-* SPDX-License-Identifier: Apache-2.0
-*/
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 package software.amazon.encryption.s3;
 
 import static software.amazon.encryption.s3.TestUtils.*;
-import static software.amazon.encryption.s3.TestUtils.appendTestSuffix;
 
 import java.nio.ByteBuffer;
 import java.security.KeyPair;
@@ -31,22 +30,23 @@ import software.amazon.encryption.s3.model.KeyMaterial;
 import software.amazon.encryption.s3.model.S3ECConfig;
 
 /**
-* Exhaustive tests for S3 Encryption Client round-trip operations.
-* These tests cover various combinations of client versions, commitment policies, and encryption modes.
-* 
-* Tests are based on the exhaustive test matrix defined at:
-* https://tiny.amazon.com/3xnzwczl/loopcloumicrpeyJ3
-* 
-*/
+ * Exhaustive tests for S3 Encryption Client round-trip operations.
+ * These tests cover various combinations of client versions, commitment policies, and encryption modes.
+ *
+ * Tests are based on the exhaustive test matrix defined at:
+ * https://tiny.amazon.com/3xnzwczl/loopcloumicrpeyJ3
+ *
+ */
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class KC_GCMTests {
     private static final String sharedObjectKeyBaseMetaDataMode = "test-kc-gcm-kms";
     private static final String sharedObjectKeyBaseInsFileMode = "test-kc-gcm-kms-instruction-file";
     private static KeyMaterial kmsKeyArn = KeyMaterial.builder()
-    .kmsKeyId(TestUtils.KMS_KEY_ARN)
-    .build();
-    private static final List<String> crossLanguageObjects = new ArrayList<>();
+            .kmsKeyId(TestUtils.KMS_KEY_ARN)
+            .build();
+    private static final List<String> crossLanguageObjectsMetaDataMode = new ArrayList<>();
+    private static final List<String> crossLanguageObjectsRawRsaInstructionFiles = new ArrayList<>();
     private static KeyPair RSA_KEY_PAIR_1;
 
     @BeforeAll
@@ -55,7 +55,7 @@ class KC_GCMTests {
         keyPairGen.initialize(2048);
         RSA_KEY_PAIR_1 = keyPairGen.generateKeyPair();
     }
-    
+
     @Order(1)
     @ParameterizedTest(name = "{0}: Improved configured with RequireEncryptAllowDecrypt should encrypt KC-GCM")
     @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
@@ -68,12 +68,12 @@ class KC_GCMTests {
         .build())
         .build());
         String S3ECId = clientOutput.getClientId();
-        
-        TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBaseMetaDataMode + language.getLanguageName()), crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+
+        TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBaseMetaDataMode + language.getLanguageName()), crossLanguageObjectsMetaDataMode, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
     }
 
     @Order(2)
-    @ParameterizedTest(name = "{0}: Improved configured with RequireEncryptRequireDecrypt should encrypt KC-GCM")
+    @ParameterizedTest(name = "{0}: Improved configured with RequireEncryptRequireDecrypt with InstructionFilePutObject should encrypt KC-GCM")
     @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
     void improved_configured_with_require_encrypt_require_decrypt_should_encrypt_kc_gcm_ins_file(TestUtils.LanguageServerTarget language) {
         if (!RAW_SUPPORTED.contains(language.getLanguageName())) {
@@ -96,7 +96,7 @@ class KC_GCMTests {
           .build());
         String S3ECId = clientOutput.getClientId();
 
-        TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBaseInsFileMode + language.getLanguageName()), crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+        TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBaseInsFileMode + language.getLanguageName()), crossLanguageObjectsRawRsaInstructionFiles, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
     }
 
     @Order(2)
@@ -111,8 +111,8 @@ class KC_GCMTests {
         .build())
         .build());
         String S3ECId = clientOutput.getClientId();
-        
-        TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBaseMetaDataMode + language.getLanguageName()), crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+
+        TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBaseMetaDataMode + language.getLanguageName()), crossLanguageObjectsMetaDataMode, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
     }
 
     @Order(2)
@@ -127,15 +127,15 @@ class KC_GCMTests {
         .build())
         .build());
         String S3ECId = clientOutput.getClientId();
-        
-        TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBaseMetaDataMode + language.getLanguageName()), crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+
+        TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBaseMetaDataMode + language.getLanguageName()), crossLanguageObjectsMetaDataMode, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
     }
-        
+
     @Order(10)
     @ParameterizedTest(name = "{0}: Transition configured with the default should decrypt KC-GCM")
     @MethodSource("software.amazon.encryption.s3.TestUtils#transitionClientsForTest")
     void transition_configured_with_the_default_should_decrypt_kc_gcm(TestUtils.LanguageServerTarget language) {
-        
+
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
         .config(S3ECConfig.builder()
@@ -144,15 +144,15 @@ class KC_GCMTests {
         .build())
         .build());
         String S3ECId = clientOutput.getClientId();
-        
-        TestUtils.Decrypt(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+
+        TestUtils.Decrypt(client, S3ECId, crossLanguageObjectsMetaDataMode, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
     }
 
     @Order(11)
     @ParameterizedTest(name = "{0}: Transition configured with ForbidEncryptAllowDecrypt should decrypt KC-GCM")
     @MethodSource("software.amazon.encryption.s3.TestUtils#transitionClientsForTest")
     void transition_configured_with_forbid_encrypt_allow_decrypt_should_decrypt_kc_gcm(TestUtils.LanguageServerTarget language) {
-        
+
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
         .config(S3ECConfig.builder()
@@ -161,15 +161,15 @@ class KC_GCMTests {
         .build())
         .build());
         String S3ECId = clientOutput.getClientId();
-        
-        TestUtils.Decrypt(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+
+        TestUtils.Decrypt(client, S3ECId, crossLanguageObjectsMetaDataMode, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
     }
 
     @Order(12)
     @ParameterizedTest(name = "{0}: Improved configured with ForbidEncryptAllowDecrypt should decrypt KC-GCM")
     @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
     void improved_configured_with_forbid_encrypt_allow_decrypt_should_decrypt_kc_gcm(TestUtils.LanguageServerTarget language) {
-        
+
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
         .config(S3ECConfig.builder()
@@ -179,15 +179,15 @@ class KC_GCMTests {
         .build())
         .build());
         String S3ECId = clientOutput.getClientId();
-        
-        TestUtils.Decrypt(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+
+        TestUtils.Decrypt(client, S3ECId, crossLanguageObjectsMetaDataMode, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
     }
-    
+
     @Order(13)
     @ParameterizedTest(name = "{0}: Improved configured with RequireEncryptAllowDecrypt should decrypt KC-GCM")
     @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
     void improved_configured_with_require_encrypt_allow_decrypt_should_decrypt_kc_gcm(TestUtils.LanguageServerTarget language) {
-        
+
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
         .config(S3ECConfig.builder()
@@ -196,15 +196,15 @@ class KC_GCMTests {
         .build())
         .build());
         String S3ECId = clientOutput.getClientId();
-        
-        TestUtils.Decrypt(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+
+        TestUtils.Decrypt(client, S3ECId, crossLanguageObjectsMetaDataMode, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
     }
-    
+
     @Order(14)
     @ParameterizedTest(name = "{0}: Improved configured with RequireEncryptRequireDecrypt should decrypt KC-GCM")
     @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
     void improved_configured_with_require_encrypt_require_decrypt_should_decrypt_kc_gcm(TestUtils.LanguageServerTarget language) {
-        
+
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
         .config(S3ECConfig.builder()
@@ -213,8 +213,8 @@ class KC_GCMTests {
         .build())
         .build());
         String S3ECId = clientOutput.getClientId();
-        
-        TestUtils.Decrypt(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+
+        TestUtils.Decrypt(client, S3ECId, crossLanguageObjectsMetaDataMode, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
     }
 
     @Order(15)
@@ -230,12 +230,12 @@ class KC_GCMTests {
         .build())
         .build());
         String S3ECId = clientOutput.getClientId();
-        
-        TestUtils.Decrypt(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
-    }
 
+        TestUtils.Decrypt(client, S3ECId, crossLanguageObjectsMetaDataMode, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+    }
+    
     @Order(16)
-    @ParameterizedTest(name = "{0}: Improved configured with RequireEncryptRequireDecrypt should encrypt KC-GCM")
+    @ParameterizedTest(name = "{0}: Improved configured with RequireEncryptRequireDecrypt decrypt InstructionFilePutObject KC-GCM")
     @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
     void improved_configured_with_require_encrypt_require_decrypt_should_decrypt_kc_gcm_ins_file(final TestUtils.LanguageServerTarget language) {
         if (!RAW_SUPPORTED.contains(language.getLanguageName())) {
@@ -258,7 +258,7 @@ class KC_GCMTests {
           .build());
         String S3ECId = clientOutput.getClientId();
 
-        TestUtils.Decrypt(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+        TestUtils.Decrypt(client, S3ECId, crossLanguageObjectsRawRsaInstructionFiles, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
     }
 
     // Ranged Get Tests - using existing KC-GCM encrypted objects with ranged-get-supported clients
@@ -277,7 +277,7 @@ class KC_GCMTests {
         .build());
         String S3ECId = clientOutput.getClientId();
 
-        TestUtils.DecryptWithRangedGet(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+        TestUtils.DecryptWithRangedGet(client, S3ECId, crossLanguageObjectsMetaDataMode, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
     }
 
     @Order(21)
@@ -295,7 +295,7 @@ class KC_GCMTests {
         .build());
         String S3ECId = clientOutput.getClientId();
 
-        TestUtils.DecryptWithRangedGet(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+        TestUtils.DecryptWithRangedGet(client, S3ECId, crossLanguageObjectsMetaDataMode, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
     }
 
     @Order(22)
@@ -313,7 +313,7 @@ class KC_GCMTests {
         .build());
         String S3ECId = clientOutput.getClientId();
 
-        TestUtils.DecryptWithRangedGet(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+        TestUtils.DecryptWithRangedGet(client, S3ECId, crossLanguageObjectsMetaDataMode, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
     }
 
     @Order(23)
@@ -330,7 +330,7 @@ class KC_GCMTests {
         .build());
         String S3ECId = clientOutput.getClientId();
 
-        TestUtils.DecryptWithRangedGet(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+        TestUtils.DecryptWithRangedGet(client, S3ECId, crossLanguageObjectsMetaDataMode, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
     }
 
     @Order(24)
@@ -347,7 +347,7 @@ class KC_GCMTests {
         .build());
         String S3ECId = clientOutput.getClientId();
 
-        TestUtils.DecryptWithRangedGet(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+        TestUtils.DecryptWithRangedGet(client, S3ECId, crossLanguageObjectsMetaDataMode, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
     }
 
     @Order(25)
@@ -364,7 +364,7 @@ class KC_GCMTests {
         .build());
         String S3ECId = clientOutput.getClientId();
 
-        TestUtils.DecryptWithRangedGet(client, S3ECId, crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+        TestUtils.DecryptWithRangedGet(client, S3ECId, crossLanguageObjectsMetaDataMode, EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
     }
 
 }
