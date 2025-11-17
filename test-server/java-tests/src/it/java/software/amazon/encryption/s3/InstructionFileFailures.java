@@ -292,9 +292,9 @@ class InstructionFileFailures {
     // KMS instruction files decrypt
 
     @Order(10)
-    @ParameterizedTest(name = "{0}: Successfully decrypt original and good-copy objects")
+    @ParameterizedTest(name = "{0}: Successfully decrypt KMS encrypted original and good-copy objects")
     @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetKMSWithInstructionFile")
-    void decrypt_original_and_good_copy_objects_succeeds(TestUtils.LanguageServerTarget language) {
+    void decrypt_kms_original_and_good_copy_objects_succeeds(TestUtils.LanguageServerTarget language) {
 
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
@@ -324,9 +324,9 @@ class InstructionFileFailures {
     }
 
     @Order(11)
-    @ParameterizedTest(name = "{0}: Fail to decrypt when commitment is duplicated in metadata and instruction file")
+    @ParameterizedTest(name = "{0}: Fail to decrypt KMS when commitment is duplicated in metadata and instruction file")
     @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetKMSWithInstructionFile")
-    void decrypt_with_duplicate_commitment_in_metadata_and_instruction_fails(TestUtils.LanguageServerTarget language) {
+    void decrypt_kms_with_duplicate_commitment_in_metadata_and_instruction_fails(TestUtils.LanguageServerTarget language) {
 
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
@@ -348,9 +348,9 @@ class InstructionFileFailures {
     }
 
     @Order(12)
-    @ParameterizedTest(name = "{0}: Fail to decrypt when commitment is only in instruction file")
+    @ParameterizedTest(name = "{0}: Fail to decrypt KMS when commitment is only in instruction file")
     @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetKMSWithInstructionFile")
-    void decrypt_with_commitment_only_in_instruction_file_fails(TestUtils.LanguageServerTarget language) {
+    void decrypt_kms_with_commitment_only_in_instruction_file_fails(TestUtils.LanguageServerTarget language) {
 
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
@@ -372,9 +372,9 @@ class InstructionFileFailures {
     }
 
     @Order(13)
-    @ParameterizedTest(name = "{0}: Fail to decrypt duplicate commitment with FORBID_ENCRYPT_ALLOW_DECRYPT policy")
+    @ParameterizedTest(name = "{0}: Fail to decrypt KMS duplicate commitment with FORBID_ENCRYPT_ALLOW_DECRYPT policy")
     @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetKMSWithInstructionFile")
-    void decrypt_with_duplicate_commitment_fails_with_forbid_policy(TestUtils.LanguageServerTarget language) {
+    void decrypt_kms_with_duplicate_commitment_fails_with_forbid_policy(TestUtils.LanguageServerTarget language) {
 
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
@@ -397,9 +397,9 @@ class InstructionFileFailures {
     }
 
     @Order(14)
-    @ParameterizedTest(name = "{0}: Fail to decrypt instruction file commitment with FORBID_ENCRYPT_ALLOW_DECRYPT policy")
+    @ParameterizedTest(name = "{0}: Fail to decrypt KMS instruction file commitment with FORBID_ENCRYPT_ALLOW_DECRYPT policy")
     @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetKMSWithInstructionFile")
-    void decrypt_with_instruction_file_commitment_fails_with_forbid_policy(TestUtils.LanguageServerTarget language) {
+    void decrypt_kms_with_instruction_file_commitment_fails_with_forbid_policy(TestUtils.LanguageServerTarget language) {
 
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
@@ -424,9 +424,9 @@ class InstructionFileFailures {
     // RSA instruction file decrypt
 
     @Order(20)
-    @ParameterizedTest(name = "{0}: Successfully decrypt original and good-copy objects")
-    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetKMSWithInstructionFile")
-    void decrypt_original_and_good_copy_objects_succeeds(TestUtils.LanguageServerTarget language) {
+    @ParameterizedTest(name = "{0}: Successfully decrypt RSA encrypted original and good-copy objects")
+    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetRawWithInstructionFile")
+    void decrypt_rsa_original_and_good_copy_objects_succeeds(TestUtils.LanguageServerTarget language) {
 
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
@@ -456,9 +456,9 @@ class InstructionFileFailures {
     }
 
     @Order(21)
-    @ParameterizedTest(name = "{0}: Fail to decrypt when commitment is duplicated in metadata and instruction file")
-    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetKMSWithInstructionFile")
-    void decrypt_with_duplicate_commitment_in_metadata_and_instruction_fails(TestUtils.LanguageServerTarget language) {
+    @ParameterizedTest(name = "{0}: Fail to decrypt RSA when commitment is duplicated in metadata and instruction file")
+    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetRawWithInstructionFile")
+    void decrypt_rsa_with_duplicate_commitment_in_metadata_and_instruction_fails(TestUtils.LanguageServerTarget language) {
 
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
@@ -480,9 +480,9 @@ class InstructionFileFailures {
     }
 
     @Order(22)
-    @ParameterizedTest(name = "{0}: Fail to decrypt when commitment is only in instruction file")
-    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetKMSWithInstructionFile")
-    void decrypt_with_commitment_only_in_instruction_file_fails(TestUtils.LanguageServerTarget language) {
+    @ParameterizedTest(name = "{0}: Fail to decrypt RSA when commitment is only in instruction file")
+    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetRawWithInstructionFile")
+    void decrypt_rsa_with_commitment_only_in_instruction_file_fails(TestUtils.LanguageServerTarget language) {
 
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
@@ -504,9 +504,9 @@ class InstructionFileFailures {
     }
 
     @Order(23)
-    @ParameterizedTest(name = "{0}: Fail to decrypt duplicate commitment with FORBID_ENCRYPT_ALLOW_DECRYPT policy")
-    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetKMSWithInstructionFile")
-    void decrypt_with_duplicate_commitment_fails_with_forbid_policy(TestUtils.LanguageServerTarget language) {
+    @ParameterizedTest(name = "{0}: Fail to decrypt RSA duplicate commitment with FORBID_ENCRYPT_ALLOW_DECRYPT policy")
+    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetRawWithInstructionFile")
+    void decrypt_rsa_with_duplicate_commitment_fails_with_forbid_policy(TestUtils.LanguageServerTarget language) {
 
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
@@ -529,9 +529,9 @@ class InstructionFileFailures {
     }
 
     @Order(24)
-    @ParameterizedTest(name = "{0}: Fail to decrypt instruction file commitment with FORBID_ENCRYPT_ALLOW_DECRYPT policy")
-    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetKMSWithInstructionFile")
-    void decrypt_with_instruction_file_commitment_fails_with_forbid_policy(TestUtils.LanguageServerTarget language) {
+    @ParameterizedTest(name = "{0}: Fail to decrypt RSA instruction file commitment with FORBID_ENCRYPT_ALLOW_DECRYPT policy")
+    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetRawWithInstructionFile")
+    void decrypt_rsa_with_instruction_file_commitment_fails_with_forbid_policy(TestUtils.LanguageServerTarget language) {
 
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
@@ -556,9 +556,9 @@ class InstructionFileFailures {
     // AES instruction file decrypt
 
     @Order(30)
-    @ParameterizedTest(name = "{0}: Successfully decrypt original and good-copy objects")
-    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetKMSWithInstructionFile")
-    void decrypt_original_and_good_copy_objects_succeeds(TestUtils.LanguageServerTarget language) {
+    @ParameterizedTest(name = "{0}: Successfully decrypt AES encrypted original and good-copy objects")
+    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetRawWithInstructionFile")
+    void decrypt_aes_original_and_good_copy_objects_succeeds(TestUtils.LanguageServerTarget language) {
 
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
@@ -588,9 +588,9 @@ class InstructionFileFailures {
     }
 
     @Order(31)
-    @ParameterizedTest(name = "{0}: Fail to decrypt when commitment is duplicated in metadata and instruction file")
-    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetKMSWithInstructionFile")
-    void decrypt_with_duplicate_commitment_in_metadata_and_instruction_fails(TestUtils.LanguageServerTarget language) {
+    @ParameterizedTest(name = "{0}: Fail to decrypt AES when commitment is duplicated in metadata and instruction file")
+    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetRawWithInstructionFile")
+    void decrypt_aes_with_duplicate_commitment_in_metadata_and_instruction_fails(TestUtils.LanguageServerTarget language) {
 
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
@@ -612,9 +612,9 @@ class InstructionFileFailures {
     }
 
     @Order(32)
-    @ParameterizedTest(name = "{0}: Fail to decrypt when commitment is only in instruction file")
-    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetKMSWithInstructionFile")
-    void decrypt_with_commitment_only_in_instruction_file_fails(TestUtils.LanguageServerTarget language) {
+    @ParameterizedTest(name = "{0}: Fail to decrypt AES when commitment is only in instruction file")
+    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetRawWithInstructionFile")
+    void decrypt_aes_with_commitment_only_in_instruction_file_fails(TestUtils.LanguageServerTarget language) {
 
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
@@ -636,9 +636,9 @@ class InstructionFileFailures {
     }
 
     @Order(33)
-    @ParameterizedTest(name = "{0}: Fail to decrypt duplicate commitment with FORBID_ENCRYPT_ALLOW_DECRYPT policy")
-    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetKMSWithInstructionFile")
-    void decrypt_with_duplicate_commitment_fails_with_forbid_policy(TestUtils.LanguageServerTarget language) {
+    @ParameterizedTest(name = "{0}: Fail to decrypt AES duplicate commitment with FORBID_ENCRYPT_ALLOW_DECRYPT policy")
+    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetRawWithInstructionFile")
+    void decrypt_aes_with_duplicate_commitment_fails_with_forbid_policy(TestUtils.LanguageServerTarget language) {
 
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
@@ -661,9 +661,9 @@ class InstructionFileFailures {
     }
 
     @Order(34)
-    @ParameterizedTest(name = "{0}: Fail to decrypt instruction file commitment with FORBID_ENCRYPT_ALLOW_DECRYPT policy")
-    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetKMSWithInstructionFile")
-    void decrypt_with_instruction_file_commitment_fails_with_forbid_policy(TestUtils.LanguageServerTarget language) {
+    @ParameterizedTest(name = "{0}: Fail to decrypt AES instruction file commitment with FORBID_ENCRYPT_ALLOW_DECRYPT policy")
+    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetRawWithInstructionFile")
+    void decrypt_aes_with_instruction_file_commitment_fails_with_forbid_policy(TestUtils.LanguageServerTarget language) {
 
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
         CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
