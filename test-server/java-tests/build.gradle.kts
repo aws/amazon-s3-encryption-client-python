@@ -16,6 +16,9 @@ dependencies {
     // Test dependencies
     testImplementation("org.junit.jupiter:junit-jupiter:5.13.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    // JUnit Suite support for test ordering
+    testImplementation("org.junit.platform:junit-platform-suite-api:1.10.0")
+    testRuntimeOnly("org.junit.platform:junit-platform-suite-engine:1.10.0")
     testImplementation("com.amazonaws:aws-java-sdk:1.12.788")
     testImplementation("software.amazon.awssdk:s3:2.37.1")
     testImplementation("org.bouncycastle:bcprov-jdk15on:1.70")
@@ -49,6 +52,16 @@ tasks {
         classpath = sourceSets["it"].runtimeClasspath
         outputs.upToDateWhen { false }
         outputs.cacheIf { false }
+        
+        // Enable parallel test execution
+        maxParallelForks = Runtime.getRuntime().availableProcessors()
+        systemProperty("junit.jupiter.execution.parallel.enabled", "true")
+        systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
+        systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
+        // Configure thread pool size - adjust based on I/O-bound nature of tests
+        systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
+        systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism", "16")
+        
         // Passing information from Gradle into the tests so that we can filter our servers
         systemProperty("test.filter.servers", System.getProperty("test.filter.servers"))
         // For debugging
