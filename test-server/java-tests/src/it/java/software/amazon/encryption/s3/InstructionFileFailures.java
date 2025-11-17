@@ -194,7 +194,7 @@ class InstructionFileFailures {
             client,
             S3ECId,
             appendTestSuffix(sharedObjectKeyBaseMetaDataMode + "-aes" + language.getLanguageName()),
-            crossLanguageObjectsRsa,
+            crossLanguageObjectsAes,
             EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
         );
     }
@@ -289,6 +289,7 @@ class InstructionFileFailures {
             software.amazon.awssdk.core.sync.RequestBody.fromBytes(instructionFileJson.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
     }
 
+    // KMS instruction files decrypt
 
     @Order(10)
     @ParameterizedTest(name = "{0}: Successfully decrypt original and good-copy objects")
@@ -419,5 +420,270 @@ class InstructionFileFailures {
             EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
         );
     }
+
+    // RSA instruction file decrypt
+
+    @Order(20)
+    @ParameterizedTest(name = "{0}: Successfully decrypt original and good-copy objects")
+    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetKMSWithInstructionFile")
+    void decrypt_original_and_good_copy_objects_succeeds(TestUtils.LanguageServerTarget language) {
+
+        S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+        CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+        .config(S3ECConfig.builder()
+        .keyMaterial(RSA_KEY)
+        .build())
+        .build());
+        String S3ECId = clientOutput.getClientId();
+
+        TestUtils.Decrypt(
+            client,
+            S3ECId,
+            crossLanguageObjectsRsa,
+            EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+        );
+
+        TestUtils.Decrypt(
+            client,
+            S3ECId,
+            crossLanguageObjectsRsa
+                .stream()
+                .map(key -> key + "-good-copy")
+                .collect(Collectors.toList()),
+            EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+            crossLanguageObjectsRsa
+        );
+    }
+
+    @Order(21)
+    @ParameterizedTest(name = "{0}: Fail to decrypt when commitment is duplicated in metadata and instruction file")
+    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetKMSWithInstructionFile")
+    void decrypt_with_duplicate_commitment_in_metadata_and_instruction_fails(TestUtils.LanguageServerTarget language) {
+
+        S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+        CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+        .config(S3ECConfig.builder()
+        .keyMaterial(RSA_KEY)
+        .build())
+        .build());
+        String S3ECId = clientOutput.getClientId();
+
+        TestUtils.Decrypt_fails(
+            client,
+            S3ECId,
+            crossLanguageObjectsRsa
+                .stream()
+                .map(key -> key + "-bad-both-meta-and-instruction")
+                .collect(Collectors.toList()),
+            EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+        );
+    }
+
+    @Order(22)
+    @ParameterizedTest(name = "{0}: Fail to decrypt when commitment is only in instruction file")
+    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetKMSWithInstructionFile")
+    void decrypt_with_commitment_only_in_instruction_file_fails(TestUtils.LanguageServerTarget language) {
+
+        S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+        CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+        .config(S3ECConfig.builder()
+        .keyMaterial(RSA_KEY)
+        .build())
+        .build());
+        String S3ECId = clientOutput.getClientId();
+
+        TestUtils.Decrypt_fails(
+            client,
+            S3ECId,
+            crossLanguageObjectsRsa
+                .stream()
+                .map(key -> key + "-bad-only-instruction")
+                .collect(Collectors.toList()),
+            EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+        );
+    }
+
+    @Order(23)
+    @ParameterizedTest(name = "{0}: Fail to decrypt duplicate commitment with FORBID_ENCRYPT_ALLOW_DECRYPT policy")
+    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetKMSWithInstructionFile")
+    void decrypt_with_duplicate_commitment_fails_with_forbid_policy(TestUtils.LanguageServerTarget language) {
+
+        S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+        CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+        .config(S3ECConfig.builder()
+        .keyMaterial(RSA_KEY)
+        .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+        .build())
+        .build());
+        String S3ECId = clientOutput.getClientId();
+
+        TestUtils.Decrypt_fails(
+            client,
+            S3ECId,
+            crossLanguageObjectsRsa
+                .stream()
+                .map(key -> key + "-bad-both-meta-and-instruction")
+                .collect(Collectors.toList()),
+            EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+        );
+    }
+
+    @Order(24)
+    @ParameterizedTest(name = "{0}: Fail to decrypt instruction file commitment with FORBID_ENCRYPT_ALLOW_DECRYPT policy")
+    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetKMSWithInstructionFile")
+    void decrypt_with_instruction_file_commitment_fails_with_forbid_policy(TestUtils.LanguageServerTarget language) {
+
+        S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+        CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+        .config(S3ECConfig.builder()
+        .keyMaterial(RSA_KEY)
+        .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+        .build())
+        .build());
+        String S3ECId = clientOutput.getClientId();
+
+        TestUtils.Decrypt_fails(
+            client,
+            S3ECId,
+            crossLanguageObjectsRsa
+                .stream()
+                .map(key -> key + "-bad-only-instruction")
+                .collect(Collectors.toList()),
+            EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+        );
+    }
+
+    // AES instruction file decrypt
+
+    @Order(30)
+    @ParameterizedTest(name = "{0}: Successfully decrypt original and good-copy objects")
+    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetKMSWithInstructionFile")
+    void decrypt_original_and_good_copy_objects_succeeds(TestUtils.LanguageServerTarget language) {
+
+        S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+        CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+        .config(S3ECConfig.builder()
+        .keyMaterial(AES_KEY)
+        .build())
+        .build());
+        String S3ECId = clientOutput.getClientId();
+
+        TestUtils.Decrypt(
+            client,
+            S3ECId,
+            crossLanguageObjectsAes,
+            EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+        );
+
+        TestUtils.Decrypt(
+            client,
+            S3ECId,
+            crossLanguageObjectsAes
+                .stream()
+                .map(key -> key + "-good-copy")
+                .collect(Collectors.toList()),
+            EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+            crossLanguageObjectsAes
+        );
+    }
+
+    @Order(31)
+    @ParameterizedTest(name = "{0}: Fail to decrypt when commitment is duplicated in metadata and instruction file")
+    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetKMSWithInstructionFile")
+    void decrypt_with_duplicate_commitment_in_metadata_and_instruction_fails(TestUtils.LanguageServerTarget language) {
+
+        S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+        CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+        .config(S3ECConfig.builder()
+        .keyMaterial(AES_KEY)
+        .build())
+        .build());
+        String S3ECId = clientOutput.getClientId();
+
+        TestUtils.Decrypt_fails(
+            client,
+            S3ECId,
+            crossLanguageObjectsAes
+                .stream()
+                .map(key -> key + "-bad-both-meta-and-instruction")
+                .collect(Collectors.toList()),
+            EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+        );
+    }
+
+    @Order(32)
+    @ParameterizedTest(name = "{0}: Fail to decrypt when commitment is only in instruction file")
+    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetKMSWithInstructionFile")
+    void decrypt_with_commitment_only_in_instruction_file_fails(TestUtils.LanguageServerTarget language) {
+
+        S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+        CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+        .config(S3ECConfig.builder()
+        .keyMaterial(AES_KEY)
+        .build())
+        .build());
+        String S3ECId = clientOutput.getClientId();
+
+        TestUtils.Decrypt_fails(
+            client,
+            S3ECId,
+            crossLanguageObjectsAes
+                .stream()
+                .map(key -> key + "-bad-only-instruction")
+                .collect(Collectors.toList()),
+            EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+        );
+    }
+
+    @Order(33)
+    @ParameterizedTest(name = "{0}: Fail to decrypt duplicate commitment with FORBID_ENCRYPT_ALLOW_DECRYPT policy")
+    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetKMSWithInstructionFile")
+    void decrypt_with_duplicate_commitment_fails_with_forbid_policy(TestUtils.LanguageServerTarget language) {
+
+        S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+        CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+        .config(S3ECConfig.builder()
+        .keyMaterial(AES_KEY)
+        .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+        .build())
+        .build());
+        String S3ECId = clientOutput.getClientId();
+
+        TestUtils.Decrypt_fails(
+            client,
+            S3ECId,
+            crossLanguageObjectsAes
+                .stream()
+                .map(key -> key + "-bad-both-meta-and-instruction")
+                .collect(Collectors.toList()),
+            EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+        );
+    }
+
+    @Order(34)
+    @ParameterizedTest(name = "{0}: Fail to decrypt instruction file commitment with FORBID_ENCRYPT_ALLOW_DECRYPT policy")
+    @MethodSource("software.amazon.encryption.s3.InstructionFileFailures#clientsCanGetKMSWithInstructionFile")
+    void decrypt_with_instruction_file_commitment_fails_with_forbid_policy(TestUtils.LanguageServerTarget language) {
+
+        S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+        CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+        .config(S3ECConfig.builder()
+        .keyMaterial(AES_KEY)
+        .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+        .build())
+        .build());
+        String S3ECId = clientOutput.getClientId();
+
+        TestUtils.Decrypt_fails(
+            client,
+            S3ECId,
+            crossLanguageObjectsAes
+                .stream()
+                .map(key -> key + "-bad-only-instruction")
+                .collect(Collectors.toList()),
+            EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+        );
+    }
+    
 
 }
