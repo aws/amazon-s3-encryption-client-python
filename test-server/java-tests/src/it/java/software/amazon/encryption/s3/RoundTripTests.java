@@ -549,6 +549,10 @@ public class RoundTripTests {
         if (KMS_INSTRUCTION_FILE_UNSUPPORTED.contains(decLang.getLanguageName())) {
             throw new TestAbortedException("not testing " + encLang.getLanguageName());
         }
+        // We skip PHP-V2-Current because it writes an instruction file that other languages may not read.
+        if (encLang.getLanguageName().equals("PHP-V2-Current")) {
+          throw new TestAbortedException("not testing " + encLang.getLanguageName());
+        }
         S3ECTestServerClient encClient = testServerClientFor(encLang);
         S3ECTestServerClient decClient = testServerClientFor(decLang);
         final String objectKey = appendTestSuffix(String.format("write-%s-read-%s-instruction-file", encLang.getLanguageName(), decLang.getLanguageName()));
@@ -596,16 +600,16 @@ public class RoundTripTests {
         if (!encLang.getLanguageName().startsWith("Ruby") && !encLang.getLanguageName().startsWith("PHP")) {
             // Ruby and PHP do not include it :(
             assertTrue(ptInstFile.response().metadata().containsKey("x-amz-crypto-instr-file"));
-            assertFalse(ptInstFile.asUtf8String().isEmpty());
-            // Read should be enabled by default
-            GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
-               .clientID(decS3ECId)
-               .bucket(BUCKET)
-               .key(objectKey)
-               .build());
-
-            assertEquals(input, new String(output.getBody().array()));
         }
+        assertFalse(ptInstFile.asUtf8String().isEmpty());
+        // Read should be enabled by default
+        GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
+          .clientID(decS3ECId)
+          .bucket(BUCKET)
+          .key(objectKey)
+          .build());
+
+        assertEquals(input, new String(output.getBody().array()));
     }
 
     @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
