@@ -280,10 +280,6 @@ public class RoundTripTests {
             if (decLang.getLanguageName().equals(RUBY_V3) || decLang.getLanguageName().equals(RUBY_V2_CURRENT) || decLang.getLanguageName().equals(RUBY_V2_TRANSITION)) {
                 assertTrue(e.getMessage().contains("Value of encryption context from envelope does not match the provided encryption context"));
             } else {
-                if (!e.getMessage().contains("Provided encryption context does not match information retrieved from S3")) {
-                  System.err.println("WHOOPS!");
-                  System.err.println(e.getMessage());
-                }
                 assertTrue(e.getMessage().contains("Provided encryption context does not match information retrieved from S3"));
             }
         }
