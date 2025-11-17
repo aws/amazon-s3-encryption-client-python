@@ -21,6 +21,7 @@ import software.amazon.encryption.s3.model.CommitmentPolicy;
 import software.amazon.encryption.s3.model.CreateClientInput;
 import software.amazon.encryption.s3.model.CreateClientOutput;
 import software.amazon.encryption.s3.model.EncryptionAlgorithm;
+import software.amazon.encryption.s3.model.InstructionFileConfig;
 import software.amazon.encryption.s3.model.KeyMaterial;
 import software.amazon.encryption.s3.model.S3ECConfig;
 
@@ -36,6 +37,7 @@ import software.amazon.encryption.s3.model.S3ECConfig;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class GCMTests {
     private static String sharedObjectKeyBase = "test-gcm-kms";
+    private static String sharedObjectKeyBaseInstructionFile = "test-gcm-kms-instruction-file";
     private static KeyMaterial kmsKeyArn = KeyMaterial.builder()
     .kmsKeyId(TestUtils.KMS_KEY_ARN)
     .build();
@@ -57,8 +59,28 @@ class GCMTests {
         
         TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBase + language.getLanguageName()), crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF);
     }
-    
+
     @Order(2)
+    @ParameterizedTest(name = "{0}: Improved configured with ForbidEncryptAllowDecrypt with InstructionFilePutObject should encrypt GCM")
+    @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
+    void improved_configured_with_forbid_encrypt_allow_decrypt_should_encrypt_gcm_inst_file(TestUtils.LanguageServerTarget language) {
+        S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+        CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+                .config(S3ECConfig.builder()
+                        .keyMaterial(kmsKeyArn)
+                        .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+                        .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
+                        .instructionFileConfig(InstructionFileConfig.builder()
+                                .enableInstructionFilePutObject(true)
+                                .build())
+                        .build())
+                .build());
+        String S3ECId = clientOutput.getClientId();
+
+        TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBaseInstructionFile + language.getLanguageName()), crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF);
+    }
+    
+    @Order(3)
     @ParameterizedTest(name = "{0}: Transition configured with the default should encrypt GCM")
     @MethodSource("software.amazon.encryption.s3.TestUtils#transitionClientsForTest")
     void transition_configured_with_the_default_should_encrypt_gcm(TestUtils.LanguageServerTarget language) {
@@ -74,7 +96,26 @@ class GCMTests {
         TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBase + language.getLanguageName()), crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF);
     }
 
-    @Order(3)
+    @Order(4)
+    @ParameterizedTest(name = "{0}: Transition configured with the default with InstructionFilePutObject should encrypt GCM")
+    @MethodSource("software.amazon.encryption.s3.TestUtils#transitionClientsForTest")
+    void transition_configured_with_the_default_should_encrypt_gcm_inst_file(TestUtils.LanguageServerTarget language) {
+        S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+        CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+                .config(S3ECConfig.builder()
+                        .keyMaterial(kmsKeyArn)
+                        .instructionFileConfig(InstructionFileConfig.builder()
+                                .enableInstructionFilePutObject(true)
+                                .build())
+                        // .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+                        .build())
+                .build());
+        String S3ECId = clientOutput.getClientId();
+
+        TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBaseInstructionFile + language.getLanguageName()), crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF);
+    }
+
+    @Order(5)
     @ParameterizedTest(name = "{0}: Transition configured with ForbidEncryptAllowDecrypt should encrypt GCM")
     @MethodSource("software.amazon.encryption.s3.TestUtils#transitionClientsForTest")
     void transition_configured_with_forbid_encrypt_allow_decrypt_should_encrypt_gcm(TestUtils.LanguageServerTarget language) {
@@ -88,6 +129,25 @@ class GCMTests {
         String S3ECId = clientOutput.getClientId();
         
         TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBase + language.getLanguageName()), crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF);
+    }
+
+    @Order(6)
+    @ParameterizedTest(name = "{0}: Transition configured with ForbidEncryptAllowDecrypt with InstructionFilePutObject should encrypt GCM")
+    @MethodSource("software.amazon.encryption.s3.TestUtils#transitionClientsForTest")
+    void transition_configured_with_forbid_encrypt_allow_decrypt_should_encrypt_gcm_inst_file(TestUtils.LanguageServerTarget language) {
+        S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+        CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+                .config(S3ECConfig.builder()
+                        .keyMaterial(kmsKeyArn)
+                        .instructionFileConfig(InstructionFileConfig.builder()
+                                .enableInstructionFilePutObject(true)
+                                .build())
+                        .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+                        .build())
+                .build());
+        String S3ECId = clientOutput.getClientId();
+
+        TestUtils.Encrypt(client, S3ECId, appendTestSuffix(sharedObjectKeyBaseInstructionFile + language.getLanguageName()), crossLanguageObjects, EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF);
     }
     
     @Order(10)
