@@ -21,8 +21,6 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             return StatusCode(501, new GenericServerError { Message = "[NET-current] EnableDelayedAuthenticationMode not supported" });
         if (request.Config.SetBufferSize.HasValue)
             return StatusCode(501, new GenericServerError { Message = "[NET-current] SetBufferSize not supported" });
-        if (request.Config.KeyMaterial.AesKey != null)
-            return StatusCode(501, new GenericServerError { Message = "[NET-current] AesKey not supported" });
 
         try
         {
@@ -47,6 +45,15 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
                 encryptionMaterial = new EncryptionMaterialsV2(rsaKey, AsymmetricAlgorithmType.RsaOaepSha1);
                 logger.LogInformation(
                     "Created EncryptionMaterialsV2: RSA");
+            }
+            else if (request.Config.KeyMaterial.AesKey != null)
+            {
+                var aesKeyBytes = request.Config.KeyMaterial.AesKey;
+                var aes = Aes.Create();
+                aes.Key = aesKeyBytes;
+                encryptionMaterial = new EncryptionMaterialsV2(aes, SymmetricAlgorithmType.AesGcm);
+                logger.LogInformation(
+                    "[NET-current] Created EncryptionMaterialsV2: AES");
             } else
             {
                 return StatusCode(501, new GenericServerError { Message = "[NET-current] Unknown or missing key material!" });
