@@ -21,9 +21,13 @@ build-all-servers:
 	@echo "[`date +%H:%M:%S`] Building all servers..."
 	@$(MAKE) $(BUILD_SERVER_TARGETS)
 	@echo "[`date +%H:%M:%S`] All servers built."
+	@./gradlew --status
 	@echo "Stopping gradle daemons..."
-	@./gradlew --stop 2>/dev/null || true
+	@./gradlew --stop
 	@echo "[`date +%H:%M:%S`] Gradle daemons stopped"
+	@./gradlew --status
+	@dotnet build-server shutdown
+	@echo "[`date +%H:%M:%S`] Dotnet build servers stopped"
 
 $(BUILD_SERVER_TARGETS): build-%:
 	@if [ -f $*/Makefile ]; then \
