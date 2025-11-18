@@ -21,11 +21,11 @@ build-all-servers:
 	@echo "[`date +%H:%M:%S`] Building all servers..."
 	@$(MAKE) $(BUILD_SERVER_TARGETS)
 	@echo "[`date +%H:%M:%S`] All servers built."
-	@./gradlew --status
+	@./java-v4-server/gradlew --status
 	@echo "Stopping gradle daemons..."
-	@./gradlew --stop
+	@./java-v4-server/gradlew --stop
 	@echo "[`date +%H:%M:%S`] Gradle daemons stopped"
-	@./gradlew --status
+	@./java-v4-server/gradlew --status
 	@dotnet build-server shutdown
 	@echo "[`date +%H:%M:%S`] Dotnet build servers stopped"
 
