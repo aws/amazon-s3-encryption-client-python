@@ -19,7 +19,7 @@ WAIT_SERVER_TARGETS := $(addprefix wait-, $(SERVER_DIRS))
 # Build all servers in parallel
 build-all-servers:
 	@echo "Building all servers..."
-	$(BUILD_SERVER_TARGETS)
+	@$(MAKE) $(BUILD_SERVER_TARGETS)
 	@echo "All servers built."
 
 $(BUILD_SERVER_TARGETS): build-%:
@@ -44,9 +44,8 @@ start-servers:
 		$(MAKE) -C $$dir wait-for-server; \
 	done
 
-# Start servers sequentially (no parallel execution)
 start-all-servers:
-	@$(MAKE) MAKEFLAGS= $(START_SERVER_TARGETS)
+	@$(MAKE) $(START_SERVER_TARGETS)
 
 $(START_SERVER_TARGETS): start-%:
 	@if [ -f $*/Makefile ]; then \
