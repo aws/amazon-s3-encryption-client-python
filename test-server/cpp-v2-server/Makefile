@@ -11,7 +11,7 @@ build/s3ec-server:
 
 build-server: | build/s3ec-server
 	@echo "Building Cpp V2 server..."
-	cd build && make
+	cd build && $(MAKE)
 
 start-server:
 	@echo "Starting Cpp V2 server..."
