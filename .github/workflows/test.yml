@@ -155,7 +155,7 @@ jobs:
           aws-region: us-west-2
 
       - name: Build the servers
-        run: cd test-server && make build-all-servers
+        run: cd test-server && make build-all-servers && echo "We got to the end?"
         env:
           MAKEFLAGS: -j${{ steps.cpu-count.outputs.count }}
           AWS_REGION: us-west-2

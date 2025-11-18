@@ -54,7 +54,7 @@ public class KC_GCMTestSuite {
     @Nested
     class EncryptTests {
         private static final String sharedObjectKeyBaseMetaDataMode = "test-kc-gcm-kms";
-        private static final String sharedObjectKeyBaseInsFileMode = "test-kc-gcm-kms-instruction-file";
+        private static final String sharedObjectKeyBaseInsFileMode = "test-kc-gcm-rsa-instruction-file";
         private static final KeyMaterial kmsKeyArn = KeyMaterial.builder()
             .kmsKeyId(TestUtils.KMS_KEY_ARN)
             .build();
