@@ -23,6 +23,7 @@ build-all-servers:
 	@echo "[`date +%H:%M:%S`] All servers built."
 	@echo "Stopping gradle daemons..."
 	@./gradlew --stop 2>/dev/null || true
+	@echo "[`date +%H:%M:%S`] Gradle daemons stopped"
 
 $(BUILD_SERVER_TARGETS): build-%:
 	@if [ -f $*/Makefile ]; then \
