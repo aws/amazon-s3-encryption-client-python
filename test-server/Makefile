@@ -21,6 +21,8 @@ build-all-servers:
 	@echo "Building all servers..."
 	@$(MAKE) $(BUILD_SERVER_TARGETS)
 	@echo "All servers built."
+	@echo "Stopping gradle daemons..."
+	@./gradlew --stop 2>/dev/null || true
 
 $(BUILD_SERVER_TARGETS): build-%:
 	@if [ -f $*/Makefile ]; then \

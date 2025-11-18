@@ -54,13 +54,14 @@ tasks {
         outputs.cacheIf { false }
         
         // Enable parallel test execution
-        maxParallelForks = Runtime.getRuntime().availableProcessors()
         systemProperty("junit.jupiter.execution.parallel.enabled", "true")
         systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
         systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
         // Configure thread pool size - adjust based on I/O-bound nature of tests
         systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
-        systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism", "16")
+        maxParallelForks = 1  // One JVM
+        systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism", 
+            Runtime.getRuntime().availableProcessors().toString())  // Scale with CPU
         
         // Passing information from Gradle into the tests so that we can filter our servers
         systemProperty("test.filter.servers", System.getProperty("test.filter.servers"))
