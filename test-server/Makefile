@@ -2,9 +2,6 @@
 
 .PHONY: all start-servers run-tests stop-servers clean ci check-env help
 
-# Default target
-all: start-all-servers wait-all-servers run-tests
-
 # CI target for GitHub Actions
 ci:
 	$(MAKE) build-all-servers
@@ -20,13 +17,16 @@ START_SERVER_TARGETS := $(addprefix start-, $(SERVER_DIRS))
 WAIT_SERVER_TARGETS := $(addprefix wait-, $(SERVER_DIRS))
 
 # Build all servers in parallel
-build-all-servers: export MAKEFLAGS=-j$(shell sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo 1)
-build-all-servers: $(BUILD_SERVER_TARGETS)
+build-all-servers:
+	@echo "Building all servers..."
+	$(BUILD_SERVER_TARGETS)
+	@echo "All servers built."
 
 $(BUILD_SERVER_TARGETS): build-%:
 	@if [ -f $*/Makefile ]; then \
 		echo "Building server in $*..."; \
 		$(MAKE) -C $* build-server; \
+		echo "Server $* built successfully"; \
 	else \
 		echo "❌ Error: no Makefile found in $*"; \
 		exit 1; \
