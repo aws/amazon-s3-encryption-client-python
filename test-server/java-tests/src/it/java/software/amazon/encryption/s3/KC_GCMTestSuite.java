@@ -13,15 +13,13 @@ import java.security.KeyPairGenerator;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.ClassOrderer;
 import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.TestClassOrder;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.platform.suite.api.Suite;
 import org.opentest4j.TestAbortedException;
 import software.amazon.encryption.s3.client.S3ECTestServerClient;
 import software.amazon.encryption.s3.model.CommitmentPolicy;
@@ -36,15 +34,15 @@ import software.amazon.encryption.s3.model.S3ECConfig;
  * KC-GCM Test Suite
  * 
  * This suite enforces execution order between KC-GCM encrypt and decrypt phases:
- * 1. EncryptTests (@Order(1)) - All encrypt tests run in parallel (within this phase)
- * 2. DecryptTests (@Order(2)) - All decrypt tests run in parallel (after encrypt phase completes)
+ * 1. EncryptTests - All encrypt tests run in parallel (within this phase)
+ * 2. DecryptTests - Waits for encrypt phase to complete, then all decrypt tests run in parallel
  * 
- * This ensures that encrypted objects exist before decryption tests run,
- * while still allowing maximum parallelization within each phase.
+ * Coordination is achieved using a CountDownLatch that EncryptTests signals upon completion
+ * and DecryptTests awaits before proceeding.
  */
-@Suite
-@TestClassOrder(ClassOrderer.OrderAnnotation.class)
 public class KC_GCMTestSuite {
+    // Synchronization latch - released when encrypt phase completes
+    private static final CountDownLatch encryptPhaseComplete = new CountDownLatch(1);
     
     /**
      * KC-GCM Encryption Tests - Encrypt Phase
@@ -54,8 +52,7 @@ public class KC_GCMTestSuite {
      * The encrypted objects are stored in thread-safe lists for use by DecryptTests.
      */
     @Nested
-    @Order(1)
-    static class EncryptTests {
+    class EncryptTests {
         private static final String sharedObjectKeyBaseMetaDataMode = "test-kc-gcm-kms";
         private static final String sharedObjectKeyBaseInsFileMode = "test-kc-gcm-kms-instruction-file";
         private static final KeyMaterial kmsKeyArn = KeyMaterial.builder()
@@ -182,6 +179,12 @@ public class KC_GCMTestSuite {
                 crossLanguageObjectsMetaDataMode, 
                 EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
         }
+        
+        @AfterAll
+        static void signalEncryptionComplete() {
+            // Signal that all encryption tests have completed
+            encryptPhaseComplete.countDown();
+        }
     }
     
     /**
@@ -192,8 +195,7 @@ public class KC_GCMTestSuite {
      * They depend on EncryptTests completing first (enforced by @Order).
      */
     @Nested
-    @Order(2)
-    static class DecryptTests {
+    class DecryptTests {
         private static List<String> crossLanguageObjectsMetaDataMode;
         private static List<String> crossLanguageObjectsInstructionFiles;
         private static KeyPair RSA_KEY_PAIR_1;
@@ -202,7 +204,10 @@ public class KC_GCMTestSuite {
             .build();
         
         @BeforeAll
-        static void setup() {
+        static void setup() throws InterruptedException {
+            // Wait for all encryption tests to complete
+            encryptPhaseComplete.await();
+            
             // Import encrypted objects and RSA key from the encrypt phase
             crossLanguageObjectsMetaDataMode = EncryptTests.getCrossLanguageObjectsMetaDataMode();
             crossLanguageObjectsInstructionFiles = EncryptTests.getCrossLanguageObjectsInstructionFiles();

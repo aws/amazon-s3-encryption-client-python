@@ -10,15 +10,13 @@ import static software.amazon.encryption.s3.TestUtils.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.ClassOrderer;
 import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.TestClassOrder;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.platform.suite.api.Suite;
 import software.amazon.encryption.s3.client.S3ECTestServerClient;
 import software.amazon.encryption.s3.model.CommitmentPolicy;
 import software.amazon.encryption.s3.model.CreateClientInput;
@@ -31,26 +29,25 @@ import software.amazon.encryption.s3.model.S3ECConfig;
  * GCM Test Suite
  * 
  * This suite enforces execution order between GCM encrypt and decrypt phases:
- * 1. EncryptTests (@Order(1)) - All encrypt tests run in parallel (within this phase)
- * 2. DecryptTests (@Order(2)) - All decrypt tests run in parallel (after encrypt phase completes)
+ * 1. EncryptTests - All encrypt tests run in parallel (within this phase)
+ * 2. DecryptTests - Waits for encrypt phase to complete, then all decrypt tests run in parallel
  * 
- * This ensures that encrypted objects exist before decryption tests run,
- * while still allowing maximum parallelization within each phase.
+ * Coordination is achieved using a CountDownLatch that EncryptTests signals upon completion
+ * and DecryptTests awaits before proceeding.
  */
-@Suite
-@TestClassOrder(ClassOrderer.OrderAnnotation.class)
 public class GCMTestSuite {
+    // Synchronization latch - released when encrypt phase completes
+    private static final CountDownLatch encryptPhaseComplete = new CountDownLatch(1);
     
     /**
      * GCM Encryption Tests - Encrypt Phase
      * 
-     * These tests encrypt objects using GCM encryption algorithm.
+     * These tests encrypt objects using GCM (without key commitment) encryption algorithm.
      * All tests in this class can run in parallel with each other.
-     * The encrypted objects are stored in a thread-safe list for use by DecryptTests.
+     * The encrypted objects are stored in thread-safe lists for use by DecryptTests.
      */
     @Nested
-    @Order(1)
-    static class EncryptTests {
+    class EncryptTests {
         private static final String sharedObjectKeyBase = "test-gcm-kms";
         private static final KeyMaterial kmsKeyArn = KeyMaterial.builder()
             .kmsKeyId(TestUtils.KMS_KEY_ARN)
@@ -127,6 +124,12 @@ public class GCMTestSuite {
                 crossLanguageObjects, 
                 EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF);
         }
+        
+        @AfterAll
+        static void signalEncryptionComplete() {
+            // Signal that all encryption tests have completed
+            encryptPhaseComplete.countDown();
+        }
     }
     
     /**
@@ -137,15 +140,17 @@ public class GCMTestSuite {
      * They depend on EncryptTests completing first (enforced by @Order).
      */
     @Nested
-    @Order(2)
-    static class DecryptTests {
+    class DecryptTests {
         private static List<String> crossLanguageObjects;
         private static final KeyMaterial kmsKeyArn = KeyMaterial.builder()
             .kmsKeyId(TestUtils.KMS_KEY_ARN)
             .build();
         
         @BeforeAll
-        static void setup() {
+        static void setup() throws InterruptedException {
+            // Wait for all encryption tests to complete
+            encryptPhaseComplete.await();
+            
             // Import encrypted objects from the encrypt phase
             crossLanguageObjects = EncryptTests.getCrossLanguageObjects();
             
