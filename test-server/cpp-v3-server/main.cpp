@@ -12,12 +12,13 @@
 #include <string>
 #include <unordered_map>
 #include <uuid/uuid.h>
+#include <mutex>
 
 using json = nlohmann::json;
 using namespace Aws::S3Encryption;
 using Aws::S3Encryption::Materials::KMSWithContextEncryptionMaterials;
-std::unordered_map<std::string, std::shared_ptr<S3EncryptionClientV3>>
-    client_cache;
+std::unordered_map<std::string, std::shared_ptr<S3EncryptionClientV3>> client_cache_secret;
+std::mutex client_mutex;
 
 std::string generate_uuid() {
   uuid_t uuid;
@@ -25,6 +26,23 @@ std::string generate_uuid() {
   char uuid_str[37];
   uuid_unparse(uuid, uuid_str);
   return std::string(uuid_str);
+}
+
+std::shared_ptr<S3EncryptionClientV3> get_client(const std::string &client_id)
+{
+    std::lock_guard<std::mutex> lock(client_mutex);
+    auto it = client_cache_secret.find(client_id);
+    if (it == client_cache_secret.end()) {
+      return std::shared_ptr<S3EncryptionClientV3>();
+    } else {
+      return it->second;
+    }
+}
+
+void set_client(const std::string &client_id, std::shared_ptr<S3EncryptionClientV3> client)
+{
+  std::lock_guard<std::mutex> lock(client_mutex);
+  client_cache_secret[client_id] = client;
 }
 
 std::string get_header_value(struct MHD_Connection *connection,
@@ -104,7 +122,7 @@ MHD_Result handle_create_client(struct MHD_Connection *connection,
     auto encryption_client = std::make_shared<S3EncryptionClientV3>(config);
 
     std::string client_id = generate_uuid();
-    client_cache[client_id] = encryption_client;
+    set_client(client_id, encryption_client);
 
     json response = {{"clientId", client_id}};
     return send_response(connection, 200, response.dump());
@@ -175,8 +193,8 @@ MHD_Result handle_get_object(struct MHD_Connection *connection,
                              const std::string &bucket, const std::string &key,
                              const std::string &client_id,
                              const std::string &metadata) {
-  auto it = client_cache.find(client_id);
-  if (it == client_cache.end()) {
+  auto client = get_client(client_id);
+  if (!client) {
     return send_response(connection, 404, "{\"error\":\"Client not found\"}");
   }
 
@@ -185,18 +203,9 @@ MHD_Result handle_get_object(struct MHD_Connection *connection,
     request.SetBucket(bucket);
     request.SetKey(key);
 
-    // S3EncryptionGetObjectOutcome outcome ;
-    // if (metadata.empty()) {
-    //   outcome = it->second->GetObject(request);
-    // } else {
-    //   Aws::Map<Aws::String, Aws::String> kmsContextMap;
-    //   fill_context(kmsContextMap, metadata);
-    //   outcome = it->second->GetObject(request, kmsContextMap);
-    // }
-
     Aws::Map<Aws::String, Aws::String> kmsContextMap;
     fill_context(kmsContextMap, metadata);
-    auto outcome = it->second->GetObject(request, kmsContextMap);
+    auto outcome = client->GetObject(request, kmsContextMap);
 
     if (outcome.IsSuccess()) {
       auto &stream = outcome.GetResult().GetBody();
@@ -220,8 +229,8 @@ MHD_Result handle_put_object(struct MHD_Connection *connection,
                              const std::string &client_id,
                              const std::string &body,
                              const std::string &metadata) {
-  auto it = client_cache.find(client_id);
-  if (it == client_cache.end()) {
+  auto client = get_client(client_id);
+  if (!client) {
     return send_response(connection, 404, "{\"error\":\"Client not found\"}");
   }
 
@@ -236,7 +245,7 @@ MHD_Result handle_put_object(struct MHD_Connection *connection,
     auto stream = std::make_shared<std::stringstream>(body);
     request.SetBody(stream);
 
-    auto outcome = it->second->PutObject(request, kmsContextMap);
+    auto outcome = client->PutObject(request, kmsContextMap);
     if (outcome.IsSuccess()) {
       json response = {{"bucket", bucket}, {"key", key}};
       return send_response(connection, 200, response.dump());
