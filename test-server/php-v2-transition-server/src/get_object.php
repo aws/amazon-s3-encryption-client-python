@@ -80,6 +80,10 @@ function handleGetObject($params)
         }
         if (strpos($e->getMessage(), "@SecurityProfile=V2") !== false) {
             return S3EncryptionClientError($e->getMessage() . " " . "Enable legacy wrapping algorithms to use legacy key wrapping algorithm: kms");
+        } elseif (strpos($e->getMessage(), "One or more reserved keys found in Instruction file when they should not be present.") !== false) {
+            return S3EncryptionClientError($e->getMessage());
+        } elseif (strpos($e->getMessage(), "Expected a V3 envelope but was unable to constuct one.") !== false) {
+            return S3EncryptionClientError($e->getMessage());
         } else {
             error_log("This is the error: " . $e->getMessage());
             return GenericServerError("Server error: " . $e->getMessage(), 500);
