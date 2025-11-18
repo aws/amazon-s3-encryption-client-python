@@ -18,17 +18,17 @@ WAIT_SERVER_TARGETS := $(addprefix wait-, $(SERVER_DIRS))
 
 # Build all servers in parallel
 build-all-servers:
-	@echo "Building all servers..."
+	@echo "[`date +%H:%M:%S`] Building all servers..."
 	@$(MAKE) $(BUILD_SERVER_TARGETS)
-	@echo "All servers built."
+	@echo "[`date +%H:%M:%S`] All servers built."
 	@echo "Stopping gradle daemons..."
 	@./gradlew --stop 2>/dev/null || true
 
 $(BUILD_SERVER_TARGETS): build-%:
 	@if [ -f $*/Makefile ]; then \
-		echo "Building server in $*..."; \
+		echo "[`date +%H:%M:%S`] Building server in $*..."; \
 		$(MAKE) -C $* build-server; \
-		echo "Server $* built successfully"; \
+		echo "[`date +%H:%M:%S`] Server $* built successfully"; \
 	else \
 		echo "❌ Error: no Makefile found in $*"; \
 		exit 1; \
