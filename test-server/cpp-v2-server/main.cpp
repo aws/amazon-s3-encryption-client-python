@@ -16,7 +16,7 @@
 using json = nlohmann::json;
 using namespace Aws::S3Encryption;
 using Aws::S3Encryption::Materials::KMSWithContextEncryptionMaterials;
-std::unordered_map<std::string, std::shared_ptr<S3EncryptionClientV3>> client_cache_secret;
+std::unordered_map<std::string, std::shared_ptr<S3EncryptionClientV2>> client_cache_secret;
 std::mutex client_mutex;
 
 std::string generate_uuid() {
@@ -27,18 +27,18 @@ std::string generate_uuid() {
   return std::string(uuid_str);
 }
 
-std::shared_ptr<S3EncryptionClientV3> get_client(const std::string &client_id)
+std::shared_ptr<S3EncryptionClientV2> get_client(const std::string &client_id)
 {
     std::lock_guard<std::mutex> lock(client_mutex);
     auto it = client_cache_secret.find(client_id);
     if (it == client_cache_secret.end()) {
-      return std::shared_ptr<S3EncryptionClientV3>();
+      return std::shared_ptr<S3EncryptionClientV2>();
     } else {
       return it->second;
     }
 }
 
-void set_client(const std::string &client_id, std::shared_ptr<S3EncryptionClientV3> client)
+void set_client(const std::string &client_id, std::shared_ptr<S3EncryptionClientV2> client)
 {
   std::lock_guard<std::mutex> lock(client_mutex);
   client_cache_secret[client_id] = client;
