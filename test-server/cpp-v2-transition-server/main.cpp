@@ -3,6 +3,8 @@
 #include <aws/s3-encryption/CryptoConfiguration.h>
 #include <aws/s3-encryption/S3EncryptionClient.h>
 #include <aws/s3-encryption/materials/KMSEncryptionMaterials.h>
+#include <aws/s3-encryption/materials/SimpleEncryptionMaterials.h>
+#include <aws/core/utils/base64/Base64.h>
 #include <aws/s3/model/GetObjectRequest.h>
 #include <aws/s3/model/PutObjectRequest.h>
 #include <microhttpd.h>
@@ -96,7 +98,41 @@ MHD_Result handle_create_client(struct MHD_Connection *connection,
       return MHD_YES;
     }
 
-    std::string kms_key_id = request["config"]["keyMaterial"]["kmsKeyId"];
+    // Extract all key material types
+    std::string kms_key_id;
+    std::string rsa_key_blob;
+    std::string aes_key_blob;
+    
+    if (request["config"]["keyMaterial"].contains("kmsKeyId") && 
+        !request["config"]["keyMaterial"]["kmsKeyId"].is_null()) {
+      kms_key_id = request["config"]["keyMaterial"]["kmsKeyId"];
+    }
+    if (request["config"]["keyMaterial"].contains("rsaKey") && 
+        !request["config"]["keyMaterial"]["rsaKey"].is_null()) {
+      rsa_key_blob = request["config"]["keyMaterial"]["rsaKey"];
+    }
+    if (request["config"]["keyMaterial"].contains("aesKey") && 
+        !request["config"]["keyMaterial"]["aesKey"].is_null()) {
+      aes_key_blob = request["config"]["keyMaterial"]["aesKey"];
+    }
+    
+    // Validate that only one key type is provided
+    int key_count = 0;
+    if (!kms_key_id.empty()) key_count++;
+    if (!rsa_key_blob.empty()) key_count++;
+    if (!aes_key_blob.empty()) key_count++;
+    
+    if (key_count != 1) {
+      return send_response(connection, 400,
+          "{\"error\":\"KeyMaterial must contain exactly one non-null key type\"}");
+    }
+    
+    // RSA is not supported by C++ SDK
+    if (!rsa_key_blob.empty()) {
+      return send_response(connection, 501,
+          "{\"error\":\"RSA key wrapping is not supported in C++ S3 Encryption Client\"}");
+    }
+    
     bool legacy1 = request["config"]["enableLegacyWrappingAlgorithms"];
     bool legacy2 = request["config"]["enableLegacyUnauthenticatedModes"];
     bool inst_put = false;
@@ -105,8 +141,33 @@ MHD_Result handle_create_client(struct MHD_Connection *connection,
         inst_put = request["config"]["instructionFileConfig"]["enableInstructionFilePutObject"];
     }
 
-    auto materials =
-        std::make_shared<KMSWithContextEncryptionMaterials>(kms_key_id);
+    // Create appropriate encryption materials based on key type
+    std::shared_ptr<Aws::S3Encryption::Materials::EncryptionMaterials> materials;
+    
+    if (!aes_key_blob.empty()) {
+      // Base64 decode the AES key
+      auto decoded = Aws::Utils::Base64::Decode(aes_key_blob);
+      if (!decoded.IsSuccess()) {
+        return send_response(connection, 400,
+            "{\"error\":\"Failed to decode AES key\"}");
+      }
+      
+      Aws::Utils::CryptoBuffer key_buffer(
+          decoded.GetResult().GetUnderlyingData(),
+          decoded.GetResult().GetLength()
+      );
+      
+      materials = std::make_shared<
+          Aws::S3Encryption::Materials::SimpleEncryptionMaterialsWithGCMAAD>(
+          key_buffer
+      );
+    } else if (!kms_key_id.empty()) {
+      materials = std::make_shared<KMSWithContextEncryptionMaterials>(kms_key_id);
+    } else {
+      return send_response(connection, 400,
+          "{\"error\":\"No valid key material provided\"}");
+    }
+    
     CryptoConfigurationV2 config(materials);
     if (legacy1 || legacy2)
       config.SetSecurityProfile(SecurityProfile::V2_AND_LEGACY);
