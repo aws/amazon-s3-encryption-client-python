@@ -357,5 +357,33 @@ public class KC_GCMTestSuite {
             TestUtils.Decrypt(client, S3ECId, crossLanguageObjectsInstructionFiles, 
                 EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
         }
+
+        @ParameterizedTest(name = "{0}: Transition configured with default should decrypt KC-GCM (instruction file)")
+        @MethodSource("software.amazon.encryption.s3.TestUtils#transitionClientsForTest")
+        void transition_configured_with_require_encrypt_require_decrypt_should_decrypt_kc_gcm_ins_file(
+            final TestUtils.LanguageServerTarget language
+        ) {
+            if (!RAW_SUPPORTED.contains(language.getLanguageName())) {
+                throw new TestAbortedException("Not encrypting raw keyring with: " + language.getLanguageName());
+            }
+
+            KeyMaterial rsaKey = KeyMaterial.builder()
+                .rsaKey(ByteBuffer.wrap(RSA_KEY_PAIR_1.getPrivate().getEncoded()))
+                .build();
+
+            S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+            CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+                .config(S3ECConfig.builder()
+                    .instructionFileConfig(InstructionFileConfig.builder()
+                        .enableInstructionFilePutObject(true)
+                        .build())
+                    .keyMaterial(rsaKey).build())
+                .build());
+            String S3ECId = clientOutput.getClientId();
+            
+            TestUtils.Decrypt(client, S3ECId, crossLanguageObjectsInstructionFiles, 
+                EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+        }
+
     }
 }
