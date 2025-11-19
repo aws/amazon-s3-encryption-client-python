@@ -4,7 +4,7 @@
 #include <aws/s3-encryption/S3EncryptionClient.h>
 #include <aws/s3-encryption/materials/KMSEncryptionMaterials.h>
 #include <aws/s3-encryption/materials/SimpleEncryptionMaterials.h>
-#include <aws/core/utils/base64/Base64.h>
+#include <aws/core/utils/HashingUtils.h>
 #include <aws/s3/model/GetObjectRequest.h>
 #include <aws/s3/model/PutObjectRequest.h>
 #include <microhttpd.h>
@@ -87,8 +87,11 @@ std::string get_config(json & request, const char * x)
 
 MHD_Result handle_create_client(struct MHD_Connection *connection,
                                 const std::string &body) {
+  // Make a copy of body so we own the data even if request_completed fires
+  std::string body_copy(body);
+  
   try {
-    json request = json::parse(body);
+    json request = json::parse(body_copy);
     
     // Extract all key material types
     std::string kms_key_id;
@@ -133,64 +136,85 @@ MHD_Result handle_create_client(struct MHD_Connection *connection,
         inst_put = request["config"]["instructionFileConfig"]["enableInstructionFilePutObject"];
     }
 
-    // Create appropriate encryption materials based on key type
-    std::shared_ptr<Aws::S3Encryption::Materials::EncryptionMaterials> materials;
+    std::string commitmentPolicy = get_config(request, "commitmentPolicy");
+    std::string encryptionAlgorithm = get_config(request, "encryptionAlgorithm");
+
+    // Create CryptoConfigurationV3 and S3EncryptionClientV3 based on key type
+    std::shared_ptr<S3EncryptionClientV3> encryption_client;
     
     if (!aes_key_blob.empty()) {
       // Base64 decode the AES key
-      auto decoded = Aws::Utils::Base64::Decode(aes_key_blob);
-      if (!decoded.IsSuccess()) {
+      Aws::Utils::ByteBuffer decoded = Aws::Utils::HashingUtils::Base64Decode(aes_key_blob);
+      if (decoded.GetLength() == 0) {
         return send_response(connection, 400,
             "{\"error\":\"Failed to decode AES key\"}");
       }
       
       Aws::Utils::CryptoBuffer key_buffer(
-          decoded.GetResult().GetUnderlyingData(),
-          decoded.GetResult().GetLength()
+          decoded.GetUnderlyingData(),
+          decoded.GetLength()
       );
       
-      materials = std::make_shared<
+      auto materials = std::make_shared<
           Aws::S3Encryption::Materials::SimpleEncryptionMaterialsWithGCMAAD>(
           key_buffer
       );
+      CryptoConfigurationV3 config(materials);
+      
+      if (legacy1 || legacy2)
+        config.AllowLegacy();
+      if (inst_put)
+        config.SetStorageMethod(StorageMethod::INSTRUCTION_FILE);
+      
+      if (commitmentPolicy == "REQUIRE_ENCRYPT_REQUIRE_DECRYPT") {
+        if (encryptionAlgorithm == "ALG_AES_256_GCM_IV12_TAG16_NO_KDF") return unsupported(connection, commitmentPolicy, encryptionAlgorithm);
+        if (encryptionAlgorithm == "ALG_AES_256_CBC_IV16_NO_KDF") return unsupported(connection, commitmentPolicy, encryptionAlgorithm);
+        config.SetCommitmentPolicy(CommitmentPolicy::REQUIRE_ENCRYPT_REQUIRE_DECRYPT);
+      } else if (commitmentPolicy == "REQUIRE_ENCRYPT_ALLOW_DECRYPT") {
+        if (encryptionAlgorithm == "ALG_AES_256_GCM_IV12_TAG16_NO_KDF") return unsupported(connection, commitmentPolicy, encryptionAlgorithm);
+        config.SetCommitmentPolicy(CommitmentPolicy::REQUIRE_ENCRYPT_ALLOW_DECRYPT);
+      } else if (commitmentPolicy == "FORBID_ENCRYPT_ALLOW_DECRYPT") {
+        if (encryptionAlgorithm == "ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY") return unsupported(connection, commitmentPolicy, encryptionAlgorithm);
+        config.SetCommitmentPolicy(CommitmentPolicy::FORBID_ENCRYPT_ALLOW_DECRYPT);
+      }
+      
+      // Configure ClientConfiguration with retry strategy for throttling
+      Aws::Client::ClientConfiguration clientConfig;
+      clientConfig.maxConnections = 25;
+      clientConfig.retryStrategy = Aws::Client::InitRetryStrategy("standard");
+      
+      encryption_client = std::make_shared<S3EncryptionClientV3>(config, clientConfig);
     } else if (!kms_key_id.empty()) {
-      materials = std::make_shared<KMSWithContextEncryptionMaterials>(kms_key_id);
+      auto materials = std::make_shared<KMSWithContextEncryptionMaterials>(kms_key_id);
+      CryptoConfigurationV3 config(materials);
+      
+      if (legacy1 || legacy2)
+        config.AllowLegacy();
+      if (inst_put)
+        config.SetStorageMethod(StorageMethod::INSTRUCTION_FILE);
+      
+      if (commitmentPolicy == "REQUIRE_ENCRYPT_REQUIRE_DECRYPT") {
+        if (encryptionAlgorithm == "ALG_AES_256_GCM_IV12_TAG16_NO_KDF") return unsupported(connection, commitmentPolicy, encryptionAlgorithm);
+        if (encryptionAlgorithm == "ALG_AES_256_CBC_IV16_NO_KDF") return unsupported(connection, commitmentPolicy, encryptionAlgorithm);
+        config.SetCommitmentPolicy(CommitmentPolicy::REQUIRE_ENCRYPT_REQUIRE_DECRYPT);
+      } else if (commitmentPolicy == "REQUIRE_ENCRYPT_ALLOW_DECRYPT") {
+        if (encryptionAlgorithm == "ALG_AES_256_GCM_IV12_TAG16_NO_KDF") return unsupported(connection, commitmentPolicy, encryptionAlgorithm);
+        config.SetCommitmentPolicy(CommitmentPolicy::REQUIRE_ENCRYPT_ALLOW_DECRYPT);
+      } else if (commitmentPolicy == "FORBID_ENCRYPT_ALLOW_DECRYPT") {
+        if (encryptionAlgorithm == "ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY") return unsupported(connection, commitmentPolicy, encryptionAlgorithm);
+        config.SetCommitmentPolicy(CommitmentPolicy::FORBID_ENCRYPT_ALLOW_DECRYPT);
+      }
+      
+      // Configure ClientConfiguration with retry strategy for throttling
+      Aws::Client::ClientConfiguration clientConfig;
+      clientConfig.maxConnections = 25;
+      clientConfig.retryStrategy = Aws::Client::InitRetryStrategy("standard");
+      
+      encryption_client = std::make_shared<S3EncryptionClientV3>(config, clientConfig);
     } else {
       return send_response(connection, 400,
           "{\"error\":\"No valid key material provided\"}");
     }
-    
-            // Configure ClientConfiguration with retry strategy for throttling
-            Aws::Client::ClientConfiguration clientConfig;
-            clientConfig.maxConnections = 25;
-            clientConfig.retryStrategy = Aws::MakeShared<Aws::Client::DefaultRetryStrategy>(
-                "S3EncryptionClient",
-                5  // maxRetries - will use exponential backoff for throttling
-            );
-
-            CryptoConfigurationV3 config(materials);
-            config.SetClientConfiguration(clientConfig);
-    if (legacy1 || legacy2)
-      config.AllowLegacy();
-    if (inst_put)
-      config.SetStorageMethod(StorageMethod::INSTRUCTION_FILE);
-
-    std::string commitmentPolicy = get_config(request, "commitmentPolicy");
-    std::string encryptionAlgorithm = get_config(request, "encryptionAlgorithm");
-  
-    if (commitmentPolicy == "REQUIRE_ENCRYPT_REQUIRE_DECRYPT") {
-      if (encryptionAlgorithm == "ALG_AES_256_GCM_IV12_TAG16_NO_KDF") return unsupported(connection, commitmentPolicy, encryptionAlgorithm);
-      if (encryptionAlgorithm == "ALG_AES_256_CBC_IV16_NO_KDF") return unsupported(connection, commitmentPolicy, encryptionAlgorithm);
-      config.SetCommitmentPolicy(CommitmentPolicy::REQUIRE_ENCRYPT_REQUIRE_DECRYPT);
-    } else if (commitmentPolicy == "REQUIRE_ENCRYPT_ALLOW_DECRYPT") {
-      if (encryptionAlgorithm == "ALG_AES_256_GCM_IV12_TAG16_NO_KDF") return unsupported(connection, commitmentPolicy, encryptionAlgorithm);
-      config.SetCommitmentPolicy(CommitmentPolicy::REQUIRE_ENCRYPT_ALLOW_DECRYPT);
-    } else if (commitmentPolicy == "FORBID_ENCRYPT_ALLOW_DECRYPT") {
-      if (encryptionAlgorithm == "ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY") return unsupported(connection, commitmentPolicy, encryptionAlgorithm);
-      config.SetCommitmentPolicy(CommitmentPolicy::FORBID_ENCRYPT_ALLOW_DECRYPT);
-    }
-
-    auto encryption_client = std::make_shared<S3EncryptionClientV3>(config);
 
     std::string client_id = generate_uuid();
     set_client(client_id, encryption_client);
@@ -306,6 +330,9 @@ MHD_Result handle_put_object(struct MHD_Connection *connection,
   }
 
   try {
+    // Create owned copy of body data to ensure it lives through the S3 operation
+    auto body_ptr = std::make_shared<std::string>(body);
+    
     Aws::Map<Aws::String, Aws::String> kmsContextMap;
     fill_context(kmsContextMap, metadata);
 
@@ -313,9 +340,12 @@ MHD_Result handle_put_object(struct MHD_Connection *connection,
     request.SetBucket(bucket);
     request.SetKey(key);
 
-    auto stream = std::make_shared<std::stringstream>(body);
+    // Create stream from owned body data
+    auto stream = std::make_shared<std::stringstream>(*body_ptr);
     request.SetBody(stream);
 
+    // Synchronous call - waits for S3 operation to complete
+    // body_ptr keeps the data alive through this entire operation
     auto outcome = client->PutObject(request, kmsContextMap);
     if (outcome.IsSuccess()) {
       json response = {{"bucket", bucket}, {"key", key}};
@@ -332,21 +362,31 @@ MHD_Result handle_put_object(struct MHD_Connection *connection,
   }
 }
 
+void request_completed(void *cls, struct MHD_Connection *connection,
+                      void **con_cls, enum MHD_RequestTerminationCode toe) {
+  // Clean up the request-specific context when request is truly complete
+  if (*con_cls != nullptr) {
+    std::string *body = static_cast<std::string *>(*con_cls);
+    delete body;
+    *con_cls = nullptr;
+  }
+}
+
 MHD_Result request_handler(void *cls, struct MHD_Connection *connection,
                            const char *url, const char *method,
                            const char *version, const char *upload_data,
                            size_t *upload_data_size, void **con_cls) {
   std::string method_str(method);
   bool is_push = method_str == "POST" || method_str == "PUT";
-  static int dummy;
+  
+  // Initialize request context on first call
   if (*con_cls == nullptr) {
-    if (is_push) {
-      *con_cls = new std::string();
-    } else {
-      *con_cls = &dummy;
-    }
+    // Allocate unique state for each request to avoid race conditions
+    *con_cls = new std::string();
     return MHD_YES;
   }
+  
+  // Accumulate request body data for POST/PUT requests
   if (is_push && *upload_data_size) {
     std::string *body = static_cast<std::string *>(*con_cls);
     body->append(upload_data, *upload_data_size);
@@ -356,11 +396,13 @@ MHD_Result request_handler(void *cls, struct MHD_Connection *connection,
 
   std::string url_str(url);
 
+  // Handle client creation endpoint
   if (is_push && url_str == "/client") {
-    std::unique_ptr<std::string> body(static_cast<std::string*>(*con_cls));
+    std::string *body = static_cast<std::string*>(*con_cls);
     return handle_create_client(connection, *body);
   }
 
+  // Handle object operations
   if (url_str.find("/object/") == 0) {
     std::string path = url_str.substr(8); // Remove "/object/"
     size_t slash_pos = path.find('/');
@@ -368,18 +410,20 @@ MHD_Result request_handler(void *cls, struct MHD_Connection *connection,
       std::string bucket = path.substr(0, slash_pos);
       std::string key = path.substr(slash_pos + 1);
       std::string client_id = get_header_value(connection, "clientid");
-
       std::string metadata = get_header_value(connection, "content-metadata");
+      
       if (method_str == "GET") {
         return handle_get_object(connection, bucket, key, client_id, metadata);
       } else if (method_str == "PUT") {
-        std::unique_ptr<std::string> body(static_cast<std::string*>(*con_cls));
-        *upload_data_size = 0;
+        std::string *body = static_cast<std::string *>(*con_cls);
         return handle_put_object(connection, bucket, key, client_id, *body, metadata);
+      } else {
+        return send_response(connection, 405, "{\"error\":\"Method not allowed\"}");
       }
     }
   }
 
+  // Return error for unrecognized endpoints
   return send_response(connection, 404,
                        "{\"error\":\"Not idea what is happening\"}");
 }
@@ -390,8 +434,11 @@ int main() {
   int port = 8091;
 
   struct MHD_Daemon *daemon =
-      MHD_start_daemon(MHD_USE_SELECT_INTERNALLY, port, NULL, NULL,
-                       &request_handler, NULL, MHD_OPTION_END);
+      MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION | MHD_USE_INTERNAL_POLLING_THREAD, port, NULL, NULL,
+                       &request_handler, NULL,
+                       MHD_OPTION_NOTIFY_COMPLETED, request_completed, NULL,
+                       MHD_OPTION_CONNECTION_LIMIT, 100,
+                       MHD_OPTION_END);
 
   if (!daemon) {
     fprintf(stderr, "Failed to start server on port %d\n", port);
