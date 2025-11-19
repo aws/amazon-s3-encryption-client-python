@@ -86,6 +86,10 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
                 ? new AmazonS3CryptoConfigurationV4() 
                 : new AmazonS3CryptoConfigurationV4(securityProfile, commitmentPolicy, encryptionAlgorithm);
             
+            // Add retry configuration for throttling
+            configuration.RetryMode = Amazon.Runtime.RequestRetryMode.Adaptive;
+            configuration.MaxErrorRetry = 5;
+            
             if (request.Config.InstructionFileConfig?.EnableInstructionFilePutObject == true)
             {
                 configuration.StorageMode = CryptoStorageMode.InstructionFile;

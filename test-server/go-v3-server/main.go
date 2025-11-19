@@ -66,7 +66,12 @@ type ErrorResponse struct {
 
 // NewServer creates a new server instance
 func NewServer() (*Server, error) {
-	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-west-2"))
+	cfg, err := config.LoadDefaultConfig(
+		context.TODO(),
+		config.WithRegion("us-west-2"),
+		config.WithRetryMaxAttempts(5),
+		config.WithRetryMode(aws.RetryModeAdaptive),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load AWS config: %w", err)
 	}
@@ -141,7 +146,12 @@ func (s *Server) createClient(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-west-2"))
+	cfg, err := config.LoadDefaultConfig(
+		context.TODO(),
+		config.WithRegion("us-west-2"),
+		config.WithRetryMaxAttempts(5),
+		config.WithRetryMode(aws.RetryModeAdaptive),
+	)
 	if err != nil {
 		s.createS3EncryptionClientError(w, fmt.Sprintf("Failed to load AWS config: %v", err), http.StatusInternalServerError)
 		return

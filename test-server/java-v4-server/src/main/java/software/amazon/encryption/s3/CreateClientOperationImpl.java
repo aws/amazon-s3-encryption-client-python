@@ -1,5 +1,8 @@
 package software.amazon.encryption.s3;
 
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.core.retry.RetryPolicy;
+import software.amazon.awssdk.core.retry.backoff.BackoffStrategy;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.encryption.s3.internal.InstructionFileConfig;
 import software.amazon.encryption.s3.algorithms.AlgorithmSuite;
@@ -106,8 +109,21 @@ public class CreateClientOperationImpl implements CreateClientOperation {
                 throw new RuntimeException("No KeyMaterial found!");
             }
 
+            // Configure S3 client with adaptive retry for throttling
+            RetryPolicy retryPolicy = RetryPolicy.builder()
+                    .numRetries(5)
+                    .throttlingBackoffStrategy(BackoffStrategy.defaultThrottlingStrategy())
+                    .build();
+
+            S3Client wrappedClient = S3Client.builder()
+                    .overrideConfiguration(ClientOverrideConfiguration.builder()
+                            .retryPolicy(retryPolicy)
+                            .build())
+                    .build();
+
             // V4-Improved server configuration
             S3EncryptionClient.Builder s3ClientBuilder = S3EncryptionClient.builderV4()
+                    .wrappedClient(wrappedClient)
                     .keyring(keyring)
                     .enableLegacyWrappingAlgorithms(input.getConfig().isEnableLegacyWrappingAlgorithms())
                     .enableLegacyUnauthenticatedModes(input.getConfig().isEnableLegacyUnauthenticatedModes());

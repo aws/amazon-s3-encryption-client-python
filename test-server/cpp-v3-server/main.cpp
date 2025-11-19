@@ -160,7 +160,16 @@ MHD_Result handle_create_client(struct MHD_Connection *connection,
           "{\"error\":\"No valid key material provided\"}");
     }
     
-    CryptoConfigurationV3 config(materials);
+            // Configure ClientConfiguration with retry strategy for throttling
+            Aws::Client::ClientConfiguration clientConfig;
+            clientConfig.maxConnections = 25;
+            clientConfig.retryStrategy = Aws::MakeShared<Aws::Client::DefaultRetryStrategy>(
+                "S3EncryptionClient",
+                5  // maxRetries - will use exponential backoff for throttling
+            );
+
+            CryptoConfigurationV3 config(materials);
+            config.SetClientConfiguration(clientConfig);
     if (legacy1 || legacy2)
       config.AllowLegacy();
     if (inst_put)
