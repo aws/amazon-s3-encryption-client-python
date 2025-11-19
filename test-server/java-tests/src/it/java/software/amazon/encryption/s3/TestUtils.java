@@ -548,23 +548,39 @@ public class TestUtils {
         EncryptionAlgorithm expectedEncryptionAlgorithm,
         List<String> expectedPlaintexts
     ) {
+        List<String> failures = new ArrayList<>();
         for (int i = 0; i < crossLanguageObjects.size(); i++) {
-            String objectKey = crossLanguageObjects.get(i);
-            String expectedPlaintext = expectedPlaintexts.get(i);
-            
-            GetObjectOutput output = client.getObject(GetObjectInput.builder()
-                .clientID(S3ECId)
-                .bucket(TestUtils.BUCKET)
-                .key(objectKey)
-                .build());
+            try {
+                String objectKey = crossLanguageObjects.get(i);
+                String expectedPlaintext = expectedPlaintexts.get(i);
+                
+                GetObjectOutput output = client.getObject(GetObjectInput.builder()
+                    .clientID(S3ECId)
+                    .bucket(TestUtils.BUCKET)
+                    .key(objectKey)
+                    .build());
 
-            // Then: Pass
-            assertEquals(expectedPlaintext, new String(output.getBody().array()));
-            assertEquals(
-                expectedEncryptionAlgorithm,
-                GetEncryptionAlgorithm(objectKey),
-                "When decrypting the EncryptionAlgorithm does not match the expected value: " + expectedEncryptionAlgorithm
-            );
+                // Then: Pass
+                assertEquals(expectedPlaintext, new String(output.getBody().array()));
+                assertEquals(
+                    expectedEncryptionAlgorithm,
+                    GetEncryptionAlgorithm(objectKey),
+                    "When decrypting the EncryptionAlgorithm does not match the expected value: " + expectedEncryptionAlgorithm
+                );
+            } catch (Exception e) {
+                failures.add(String.format(
+                    "Failed to decrypt object '%s' (index %d): %s - %s",
+                    crossLanguageObjects.get(i), i, e.getClass().getSimpleName(), e.getMessage()
+                ));
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new AssertionError(String.format(
+                "Decryption failed for %d out of %d objects:\n%s",
+                failures.size(), crossLanguageObjects.size(), 
+                String.join("\n", failures)
+            ));
         }
     }
 
