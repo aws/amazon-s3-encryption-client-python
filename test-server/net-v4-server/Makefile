@@ -32,7 +32,7 @@ start-net-V4-server:
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
-	dotnet run --no-build & echo $! > $(PID_FILE_NET_V4)
+	dotnet run --no-build > server.log 2>&1 & echo $! > $(PID_FILE_NET_V4)
 	@echo ".NET V4 server starting..."
 
 wait-for-server:
