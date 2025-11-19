@@ -20,8 +20,6 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             return StatusCode(501, new GenericServerError { Message = "[NET-V4] EnableDelayedAuthenticationMode not supported" });
         if (request.Config.SetBufferSize.HasValue)
             return StatusCode(501, new GenericServerError { Message = "[NET-V4] SetBufferSize not supported" });
-        if (request.Config.KeyMaterial.AesKey != null)
-            return StatusCode(501, new GenericServerError { Message = "[NET-V4] AesKey not supported" });
         
         try
         {
@@ -46,7 +44,16 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
                 encryptionMaterial = new EncryptionMaterialsV4(rsaKey, AsymmetricAlgorithmType.RsaOaepSha1);
                 logger.LogInformation(
                     "[NET-V4] Created EncryptionMaterialsV4: RSA");
-            } else
+            } 
+            else if (request.Config.KeyMaterial.AesKey != null)
+            {
+                var aes = Aes.Create();
+                aes.Key = request.Config.KeyMaterial.AesKey;
+                encryptionMaterial = new EncryptionMaterialsV4(aes, SymmetricAlgorithmType.AesGcm);
+                logger.LogInformation(
+                    "[NET-V4] Created EncryptionMaterialsV4: AES");
+            }
+            else
             {
                 return StatusCode(501, new GenericServerError { Message = "[NET-V4] Unknown or missing key material!" });
             }
