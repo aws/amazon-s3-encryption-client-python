@@ -74,11 +74,12 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             logger.LogInformation("[NET-V3-Transitional] Created encryptionAlgorithm= {encryptionAlgorithm}", encryptionAlgorithm);
 
             var configuration = new AmazonS3CryptoConfigurationV2(securityProfile, commitmentPolicy, encryptionAlgorithm);
-            if (request.Config.InstructionFileConfig?.EnableInstructionFilePutObject == true)
+            
             // Add retry configuration for throttling
             configuration.RetryMode = Amazon.Runtime.RequestRetryMode.Adaptive;
             configuration.MaxErrorRetry = 5;
 
+            if (request.Config.InstructionFileConfig?.EnableInstructionFilePutObject == true)
             {
                 configuration.StorageMode = CryptoStorageMode.InstructionFile;
                 logger.LogInformation("[NET-V3-Transitional] Created StorageMode= InstructionFile");

@@ -69,11 +69,12 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             logger.LogInformation("[NET-current] Created securityProfile= {securityProfile}", securityProfile.ToString());
 
             var configuration = new AmazonS3CryptoConfigurationV2(securityProfile);
-            if (request.Config.InstructionFileConfig?.EnableInstructionFilePutObject == true)
+            
             // Add retry configuration for throttling
             configuration.RetryMode = Amazon.Runtime.RequestRetryMode.Adaptive;
             configuration.MaxErrorRetry = 5;
 
+            if (request.Config.InstructionFileConfig?.EnableInstructionFilePutObject == true)
             {
                 configuration.StorageMode = CryptoStorageMode.InstructionFile;
                 logger.LogInformation("[NET-current] Created StorageMode= InstructionFile");
