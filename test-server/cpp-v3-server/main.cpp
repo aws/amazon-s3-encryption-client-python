@@ -288,8 +288,12 @@ MHD_Result handle_get_object(struct MHD_Connection *connection,
                              const std::string &bucket, const std::string &key,
                              const std::string &client_id,
                              const std::string &metadata) {
+  fprintf(stderr, "[CPP-V3] GetObject request: bucket=%s, key=%s, client_id=%s\n", 
+          bucket.c_str(), key.c_str(), client_id.c_str());
+  
   auto client = get_client(client_id);
   if (!client) {
+    fprintf(stderr, "[CPP-V3] GetObject error: Client not found for client_id=%s\n", client_id.c_str());
     return send_response(connection, 404, "{\"error\":\"Client not found\"}");
   }
 
@@ -306,15 +310,17 @@ MHD_Result handle_get_object(struct MHD_Connection *connection,
       auto &stream = outcome.GetResult().GetBody();
       std::string content((std::istreambuf_iterator<char>(stream)),
                           std::istreambuf_iterator<char>());
+      fprintf(stderr, "[CPP-V3] GetObject success: bucket=%s, key=%s, size=%zu bytes\n", 
+              bucket.c_str(), key.c_str(), content.length());
       return send_response(connection, 200, content);
     } else {
       auto msg = make_error(outcome.GetError().GetMessage(), 500);
-    fprintf(stderr, "handle_get_object error %s\n", msg.c_str());
+      fprintf(stderr, "[CPP-V3] GetObject AWS error: %s\n", msg.c_str());
       return send_response(connection, 500, msg);
     }
   } catch (const std::exception &e) {
-    fprintf(stderr, "handle_get_object exception %s\n", e.what());
-    auto msg = make_error("An exception was thrown", 500);
+    fprintf(stderr, "[CPP-V3] GetObject exception: %s\n", e.what());
+    auto msg = make_error(e.what(), 500);
     return send_response(connection, 500, msg);
   }
 }
@@ -324,8 +330,12 @@ MHD_Result handle_put_object(struct MHD_Connection *connection,
                              const std::string &client_id,
                              const std::string &body,
                              const std::string &metadata) {
+  fprintf(stderr, "[CPP-V3] PutObject request: bucket=%s, key=%s, client_id=%s, body_size=%zu\n", 
+          bucket.c_str(), key.c_str(), client_id.c_str(), body.length());
+  
   auto client = get_client(client_id);
   if (!client) {
+    fprintf(stderr, "[CPP-V3] PutObject error: Client not found for client_id=%s\n", client_id.c_str());
     return send_response(connection, 404, "{\"error\":\"Client not found\"}");
   }
 
@@ -348,15 +358,16 @@ MHD_Result handle_put_object(struct MHD_Connection *connection,
     // body_ptr keeps the data alive through this entire operation
     auto outcome = client->PutObject(request, kmsContextMap);
     if (outcome.IsSuccess()) {
+      fprintf(stderr, "[CPP-V3] PutObject success: bucket=%s, key=%s\n", bucket.c_str(), key.c_str());
       json response = {{"bucket", bucket}, {"key", key}};
       return send_response(connection, 200, response.dump());
     } else {
       auto msg = make_error(outcome.GetError().GetMessage(), 500);
-    fprintf(stderr, "handle_put_object error %s\n", msg.c_str());
+      fprintf(stderr, "[CPP-V3] PutObject AWS error: %s\n", msg.c_str());
       return send_response(connection, 500, msg);
     }
   } catch (const std::exception &e) {
-    fprintf(stderr, "handle_put_object exception %s\n", e.what());
+    fprintf(stderr, "[CPP-V3] PutObject exception: %s\n", e.what());
     auto msg = make_error(e.what(), 500);
     return send_response(connection, 500, msg);
   }
@@ -387,19 +398,23 @@ MHD_Result request_handler(void *cls, struct MHD_Connection *connection,
   }
   
   // Accumulate request body data for POST/PUT requests
-  if (is_push && *upload_data_size) {
+  if (is_push && *upload_data_size > 0) {
     std::string *body = static_cast<std::string *>(*con_cls);
     body->append(upload_data, *upload_data_size);
     *upload_data_size = 0;
     return MHD_YES;
   }
+  
+  // At this point, *upload_data_size == 0, meaning we have all the data
+  // Now we can safely process the request
 
   std::string url_str(url);
 
   // Handle client creation endpoint
   if (is_push && url_str == "/client") {
     std::string *body = static_cast<std::string*>(*con_cls);
-    return handle_create_client(connection, *body);
+    MHD_Result result = handle_create_client(connection, *body);
+    return result;
   }
 
   // Handle object operations
@@ -413,10 +428,12 @@ MHD_Result request_handler(void *cls, struct MHD_Connection *connection,
       std::string metadata = get_header_value(connection, "content-metadata");
       
       if (method_str == "GET") {
-        return handle_get_object(connection, bucket, key, client_id, metadata);
+        MHD_Result result = handle_get_object(connection, bucket, key, client_id, metadata);
+        return result;
       } else if (method_str == "PUT") {
         std::string *body = static_cast<std::string *>(*con_cls);
-        return handle_put_object(connection, bucket, key, client_id, *body, metadata);
+        MHD_Result result = handle_put_object(connection, bucket, key, client_id, *body, metadata);
+        return result;
       } else {
         return send_response(connection, 405, "{\"error\":\"Method not allowed\"}");
       }
@@ -437,7 +454,8 @@ int main() {
       MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION | MHD_USE_INTERNAL_POLLING_THREAD, port, NULL, NULL,
                        &request_handler, NULL,
                        MHD_OPTION_NOTIFY_COMPLETED, request_completed, NULL,
-                       MHD_OPTION_CONNECTION_LIMIT, 100,
+                       MHD_OPTION_CONNECTION_LIMIT, 250,
+                       MHD_OPTION_CONNECTION_TIMEOUT, 30,
                        MHD_OPTION_END);
 
   if (!daemon) {
