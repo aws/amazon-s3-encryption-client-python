@@ -56,13 +56,14 @@
 #include <unordered_map>
 #include <uuid/uuid.h>
 #include <mutex>
+#include <shared_mutex>
 #include <thread>
 
 using json = nlohmann::json;
 using namespace Aws::S3Encryption;
 using Aws::S3Encryption::Materials::KMSWithContextEncryptionMaterials;
 std::unordered_map<std::string, std::shared_ptr<S3EncryptionClientV3>> client_cache_secret;
-std::shared_mutex client_mutex; // Using shared_mutex for concurrent reads
+std::shared_timed_mutex client_mutex; // Using shared_timed_mutex (C++14 compatible) for concurrent reads
 
 // Threading configuration - set at startup based on CPU cores
 unsigned int g_thread_pool_size = 8;  // Default, will be overwritten in main()
@@ -78,7 +79,7 @@ std::string generate_uuid() {
 std::shared_ptr<S3EncryptionClientV3> get_client(const std::string &client_id)
 {
     // Use shared_lock for concurrent reads - multiple threads can read simultaneously
-    std::shared_lock<std::shared_mutex> lock(client_mutex);
+    std::shared_lock<std::shared_timed_mutex> lock(client_mutex);
     auto it = client_cache_secret.find(client_id);
     if (it == client_cache_secret.end()) {
       return std::shared_ptr<S3EncryptionClientV3>();
@@ -91,7 +92,7 @@ void set_client(const std::string &client_id, std::shared_ptr<S3EncryptionClient
 {
   // UUID guarantees unique keys - always insert, never update
   // Still need exclusive lock because std::unordered_map isn't thread-safe for concurrent inserts
-  std::unique_lock<std::shared_mutex> lock(client_mutex);
+  std::unique_lock<std::shared_timed_mutex> lock(client_mutex);
   client_cache_secret.emplace(client_id, client);
 }
 
