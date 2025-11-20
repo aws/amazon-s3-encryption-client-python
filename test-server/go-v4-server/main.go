@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/aws/amazon-s3-encryption-client-go/v4/client"
 	"github.com/aws/amazon-s3-encryption-client-go/v4/materials"
@@ -24,6 +25,7 @@ import (
 type Server struct {
 	clientCache map[string]*client.S3EncryptionClientV4
 	kmsClient   *kms.Client
+	mu          sync.RWMutex
 }
 
 // CreateClientInput represents the input for creating a client
@@ -199,8 +201,10 @@ func (s *Server) createClient(w http.ResponseWriter, r *http.Request) {
 	// Generate client ID
 	clientID := uuid.New().String()
 
-	// Store client in cache
+	// Store client in cache (protected by mutex)
+	s.mu.Lock()
 	s.clientCache[clientID] = s3EncryptionClient
+	s.mu.Unlock()
 
 	// Return response
 	w.Header().Set("Content-Type", "application/json")
@@ -221,8 +225,10 @@ func (s *Server) putObject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get client from cache
+	// Get client from cache (protected by mutex)
+	s.mu.RLock()
 	client, exists := s.clientCache[clientID]
+	s.mu.RUnlock()
 
 	if !exists {
 		s.createGenericServerError(w, fmt.Sprintf("No client found for ClientID: %s", clientID), http.StatusNotFound)
@@ -291,8 +297,10 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get client from cache
+	// Get client from cache (protected by mutex)
+	s.mu.RLock()
 	client, exists := s.clientCache[clientID]
+	s.mu.RUnlock()
 
 	if !exists {
 		s.createGenericServerError(w, fmt.Sprintf("No client found for ClientID: %s", clientID), http.StatusNotFound)
