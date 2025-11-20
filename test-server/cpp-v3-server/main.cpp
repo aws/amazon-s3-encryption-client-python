@@ -285,9 +285,10 @@ void fill_context(Aws::Map<Aws::String, Aws::String> &map,
 }
 
 MHD_Result handle_get_object(struct MHD_Connection *connection,
-                             const std::string &bucket, const std::string &key,
-                             const std::string &client_id,
-                             const std::string &metadata) {
+                             std::string bucket,
+                             std::string key,
+                             std::string client_id,
+                             std::string metadata) {
   fprintf(stderr, "[CPP-V3] GetObject request: bucket=%s, key=%s, client_id=%s\n", 
           bucket.c_str(), key.c_str(), client_id.c_str());
   
@@ -355,10 +356,11 @@ MHD_Result handle_get_object(struct MHD_Connection *connection,
 }
 
 MHD_Result handle_put_object(struct MHD_Connection *connection,
-                             const std::string &bucket, const std::string &key,
-                             const std::string &client_id,
-                             const std::string &body,
-                             const std::string &metadata) {
+                             std::string bucket,
+                             std::string key,
+                             std::string client_id,
+                             std::string body,
+                             std::string metadata) {
   fprintf(stderr, "[CPP-V3] PutObject request: bucket=%s, key=%s, client_id=%s, body_size=%zu\n", 
           bucket.c_str(), key.c_str(), client_id.c_str(), body.length());
   
