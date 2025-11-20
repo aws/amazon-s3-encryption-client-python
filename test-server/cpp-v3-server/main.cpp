@@ -304,15 +304,40 @@ MHD_Result handle_get_object(struct MHD_Connection *connection,
 
     Aws::Map<Aws::String, Aws::String> kmsContextMap;
     fill_context(kmsContextMap, metadata);
+    
+    // Keep outcome alive to ensure stream remains valid
     auto outcome = client->GetObject(request, kmsContextMap);
 
     if (outcome.IsSuccess()) {
+      // Read the stream completely before outcome goes out of scope
       auto &stream = outcome.GetResult().GetBody();
-      std::string content((std::istreambuf_iterator<char>(stream)),
-                          std::istreambuf_iterator<char>());
+      std::stringstream buffer;
+      buffer << stream.rdbuf();
+      std::string content = buffer.str();
+      
+      // Validate we read something
+      if (content.empty() && stream.fail()) {
+        fprintf(stderr, "[CPP-V3] GetObject error: Failed to read stream for bucket=%s, key=%s\n", 
+                bucket.c_str(), key.c_str());
+        auto msg = make_error("Failed to read response stream", 500);
+        return send_response(connection, 500, msg);
+      }
+      
       fprintf(stderr, "[CPP-V3] GetObject success: bucket=%s, key=%s, size=%zu bytes\n", 
               bucket.c_str(), key.c_str(), content.length());
-      return send_response(connection, 200, content);
+      
+      // Create and send response
+      struct MHD_Response *response = MHD_create_response_from_buffer(
+          content.length(), (void *)content.data(), MHD_RESPMEM_MUST_COPY);
+      
+      // Add keep-alive header
+      MHD_add_response_header(response, "Connection", "keep-alive");
+      MHD_add_response_header(response, "Keep-Alive", "timeout=30, max=100");
+      
+      MHD_Result ret = MHD_queue_response(connection, 200, response);
+      MHD_destroy_response(response);
+      
+      return ret;
     } else {
       auto msg = make_error(outcome.GetError().GetMessage(), 500);
       fprintf(stderr, "[CPP-V3] GetObject AWS error: %s\n", msg.c_str());
@@ -321,6 +346,10 @@ MHD_Result handle_get_object(struct MHD_Connection *connection,
   } catch (const std::exception &e) {
     fprintf(stderr, "[CPP-V3] GetObject exception: %s\n", e.what());
     auto msg = make_error(e.what(), 500);
+    return send_response(connection, 500, msg);
+  } catch (...) {
+    fprintf(stderr, "[CPP-V3] GetObject unknown exception\n");
+    auto msg = make_error("Unknown error in GetObject", 500);
     return send_response(connection, 500, msg);
   }
 }
