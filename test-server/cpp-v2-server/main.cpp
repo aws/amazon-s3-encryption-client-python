@@ -284,7 +284,7 @@ int main() {
   struct MHD_Daemon *daemon =
       MHD_start_daemon(MHD_USE_SELECT_INTERNALLY, port, NULL, NULL,
                        &request_handler, NULL,
-                       MHD_OPTION_CONNECTION_LIMIT, 250,
+                       MHD_OPTION_CONNECTION_LIMIT, 100,
                        MHD_OPTION_CONNECTION_TIMEOUT, 30,
                        MHD_OPTION_END);
 

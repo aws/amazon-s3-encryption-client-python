@@ -413,7 +413,7 @@ int main() {
       MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION | MHD_USE_INTERNAL_POLLING_THREAD, port, NULL, NULL,
                        &request_handler, NULL,
                        MHD_OPTION_NOTIFY_COMPLETED, request_completed, NULL,
-                       MHD_OPTION_CONNECTION_LIMIT, 250,
+                       MHD_OPTION_CONNECTION_LIMIT, 100,
                        MHD_OPTION_CONNECTION_TIMEOUT, 30,
                        MHD_OPTION_END);
 
