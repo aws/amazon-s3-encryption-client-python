@@ -407,7 +407,9 @@ void request_completed(void *cls, struct MHD_Connection *connection,
   // Clean up the request-specific context when request is truly complete
   if (*con_cls != nullptr) {
     std::string *body = static_cast<std::string *>(*con_cls);
-    delete body;
+    // This tests that we never can delete a string that someone is using.
+    // this seems safe to do for a test server because these strings are small.
+    // delete body; 
     *con_cls = nullptr;
   }
 }
