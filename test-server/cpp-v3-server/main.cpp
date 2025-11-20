@@ -1,3 +1,44 @@
+/*
+ * S3 Encryption Test Server - C++ V3
+ * 
+ * CONCURRENCY AND SYNCHRONIZATION DESIGN:
+ * 
+ * 1. Threading Model:
+ *    - Uses MHD_USE_SELECT_INTERNALLY with fixed thread pool
+ *    - Thread pool size = CPU cores * 2 (auto-detected at startup)
+ *    - Threads are reused across connections for efficiency
+ *    - I/O multiplexing (select/poll) distributes connections across thread pool
+ *    - All S3 operations are SYNCHRONOUS - server waits for S3 completion before responding
+ * 
+ * 2. Resource Scaling:
+ *    - All limits automatically scale with detected CPU count:
+ *      * Thread pool size = num_cores * 2
+ *      * Connection limit = num_cores * 2
+ *      * S3 client maxConnections = num_cores * 2
+ *    - Multiplier of 2 accounts for I/O blocking without starving throughput
+ *    - Ensures optimal resource usage on any hardware configuration
+ * 
+ * 3. Client Cache (client_cache_secret):
+ *    - Protected by std::shared_mutex for efficient concurrent access
+ *    - get_client() uses shared_lock (multiple threads can read simultaneously)
+ *    - set_client() uses unique_lock (exclusive write access)
+ *    - This allows concurrent GET/PUT operations without serialization
+ *    - UUID-based keys guarantee uniqueness (always insert, never update)
+ * 
+ * 4. Memory Management:
+ *    - Request body allocated in request_handler (*con_cls = new std::string())
+ *    - Body lifetime managed by libmicrohttpd - valid until request_completed()
+ *    - All handler functions complete synchronously before returning
+ *    - request_completed() safely deletes body after response sent
+ *    - No memory leaks under sustained concurrent load
+ * 
+ * 5. Synchronous Operation Guarantees:
+ *    - GetObject: Waits for S3, reads full response stream, then returns
+ *    - PutObject: Waits for S3 operation to complete, then returns
+ *    - No async callbacks or background operations
+ *    - Client receives response only after S3 operation completes
+ */
+
 #include <aws/core/Aws.h>
 #include <aws/kms/KMSClient.h>
 #include <aws/s3-encryption/CryptoConfiguration.h>
@@ -15,12 +56,16 @@
 #include <unordered_map>
 #include <uuid/uuid.h>
 #include <mutex>
+#include <thread>
 
 using json = nlohmann::json;
 using namespace Aws::S3Encryption;
 using Aws::S3Encryption::Materials::KMSWithContextEncryptionMaterials;
 std::unordered_map<std::string, std::shared_ptr<S3EncryptionClientV3>> client_cache_secret;
-std::mutex client_mutex;
+std::shared_mutex client_mutex; // Using shared_mutex for concurrent reads
+
+// Threading configuration - set at startup based on CPU cores
+unsigned int g_thread_pool_size = 8;  // Default, will be overwritten in main()
 
 std::string generate_uuid() {
   uuid_t uuid;
@@ -32,7 +77,8 @@ std::string generate_uuid() {
 
 std::shared_ptr<S3EncryptionClientV3> get_client(const std::string &client_id)
 {
-    std::lock_guard<std::mutex> lock(client_mutex);
+    // Use shared_lock for concurrent reads - multiple threads can read simultaneously
+    std::shared_lock<std::shared_mutex> lock(client_mutex);
     auto it = client_cache_secret.find(client_id);
     if (it == client_cache_secret.end()) {
       return std::shared_ptr<S3EncryptionClientV3>();
@@ -43,8 +89,10 @@ std::shared_ptr<S3EncryptionClientV3> get_client(const std::string &client_id)
 
 void set_client(const std::string &client_id, std::shared_ptr<S3EncryptionClientV3> client)
 {
-  std::lock_guard<std::mutex> lock(client_mutex);
-  client_cache_secret[client_id] = client;
+  // UUID guarantees unique keys - always insert, never update
+  // Still need exclusive lock because std::unordered_map isn't thread-safe for concurrent inserts
+  std::unique_lock<std::shared_mutex> lock(client_mutex);
+  client_cache_secret.emplace(client_id, client);
 }
 
 std::string get_header_value(struct MHD_Connection *connection,
@@ -87,11 +135,11 @@ std::string get_config(json & request, const char * x)
 
 MHD_Result handle_create_client(struct MHD_Connection *connection,
                                 const std::string &body) {
-  // Make a copy of body so we own the data even if request_completed fires
-  std::string body_copy(body);
+  // Body is kept alive by *con_cls until request_completed fires, so it's safe to use directly
+  // All operations here are synchronous and complete before returning to caller
   
   try {
-    json request = json::parse(body_copy);
+    json request = json::parse(body);
     
     // Extract all key material types
     std::string kms_key_id;
@@ -179,8 +227,9 @@ MHD_Result handle_create_client(struct MHD_Connection *connection,
       }
       
       // Configure ClientConfiguration with retry strategy for throttling
+      // Match S3 connection pool size to thread pool size for optimal resource usage
       Aws::Client::ClientConfiguration clientConfig;
-      clientConfig.maxConnections = 25;
+      clientConfig.maxConnections = g_thread_pool_size;
       clientConfig.retryStrategy = Aws::Client::InitRetryStrategy("standard");
       
       encryption_client = std::make_shared<S3EncryptionClientV3>(config, clientConfig);
@@ -206,8 +255,9 @@ MHD_Result handle_create_client(struct MHD_Connection *connection,
       }
       
       // Configure ClientConfiguration with retry strategy for throttling
+      // Match S3 connection pool size to thread pool size for optimal resource usage
       Aws::Client::ClientConfiguration clientConfig;
-      clientConfig.maxConnections = 25;
+      clientConfig.maxConnections = g_thread_pool_size;
       clientConfig.retryStrategy = Aws::Client::InitRetryStrategy("standard");
       
       encryption_client = std::make_shared<S3EncryptionClientV3>(config, clientConfig);
@@ -407,11 +457,10 @@ MHD_Result handle_put_object(struct MHD_Connection *connection,
 void request_completed(void *cls, struct MHD_Connection *connection,
                       void **con_cls, enum MHD_RequestTerminationCode toe) {
   // Clean up the request-specific context when request is truly complete
+  // This is called AFTER all handlers have returned and the response has been sent
   if (*con_cls != nullptr) {
     std::string *body = static_cast<std::string *>(*con_cls);
-    // This tests that we never can delete a string that someone is using.
-    // this seems safe to do for a test server because these strings are small.
-    // delete body; 
+    delete body;  // Safe to delete now - all synchronous operations are complete
     *con_cls = nullptr;
   }
 }
@@ -481,13 +530,32 @@ MHD_Result request_handler(void *cls, struct MHD_Connection *connection,
 int main() {
   Aws::SDKOptions options;
   Aws::InitAPI(options);
+  
+  // Detect CPU core count and configure threading
+  unsigned int num_cores = std::thread::hardware_concurrency();
+  if (num_cores == 0) {
+    num_cores = 4;  // Fallback if detection fails
+    fprintf(stderr, "[WARNING] CPU core detection failed, defaulting to %u cores\n", num_cores);
+  }
+  
+  // Thread pool size = num_cores * 2 (allows for I/O blocking without starving throughput)
+  g_thread_pool_size = num_cores * 2;
+  unsigned int connection_limit = g_thread_pool_size;
+  
+  // Log configuration
+  fprintf(stderr, "[CONFIG] Detected CPU cores: %u\n", num_cores);
+  fprintf(stderr, "[CONFIG] Thread pool size: %u\n", g_thread_pool_size);
+  fprintf(stderr, "[CONFIG] Connection limit: %u\n", connection_limit);
+  fprintf(stderr, "[CONFIG] S3 client maxConnections: %u\n", g_thread_pool_size);
+  
   int port = 8091;
 
   struct MHD_Daemon *daemon =
-      MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION | MHD_USE_INTERNAL_POLLING_THREAD, port, NULL, NULL,
+      MHD_start_daemon(MHD_USE_SELECT_INTERNALLY | MHD_USE_INTERNAL_POLLING_THREAD, port, NULL, NULL,
                        &request_handler, NULL,
                        MHD_OPTION_NOTIFY_COMPLETED, request_completed, NULL,
-                       MHD_OPTION_CONNECTION_LIMIT, 100,
+                       MHD_OPTION_THREAD_POOL_SIZE, g_thread_pool_size,
+                       MHD_OPTION_CONNECTION_LIMIT, connection_limit,
                        MHD_OPTION_CONNECTION_TIMEOUT, 30,
                        MHD_OPTION_END);
 
