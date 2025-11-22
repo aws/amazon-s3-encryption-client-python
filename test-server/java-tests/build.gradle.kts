@@ -61,7 +61,7 @@ tasks {
         systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
         maxParallelForks = 1  // One JVM
         systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism", 
-            Math.max(1, Runtime.getRuntime().availableProcessors() - 6).toString())  // Scale with CPU, reserve 2 cores
+            Math.max(1, Runtime.getRuntime().availableProcessors() - 2).toString())  // Scale with CPU, reserve 2 cores
 
         // Passing information from Gradle into the tests so that we can filter our servers
         systemProperty("test.filter.servers", System.getProperty("test.filter.servers"))
