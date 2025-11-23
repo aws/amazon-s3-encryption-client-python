@@ -64,6 +64,7 @@
 #include <shared_mutex>
 #include <thread>
 #include <functional>
+#include <optional>
 
 using json = nlohmann::json;
 using namespace Aws::S3Encryption;
@@ -235,7 +236,7 @@ MHD_Result handle_create_client(struct MHD_Connection *connection,
     std::string encryptionAlgorithm = get_config(request, "encryptionAlgorithm");
 
     // Create CryptoConfigurationV3 based on key type
-    CryptoConfigurationV3 config;
+    std::optional<CryptoConfigurationV3> config;
     
     if (!aes_key_blob.empty()) {
       // Base64 decode the AES key
@@ -254,10 +255,10 @@ MHD_Result handle_create_client(struct MHD_Connection *connection,
           Aws::S3Encryption::Materials::SimpleEncryptionMaterialsWithGCMAAD>(
           key_buffer
       );
-      config = CryptoConfigurationV3(materials);
+      config.emplace(materials);
     } else if (!kms_key_id.empty()) {
       auto materials = std::make_shared<KMSWithContextEncryptionMaterials>(kms_key_id);
-      config = CryptoConfigurationV3(materials);
+      config.emplace(materials);
     } else {
       return send_response(connection, 400,
           "{\"error\":\"No valid key material provided\"}");
@@ -265,9 +266,9 @@ MHD_Result handle_create_client(struct MHD_Connection *connection,
     
     // Apply common configuration settings (applies to both AES and KMS)
     if (legacy1 || legacy2)
-      config.AllowLegacy();
+      config->AllowLegacy();
     if (inst_put)
-      config.SetStorageMethod(StorageMethod::INSTRUCTION_FILE);
+      config->SetStorageMethod(StorageMethod::INSTRUCTION_FILE);
     
     // Configure commitment policy (applies to both AES and KMS)
     if (commitmentPolicy == "REQUIRE_ENCRYPT_REQUIRE_DECRYPT") {
@@ -275,24 +276,24 @@ MHD_Result handle_create_client(struct MHD_Connection *connection,
           encryptionAlgorithm == "ALG_AES_256_CBC_IV16_NO_KDF") {
         return unsupported(connection, commitmentPolicy, encryptionAlgorithm);
       }
-      config.SetCommitmentPolicy(CommitmentPolicy::REQUIRE_ENCRYPT_REQUIRE_DECRYPT);
+      config->SetCommitmentPolicy(CommitmentPolicy::REQUIRE_ENCRYPT_REQUIRE_DECRYPT);
     } else if (commitmentPolicy == "REQUIRE_ENCRYPT_ALLOW_DECRYPT") {
       if (encryptionAlgorithm == "ALG_AES_256_GCM_IV12_TAG16_NO_KDF") {
         return unsupported(connection, commitmentPolicy, encryptionAlgorithm);
       }
-      config.SetCommitmentPolicy(CommitmentPolicy::REQUIRE_ENCRYPT_ALLOW_DECRYPT);
+      config->SetCommitmentPolicy(CommitmentPolicy::REQUIRE_ENCRYPT_ALLOW_DECRYPT);
     } else if (commitmentPolicy == "FORBID_ENCRYPT_ALLOW_DECRYPT") {
       if (encryptionAlgorithm == "ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY") {
         return unsupported(connection, commitmentPolicy, encryptionAlgorithm);
       }
-      config.SetCommitmentPolicy(CommitmentPolicy::FORBID_ENCRYPT_ALLOW_DECRYPT);
+      config->SetCommitmentPolicy(CommitmentPolicy::FORBID_ENCRYPT_ALLOW_DECRYPT);
     }
     
     // Create S3EncryptionClientV3 with standard configuration
     Aws::Client::ClientConfiguration clientConfig;
     clientConfig.maxConnections = 512;  // Large pool per client
     clientConfig.retryStrategy = Aws::Client::InitRetryStrategy("standard");
-    auto encryption_client = std::make_shared<S3EncryptionClientV3>(config, clientConfig);
+    auto encryption_client = std::make_shared<S3EncryptionClientV3>(*config, clientConfig);
 
     std::string client_id = generate_uuid();
     set_client(client_id, encryption_client);
