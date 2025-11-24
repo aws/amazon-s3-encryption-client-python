@@ -272,6 +272,8 @@ MHD_Result handle_create_client(struct MHD_Connection *connection,
     // Apply common configuration settings (applies to both AES and KMS)
     if (legacy1 || legacy2)
       config->SetSecurityProfile(SecurityProfile::V2_AND_LEGACY);
+    if (legacy2)
+      config->SetUnAuthenticatedRangeGet(RangeGetMode::ALL);
     if (inst_put)
       config->SetStorageMethod(StorageMethod::INSTRUCTION_FILE);
     
@@ -363,12 +365,13 @@ MHD_Result handle_get_object(struct MHD_Connection *connection,
                              std::string bucket,
                              std::string key,
                              std::string client_id,
-                             std::string metadata) {
+                             std::string metadata,
+                             std::string range) {
   // Get thread ID for debugging concurrent operations
   std::thread::id thread_id = std::this_thread::get_id();
   
-  fprintf(stderr, "[CPP-V2-TRANSITION] [DEBUG] GetObject START: thread=%lu, bucket=%s, key=%s, client_id=%s, metadata_length=%zu\n", 
-          (unsigned long)std::hash<std::thread::id>{}(thread_id), bucket.c_str(), key.c_str(), client_id.c_str(), metadata.length());
+  fprintf(stderr, "[CPP-V2-TRANSITION] [DEBUG] GetObject START: thread=%lu, bucket=%s, key=%s, client_id=%s, metadata_length=%zu, range=%s\n", 
+          (unsigned long)std::hash<std::thread::id>{}(thread_id), bucket.c_str(), key.c_str(), client_id.c_str(), metadata.length(), range.c_str());
   
   auto client = get_client(client_id);
   if (!client) {
@@ -380,6 +383,12 @@ MHD_Result handle_get_object(struct MHD_Connection *connection,
     Aws::S3::Model::GetObjectRequest request;
     request.SetBucket(bucket);
     request.SetKey(key);
+    
+    // Add range header if provided
+    if (!range.empty()) {
+      request.SetRange(range);
+      fprintf(stderr, "[CPP-V2-TRANSITION] [DEBUG] GetObject: Setting range=%s\n", range.c_str());
+    }
 
     Aws::Map<Aws::String, Aws::String> kmsContextMap;
     fill_context(kmsContextMap, metadata);
@@ -611,7 +620,8 @@ MHD_Result request_handler(void *cls, struct MHD_Connection *connection,
       
       if (method_str == "GET") {
         fprintf(stderr, "[CPP-V2-TRANSITION] Dispatching to handle_get_object\n");
-        MHD_Result result = handle_get_object(connection, bucket, key, client_id, metadata);
+        std::string range = get_header_value(connection, "Range");
+        MHD_Result result = handle_get_object(connection, bucket, key, client_id, metadata, range);
         fprintf(stderr, "[CPP-V2-TRANSITION] handle_get_object returned: %d\n", result);
         return result;
       } else if (method_str == "PUT") {

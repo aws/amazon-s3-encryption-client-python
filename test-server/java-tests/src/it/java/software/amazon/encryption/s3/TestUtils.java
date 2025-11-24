@@ -6,6 +6,7 @@
 package software.amazon.encryption.s3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 
 import java.net.Socket;
 import java.net.URI;
@@ -99,6 +100,14 @@ public class TestUtils {
     public static final Set<String> ENCRYPTION_CONTEXT_ON_ENCRYPT_UNSUPPORTED =
         Set.of(NET_V2_CURRENT, NET_V3_CURRENT, NET_V3_TRANSITION, NET_V4);
 
+    public static final Set<String> RE_ENCRYPT_SUPPORTED =
+        Set.of(JAVA_V3_CURRENT, JAVA_V3_TRANSITION, JAVA_V4);
+
+    public static final Set<String> RANGED_GETS_SUPPORTED =
+        Set.of(
+            JAVA_V3_CURRENT, JAVA_V3_TRANSITION, JAVA_V4
+            , CPP_V2_CURRENT, CPP_V2_TRANSITION, CPP_V3
+        );
 
     // Cpp only supports Raw AES
     public static final Set<String> RAW_AES_SUPPORTED =
@@ -648,5 +657,104 @@ public class TestUtils {
         }
 
         assertEquals(successfulDecrypt.size(), 0, "Decryption should have failed:" + String.join(",", successfulDecrypt));
+    }
+
+    /**
+     * Perform ranged get operation with specified byte range
+     */
+    public static void RangedGet(
+        S3ECTestServerClient client,
+        String S3ECId,
+        List<String> objectKeys,
+        long rangeStart,
+        long rangeEnd,
+        EncryptionAlgorithm expectedEncryptionAlgorithm
+    ) {
+        List<String> failures = new ArrayList<>();
+        for (String objectKey : objectKeys) {
+            try {
+                // Get the full object first to know expected content
+                GetObjectOutput fullOutput = client.getObject(GetObjectInput.builder()
+                    .clientID(S3ECId)
+                    .bucket(TestUtils.BUCKET)
+                    .key(objectKey)
+                    .build());
+                byte[] fullContent = fullOutput.getBody().array();
+                
+                // Perform ranged get
+                GetObjectOutput output = client.getObject(GetObjectInput.builder()
+                    .clientID(S3ECId)
+                    .bucket(TestUtils.BUCKET)
+                    .key(objectKey)
+                    .range("bytes=" + rangeStart + "-" + rangeEnd)
+                    .build());
+
+                // Verify the ranged content matches expected slice
+                byte[] rangedContent = output.getBody().array();
+                int startIndex = (int) rangeStart;
+                int endIndex = (int) Math.min(rangeEnd + 1, fullContent.length); // +1 because HTTP ranges are inclusive
+                byte[] expectedContent = Arrays.copyOfRange(fullContent, startIndex, endIndex);
+                assertArrayEquals(expectedContent, rangedContent, 
+                    "Ranged get returned unexpected data for:" + objectKey);
+                
+                // Verify encryption algorithm
+                assertEquals(
+                    expectedEncryptionAlgorithm,
+                    GetEncryptionAlgorithm(objectKey),
+                    "Encryption algorithm mismatch for " + objectKey
+                );
+            } catch (Exception e) {
+                failures.add(String.format(
+                    "Failed ranged get on '%s': %s - %s",
+                    objectKey, e.getClass().getSimpleName(), e.getMessage()
+                ));
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new AssertionError(String.format(
+                "Ranged get failed for %d out of %d objects:\n%s",
+                failures.size(), objectKeys.size(), 
+                String.join("\n", failures)
+            ));
+        }
+    }
+
+    /**
+     * Perform ranged get operations that are expected to fail
+     */
+    public static void RangedGet_fails(
+        S3ECTestServerClient client,
+        String S3ECId,
+        List<String> objectKeys,
+        long rangeStart,
+        long rangeEnd,
+        EncryptionAlgorithm expectedEncryptionAlgorithm
+    ) {
+        List<String> successfulGets = new ArrayList<>();
+        for (String objectKey : objectKeys) {
+            try {
+                assertEquals(
+                    expectedEncryptionAlgorithm,
+                    GetEncryptionAlgorithm(objectKey),
+                    "Encryption algorithm mismatch for " + objectKey
+                );
+                
+                GetObjectOutput output = client.getObject(GetObjectInput.builder()
+                    .clientID(S3ECId)
+                    .bucket(TestUtils.BUCKET)
+                    .key(objectKey)
+                    .range("bytes=" + rangeStart + "-" + rangeEnd)
+                    .build());
+                
+                // Should have failed but didn't
+                successfulGets.add(objectKey);
+            } catch (S3EncryptionClientError e) {
+                // This is expected - the ranged get should fail
+            }
+        }
+
+        assertEquals(0, successfulGets.size(), 
+            "Ranged get should have failed for: " + String.join(", ", successfulGets));
     }
 }
