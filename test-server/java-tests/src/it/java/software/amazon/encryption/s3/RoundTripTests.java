@@ -665,7 +665,7 @@ public class RoundTripTests {
                     .key(objectKey + ".instruction")
                     .build());
         }
-        // assertTrue(ptInstFile.response().metadata().containsKey("x-amz-crypto-instr-file"));
+        assertTrue(ptInstFile.response().metadata().containsKey("x-amz-crypto-instr-file"));
         assertFalse(ptInstFile.asUtf8String().isEmpty());
         // Read should be enabled by default
         GetObjectOutput output = decClient.getObject(GetObjectInput.builder()

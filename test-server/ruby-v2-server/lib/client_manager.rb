@@ -2,8 +2,6 @@ require 'concurrent-ruby'
 require 'securerandom'
 require 'aws-sdk-s3'
 require 'aws-sdk-kms'
-require 'openssl'
-require 'base64'
 require_relative 'logger'
 
 # Manages S3 Encryption Client instances
@@ -16,42 +14,20 @@ class ClientManager
 
   # Create a new S3 encryption client and return its ID
   def create_client(config)
-    # Extract all key material types
+    # Extract configuration
     kms_key_id = config.dig('keyMaterial', 'kmsKeyId')
-    rsa_key_blob = config.dig('keyMaterial', 'rsaKey')
-    aes_key_blob = config.dig('keyMaterial', 'aesKey')
     inst_file_put = config.dig('instructionFileConfig', 'enableInstructionFilePutObject')
     
-    # Validate that only one key type is provided
-    key_count = [kms_key_id, rsa_key_blob, aes_key_blob].compact.count
-    raise 'KeyMaterial must contain exactly one non-null key type' unless key_count == 1
+    raise 'KMS Key ID is required' if kms_key_id.nil? || kms_key_id.empty?
 
     # Create S3 encryption client configuration
     encryption_config = {
+      kms_key_id: kms_key_id,
+      kms_client: @kms_client,
+      key_wrap_schema: :kms_context,
       content_encryption_schema: :aes_gcm_no_padding,
       envelope_location: inst_file_put ? :instruction_file : :metadata
-    }
-
-    # Configure based on key type
-    if kms_key_id
-      encryption_config[:kms_key_id] = kms_key_id
-      encryption_config[:kms_client] = @kms_client
-      encryption_config[:key_wrap_schema] = :kms_context
-    elsif rsa_key_blob
-      # Parse RSA private key from PKCS8 format
-      key_bytes = Base64.decode64(rsa_key_blob)
-      rsa_key = OpenSSL::PKey::RSA.new(key_bytes)
-      encryption_config[:encryption_key] = rsa_key
-      encryption_config[:key_wrap_schema] = :rsa_oaep_sha1
-    elsif aes_key_blob
-      # Extract AES key bytes
-      key_bytes = Base64.decode64(aes_key_blob)
-      encryption_config[:encryption_key] = key_bytes
-      encryption_config[:key_wrap_schema] = :aes_gcm
-    end
-
-    # Apply legacy settings
-    encryption_config.tap do |hash|
+    }.tap do |hash|
       if !config['enableLegacyWrappingAlgorithms'].nil? || !config['enableLegacyUnauthenticatedModes'].nil?
         legacy_modes = config['enableLegacyWrappingAlgorithms'] || config['enableLegacyUnauthenticatedModes']
         # Set security profile based on legacy wrapping algorithms setting

@@ -170,7 +170,9 @@ jobs:
       - name: Wait for servers to start
         run: cd test-server && make wait-all-servers
         env:
-          MAKEFLAGS: -j${{ steps.cpu-count.outputs.count }}
+          AWS_REGION: us-west-2
+          TEST_SERVER_S3_BUCKET: ${{ vars.TEST_SERVER_S3_BUCKET }}
+          TEST_SERVER_KMS_KEY_ARN: ${{ vars.TEST_SERVER_KMS_KEY_ARN }}
 
       - name: Run run-tests
         run: cd test-server && make run-tests

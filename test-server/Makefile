@@ -84,7 +84,7 @@ run-tests:
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
-	./gradlew --build-cache --info --parallel --no-daemon integ -Dtest.filter.servers="$(FILTER)"
+	./gradlew --build-cache --info --parallel integ -Dtest.filter.servers="$(FILTER)"
 	@echo "Tests completed successfully"
 
 # Stop the servers
