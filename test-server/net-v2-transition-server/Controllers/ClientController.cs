@@ -21,8 +21,6 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             return StatusCode(501, new GenericServerError { Message = "EnableDelayedAuthenticationMode not supported" });
         if (request.Config.SetBufferSize.HasValue)
             return StatusCode(501, new GenericServerError { Message = "SetBufferSize not supported" });
-        if (request.Config.KeyMaterial.AesKey != null)
-            return StatusCode(501, new GenericServerError { Message = "AesKey not supported" });
         
         try
         {
@@ -38,6 +36,15 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
                 logger.LogInformation(
                     "[NET-V3-Transitional] Created EncryptionMaterialsV2: KMS={KmsKeyId}",
                     kmsKeyId);
+            }
+            else if (request.Config.KeyMaterial.AesKey != null)
+            {
+                var aesKeyBytes = request.Config.KeyMaterial.AesKey;
+                var aes = Aes.Create();
+                aes.Key = aesKeyBytes;
+                encryptionMaterial = new EncryptionMaterialsV2(aes, SymmetricAlgorithmType.AesGcm);
+                logger.LogInformation(
+                    "[NET-V3-Transitional] Created EncryptionMaterialsV2: AES");
             }
             else if (request.Config.KeyMaterial.RsaKey != null)
             {
