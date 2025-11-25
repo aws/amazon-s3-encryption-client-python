@@ -17,9 +17,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import com.amazonaws.services.s3.model.S3Object;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
@@ -99,6 +103,7 @@ public class TestUtils {
     public static final Set<String> RAW_SUPPORTED =
       Set.of(JAVA_V3_CURRENT, JAVA_V3_TRANSITION, JAVA_V4
         , NET_V2_CURRENT, NET_V3_CURRENT, NET_V2_TRANSITION, NET_V3_TRANSITION, NET_V4
+        , RUBY_V2_TRANSITION, RUBY_V3
       );
 
     // .NET only supports decrypting instruction files using AES and RSA.
@@ -449,22 +454,58 @@ public class TestUtils {
     private static AmazonS3 s3Client = AmazonS3ClientBuilder.defaultClient();
     public static EncryptionAlgorithm GetEncryptionAlgorithm(String objectKey)
     {
+        // Lambda to determine encryption algorithm from a metadata map
+        java.util.function.Function<Map<String, ?>, Optional<EncryptionAlgorithm>> getAlgorithmFromMap = (map) -> {
+            if (map.containsKey("x-amz-c")) {
+                return Optional.of(EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
+            } else if (map.containsKey("x-amz-cek-alg")) {
+                String cek = (String) map.get("x-amz-cek-alg");
+                if (cek.contains("CBC")) {
+                    return Optional.of(EncryptionAlgorithm.ALG_AES_256_CBC_IV16_NO_KDF);
+                } else if (cek.contains("GCM")) {
+                    return Optional.of(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF);
+                }
+            }
+            return Optional.empty();
+        };
+
         ObjectMetadata metadata = s3Client.getObjectMetadata(TestUtils.BUCKET, objectKey);
         Map<String, String> userMetadata = metadata.getUserMetadata();
 
-        // This is optimized to not need to go to the instruction files for commit_key
-        if (userMetadata.containsKey("x-amz-c")) {
-            return EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY;
-        } else if (userMetadata.containsKey("x-amz-cek-alg")) {
-            String cek = userMetadata.get("x-amz-cek-alg");
-            if (cek.contains("CBC")) {
-                return EncryptionAlgorithm.ALG_AES_256_CBC_IV16_NO_KDF;
-            } else if (cek.contains("GCM")) {
-                return EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF;
-            }
+        // Try to get algorithm from object metadata
+        Optional<EncryptionAlgorithm> algorithm = getAlgorithmFromMap.apply(userMetadata);
+        if (algorithm.isPresent()) {
+            return algorithm.get();
         }
 
-        throw new RuntimeException("Need to support instruction files!");
+        // Check instruction file
+        try {
+            String instructionFileKey = objectKey + ".instruction";
+            com.amazonaws.services.s3.model.S3Object instructionFileObject = 
+                s3Client.getObject(TestUtils.BUCKET, instructionFileKey);
+            
+            // Read instruction file content
+            java.io.InputStream inputStream = instructionFileObject.getObjectContent();
+            String instructionFileJson = new String(
+                inputStream.readAllBytes(), 
+                java.nio.charset.StandardCharsets.UTF_8
+            );
+            inputStream.close();
+            
+            // Parse JSON to get metadata
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            Map<String, Object> instructionFileMap = mapper.readValue(instructionFileJson, Map.class);
+            
+            // Try to get algorithm from instruction file
+            algorithm = getAlgorithmFromMap.apply(instructionFileMap);
+            if (algorithm.isPresent()) {
+                return algorithm.get();
+            }
+        } catch (Exception e) {
+            // Instruction file doesn't exist or couldn't be read
+        }
+
+        throw new RuntimeException("Could not determine encryption algorithm from object metadata or instruction file!");
     }
 
     public static void Encrypt(
@@ -492,23 +533,54 @@ public class TestUtils {
 
     public static void Decrypt(
         S3ECTestServerClient client,
-        String S3ECId, List<String> crossLanguageObjects,
+        String S3ECId,
+        List<String> crossLanguageObjects,
         EncryptionAlgorithm expectedEncryptionAlgorithm
     ) {
-        for (String objectKey : crossLanguageObjects) {
-            GetObjectOutput output = client.getObject(GetObjectInput.builder()
-            .clientID(S3ECId)
-            .bucket(TestUtils.BUCKET)
-            .key(objectKey)
-            .build());
+        // Call 5-parameter version with crossLanguageObjects as expectedPlaintexts
+        Decrypt(client, S3ECId, crossLanguageObjects, expectedEncryptionAlgorithm, crossLanguageObjects);
+    }
 
-            // Then: Pass
-            assertEquals(objectKey, new String(output.getBody().array()));
-            assertEquals(
-                expectedEncryptionAlgorithm,
-                GetEncryptionAlgorithm(objectKey),
-                "When decrypting the EncryptionAlgorithm does not match the expected value: " + expectedEncryptionAlgorithm
-            );
+    public static void Decrypt(
+        S3ECTestServerClient client,
+        String S3ECId,
+        List<String> crossLanguageObjects,
+        EncryptionAlgorithm expectedEncryptionAlgorithm,
+        List<String> expectedPlaintexts
+    ) {
+        List<String> failures = new ArrayList<>();
+        for (int i = 0; i < crossLanguageObjects.size(); i++) {
+            try {
+                String objectKey = crossLanguageObjects.get(i);
+                String expectedPlaintext = expectedPlaintexts.get(i);
+                
+                GetObjectOutput output = client.getObject(GetObjectInput.builder()
+                    .clientID(S3ECId)
+                    .bucket(TestUtils.BUCKET)
+                    .key(objectKey)
+                    .build());
+
+                // Then: Pass
+                assertEquals(expectedPlaintext, new String(output.getBody().array()));
+                assertEquals(
+                    expectedEncryptionAlgorithm,
+                    GetEncryptionAlgorithm(objectKey),
+                    "When decrypting the EncryptionAlgorithm does not match the expected value: " + expectedEncryptionAlgorithm
+                );
+            } catch (Exception e) {
+                failures.add(String.format(
+                    "Failed to decrypt object '%s' (index %d): %s - %s",
+                    crossLanguageObjects.get(i), i, e.getClass().getSimpleName(), e.getMessage()
+                ));
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new AssertionError(String.format(
+                "Decryption failed for %d out of %d objects:\n%s",
+                failures.size(), crossLanguageObjects.size(), 
+                String.join("\n", failures)
+            ));
         }
     }
 
