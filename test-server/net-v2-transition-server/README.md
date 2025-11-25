@@ -1,22 +1,21 @@
-# Net-V2-V3-Server
+# Net-V2-transition-Server
 
-A .NET test server for Amazon S3 encryption client .NET v3 transition.
+A .NET test server for Amazon S3 encryption client .NET v2 transition.
 
 ## Project Structure
 
 ```
-net-v2-v3-server/
 ├── Controllers/                        # API controllers
 ├── Models/                             # Data models
 ├── Services/                           # Business logic services
 ├── Program.cs                          # Application entry point
-├── NetV3TransitionServer.csproj        # Project file
+├── NetV2TransitionServer.csproj        # Project file
 └── README.md                           # This file
 ```
 
 ## Running the Server
 
-For S3 Encryption Client v3 transition (runs on port 8096):
+For S3 Encryption Client v2 transition (runs on port 8096):
 
 ```bash
 dotnet run
