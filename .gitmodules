@@ -58,3 +58,7 @@
 [submodule "test-server/cpp-v2-server/aws-sdk-cpp"]
 	path = test-server/cpp-v2-server/aws-sdk-cpp
 	url = git@github.com:awslabs/aws-sdk-cpp-staging.git
+[submodule "test-server/net-v2-transition-server/s3ec-v2-transition-branch"]
+	path = test-server/net-v2-transition-server/s3ec-v2-transition-branch
+	url = https://github.com/aws/private-amazon-s3-encryption-client-dotnet-staging.git
+	branch = s3ec-v2-transition-integ

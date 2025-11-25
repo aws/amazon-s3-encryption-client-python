@@ -90,21 +90,21 @@ public class TestUtils {
 
     // Sets of unsupported features by language
     public static final Set<String> ENCRYPTION_CONTEXT_ON_DECRYPT_UNSUPPORTED =
-        Set.of(GO_V3_CURRENT, PHP_V2_CURRENT, PHP_V2_TRANSITION, PHP_V3, NET_V2_CURRENT, NET_V3_CURRENT, NET_V3_TRANSITION, NET_V4);
+        Set.of(GO_V3_CURRENT, PHP_V2_CURRENT, PHP_V2_TRANSITION, PHP_V3, NET_V2_CURRENT, NET_V3_CURRENT, NET_V2_TRANSITION, NET_V3_TRANSITION, NET_V4);
     
     public static final Set<String> ENCRYPTION_CONTEXT_ON_ENCRYPT_UNSUPPORTED =
-        Set.of(NET_V2_CURRENT, NET_V3_CURRENT, NET_V3_TRANSITION, NET_V4);
+        Set.of(NET_V2_CURRENT, NET_V3_CURRENT, NET_V2_TRANSITION, NET_V3_TRANSITION, NET_V4);
 
     // For now, only .NET and Java have RSA support
     public static final Set<String> RAW_SUPPORTED =
       Set.of(JAVA_V3_CURRENT, JAVA_V3_TRANSITION, JAVA_V4
-        , NET_V2_CURRENT, NET_V3_CURRENT, NET_V3_TRANSITION, NET_V4
+        , NET_V2_CURRENT, NET_V3_CURRENT, NET_V2_TRANSITION, NET_V3_TRANSITION, NET_V4
       );
 
     // .NET only supports decrypting instruction files using AES and RSA.
     // Python MUST support decrypting KMS instruction files, but does not yet.
     public static final Set<String> KMS_INSTRUCTION_FILE_UNSUPPORTED =
-      Set.of(NET_V2_CURRENT, NET_V2_TRANSITION, NET_V3_CURRENT, NET_V3_TRANSITION, NET_V4);
+      Set.of(NET_V2_CURRENT, NET_V2_TRANSITION, NET_V3_CURRENT, NET_V2_TRANSITION, NET_V3_TRANSITION, NET_V4);
 
     // Go does not write with instruction files
     public static final Set<String> INSTRUCTION_FILE_PUT_UNSUPPORTED =
@@ -131,7 +131,7 @@ public class TestUtils {
         Set.of(
             JAVA_V3_TRANSITION,
             GO_V3_TRANSITION,
-            // NET_V2_TRANSITION,
+            NET_V2_TRANSITION,
             NET_V3_TRANSITION,
             CPP_V2_TRANSITION,
             PHP_V2_TRANSITION,
@@ -169,7 +169,7 @@ public class TestUtils {
         servers.put(PHP_V3, new LanguageServerTarget(PHP_V3, "8093"));
         servers.put(JAVA_V3_TRANSITION, new LanguageServerTarget(JAVA_V3_TRANSITION, "8094"));
         servers.put(GO_V3_TRANSITION, new LanguageServerTarget(GO_V3_TRANSITION, "8095"));
-        // servers.put(NET_V2_TRANSITION, new LanguageServerTarget(NET_V2_TRANSITION, "8096"));
+        servers.put(NET_V2_TRANSITION, new LanguageServerTarget(NET_V2_TRANSITION, "8096"));
         servers.put(RUBY_V2_TRANSITION, new LanguageServerTarget(RUBY_V2_TRANSITION, "8098"));
         servers.put(PHP_V2_TRANSITION, new LanguageServerTarget(PHP_V2_TRANSITION, "8099"));
         servers.put(JAVA_V4, new LanguageServerTarget(JAVA_V4, "8088"));
