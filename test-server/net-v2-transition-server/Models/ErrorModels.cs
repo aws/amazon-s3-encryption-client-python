@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace NetV3TransitionServer.Models;
+namespace NetV2TransitionServer.Models;
 
 public class GenericServerError
 {

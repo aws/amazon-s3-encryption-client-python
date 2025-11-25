@@ -4,10 +4,10 @@ using System.Text.Json;
 using Amazon.Extensions.S3.Encryption;
 using Amazon.Extensions.S3.Encryption.Primitives;
 using Microsoft.AspNetCore.Mvc;
-using NetV3TransitionServer.Models;
-using NetV3TransitionServer.Services;
+using NetV2TransitionServer.Models;
+using NetV2TransitionServer.Services;
 
-namespace NetV3TransitionServer.Controllers;
+namespace NetV2TransitionServer.Controllers;
 
 [ApiController]
 [Route("[controller]")]
@@ -34,7 +34,7 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
                 var kmsKeyId = request.Config.KeyMaterial.KmsKeyId;
                 encryptionMaterial = new EncryptionMaterialsV2(kmsKeyId, KmsType.KmsContext, encryptionContext);
                 logger.LogInformation(
-                    "[NET-V3-Transitional] Created EncryptionMaterialsV2: KMS={KmsKeyId}",
+                    "[NET-V2-Transitional] Created EncryptionMaterialsV2: KMS={KmsKeyId}",
                     kmsKeyId);
             }
             else if (request.Config.KeyMaterial.AesKey != null)
@@ -44,7 +44,7 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
                 aes.Key = aesKeyBytes;
                 encryptionMaterial = new EncryptionMaterialsV2(aes, SymmetricAlgorithmType.AesGcm);
                 logger.LogInformation(
-                    "[NET-V3-Transitional] Created EncryptionMaterialsV2: AES");
+                    "[NET-V2-Transitional] Created EncryptionMaterialsV2: AES");
             }
             else if (request.Config.KeyMaterial.RsaKey != null)
             {
@@ -66,18 +66,18 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             // SecurityProfile V2AndLegacy can decrypt from legacy S3EC but V2 cannot
             var enableLegacyMode = enableLegacyUnauthenticatedModes || enableLegacyWrappingAlgorithms;
             var securityProfile = enableLegacyMode ? SecurityProfile.V2AndLegacy : SecurityProfile.V2;
-            logger.LogInformation("[NET-V3-Transitional] Created securityProfile= {securityProfile}", securityProfile.ToString());
+            logger.LogInformation("[NET-V2-Transitional] Created securityProfile= {securityProfile}", securityProfile.ToString());
 
             var encryptionAlgorithm = MapEncryptionAlgorithm(request.Config.EncryptionAlgorithm);
             // var encryptionAlgorithm = commitmentPolicy == Amazon.Extensions.S3.Encryption.CommitmentPolicy.ForbidEncryptAllowDecrypt ? ContentEncryptionAlgorithm.AesGcm : ContentEncryptionAlgorithm.AesGcmWithCommitment;
-            logger.LogInformation("[NET-V3-Transitional] Created commitmentPolicy= {commitmentPolicy}", commitmentPolicy);
-            logger.LogInformation("[NET-V3-Transitional] Created encryptionAlgorithm= {encryptionAlgorithm}", encryptionAlgorithm);
+            logger.LogInformation("[NET-V2-Transitional] Created commitmentPolicy= {commitmentPolicy}", commitmentPolicy);
+            logger.LogInformation("[NET-V2-Transitional] Created encryptionAlgorithm= {encryptionAlgorithm}", encryptionAlgorithm);
 
             var configuration = new AmazonS3CryptoConfigurationV2(securityProfile, commitmentPolicy, encryptionAlgorithm);
             if (request.Config.InstructionFileConfig?.EnableInstructionFilePutObject == true)
             {
                 configuration.StorageMode = CryptoStorageMode.InstructionFile;
-                logger.LogInformation("[NET-V3-Transitional] Created StorageMode= InstructionFile");
+                logger.LogInformation("[NET-V2-Transitional] Created StorageMode= InstructionFile");
             }
             // Create S3 encryption client
             var encryptionClient = new AmazonS3EncryptionClientV2(configuration, encryptionMaterial);
@@ -85,7 +85,7 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             var clientId = clientCacheService.AddClient(encryptionClient);
             var response = new ClientResponse { ClientId = clientId };
 
-            logger.LogInformation("[NET-V3-Transitional] Created S3EC client with ID: {clientId}", clientId);
+            logger.LogInformation("[NET-V2-Transitional] Created S3EC client with ID: {clientId}", clientId);
 
             return new ContentResult
             {
@@ -96,7 +96,7 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "[NET-V3-Transitional] Failed to create S3EC client");
+            logger.LogError(ex, "[NET-V2-Transitional] Failed to create S3EC client");
             return StatusCode(500, new S3EncryptionClientError
             {
                 Message = $"Failed to create client: {ex.Message}"
