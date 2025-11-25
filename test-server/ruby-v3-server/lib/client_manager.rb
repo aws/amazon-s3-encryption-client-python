@@ -61,13 +61,7 @@ class ClientManager
     end
 
     # Create the S3 encryption client
-    # Create the S3 encryption client with retry configuration for throttling
-    s3_client = Aws::S3::Client.new(
-      region: 'us-west-2',
-      retry_mode: 'adaptive',
-      retry_limit: 5,
-      retry_backoff: lambda { |c| sleep(2 ** c.retries * 0.3 * rand) }
-    )
+    s3_client = Aws::S3::Client.new(region: 'us-west-2')
     encryption_client = Aws::S3::EncryptionV3::Client.new(
       client: s3_client,
       **encryption_config

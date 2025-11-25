@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"sync"
 
 	"github.com/aws/amazon-s3-encryption-client-go/v4/client"
 	"github.com/aws/amazon-s3-encryption-client-go/v4/materials"
@@ -25,7 +24,6 @@ import (
 type Server struct {
 	clientCache map[string]*client.S3EncryptionClientV4
 	kmsClient   *kms.Client
-	mu          sync.RWMutex
 }
 
 // CreateClientInput represents the input for creating a client
@@ -70,12 +68,7 @@ type ErrorResponse struct {
 
 // NewServer creates a new server instance
 func NewServer() (*Server, error) {
-	cfg, err := config.LoadDefaultConfig(
-		context.TODO(),
-		config.WithRegion("us-west-2"),
-		config.WithRetryMaxAttempts(5),
-		config.WithRetryMode(aws.RetryModeAdaptive),
-	)
+	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-west-2"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to load AWS config: %w", err)
 	}
@@ -150,12 +143,7 @@ func (s *Server) createClient(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg, err := config.LoadDefaultConfig(
-		context.TODO(),
-		config.WithRegion("us-west-2"),
-		config.WithRetryMaxAttempts(5),
-		config.WithRetryMode(aws.RetryModeAdaptive),
-	)
+	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-west-2"))
 	if err != nil {
 		s.createS3EncryptionClientError(w, fmt.Sprintf("Failed to load AWS config: %v", err), http.StatusInternalServerError)
 		return
@@ -201,10 +189,8 @@ func (s *Server) createClient(w http.ResponseWriter, r *http.Request) {
 	// Generate client ID
 	clientID := uuid.New().String()
 
-	// Store client in cache (protected by mutex)
-	s.mu.Lock()
+	// Store client in cache
 	s.clientCache[clientID] = s3EncryptionClient
-	s.mu.Unlock()
 
 	// Return response
 	w.Header().Set("Content-Type", "application/json")
@@ -225,10 +211,8 @@ func (s *Server) putObject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get client from cache (protected by mutex)
-	s.mu.RLock()
+	// Get client from cache
 	client, exists := s.clientCache[clientID]
-	s.mu.RUnlock()
 
 	if !exists {
 		s.createGenericServerError(w, fmt.Sprintf("No client found for ClientID: %s", clientID), http.StatusNotFound)
@@ -297,10 +281,8 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get client from cache (protected by mutex)
-	s.mu.RLock()
+	// Get client from cache
 	client, exists := s.clientCache[clientID]
-	s.mu.RUnlock()
 
 	if !exists {
 		s.createGenericServerError(w, fmt.Sprintf("No client found for ClientID: %s", clientID), http.StatusNotFound)

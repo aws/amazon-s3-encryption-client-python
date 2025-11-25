@@ -15,7 +15,7 @@ start-server:
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
-	composer run start --timeout=0 > server.log 2>&1 & echo $$! > $(PID_FILE)
+	composer run start > server.log 2>&1 & echo $$! > $(PID_FILE)
 	@echo "PHP V2 Transition server starting..."
 
 stop-server:

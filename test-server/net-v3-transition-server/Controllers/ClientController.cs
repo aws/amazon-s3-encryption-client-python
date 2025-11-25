@@ -21,6 +21,8 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             return StatusCode(501, new GenericServerError { Message = "EnableDelayedAuthenticationMode not supported" });
         if (request.Config.SetBufferSize.HasValue)
             return StatusCode(501, new GenericServerError { Message = "SetBufferSize not supported" });
+        if (request.Config.KeyMaterial.AesKey != null)
+            return StatusCode(501, new GenericServerError { Message = "AesKey not supported" });
         
         try
         {
@@ -45,15 +47,6 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
                 encryptionMaterial = new EncryptionMaterialsV2(rsaKey, AsymmetricAlgorithmType.RsaOaepSha1);
                 logger.LogInformation(
                     "Created EncryptionMaterialsV2: RSA");
-            }
-            else if (request.Config.KeyMaterial.AesKey != null)
-            {
-                var aesKeyBytes = request.Config.KeyMaterial.AesKey;
-                var aes = Aes.Create();
-                aes.Key = aesKeyBytes;
-                encryptionMaterial = new EncryptionMaterialsV2(aes, SymmetricAlgorithmType.AesGcm);
-                logger.LogInformation(
-                    "[NET-V3-Transitional] Created EncryptionMaterialsV2: AES");
             } else
             {
                 return StatusCode(501, new GenericServerError { Message = "Unknown or missing key material!" });
@@ -74,11 +67,6 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             logger.LogInformation("[NET-V3-Transitional] Created encryptionAlgorithm= {encryptionAlgorithm}", encryptionAlgorithm);
 
             var configuration = new AmazonS3CryptoConfigurationV2(securityProfile, commitmentPolicy, encryptionAlgorithm);
-            
-            // Add retry configuration for throttling
-            configuration.RetryMode = Amazon.Runtime.RequestRetryMode.Adaptive;
-            configuration.MaxErrorRetry = 5;
-
             if (request.Config.InstructionFileConfig?.EnableInstructionFilePutObject == true)
             {
                 configuration.StorageMode = CryptoStorageMode.InstructionFile;

@@ -2,6 +2,9 @@
 
 .PHONY: all start-servers run-tests stop-servers clean ci check-env help
 
+# Default target
+all: start-all-servers wait-all-servers run-tests
+
 # CI target for GitHub Actions
 ci:
 	$(MAKE) build-all-servers
@@ -17,19 +20,13 @@ START_SERVER_TARGETS := $(addprefix start-, $(SERVER_DIRS))
 WAIT_SERVER_TARGETS := $(addprefix wait-, $(SERVER_DIRS))
 
 # Build all servers in parallel
-build-all-servers:
-	@echo "[`date +%H:%M:%S`] Building all servers..."
-	@$(MAKE) $(BUILD_SERVER_TARGETS)
-	@echo "[`date +%H:%M:%S`] All servers built."
-	@echo "Stopping dotnet servers... this is here to speed up CI because if this target is run with -j it will stay open until it shutdown."
-	@dotnet build-server shutdown
-	@echo "[`date +%H:%M:%S`] Dotnet build servers stopped"
+build-all-servers: export MAKEFLAGS=-j$(shell sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo 1)
+build-all-servers: $(BUILD_SERVER_TARGETS)
 
 $(BUILD_SERVER_TARGETS): build-%:
 	@if [ -f $*/Makefile ]; then \
-		echo "[`date +%H:%M:%S`] Building server in $*..."; \
+		echo "Building server in $*..."; \
 		$(MAKE) -C $* build-server; \
-		echo "[`date +%H:%M:%S`] Server $* built successfully"; \
 	else \
 		echo "❌ Error: no Makefile found in $*"; \
 		exit 1; \
@@ -47,8 +44,9 @@ start-servers:
 		$(MAKE) -C $$dir wait-for-server; \
 	done
 
+# Start servers sequentially (no parallel execution)
 start-all-servers:
-	@$(MAKE) $(START_SERVER_TARGETS)
+	@$(MAKE) MAKEFLAGS= $(START_SERVER_TARGETS)
 
 $(START_SERVER_TARGETS): start-%:
 	@if [ -f $*/Makefile ]; then \

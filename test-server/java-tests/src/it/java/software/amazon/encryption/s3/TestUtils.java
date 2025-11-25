@@ -95,25 +95,11 @@ public class TestUtils {
     public static final Set<String> ENCRYPTION_CONTEXT_ON_ENCRYPT_UNSUPPORTED =
         Set.of(NET_V2_CURRENT, NET_V3_CURRENT, NET_V2_TRANSITION, NET_V3_TRANSITION, NET_V4);
 
-
-    // Cpp only supports Raw AES
-    public static final Set<String> RAW_AES_SUPPORTED =
-      Set.of(JAVA_V3_CURRENT, JAVA_V3_TRANSITION, JAVA_V4
-        , NET_V2_CURRENT, NET_V3_CURRENT, NET_V3_TRANSITION, NET_V4
-        , RUBY_V2_TRANSITION, RUBY_V3
-        , CPP_V2_CURRENT, CPP_V2_TRANSITION, CPP_V3
-      );
-
-    public static final Set<String> RAW_RSA_SUPPORTED =
+    // For now, only .NET and Java have RSA support
+    public static final Set<String> RAW_SUPPORTED =
       Set.of(JAVA_V3_CURRENT, JAVA_V3_TRANSITION, JAVA_V4
         , NET_V2_CURRENT, NET_V3_CURRENT, NET_V2_TRANSITION, NET_V3_TRANSITION, NET_V4
       );
-
-    // Intersection of RAW_AES_SUPPORTED and RAW_RSA_SUPPORTED
-    public static final Set<String> RAW_SUPPORTED =
-    RAW_AES_SUPPORTED.stream()
-        .filter(RAW_RSA_SUPPORTED::contains)
-        .collect(Collectors.toSet());
 
     // .NET only supports decrypting instruction files using AES and RSA.
     // Python MUST support decrypting KMS instruction files, but does not yet.
@@ -373,28 +359,6 @@ public class TestUtils {
         return serverMap.values().stream()
             .filter(target -> IMPROVED_VERSIONS.contains(target.getLanguageName()))
             .map(Arguments::of);
-    }
-
-    /**
-     * Get stream of arguments for clients that support RAW AES (includes CPP).
-     */
-    public static Stream<Arguments> clientsRawAesForTest() {
-        Stream<Arguments> improved = improvedClientsForTest()
-            .filter(target -> RAW_AES_SUPPORTED.contains(((LanguageServerTarget) target.get()[0]).getLanguageName()));
-        Stream<Arguments> transition = transitionClientsForTest()
-            .filter(target -> RAW_AES_SUPPORTED.contains(((LanguageServerTarget) target.get()[0]).getLanguageName()));
-        return Stream.concat(improved, transition);
-    }
-
-    /**
-     * Get stream of arguments for clients that support RAW RSA (excludes CPP).
-     */
-    public static Stream<Arguments> clientsRawRsaForTest() {
-        Stream<Arguments> improved = improvedClientsForTest()
-            .filter(target -> RAW_RSA_SUPPORTED.contains(((LanguageServerTarget) target.get()[0]).getLanguageName()));
-        Stream<Arguments> transition = transitionClientsForTest()
-            .filter(target -> RAW_RSA_SUPPORTED.contains(((LanguageServerTarget) target.get()[0]).getLanguageName()));
-        return Stream.concat(improved, transition);
     }
 
     /**
