@@ -3,7 +3,7 @@
 .PHONY: build-server start-server stop-server wait-for-server
 
 PID_FILE_NET_V3_TRANSITION := net-v3-transition-server.pid
-PORT_NET_V3_TRANSITION := 8100
+PORT_NET_V3_TRANSITION := 8096
 
 build-server:
 	@echo "Building .NET V3 transition server..."

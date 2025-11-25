@@ -5,7 +5,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddSingleton<IClientCacheService, ClientCacheService>();
 
-const int port = 8100;
+const int port = 8096;
 
 builder.WebHost.UseUrls($"http://localhost:{port}");
 

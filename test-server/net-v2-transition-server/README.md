@@ -16,7 +16,7 @@ net-v2-v3-server/
 
 ## Running the Server
 
-For S3 Encryption Client v3 transition (runs on port 8100):
+For S3 Encryption Client v3 transition (runs on port 8096):
 
 ```bash
 dotnet run
@@ -44,7 +44,7 @@ curl -i -X POST \
  -H "Content-Type: application/json" \
  -H "User-Agent: smithy-java/0.0.3 ua/2.1 os/macos#15.5 lang/java#23.0.2" \
  -d '{"config":{"enableLegacyUnauthenticatedModes":true,"enableLegacyWrappingAlgorithms":true,"keyMaterial":{"kmsKeyId":"arn:aws:kms:us-west-2:370957321024:alias/S3EC-Test-Server-Github-KMS-Key"}, "encryptionContext": {"abc": "b"}, "CommitmentPolicy":"REQUIRE_ENCRYPT_REQUIRE_DECRYPT"}}' \
-    http://localhost:8100/client
+    http://localhost:8096/client
 ```
 
 ### Upload an Object
