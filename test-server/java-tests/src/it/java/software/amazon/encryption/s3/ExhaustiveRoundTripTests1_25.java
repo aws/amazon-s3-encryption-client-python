@@ -211,6 +211,13 @@ public class ExhaustiveRoundTripTests1_25 {
                 .build());
         String decS3ECId = decClientOutput.getClientId();
 
+        // At high concurrency, this test tends to get:
+        // BadDigest Message: The CRC64NVME you specified did not match the calculated checksum.
+        // I think this is a read after write issue.
+        // A better fix, would be to break this tests suite up into encrypt/decrypt
+        // rather than having a test for many pairs and doing encrypt/decrypt on each pair
+        Thread.sleep(100);
+
         // When: decrypt KC-GCM object with an improved version client with ForbidEncryptAllowDecrypt policy
         GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
                 .clientID(decS3ECId)

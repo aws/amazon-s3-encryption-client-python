@@ -601,6 +601,14 @@ public class RoundTripTests {
             // Ruby and PHP do not include it :(
             assertTrue(ptInstFile.response().metadata().containsKey("x-amz-crypto-instr-file"));
         }
+
+        // At high concurrency, this test tends to get:
+        // BadDigest Message: The CRC64NVME you specified did not match the calculated checksum.
+        // I think this is a read after write issue.
+        // A better fix, would be to break this tests suite up into encrypt/decrypt
+        // rather than having a test for many pairs and doing encrypt/decrypt on each pair
+        Thread.sleep(100);
+
         assertFalse(ptInstFile.asUtf8String().isEmpty());
         // Read should be enabled by default
         GetObjectOutput output = decClient.getObject(GetObjectInput.builder()
