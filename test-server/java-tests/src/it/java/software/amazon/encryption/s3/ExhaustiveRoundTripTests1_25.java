@@ -177,7 +177,7 @@ public class ExhaustiveRoundTripTests1_25 {
     @MethodSource("software.amazon.encryption.s3.TestUtils#encryptImprovedDecryptImproved")
     public void GIVEN_KCGCMEncryptedData_AND_ImprovedClientDecryptingWithForbidEncryptAllowDecrypt_WHEN_Decrypt_THEN_Pass(
             TestUtils.LanguageServerTarget encLang, TestUtils.LanguageServerTarget decLang
-    ) {
+    ) throws Exception {
 
         S3ECTestServerClient encClient = TestUtils.testServerClientFor(encLang);
         final String objectKey = "encrypt-kc-gcm-decrypt-improved-test-key-" + encLang + "-" + decLang;

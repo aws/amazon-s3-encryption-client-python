@@ -536,7 +536,7 @@ public class RoundTripTests {
 
     @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
     @MethodSource("software.amazon.encryption.s3.TestUtils#crossLanguageClients")
-    public void instructionFileWriteAndRead(LanguageServerTarget encLang, LanguageServerTarget decLang) {
+    public void instructionFileWriteAndRead(LanguageServerTarget encLang, LanguageServerTarget decLang) throws Exception {
         if (INSTRUCTION_FILE_PUT_UNSUPPORTED.contains(encLang.getLanguageName())) {
             throw new TestAbortedException("not testing " + encLang.getLanguageName());
         }
