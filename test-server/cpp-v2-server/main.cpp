@@ -193,6 +193,13 @@ MHD_Result handle_create_client(struct MHD_Connection *connection,
     Aws::Client::ClientConfiguration clientConfig;
     clientConfig.maxConnections = 512;  // Large pool per client
     clientConfig.retryStrategy = Aws::Client::InitRetryStrategy("standard");
+    
+    // Disable automatic checksum calculation for encrypted streams
+    // The ChecksumInterceptor cannot handle non-seekable SymmetricCryptoStream
+    // which causes intermittent "BadDigest: CRC64NVME you specified did not match" errors
+    // when the stream gets consumed during checksum calculation and can't be rewound
+    clientConfig.checksumConfig.requestChecksumCalculation = 
+        Aws::Client::RequestChecksumCalculation::WHEN_REQUIRED;
 
     auto encryption_client = std::make_shared<S3EncryptionClientV2>(config, clientConfig);
 
