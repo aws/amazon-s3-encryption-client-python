@@ -7,10 +7,11 @@ namespace migration
 {
     public static class TestUtils
     {
-        public static readonly string TEST_KMS_KEY_ID = "arn:aws:kms:us-west-2:370957321024:alias/S3EC-Test-Server-Github-KMS-Key";
+        public static readonly string TEST_KMS_KEY_ID = Environment.GetEnvironmentVariable("MigrationExample_KMS_KEY_ARN")
+            ?? "arn:aws:kms:us-west-2:370957321024:alias/S3EC-Test-Server-Github-KMS-Key";
         
-        public static readonly string TEST_S3_BUCKET = "s3ec-test-server-github-bucket"
-            ?? throw new InvalidOperationException("AWS_S3_BUCKET environment variable must be set");
+        public static readonly string TEST_S3_BUCKET = Environment.GetEnvironmentVariable("MigrationExample_S3_BUCKET")
+            ?? "s3ec-test-server-github-bucket";
 
         public static async Task CleanupObject(string bucket, string key)
         {
