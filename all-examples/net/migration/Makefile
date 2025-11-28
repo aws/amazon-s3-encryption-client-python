@@ -5,8 +5,8 @@
 
 # Default arguments for running the example
 # Override these when calling make run
-BUCKET_NAME ?= s3ec-test-server-github-bucket
-KMS_KEY_ID ?= arn:aws:kms:us-west-2:370957321024:alias/S3EC-Test-Server-Github-KMS-Key
+BUCKET_NAME ?= testwiththisbucket
+KMS_KEY_ID ?= arn:aws:kms:us-west-2:992382771485:key/ad1d7ff3-79f3-40f4-b31d-7be4d9c8b3ca
 
 all: install
 
@@ -28,7 +28,7 @@ run: install
 	@export MigrationExample_S3_BUCKET=$(BUCKET_NAME) && export MigrationExample_KMS_KEY_ARN=$(KMS_KEY_ID) && dotnet test
 
 # Run with custom arguments
-# Usage: make run-custom BUCKET_NAME=my-bucket OBJECT_KEY=my-key KMS_KEY_ID=my-kms-key AWS_REGION=my-region
+# Usage: make run-custom BUCKET_NAME=my-bucket KMS_KEY_ID=my-kms-key
 run-custom: install
 	@export MigrationExample_S3_BUCKET=$(BUCKET_NAME) && export MigrationExample_KMS_KEY_ARN=$(KMS_KEY_ID) && dotnet test
 
