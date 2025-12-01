@@ -21,7 +21,7 @@ namespace migration
     // as well as objects encrypted by a migrated v4 client
     // that is configured to write objects encrypted with key committing algorithms.
     //
-    // This configuration results in identical behavior to the S3 Encryption Client v3 client
+    // This configuration results in identical behavior to the S3 Encryption Client v2 client
     // configured to use the default FORBID_ENCRYPT_ALLOW_DECRYPT commitment policy.
     public static class MigrationStep1
     {
