@@ -17,7 +17,7 @@ namespace migration
     //
     // IMPORTANT: You MUST have updated your readers to be able to read objects encrypted with key committing algorithms
     // before deploying the changes in this step.
-    // This means deploying the changes from either "Migration Step 0" (if readers are v3 clients)
+    // This means deploying the changes from either "Migration Step 0" (if readers are v2 clients)
     // or "Migration Step 1" (if readers are v4 clients) to all of your readers
     // before deploying the changes from to "Migration Step 2".
     //
