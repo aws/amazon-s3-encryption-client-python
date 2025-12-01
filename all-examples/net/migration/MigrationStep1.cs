@@ -17,7 +17,7 @@ namespace migration
     // - Read objects encrypted either with or without key committing algorithms
     //
     // In this configuration, the client will continue to read objects encrypted
-    // with non-key committing algorithms (written by a v3 client or this migration-in-progress v4 client),
+    // with non-key committing algorithms (written by a v2 client or this migration-in-progress v4 client),
     // as well as objects encrypted by a migrated v4 client
     // that is configured to write objects encrypted with key committing algorithms.
     //
