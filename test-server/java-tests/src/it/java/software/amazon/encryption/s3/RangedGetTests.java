@@ -100,7 +100,7 @@ import software.amazon.encryption.s3.model.S3ECConfig;
  *   * Auth tag only (last 16 bytes for authenticated algorithms)
  * - Commitment State (KC-GCM only):
  *   * Valid (original and good-copy)
- *   * No commitment - removed from metadata, added to instruction file
+ *   * Commitment duplicated - left in metadata added to instruction file
  *   * No commitment - removed from metadata, only in instruction file
  *   * Mutated commitment - bit flipped in x-amz-c value
  *   * Mutated commitment - bit flipped in x-amz-d value
@@ -115,8 +115,9 @@ import software.amazon.encryption.s3.model.S3ECConfig;
  * - File size: Object keys themselves (short strings) serve as representative small files
  * - Byte ranges: Fixed patterns covering important boundary conditions
  * 
- * FILTERING:
- * - Only languages in RANGED_GETS_SUPPORTED set are tested
+ * SCOPE:
+ * - Languages in RANGED_GETS_SUPPORTED set are tested,
+ *   the encrypt tests are to create values that are then tested.
  * - CBC and GCM tests validate ranged get functionality works
  * - KC-GCM tests focus on commitment validation during ranged gets
  */
@@ -346,9 +347,9 @@ public class RangedGetTests {
                     // No commitment - removed from metadata, added to instruction file
                     putObjectWithInstructionFile(
                         ptS3Client,
-                        objectKey + "-bad-no-commitment-add-to-instruction",
+                        objectKey + "-bad-commitment-add-to-instruction",
                         objectData,
-                        noCommitMetadata,
+                        objectMetadata,
                         instructionFileJson
                     );
 
