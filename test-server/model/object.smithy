@@ -21,6 +21,7 @@ resource Object {
     }
     read: GetObject
     put: PutObject
+    operations: [ReEncrypt]
 }
 
 @idempotent
@@ -35,6 +36,14 @@ operation PutObject {
         @required
         $key
 
+        /// Encryption context/materials description to use for this operation.
+        /// For most SDKs (Java, .NET, etc.), materials description is embedded in the keyring/materials
+        /// during client creation and this parameter is typically empty/unused.
+        /// 
+        /// For C++ SDK: Materials description MUST be passed per-operation via this parameter
+        /// because the C++ SDK's EncryptionMaterials constructor does not accept materials description.
+        /// Instead, GetObject/PutObject operations accept a contextMap parameter that becomes the
+        /// materials description.
         @httpHeader("Content-Metadata")
         $metadata
 
@@ -72,7 +81,14 @@ operation GetObject {
         @required
         $key
         
-        /// Should probably be renamed to be EC specific
+        /// Encryption context/materials description to use for this operation.
+        /// For most SDKs (Java, .NET, etc.), materials description is embedded in the keyring/materials
+        /// during client creation and this parameter is typically empty/unused.
+        /// 
+        /// For C++ SDK: Materials description MUST be passed per-operation via this parameter
+        /// because the C++ SDK's EncryptionMaterials constructor does not accept materials description.
+        /// Instead, GetObject/PutObject operations accept a contextMap parameter that becomes the
+        /// materials description.
         @httpHeader("Content-Metadata")
         $metadata
 
@@ -84,7 +100,12 @@ operation GetObject {
         @httpHeader("Range")
         @notProperty
         range: String
-    } 
+
+        /// Custom instruction file suffix to use when reading instruction files
+        @httpHeader("InstructionFileSuffix")
+        @notProperty
+        instructionFileSuffix: String
+    }
 
     output := for Object {
         @httpHeader("Content-Metadata")
@@ -97,8 +118,7 @@ operation GetObject {
     }
 }
 
-@readonly
-@http(method: "GET", uri: "/object/{bucket}/{key}")
+@http(method: "POST", uri: "/object/{bucket}/{key}/reencrypt")
 operation ReEncrypt {
     input := for Object {
         @httpLabel
@@ -108,30 +128,41 @@ operation ReEncrypt {
         @httpLabel
         @required
         $key
-        
-        /// Should probably be renamed to be EC specific
-        @httpHeader("Content-Metadata")
-        $metadata
 
         @httpHeader("ClientID")
         @required
         @notProperty
         clientID: String
 
-        /// Custom instruction file suffix
+        /// New key material to use for re-encryption
+        @httpPayload
+        @required
+        @notProperty
+        newKeyMaterial: KeyMaterial
+
+        /// Custom instruction file suffix for RSA keyring re-encryption
         @httpHeader("InstructionFileSuffix")
         @notProperty
         instructionFileSuffix: String
-    } 
 
-    output := for Object {
-        @httpHeader("Content-Metadata")
+        /// Whether to enforce rotation by verifying the key has changed
+        @httpHeader("EnforceRotation")
+        @notProperty
+        enforceRotation: Boolean
+    }
+
+    output := {
         @required
-        $metadata
+        bucket: String
 
         @required
-        @httpPayload
-        $body
+        key: String
+
+        @notProperty
+        instructionFileSuffix: String
+        
+        @notProperty
+        enforceRotation: Boolean
     }
 }
 

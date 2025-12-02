@@ -9,6 +9,7 @@ import software.amazon.encryption.s3.algorithms.AlgorithmSuite;
 import software.amazon.encryption.s3.materials.AesKeyring;
 import software.amazon.encryption.s3.materials.Keyring;
 import software.amazon.encryption.s3.materials.KmsKeyring;
+import software.amazon.encryption.s3.materials.MaterialsDescription;
 import software.amazon.encryption.s3.materials.PartialRsaKeyPair;
 import software.amazon.encryption.s3.materials.RsaKeyring;
 import software.amazon.encryption.s3.model.CreateClientInput;
@@ -38,9 +39,11 @@ import static software.amazon.encryption.s3.CommitmentPolicy.REQUIRE_ENCRYPT_REQ
 
 public class CreateClientOperationImpl implements CreateClientOperation {
     private final Map<String, S3Client> clientCache_;
+    private final Map<String, Keyring> keyringCache_;
 
-    public CreateClientOperationImpl(Map<String, S3Client> clientCache) {
+    public CreateClientOperationImpl(Map<String, S3Client> clientCache, Map<String, Keyring> keyringCache) {
         clientCache_ = clientCache;
+        keyringCache_ = keyringCache;
     }
 
     // Copied from S3EC.
@@ -70,10 +73,21 @@ public class CreateClientOperationImpl implements CreateClientOperation {
             if (key.getAesKey() != null) {
                 byte[] keyBytes = new byte[key.getAesKey().remaining()];
                 key.getAesKey().get(keyBytes);
-                keyring = AesKeyring.builder()
+                
+                AesKeyring.Builder aesBuilder = AesKeyring.builder()
                         .wrappingKey(new SecretKeySpec(keyBytes, "AES"))
-                        .enableLegacyWrappingAlgorithms(input.getConfig().isEnableLegacyWrappingAlgorithms())
-                        .build();
+                        .enableLegacyWrappingAlgorithms(input.getConfig().isEnableLegacyWrappingAlgorithms());
+                
+                // Add materials description if provided
+                if (key.getMaterialsDescription() != null && !key.getMaterialsDescription().isEmpty()) {
+                    MaterialsDescription.Builder matDescBuilder = MaterialsDescription.builder();
+                    for (Map.Entry<String, String> entry : key.getMaterialsDescription().entrySet()) {
+                        matDescBuilder.put(entry.getKey(), entry.getValue());
+                    }
+                    aesBuilder.materialsDescription(matDescBuilder.build());
+                }
+                
+                keyring = aesBuilder.build();
             } else if (key.getRsaKey() != null) {
                 try {
                     byte[] keyBytes = new byte[key.getRsaKey().remaining()];
@@ -89,12 +103,22 @@ public class CreateClientOperationImpl implements CreateClientOperation {
                     // Generate public key
                     PublicKey publicKey = keyFactory.generatePublic(publicKeySpec);
 
-                    keyring = RsaKeyring.builder()
+                    RsaKeyring.Builder rsaBuilder = RsaKeyring.builder()
                             .enableLegacyWrappingAlgorithms(input.getConfig().isEnableLegacyWrappingAlgorithms())
                             .wrappingKeyPair(PartialRsaKeyPair.builder()
                                     .publicKey(publicKey)
-                                    .privateKey(privateKey).build())
-                            .build();
+                                    .privateKey(privateKey).build());
+                    
+                    // Add materials description if provided
+                    if (key.getMaterialsDescription() != null && !key.getMaterialsDescription().isEmpty()) {
+                        MaterialsDescription.Builder matDescBuilder = MaterialsDescription.builder();
+                        for (Map.Entry<String, String> entry : key.getMaterialsDescription().entrySet()) {
+                            matDescBuilder.put(entry.getKey(), entry.getValue());
+                        }
+                        rsaBuilder.materialsDescription(matDescBuilder.build());
+                    }
+                    
+                    keyring = rsaBuilder.build();
                 } catch (NoSuchAlgorithmException | InvalidKeySpecException nse) {
                     throw GenericServerError.builder()
                             .message(nse.getMessage())
@@ -155,6 +179,7 @@ public class CreateClientOperationImpl implements CreateClientOperation {
             UUID uuid = UUID.randomUUID();
             String uuidString = uuid.toString();
             clientCache_.put(uuidString, s3Client);
+            keyringCache_.put(uuidString, keyring);
             return CreateClientOutput.builder()
                     .clientId(uuidString)
                     .build();

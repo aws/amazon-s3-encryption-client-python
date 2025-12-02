@@ -38,9 +38,11 @@ import static software.amazon.encryption.s3.CommitmentPolicy.REQUIRE_ENCRYPT_REQ
 
 public class CreateClientOperationImpl implements CreateClientOperation {
     private final Map<String, S3Client> clientCache_;
+    private final Map<String, Keyring> keyringCache_;
 
-    public CreateClientOperationImpl(Map<String, S3Client> clientCache) {
+    public CreateClientOperationImpl(Map<String, S3Client> clientCache, Map<String, Keyring> keyringCache) {
         clientCache_ = clientCache;
+        keyringCache_ = keyringCache;
     }
 
     // Copied from S3EC.
@@ -156,6 +158,7 @@ public class CreateClientOperationImpl implements CreateClientOperation {
             UUID uuid = UUID.randomUUID();
             String uuidString = uuid.toString();
             clientCache_.put(uuidString, s3Client);
+            keyringCache_.put(uuidString, keyring);
             return CreateClientOutput.builder()
                     .clientId(uuidString)
                     .build();

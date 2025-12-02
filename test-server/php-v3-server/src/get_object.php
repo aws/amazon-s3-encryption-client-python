@@ -20,6 +20,9 @@ function handleGetObject($params)
     $metadata = $_SERVER['HTTP_CONTENT_METADATA'] ?? '';
     $encryptionContext = metadataStringToMap($metadata);
 
+    // Get custom instruction file suffix if provided
+    $instructionFileSuffix = $_SERVER['HTTP_INSTRUCTIONFILESUFFIX'] ?? null;
+
     // Extract bucket and key from URL parameters
     $bucket = $params['bucket'] ?? null;
     $key = $params['key'] ?? null;
@@ -44,14 +47,21 @@ function handleGetObject($params)
         // Start output buffering before the AWS call to capture any unwanted output
         ob_start();
 
-        $result = $s3ec->getObject([
+        $getObjectParams = [
             '@SecurityProfile' => $legacy,
             '@MaterialsProvider' => $materialProvider,
             '@KmsEncryptionContext' => $encryptionContext,
             '@CommitmentPolicy' => $commitmentPolicy,
             'Bucket' => $bucket,
             'Key' => $key,
-        ]);
+        ];
+
+        // Add custom instruction file suffix if provided
+        if (!is_null($instructionFileSuffix) && !empty($instructionFileSuffix)) {
+            $getObjectParams['@InstructionFileSuffix'] = $instructionFileSuffix;
+        }
+
+        $result = $s3ec->getObject($getObjectParams);
 
         // Capture and discard any unwanted output from AWS SDK
         $unwantedOutput = ob_get_clean();

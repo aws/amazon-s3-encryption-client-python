@@ -37,6 +37,7 @@ import com.amazonaws.regions.Regions;
 import software.amazon.encryption.s3.model.EncryptionAlgorithm;
 import software.amazon.encryption.s3.model.GetObjectInput;
 import software.amazon.encryption.s3.model.GetObjectOutput;
+import software.amazon.encryption.s3.model.KeyMaterial;
 import software.amazon.encryption.s3.model.PutObjectInput;
 import software.amazon.encryption.s3.model.PutObjectOutput;
 import software.amazon.encryption.s3.model.S3EncryptionClientError;
@@ -143,6 +144,18 @@ public class TestUtils {
     // Not implemented yet in Python.
     public static final Set<String> INSTRUCTION_FILE_GET_UNSUPPORTED =
       Set.of(PYTHON_V3);
+
+    // Languages that support custom instruction file suffix on GetObject
+    // Only Java, Ruby, and PHP servers have been updated with this feature
+    public static final Set<String> CUSTOM_INSTRUCTION_SUFFIX_GET_SUPPORTED =
+      Set.of(
+        JAVA_V3_TRANSITION,
+        JAVA_V4,
+        RUBY_V2_TRANSITION,
+        RUBY_V3,
+        PHP_V2_TRANSITION,
+        PHP_V3
+      );
 
     public static final Set<String> CURRENT_VERSIONS =
         Set.of(
@@ -593,6 +606,105 @@ public class TestUtils {
         EncryptionAlgorithm expectedEncryptionAlgorithm,
         List<String> expectedPlaintexts
     ) {
+        Decrypt(client, S3ECId, crossLanguageObjects, expectedEncryptionAlgorithm, expectedPlaintexts, null);
+    }
+
+    public static void Decrypt(
+        S3ECTestServerClient client,
+        String S3ECId,
+        List<String> crossLanguageObjects,
+        EncryptionAlgorithm expectedEncryptionAlgorithm,
+        List<String> expectedPlaintexts,
+        String instructionFileSuffix
+    ) {
+        if (crossLanguageObjects.isEmpty()) {
+            throw new AssertionError("There is nothing to decrypt");
+        }
+
+        List<String> failures = new ArrayList<>();
+        for (int i = 0; i < crossLanguageObjects.size(); i++) {
+            try {
+                String objectKey = crossLanguageObjects.get(i);
+                String expectedPlaintext = expectedPlaintexts.get(i);
+                
+                GetObjectInput.Builder builder = GetObjectInput.builder()
+                    .clientID(S3ECId)
+                    .bucket(TestUtils.BUCKET)
+                    .key(objectKey);
+                
+                // Add custom instruction file suffix if provided
+                if (instructionFileSuffix != null && !instructionFileSuffix.isEmpty()) {
+                    builder.instructionFileSuffix(instructionFileSuffix);
+                }
+                
+                GetObjectOutput output = client.getObject(builder.build());
+
+                // Then: Pass
+                assertEquals(expectedPlaintext, new String(output.getBody().array()));
+                assertEquals(
+                    expectedEncryptionAlgorithm,
+                    GetEncryptionAlgorithm(objectKey),
+                    "When decrypting the EncryptionAlgorithm does not match the expected value: " + expectedEncryptionAlgorithm
+                );
+            } catch (Exception e) {
+                failures.add(String.format(
+                    "Failed to decrypt object '%s' (index %d): %s - %s",
+                    crossLanguageObjects.get(i), i, e.getClass().getSimpleName(), e.getMessage()
+                ));
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new AssertionError(String.format(
+                "Decryption failed for %d out of %d objects:\n%s",
+                failures.size(), crossLanguageObjects.size(), 
+                String.join("\n", failures)
+            ));
+        }
+    }
+
+    /**
+     * Decrypt helper for C++ clients that require materials description per-operation.
+     * 
+     * C++ SDK Design: Unlike Java/. NET/etc where materials description is embedded in the
+     * keyring during client creation, the C++ SDK requires passing materials description
+     * as a contextMap parameter to each GetObject/PutObject operation.
+     * 
+     * This helper extracts materials description from KeyMaterial and passes it via the
+     * Content-Metadata header on each GetObject call, which the C++ server converts to
+     * the contextMap parameter required by the C++ SDK.
+     */
+    public static void DecryptWithMaterialsDescription(
+        S3ECTestServerClient client,
+        String S3ECId,
+        List<String> crossLanguageObjects,
+        KeyMaterial keyMaterial,
+        EncryptionAlgorithm expectedEncryptionAlgorithm
+    ) {
+        DecryptWithMaterialsDescription(client, S3ECId, crossLanguageObjects, keyMaterial,
+            expectedEncryptionAlgorithm, crossLanguageObjects);
+    }
+
+    /**
+     * Decrypt helper for C++ clients with custom expected plaintexts.
+     */
+    public static void DecryptWithMaterialsDescription(
+        S3ECTestServerClient client,
+        String S3ECId,
+        List<String> crossLanguageObjects,
+        KeyMaterial keyMaterial,
+        EncryptionAlgorithm expectedEncryptionAlgorithm,
+        List<String> expectedPlaintexts
+    ) {
+        if (crossLanguageObjects.isEmpty()) {
+            throw new AssertionError("There is nothing to decrypt");
+        }
+
+        // Extract materials description from KeyMaterial
+        List<String> metadata = (keyMaterial.getMaterialsDescription() != null)
+            ? metadataMapToList(keyMaterial.getMaterialsDescription())
+            : new ArrayList<>();
+
         List<String> failures = new ArrayList<>();
         for (int i = 0; i < crossLanguageObjects.size(); i++) {
             try {
@@ -603,6 +715,7 @@ public class TestUtils {
                     .clientID(S3ECId)
                     .bucket(TestUtils.BUCKET)
                     .key(objectKey)
+                    .metadata(metadata)  // Pass materials description for C++
                     .build());
 
                 // Then: Pass
