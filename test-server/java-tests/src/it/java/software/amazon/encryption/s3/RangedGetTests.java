@@ -51,6 +51,7 @@ import software.amazon.encryption.s3.model.CommitmentPolicy;
 import software.amazon.encryption.s3.model.CreateClientInput;
 import software.amazon.encryption.s3.model.CreateClientOutput;
 import software.amazon.encryption.s3.model.EncryptionAlgorithm;
+import software.amazon.encryption.s3.model.InstructionFileConfig;
 import software.amazon.encryption.s3.model.GetObjectInput;
 import software.amazon.encryption.s3.model.GetObjectOutput;
 import software.amazon.encryption.s3.model.KeyMaterial;
@@ -98,13 +99,23 @@ import software.amazon.encryption.s3.model.S3ECConfig;
  *   * Middle (100 bytes centered in file)
  *   * Whole file (all bytes)
  *   * Auth tag only (last 16 bytes for authenticated algorithms)
+ * - Storage Mode (KC-GCM only):
+ *   * Object Metadata Storage (all metadata in object, no instruction file)
+ *   * Instruction File Storage (c/d/i in metadata, x-amz-3/w/m/t in instruction file)
  * - Commitment State (KC-GCM only):
- *   * Valid (original and good-copy)
- *   * Commitment duplicated - left in metadata added to instruction file
- *   * No commitment - removed from metadata, only in instruction file
- *   * Mutated commitment - bit flipped in x-amz-c value
- *   * Mutated commitment - bit flipped in x-amz-d value
- *   * Mutated commitment - bit flipped in x-amz-i value
+ *   * Valid - Object Metadata Storage (original and good-copy)
+ *   * Valid - Instruction File Storage (original and good-copy)
+ *   * Corrupted - Object Metadata Storage:
+ *     - Mutated c/d/i: bit flipped in metadata values
+ *     - Invalid c length: c < 28 bytes in metadata
+ *     - Invalid c length: c > 28 bytes in metadata
+ *   * Corrupted - Instruction File Storage:
+ *     - Commitment duplicated: c/d/i in instruction file (already in metadata)
+ *     - Commitment removed: c/d/i removed from metadata
+ *     - Mutated c/d/i in metadata: bit flipped
+ *     - Mutated c/d/i in instruction file: bit flipped
+ *     - Invalid c length: c < 28 bytes in metadata
+ *     - Invalid c length: c > 28 bytes in metadata
  * 
  * EXPECTED RESULTS:
  * - Positive: Ranged gets on valid CBC, GCM, KC-GCM objects return correct partial content
@@ -146,13 +157,33 @@ public class RangedGetTests {
             Collections.synchronizedList(new ArrayList<>());
         private static final List<String> gcmObjects = 
             Collections.synchronizedList(new ArrayList<>());
-        private static final List<String> kcGcmObjects = 
+        // KC-GCM with Object Metadata Storage (all metadata in object)
+        private static final List<String> kcGcmObjectsMetadata = 
             Collections.synchronizedList(new ArrayList<>());
-        private static final List<String> mutatedCObjects = 
+        // KC-GCM with Instruction File Storage (c/d/i in metadata, rest in instruction file)
+        private static final List<String> kcGcmObjectsInstruction = 
             Collections.synchronizedList(new ArrayList<>());
-        private static final List<String> mutatedDObjects = 
+        // Corruption test lists for metadata storage mode
+        private static final List<String> mutatedCObjectsMetadata = 
             Collections.synchronizedList(new ArrayList<>());
-        private static final List<String> mutatedIObjects = 
+        private static final List<String> mutatedDObjectsMetadata = 
+            Collections.synchronizedList(new ArrayList<>());
+        private static final List<String> mutatedIObjectsMetadata = 
+            Collections.synchronizedList(new ArrayList<>());
+        private static final List<String> invalidDLengthShortMetadata = 
+            Collections.synchronizedList(new ArrayList<>());
+        private static final List<String> invalidDLengthLongMetadata = 
+            Collections.synchronizedList(new ArrayList<>());
+        // Corruption test lists for instruction file storage mode
+        private static final List<String> mutatedCObjectsInstruction = 
+            Collections.synchronizedList(new ArrayList<>());
+        private static final List<String> mutatedDObjectsInstruction = 
+            Collections.synchronizedList(new ArrayList<>());
+        private static final List<String> mutatedIObjectsInstruction = 
+            Collections.synchronizedList(new ArrayList<>());
+        private static final List<String> invalidDLengthShortInstruction = 
+            Collections.synchronizedList(new ArrayList<>());
+        private static final List<String> invalidDLengthLongInstruction = 
             Collections.synchronizedList(new ArrayList<>());
 
         private static KeyMaterial RSA_KEY;
@@ -188,20 +219,52 @@ public class RangedGetTests {
             return new ArrayList<>(gcmObjects);
         }
 
-        static List<String> getKcGcmObjects() {
-            return new ArrayList<>(kcGcmObjects);
+        static List<String> getKcGcmObjectsMetadata() {
+            return new ArrayList<>(kcGcmObjectsMetadata);
         }
 
-        static List<String> getMutatedCObjects() {
-            return new ArrayList<>(mutatedCObjects);
+        static List<String> getKcGcmObjectsInstruction() {
+            return new ArrayList<>(kcGcmObjectsInstruction);
         }
 
-        static List<String> getMutatedDObjects() {
-            return new ArrayList<>(mutatedDObjects);
+        static List<String> getMutatedCObjectsMetadata() {
+            return new ArrayList<>(mutatedCObjectsMetadata);
         }
 
-        static List<String> getMutatedIObjects() {
-            return new ArrayList<>(mutatedIObjects);
+        static List<String> getMutatedDObjectsMetadata() {
+            return new ArrayList<>(mutatedDObjectsMetadata);
+        }
+
+        static List<String> getMutatedIObjectsMetadata() {
+            return new ArrayList<>(mutatedIObjectsMetadata);
+        }
+
+        static List<String> getInvalidDLengthShortMetadata() {
+            return new ArrayList<>(invalidDLengthShortMetadata);
+        }
+
+        static List<String> getInvalidDLengthLongMetadata() {
+            return new ArrayList<>(invalidDLengthLongMetadata);
+        }
+
+        static List<String> getMutatedCObjectsInstruction() {
+            return new ArrayList<>(mutatedCObjectsInstruction);
+        }
+
+        static List<String> getMutatedDObjectsInstruction() {
+            return new ArrayList<>(mutatedDObjectsInstruction);
+        }
+
+        static List<String> getMutatedIObjectsInstruction() {
+            return new ArrayList<>(mutatedIObjectsInstruction);
+        }
+
+        static List<String> getInvalidDLengthShortInstruction() {
+            return new ArrayList<>(invalidDLengthShortInstruction);
+        }
+
+        static List<String> getInvalidDLengthLongInstruction() {
+            return new ArrayList<>(invalidDLengthLongInstruction);
         }
 
         static KeyMaterial getKmsKeyArn() {
@@ -227,6 +290,12 @@ public class RangedGetTests {
         // KC-GCM can be encrypted by improved clients only
         public static Stream<Arguments> improvedClientsForKCGCM() {
             return improvedClientsForTest();
+        }
+
+        public static Stream<Arguments> improvedClientsCanPutKMSWithInstructionFile() {
+            return improvedClientsForTest()
+                .filter(target -> !INSTRUCTION_FILE_PUT_UNSUPPORTED.contains(((LanguageServerTarget) target.get()[0]).getLanguageName()))
+                .filter(target -> !KMS_INSTRUCTION_FILE_UNSUPPORTED.contains(((LanguageServerTarget) target.get()[0]).getLanguageName()));
         }
 
         @org.junit.jupiter.api.Test
@@ -272,9 +341,9 @@ public class RangedGetTests {
             );
         }
 
-        @ParameterizedTest(name = "{0}: Encrypt KC-GCM for ranged get testing")
+        @ParameterizedTest(name = "{0}: Encrypt KC-GCM with Object Metadata Storage for ranged get testing")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$EncryptTests#improvedClientsForKCGCM")
-        void encrypt_kc_gcm_for_ranged_gets(TestUtils.LanguageServerTarget language) {
+        void encrypt_kc_gcm_metadata_for_ranged_gets(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -286,8 +355,34 @@ public class RangedGetTests {
             TestUtils.Encrypt(
                 client,
                 S3ECId,
-                appendTestSuffix(sharedObjectKeyBase + "-kc-gcm-" + language.getLanguageName()),
-                kcGcmObjects,
+                appendTestSuffix(sharedObjectKeyBase + "-kc-gcm-metadata-" + language.getLanguageName()),
+                kcGcmObjectsMetadata,
+                EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+            );
+        }
+
+
+        @ParameterizedTest(name = "{0}: Encrypt KC-GCM with Instruction file Storage for ranged get testing")
+        @MethodSource("software.amazon.encryption.s3.RangedGetTests$EncryptTests#improvedClientsCanPutKMSWithInstructionFile")
+        void encrypt_kc_gcm_instruction_file_for_ranged_gets(TestUtils.LanguageServerTarget language) {
+            S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+            CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+                .config(S3ECConfig.builder()
+                .keyMaterial(kmsKeyArn)
+                .instructionFileConfig(
+                InstructionFileConfig.builder()
+                .enableInstructionFilePutObject(true)
+                .build()
+                )
+                .build())
+                .build());
+            String S3ECId = clientOutput.getClientId();
+            
+            TestUtils.Encrypt(
+                client,
+                S3ECId,
+                appendTestSuffix(sharedObjectKeyBase + "-kc-gcm-instruction-java" + language.getLanguageName()),
+                kcGcmObjectsInstruction,
                 EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
             );
         }
@@ -310,11 +405,14 @@ public class RangedGetTests {
 
         /**
          * Creates corrupted copies of KC-GCM objects for failure testing
+         * Handles both object metadata storage and instruction file storage modes
          */
         static void createCorruptedCopies() throws Exception {
             try (S3Client ptS3Client = S3Client.create()) {
-                for (String objectKey : kcGcmObjects) {
-                    // Get the encrypted object
+                ObjectMapper mapper = new ObjectMapper();
+                
+                // Process metadata storage mode objects (all V3 keys in metadata, no instruction file)
+                for (String objectKey : kcGcmObjectsMetadata) {
                     ResponseBytes<GetObjectResponse> encryptedObject = ptS3Client.getObjectAsBytes(builder -> builder
                         .bucket(TestUtils.BUCKET)
                         .key(objectKey)
@@ -331,38 +429,7 @@ public class RangedGetTests {
                     String commitD = objectMetadata.get("x-amz-d");
                     String commitI = objectMetadata.get("x-amz-i");
 
-                    // Create copies with no commitment in metadata
-                    Map<String, String> noCommitMetadata = objectMetadata.entrySet().stream()
-                        .filter(e -> !e.getKey().equals("x-amz-c") && !e.getKey().equals("x-amz-d") && !e.getKey().equals("x-amz-i"))
-                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-
-                    // Create instruction file JSON with commitment
-                    ObjectMapper mapper = new ObjectMapper();
-                    Map<String, Object> instructionFileMap = new java.util.HashMap<>();
-                    instructionFileMap.put("x-amz-c", commitC);
-                    instructionFileMap.put("x-amz-d", commitD);
-                    instructionFileMap.put("x-amz-i", commitI);
-                    String instructionFileJson = mapper.writeValueAsString(instructionFileMap);
-
-                    // No commitment - removed from metadata, added to instruction file
-                    putObjectWithInstructionFile(
-                        ptS3Client,
-                        objectKey + "-bad-commitment-add-to-instruction",
-                        objectData,
-                        objectMetadata,
-                        instructionFileJson
-                    );
-
-                    // No commitment - removed from metadata, only in instruction file
-                    putObjectWithInstructionFile(
-                        ptS3Client,
-                        objectKey + "-bad-no-commitment-only-instruction",
-                        objectData,
-                        noCommitMetadata,
-                        instructionFileJson
-                    );
-
-                    // Create mutated commitment copies
+                    // Create mutated commitment copies in metadata
                     if (commitC != null) {
                         byte[] commitCBytes = Base64.getDecoder().decode(commitC);
                         int bitPos = flipRandomBit(commitCBytes);
@@ -370,13 +437,8 @@ public class RangedGetTests {
                         Map<String, String> mutatedMetadata = new java.util.HashMap<>(objectMetadata);
                         mutatedMetadata.put("x-amz-c", mutatedC);
                         String mutatedKey = objectKey + "-bad-mutated-c-bit-" + bitPos;
-                        putObjectWithMetadata(
-                            ptS3Client,
-                            mutatedKey,
-                            objectData,
-                            mutatedMetadata
-                        );
-                        mutatedCObjects.add(mutatedKey);
+                        putObjectWithMetadata(ptS3Client, mutatedKey, objectData, mutatedMetadata);
+                        mutatedCObjectsMetadata.add(mutatedKey);
                     }
 
                     if (commitD != null) {
@@ -386,13 +448,8 @@ public class RangedGetTests {
                         Map<String, String> mutatedMetadata = new java.util.HashMap<>(objectMetadata);
                         mutatedMetadata.put("x-amz-d", mutatedD);
                         String mutatedKey = objectKey + "-bad-mutated-d-bit-" + bitPos;
-                        putObjectWithMetadata(
-                            ptS3Client,
-                            mutatedKey,
-                            objectData,
-                            mutatedMetadata
-                        );
-                        mutatedDObjects.add(mutatedKey);
+                        putObjectWithMetadata(ptS3Client, mutatedKey, objectData, mutatedMetadata);
+                        mutatedDObjectsMetadata.add(mutatedKey);
                     }
 
                     if (commitI != null) {
@@ -402,13 +459,151 @@ public class RangedGetTests {
                         Map<String, String> mutatedMetadata = new java.util.HashMap<>(objectMetadata);
                         mutatedMetadata.put("x-amz-i", mutatedI);
                         String mutatedKey = objectKey + "-bad-mutated-i-bit-" + bitPos;
-                        putObjectWithMetadata(
-                            ptS3Client,
-                            mutatedKey,
-                            objectData,
-                            mutatedMetadata
-                        );
-                        mutatedIObjects.add(mutatedKey);
+                        putObjectWithMetadata(ptS3Client, mutatedKey, objectData, mutatedMetadata);
+                        mutatedIObjectsMetadata.add(mutatedKey);
+                    }
+
+                    // Create invalid D length copies (metadata storage)
+                    if (commitD != null) {
+                        byte[] commitDBytes = Base64.getDecoder().decode(commitD);
+                        
+                        // Short D (< 28 bytes) - truncate to 20 bytes
+                        int shortLength = Math.min(20, commitDBytes.length);
+                        byte[] shortDBytes = new byte[shortLength];
+                        System.arraycopy(commitDBytes, 0, shortDBytes, 0, shortLength);
+                        String shortD = Base64.getEncoder().encodeToString(shortDBytes);
+                        Map<String, String> shortDMetadata = new java.util.HashMap<>(objectMetadata);
+                        shortDMetadata.put("x-amz-d", shortD);
+                        String shortDKey = objectKey + "-bad-invalid-d-length-short";
+                        putObjectWithMetadata(ptS3Client, shortDKey, objectData, shortDMetadata);
+                        invalidDLengthShortMetadata.add(shortDKey);
+                        
+                        // Long D (> 28 bytes) - extend to 40 bytes
+                        byte[] longDBytes = new byte[40];
+                        System.arraycopy(commitDBytes, 0, longDBytes, 0, commitDBytes.length);
+                        // Fill remaining bytes with zeros
+                        for (int i = commitDBytes.length; i < 40; i++) {
+                            longDBytes[i] = 0;
+                        }
+                        String longD = Base64.getEncoder().encodeToString(longDBytes);
+                        Map<String, String> longDMetadata = new java.util.HashMap<>(objectMetadata);
+                        longDMetadata.put("x-amz-d", longD);
+                        String longDKey = objectKey + "-bad-invalid-d-length-long";
+                        putObjectWithMetadata(ptS3Client, longDKey, objectData, longDMetadata);
+                        invalidDLengthLongMetadata.add(longDKey);
+                    }
+                }
+                
+                // Process instruction file storage mode objects (c/d/i in metadata, x-amz-3/w/m/t in instruction file)
+                for (String objectKey : kcGcmObjectsInstruction) {
+                    // Get the encrypted object
+                    ResponseBytes<GetObjectResponse> encryptedObject = ptS3Client.getObjectAsBytes(builder -> builder
+                        .bucket(TestUtils.BUCKET)
+                        .key(objectKey)
+                        .build());
+
+                    byte[] objectData = encryptedObject.asByteArray();
+                    Map<String, String> objectMetadata = encryptedObject.response().metadata();
+                    
+                    // Get the instruction file
+                    ResponseBytes<GetObjectResponse> instructionObject = ptS3Client.getObjectAsBytes(builder -> builder
+                        .bucket(TestUtils.BUCKET)
+                        .key(objectKey + ".instruction")
+                        .build());
+                    
+                    String originalInstructionFileJson = new String(instructionObject.asByteArray(), StandardCharsets.UTF_8);
+
+                    // Create good copy (both object and instruction file)
+                    putObjectWithInstructionFile(
+                        ptS3Client,
+                        objectKey + "-good-copy",
+                        objectData,
+                        objectMetadata,
+                        originalInstructionFileJson
+                    );
+
+                    // Extract commitment values from metadata
+                    String commitC = objectMetadata.get("x-amz-c");
+                    String commitD = objectMetadata.get("x-amz-d");
+                    String commitI = objectMetadata.get("x-amz-i");
+
+                    // Corruption: Add c/d/i to instruction file (duplication - should fail)
+                    Map<String, Object> corruptedInstructionMap = mapper.readValue(originalInstructionFileJson, Map.class);
+                    corruptedInstructionMap.put("x-amz-c", commitC);
+                    corruptedInstructionMap.put("x-amz-d", commitD);
+                    corruptedInstructionMap.put("x-amz-i", commitI);
+                    String corruptedInstructionJson = mapper.writeValueAsString(corruptedInstructionMap);
+                    
+                    putObjectWithInstructionFile(
+                        ptS3Client,
+                        objectKey + "-bad-commitment-in-instruction",
+                        objectData,
+                        objectMetadata,
+                        corruptedInstructionJson
+                    );
+
+                    // Create mutated commitment copies in metadata
+                    if (commitC != null) {
+                        byte[] commitCBytes = Base64.getDecoder().decode(commitC);
+                        int bitPos = flipRandomBit(commitCBytes);
+                        String mutatedC = Base64.getEncoder().encodeToString(commitCBytes);
+                        Map<String, String> mutatedMetadata = new java.util.HashMap<>(objectMetadata);
+                        mutatedMetadata.put("x-amz-c", mutatedC);
+                        String mutatedKey = objectKey + "-bad-mutated-c-bit-" + bitPos;
+                        putObjectWithInstructionFile(ptS3Client, mutatedKey, objectData, mutatedMetadata, originalInstructionFileJson);
+                        mutatedCObjectsInstruction.add(mutatedKey);
+                    }
+
+                    if (commitD != null) {
+                        byte[] commitDBytes = Base64.getDecoder().decode(commitD);
+                        int bitPos = flipRandomBit(commitDBytes);
+                        String mutatedD = Base64.getEncoder().encodeToString(commitDBytes);
+                        Map<String, String> mutatedMetadata = new java.util.HashMap<>(objectMetadata);
+                        mutatedMetadata.put("x-amz-d", mutatedD);
+                        String mutatedKey = objectKey + "-bad-mutated-d-bit-" + bitPos;
+                        putObjectWithInstructionFile(ptS3Client, mutatedKey, objectData, mutatedMetadata, originalInstructionFileJson);
+                        mutatedDObjectsInstruction.add(mutatedKey);
+                    }
+
+                    if (commitI != null) {
+                        byte[] commitIBytes = Base64.getDecoder().decode(commitI);
+                        int bitPos = flipRandomBit(commitIBytes);
+                        String mutatedI = Base64.getEncoder().encodeToString(commitIBytes);
+                        Map<String, String> mutatedMetadata = new java.util.HashMap<>(objectMetadata);
+                        mutatedMetadata.put("x-amz-i", mutatedI);
+                        String mutatedKey = objectKey + "-bad-mutated-i-bit-" + bitPos;
+                        putObjectWithInstructionFile(ptS3Client, mutatedKey, objectData, mutatedMetadata, originalInstructionFileJson);
+                        mutatedIObjectsInstruction.add(mutatedKey);
+                    }
+
+                    // Create invalid D length copies (instruction file storage)
+                    if (commitD != null) {
+                        byte[] commitDBytes = Base64.getDecoder().decode(commitD);
+                        
+                        // Short D (< 28 bytes) - truncate to 20 bytes
+                        int shortLength = Math.min(20, commitDBytes.length);
+                        byte[] shortDBytes = new byte[shortLength];
+                        System.arraycopy(commitDBytes, 0, shortDBytes, 0, shortLength);
+                        String shortD = Base64.getEncoder().encodeToString(shortDBytes);
+                        Map<String, String> shortDMetadata = new java.util.HashMap<>(objectMetadata);
+                        shortDMetadata.put("x-amz-d", shortD);
+                        String shortDKey = objectKey + "-bad-invalid-d-length-short";
+                        putObjectWithInstructionFile(ptS3Client, shortDKey, objectData, shortDMetadata, originalInstructionFileJson);
+                        invalidDLengthShortInstruction.add(shortDKey);
+                        
+                        // Long D (> 28 bytes) - extend to 40 bytes
+                        byte[] longDBytes = new byte[40];
+                        System.arraycopy(commitDBytes, 0, longDBytes, 0, commitDBytes.length);
+                        // Fill remaining bytes with zeros
+                        for (int i = commitDBytes.length; i < 40; i++) {
+                            longDBytes[i] = 0;
+                        }
+                        String longD = Base64.getEncoder().encodeToString(longDBytes);
+                        Map<String, String> longDMetadata = new java.util.HashMap<>(objectMetadata);
+                        longDMetadata.put("x-amz-d", longD);
+                        String longDKey = objectKey + "-bad-invalid-d-length-long";
+                        putObjectWithInstructionFile(ptS3Client, longDKey, objectData, longDMetadata, originalInstructionFileJson);
+                        invalidDLengthLongInstruction.add(longDKey);
                     }
                 }
             }
@@ -473,9 +668,13 @@ public class RangedGetTests {
         private static List<String> cbcObjects;
         private static List<String> gcmObjects;
         private static List<String> kcGcmObjects;
+        private static List<String> kcGcmObjectsInstruction;
         private static List<String> mutatedCObjects;
         private static List<String> mutatedDObjects;
         private static List<String> mutatedIObjects;
+        private static List<String> mutatedCObjectsInstruction;
+        private static List<String> mutatedDObjectsInstruction;
+        private static List<String> mutatedIObjectsInstruction;
         private static KeyMaterial kmsKeyArn;
         private static KeyMaterial RSA_KEY;
         private static KeyMaterial AES_KEY;
@@ -488,10 +687,17 @@ public class RangedGetTests {
             // Import encrypted objects from the encrypt phase
             cbcObjects = EncryptTests.getCbcObjects();
             gcmObjects = EncryptTests.getGcmObjects();
-            kcGcmObjects = EncryptTests.getKcGcmObjects();
-            mutatedCObjects = EncryptTests.getMutatedCObjects();
-            mutatedDObjects = EncryptTests.getMutatedDObjects();
-            mutatedIObjects = EncryptTests.getMutatedIObjects();
+            // Import KC-GCM objects for both storage modes
+            kcGcmObjects = EncryptTests.getKcGcmObjectsMetadata();
+            kcGcmObjectsInstruction = EncryptTests.getKcGcmObjectsInstruction();
+            // Import corrupted objects for metadata storage mode
+            mutatedCObjects = EncryptTests.getMutatedCObjectsMetadata();
+            mutatedDObjects = EncryptTests.getMutatedDObjectsMetadata();
+            mutatedIObjects = EncryptTests.getMutatedIObjectsMetadata();
+            // Import corrupted objects for instruction file storage mode
+            mutatedCObjectsInstruction = EncryptTests.getMutatedCObjectsInstruction();
+            mutatedDObjectsInstruction = EncryptTests.getMutatedDObjectsInstruction();
+            mutatedIObjectsInstruction = EncryptTests.getMutatedIObjectsInstruction();
             kmsKeyArn = EncryptTests.getKmsKeyArn();
             RSA_KEY = EncryptTests.getRsaKey();
             AES_KEY = EncryptTests.getAesKey();
@@ -999,11 +1205,11 @@ public class RangedGetTests {
             }
         }
 
-        // KC-GCM Ranged Get Tests - Failure Cases
+        // KC-GCM Instruction File Storage - Valid Object Tests
 
-        @ParameterizedTest(name = "{0}: Fail to ranged get KC-GCM with no commitment - add to instruction")
+        @ParameterizedTest(name = "{0}: Successfully ranged get KC-GCM Instruction File objects - start range")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
-        void ranged_get_kc_gcm_no_commitment_add_to_instruction_fails(TestUtils.LanguageServerTarget language) {
+        void ranged_get_kc_gcm_instruction_start_succeeds(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -1013,11 +1219,55 @@ public class RangedGetTests {
                 .build());
             String S3ECId = clientOutput.getClientId();
             
-            TestUtils.RangedGet_fails(
+            TestUtils.RangedGet(
                 client,
                 S3ECId,
-                kcGcmObjects.stream()
-                    .map(key -> key + "-bad-no-commitment-add-to-instruction")
+                kcGcmObjectsInstruction,
+                0,
+                5,
+                EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+            );
+
+            TestUtils.RangedGet(
+                client,
+                S3ECId,
+                kcGcmObjectsInstruction
+                    .stream()
+                    .map(key -> key + "-good-copy")
+                    .collect(Collectors.toList()),
+                0,
+                5,
+                EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+            );
+        }
+
+        @ParameterizedTest(name = "{0}: Successfully ranged get KC-GCM Instruction File objects - middle range")
+        @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
+        void ranged_get_kc_gcm_instruction_middle_succeeds(TestUtils.LanguageServerTarget language) {
+            S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+            CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+                .config(S3ECConfig.builder()
+                    .keyMaterial(kmsKeyArn)
+                    .enableLegacyUnauthenticatedModes(true)
+                    .build())
+                .build());
+            String S3ECId = clientOutput.getClientId();
+            
+            TestUtils.RangedGet(
+                client,
+                S3ECId,
+                kcGcmObjectsInstruction,
+                5,
+                10,
+                EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+            );
+
+            TestUtils.RangedGet(
+                client,
+                S3ECId,
+                kcGcmObjectsInstruction
+                    .stream()
+                    .map(key -> key + "-good-copy")
                     .collect(Collectors.toList()),
                 5,
                 10,
@@ -1025,9 +1275,9 @@ public class RangedGetTests {
             );
         }
 
-        @ParameterizedTest(name = "{0}: Fail to ranged get KC-GCM with no commitment - only instruction")
+        @ParameterizedTest(name = "{0}: Successfully ranged get KC-GCM Instruction File objects - Include tag")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
-        void ranged_get_kc_gcm_no_commitment_only_instruction_fails(TestUtils.LanguageServerTarget language) {
+        void ranged_get_kc_gcm_instruction_tag_only_succeeds(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -1037,11 +1287,156 @@ public class RangedGetTests {
                 .build());
             String S3ECId = clientOutput.getClientId();
             
+            TestUtils.RangedGet(
+                client,
+                S3ECId,
+                kcGcmObjectsInstruction,
+                10,
+                1000,
+                EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+            );
+
+            TestUtils.RangedGet(
+                client,
+                S3ECId,
+                kcGcmObjectsInstruction
+                    .stream()
+                    .map(key -> key + "-good-copy")
+                    .collect(Collectors.toList()),
+                10,
+                1000,
+                EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+            );
+        }
+
+        @ParameterizedTest(name = "{0}: Successfully ranged get KC-GCM Instruction File objects - end range")
+        @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
+        void ranged_get_kc_gcm_instruction_end_succeeds(TestUtils.LanguageServerTarget language) {
+            S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+            CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+                .config(S3ECConfig.builder()
+                    .keyMaterial(kmsKeyArn)
+                    .enableLegacyUnauthenticatedModes(true)
+                    .build())
+                .build());
+            String S3ECId = clientOutput.getClientId();
+            
+            // Test original objects
+            for (String objectKey : kcGcmObjectsInstruction) {
+                GetObjectOutput fullOutput = client.getObject(GetObjectInput.builder()
+                    .clientID(S3ECId)
+                    .bucket(TestUtils.BUCKET)
+                    .key(objectKey)
+                    .build());
+                long objectLength = fullOutput.getBody().array().length;
+                long rangeStart = Math.max(0, objectLength - 5);
+                long rangeEnd = objectLength - 1;
+                
+                TestUtils.RangedGet(
+                    client,
+                    S3ECId,
+                    java.util.Collections.singletonList(objectKey),
+                    rangeStart,
+                    rangeEnd,
+                    EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+                );
+            }
+            
+            // Test good-copy objects
+            for (String objectKey : kcGcmObjectsInstruction) {
+                String goodCopyKey = objectKey + "-good-copy";
+                GetObjectOutput fullOutput = client.getObject(GetObjectInput.builder()
+                    .clientID(S3ECId)
+                    .bucket(TestUtils.BUCKET)
+                    .key(goodCopyKey)
+                    .build());
+                long objectLength = fullOutput.getBody().array().length;
+                long rangeStart = Math.max(0, objectLength - 5);
+                long rangeEnd = objectLength - 1;
+                
+                TestUtils.RangedGet(
+                    client,
+                    S3ECId,
+                    java.util.Collections.singletonList(goodCopyKey),
+                    rangeStart,
+                    rangeEnd,
+                    EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+                );
+            }
+        }
+
+        @ParameterizedTest(name = "{0}: Successfully ranged get KC-GCM Instruction File objects - whole file")
+        @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
+        void ranged_get_kc_gcm_instruction_whole_file_succeeds(TestUtils.LanguageServerTarget language) {
+            S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+            CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+                .config(S3ECConfig.builder()
+                    .keyMaterial(kmsKeyArn)
+                    .enableLegacyUnauthenticatedModes(true)
+                    .build())
+                .build());
+            String S3ECId = clientOutput.getClientId();
+            
+            // Test original objects
+            for (String objectKey : kcGcmObjectsInstruction) {
+                GetObjectOutput fullOutput = client.getObject(GetObjectInput.builder()
+                    .clientID(S3ECId)
+                    .bucket(TestUtils.BUCKET)
+                    .key(objectKey)
+                    .build());
+                long objectLength = fullOutput.getBody().array().length;
+                
+                TestUtils.RangedGet(
+                    client,
+                    S3ECId,
+                    java.util.Collections.singletonList(objectKey),
+                    0,
+                    objectLength - 1,
+                    EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+                );
+            }
+            
+            // Test good-copy objects
+            for (String objectKey : kcGcmObjectsInstruction) {
+                String goodCopyKey = objectKey + "-good-copy";
+                GetObjectOutput fullOutput = client.getObject(GetObjectInput.builder()
+                    .clientID(S3ECId)
+                    .bucket(TestUtils.BUCKET)
+                    .key(goodCopyKey)
+                    .build());
+                long objectLength = fullOutput.getBody().array().length;
+                
+                TestUtils.RangedGet(
+                    client,
+                    S3ECId,
+                    java.util.Collections.singletonList(goodCopyKey),
+                    0,
+                    objectLength - 1,
+                    EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+                );
+            }
+        }
+
+        // KC-GCM Ranged Get Tests - Failure Cases
+
+        @ParameterizedTest(name = "{0}: Fail to ranged get KC-GCM Instruction File with commitment duplicated in instruction file")
+        @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
+        void ranged_get_kc_gcm_instruction_commitment_in_instruction_fails(TestUtils.LanguageServerTarget language) {
+            S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+            CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+                .config(S3ECConfig.builder()
+                    .keyMaterial(kmsKeyArn)
+                    .enableLegacyUnauthenticatedModes(true)
+                    .build())
+                .build());
+            String S3ECId = clientOutput.getClientId();
+            
+            // Test instruction file storage mode objects with c/d/i duplicated into instruction file
             TestUtils.RangedGet_fails(
                 client,
                 S3ECId,
-                kcGcmObjects.stream()
-                    .map(key -> key + "-bad-no-commitment-only-instruction")
+                kcGcmObjectsInstruction.stream()
+                    .map(key -> key + "-bad-commitment-in-instruction")
                     .collect(Collectors.toList()),
                 5,
                 10,
@@ -1060,8 +1455,6 @@ public class RangedGetTests {
                     .build())
                 .build());
             String S3ECId = clientOutput.getClientId();
-            
-            assertFalse(mutatedCObjects.isEmpty(), "Expected mutated C objects to be created but list is empty");
             
             TestUtils.RangedGet_fails(
                 client,
@@ -1084,9 +1477,7 @@ public class RangedGetTests {
                     .build())
                 .build());
             String S3ECId = clientOutput.getClientId();
-            
-            assertFalse(mutatedDObjects.isEmpty(), "Expected mutated D objects to be created but list is empty");
-            
+                        
             TestUtils.RangedGet_fails(
                 client,
                 S3ECId,
@@ -1108,13 +1499,173 @@ public class RangedGetTests {
                     .build())
                 .build());
             String S3ECId = clientOutput.getClientId();
-            
-            assertFalse(mutatedIObjects.isEmpty(), "Expected mutated I objects to be created but list is empty");
-            
+                        
             TestUtils.RangedGet_fails(
                 client,
                 S3ECId,
                 mutatedIObjects,
+                5,
+                10,
+                EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+            );
+        }
+
+        @ParameterizedTest(name = "{0}: Fail to ranged get KC-GCM Instruction File with mutated commitment C in metadata")
+        @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
+        void ranged_get_kc_gcm_instruction_mutated_c_fails(TestUtils.LanguageServerTarget language) {
+            S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+            CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+                .config(S3ECConfig.builder()
+                    .keyMaterial(kmsKeyArn)
+                    .enableLegacyUnauthenticatedModes(true)
+                    .build())
+                .build());
+            String S3ECId = clientOutput.getClientId();
+                        
+            TestUtils.RangedGet_fails(
+                client,
+                S3ECId,
+                mutatedCObjectsInstruction,
+                5,
+                10,
+                EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+            );
+        }
+
+        @ParameterizedTest(name = "{0}: Fail to ranged get KC-GCM Instruction File with mutated commitment D in metadata")
+        @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
+        void ranged_get_kc_gcm_instruction_mutated_d_fails(TestUtils.LanguageServerTarget language) {
+            S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+            CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+                .config(S3ECConfig.builder()
+                    .keyMaterial(kmsKeyArn)
+                    .enableLegacyUnauthenticatedModes(true)
+                    .build())
+                .build());
+            String S3ECId = clientOutput.getClientId();
+                        
+            TestUtils.RangedGet_fails(
+                client,
+                S3ECId,
+                mutatedDObjectsInstruction,
+                5,
+                10,
+                EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+            );
+        }
+
+        @ParameterizedTest(name = "{0}: Fail to ranged get KC-GCM Instruction File with mutated commitment I in metadata")
+        @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
+        void ranged_get_kc_gcm_instruction_mutated_i_fails(TestUtils.LanguageServerTarget language) {
+            S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+            CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+                .config(S3ECConfig.builder()
+                    .keyMaterial(kmsKeyArn)
+                    .enableLegacyUnauthenticatedModes(true)
+                    .build())
+                .build());
+            String S3ECId = clientOutput.getClientId();
+                        
+            TestUtils.RangedGet_fails(
+                client,
+                S3ECId,
+                mutatedIObjectsInstruction,
+                5,
+                10,
+                EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+            );
+        }
+
+        @ParameterizedTest(name = "{0}: Fail to ranged get KC-GCM with invalid C length (too short) in metadata")
+        @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
+        void ranged_get_kc_gcm_metadata_invalid_c_length_short_fails(TestUtils.LanguageServerTarget language) {
+            S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+            CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+                .config(S3ECConfig.builder()
+                    .keyMaterial(kmsKeyArn)
+                    .enableLegacyUnauthenticatedModes(true)
+                    .build())
+                .build());
+            String S3ECId = clientOutput.getClientId();
+            
+            List<String> invalidDLengthShortObjects = EncryptTests.getInvalidDLengthShortMetadata();
+            
+            TestUtils.RangedGet_fails(
+                client,
+                S3ECId,
+                invalidDLengthShortObjects,
+                5,
+                10,
+                EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+            );
+        }
+
+        @ParameterizedTest(name = "{0}: Fail to ranged get KC-GCM with invalid D length (too long) in metadata")
+        @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
+        void ranged_get_kc_gcm_metadata_invalid_d_length_long_fails(TestUtils.LanguageServerTarget language) {
+            S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+            CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+                .config(S3ECConfig.builder()
+                    .keyMaterial(kmsKeyArn)
+                    .enableLegacyUnauthenticatedModes(true)
+                    .build())
+                .build());
+            String S3ECId = clientOutput.getClientId();
+            
+            List<String> invalidDLengthLongObjects = EncryptTests.getInvalidDLengthLongMetadata();
+            
+            TestUtils.RangedGet_fails(
+                client,
+                S3ECId,
+                invalidDLengthLongObjects,
+                5,
+                10,
+                EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+            );
+        }
+
+        @ParameterizedTest(name = "{0}: Fail to ranged get KC-GCM Instruction File with invalid D length (too short) in metadata")
+        @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
+        void ranged_get_kc_gcm_instruction_invalid_d_length_short_fails(TestUtils.LanguageServerTarget language) {
+            S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+            CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+                .config(S3ECConfig.builder()
+                    .keyMaterial(kmsKeyArn)
+                    .enableLegacyUnauthenticatedModes(true)
+                    .build())
+                .build());
+            String S3ECId = clientOutput.getClientId();
+            
+            List<String> invalidDLengthShortObjects = EncryptTests.getInvalidDLengthShortInstruction();
+            
+            TestUtils.RangedGet_fails(
+                client,
+                S3ECId,
+                invalidDLengthShortObjects,
+                5,
+                10,
+                EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+            );
+        }
+
+        @ParameterizedTest(name = "{0}: Fail to ranged get KC-GCM Instruction File with invalid D length (too long) in metadata")
+        @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
+        void ranged_get_kc_gcm_instruction_invalid_d_length_long_fails(TestUtils.LanguageServerTarget language) {
+            S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+            CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+                .config(S3ECConfig.builder()
+                    .keyMaterial(kmsKeyArn)
+                    .enableLegacyUnauthenticatedModes(true)
+                    .build())
+                .build());
+            String S3ECId = clientOutput.getClientId();
+            
+            List<String> invalidDLengthLongObjects = EncryptTests.getInvalidDLengthLongInstruction();
+            
+            TestUtils.RangedGet_fails(
+                client,
+                S3ECId,
+                invalidDLengthLongObjects,
                 5,
                 10,
                 EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY

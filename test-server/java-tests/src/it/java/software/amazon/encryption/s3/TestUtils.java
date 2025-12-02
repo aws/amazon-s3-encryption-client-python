@@ -747,6 +747,11 @@ public class TestUtils {
         String S3ECId, List<String> crossLanguageObjects,
         EncryptionAlgorithm expectedEncryptionAlgorithm
     ) {
+
+        if (crossLanguageObjects.isEmpty()) {
+            throw new AssertionError("There is nothing to decrypt");
+        }
+
         List<String> successfulDecrypt = new ArrayList<>();
         for (String objectKey : crossLanguageObjects) {
             try {
@@ -783,6 +788,11 @@ public class TestUtils {
         long rangeEnd,
         EncryptionAlgorithm expectedEncryptionAlgorithm
     ) {
+
+        if (objectKeys.isEmpty()) {
+            throw new AssertionError("There is nothing to get");
+        }
+
         List<String> failures = new ArrayList<>();
         for (String objectKey : objectKeys) {
             try {
@@ -844,6 +854,11 @@ public class TestUtils {
         long rangeEnd,
         EncryptionAlgorithm expectedEncryptionAlgorithm
     ) {
+
+        if (objectKeys.isEmpty()) {
+            throw new AssertionError("There is nothing to get");
+        }
+
         List<String> successfulGets = new ArrayList<>();
         for (String objectKey : objectKeys) {
             try {
