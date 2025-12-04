@@ -299,7 +299,7 @@ public class RangedGetTests {
         }
 
         @org.junit.jupiter.api.Test
-        void encrypt_cbc_for_ranged_gets() {
+        void encryptCbcForRangedGets() {
             // Use old V1 client for CBC encryption (legacy algorithm)
             // Only Java V1 client is available - no V1 test servers for other languages
             EncryptionMaterialsProvider materialsProvider = new KMSEncryptionMaterialsProvider(TestUtils.KMS_KEY_ARN);
@@ -321,7 +321,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Encrypt GCM for ranged get testing")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$EncryptTests#transitionAndImprovedForGCM")
-        void encrypt_gcm_for_ranged_gets(TestUtils.LanguageServerTarget language) {
+        void encryptGcmForRangedGets(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -343,7 +343,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Encrypt KC-GCM with Object Metadata Storage for ranged get testing")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$EncryptTests#improvedClientsForKCGCM")
-        void encrypt_kc_gcm_metadata_for_ranged_gets(TestUtils.LanguageServerTarget language) {
+        void encryptKcGcmMetadataForRangedGets(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -364,7 +364,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Encrypt KC-GCM with Instruction file Storage for ranged get testing")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$EncryptTests#improvedClientsCanPutKMSWithInstructionFile")
-        void encrypt_kc_gcm_instruction_file_for_ranged_gets(TestUtils.LanguageServerTarget language) {
+        void encryptKcGcmInstructionFileForRangedGets(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -729,7 +729,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Successfully ranged get CBC objects - start range")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetCBCSupportedClients")
-        void ranged_get_cbc_start_succeeds(TestUtils.LanguageServerTarget language) {
+        void rangedGetCbcStartSucceeds(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -754,7 +754,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Successfully ranged get CBC objects - end range")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetCBCSupportedClients")
-        void ranged_get_cbc_end_succeeds(TestUtils.LanguageServerTarget language) {
+        void rangedGetCbcEndSucceeds(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -791,7 +791,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Successfully ranged get CBC objects - middle range")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetCBCSupportedClients")
-        void ranged_get_cbc_middle_succeeds(TestUtils.LanguageServerTarget language) {
+        void rangedGetCbcMiddleSucceeds(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -816,7 +816,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Successfully ranged get CBC objects - whole file")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetCBCSupportedClients")
-        void ranged_get_cbc_whole_file_succeeds(TestUtils.LanguageServerTarget language) {
+        void rangedGetCbcWholeFileSucceeds(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -853,7 +853,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Successfully ranged get GCM objects - start range")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
-        void ranged_get_gcm_start_succeeds(TestUtils.LanguageServerTarget language) {
+        void rangedGetGcmStartSucceeds(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -877,7 +877,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Successfully ranged get GCM objects - end range")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
-        void ranged_get_gcm_end_succeeds(TestUtils.LanguageServerTarget language) {
+        void rangedGetGcmEndSucceeds(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -913,7 +913,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Successfully ranged get GCM objects - middle range")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
-        void ranged_get_gcm_middle_succeeds(TestUtils.LanguageServerTarget language) {
+        void rangedGetGcmMiddleSucceeds(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -937,7 +937,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Successfully ranged get GCM objects - whole file")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
-        void ranged_get_gcm_whole_file_succeeds(TestUtils.LanguageServerTarget language) {
+        void rangedGetGcmWholeFileSucceeds(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -971,7 +971,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Successfully ranged get GCM objects - Include tag")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
-        void ranged_get_gcm_tag_only_succeeds(TestUtils.LanguageServerTarget language) {
+        void rangedGetGcmTagOnlySucceeds(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -997,7 +997,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Successfully ranged get KC-GCM objects - start range")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
-        void ranged_get_kc_gcm_start_succeeds(TestUtils.LanguageServerTarget language) {
+        void rangedGetKcGcmStartSucceeds(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -1031,7 +1031,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Successfully ranged get KC-GCM objects - middle range")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
-        void ranged_get_kc_gcm_middle_succeeds(TestUtils.LanguageServerTarget language) {
+        void rangedGetKcGcmMiddleSucceeds(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -1065,7 +1065,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Successfully ranged get KC-GCM objects - Include tag")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
-        void ranged_get_kc_gcm_tag_only_succeeds(TestUtils.LanguageServerTarget language) {
+        void rangedGetKcGcmTagOnlySucceeds(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -1099,7 +1099,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Successfully ranged get KC-GCM objects - end range")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
-        void ranged_get_kc_gcm_end_succeeds(TestUtils.LanguageServerTarget language) {
+        void rangedGetKcGcmEndSucceeds(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -1155,7 +1155,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Successfully ranged get KC-GCM objects - whole file")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
-        void ranged_get_kc_gcm_whole_file_succeeds(TestUtils.LanguageServerTarget language) {
+        void rangedGetKcGcmWholeFileSucceeds(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -1209,7 +1209,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Successfully ranged get KC-GCM Instruction File objects - start range")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
-        void ranged_get_kc_gcm_instruction_start_succeeds(TestUtils.LanguageServerTarget language) {
+        void rangedGetKcGcmInstructionStartSucceeds(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -1243,7 +1243,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Successfully ranged get KC-GCM Instruction File objects - middle range")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
-        void ranged_get_kc_gcm_instruction_middle_succeeds(TestUtils.LanguageServerTarget language) {
+        void rangedGetKcGcmInstructionMiddleSucceeds(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -1277,7 +1277,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Successfully ranged get KC-GCM Instruction File objects - Include tag")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
-        void ranged_get_kc_gcm_instruction_tag_only_succeeds(TestUtils.LanguageServerTarget language) {
+        void rangedGetKcGcmInstructionTagOnlySucceeds(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -1311,7 +1311,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Successfully ranged get KC-GCM Instruction File objects - end range")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
-        void ranged_get_kc_gcm_instruction_end_succeeds(TestUtils.LanguageServerTarget language) {
+        void rangedGetKcGcmInstructionEndSucceeds(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -1367,7 +1367,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Successfully ranged get KC-GCM Instruction File objects - whole file")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
-        void ranged_get_kc_gcm_instruction_whole_file_succeeds(TestUtils.LanguageServerTarget language) {
+        void rangedGetKcGcmInstructionWholeFileSucceeds(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -1421,7 +1421,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Fail to ranged get KC-GCM Instruction File with commitment duplicated in instruction file")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
-        void ranged_get_kc_gcm_instruction_commitment_in_instruction_fails(TestUtils.LanguageServerTarget language) {
+        void rangedGetKcGcmInstructionCommitmentInInstructionFails(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -1446,7 +1446,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Fail to ranged get KC-GCM with mutated commitment C")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
-        void ranged_get_kc_gcm_mutated_c_fails(TestUtils.LanguageServerTarget language) {
+        void rangedGetKcGcmMutatedCFails(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -1468,7 +1468,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Fail to ranged get KC-GCM with mutated commitment D")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
-        void ranged_get_kc_gcm_mutated_d_fails(TestUtils.LanguageServerTarget language) {
+        void rangedGetKcGcmMutatedDFails(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -1490,7 +1490,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Fail to ranged get KC-GCM with mutated commitment I")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
-        void ranged_get_kc_gcm_mutated_i_fails(TestUtils.LanguageServerTarget language) {
+        void rangedGetKcGcmMutatedIFails(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -1512,7 +1512,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Fail to ranged get KC-GCM Instruction File with mutated commitment C in metadata")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
-        void ranged_get_kc_gcm_instruction_mutated_c_fails(TestUtils.LanguageServerTarget language) {
+        void rangedGetKcGcmInstructionMutatedCFails(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -1534,7 +1534,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Fail to ranged get KC-GCM Instruction File with mutated commitment D in metadata")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
-        void ranged_get_kc_gcm_instruction_mutated_d_fails(TestUtils.LanguageServerTarget language) {
+        void rangedGetKcGcmInstructionMutatedDFails(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -1556,7 +1556,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Fail to ranged get KC-GCM Instruction File with mutated commitment I in metadata")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
-        void ranged_get_kc_gcm_instruction_mutated_i_fails(TestUtils.LanguageServerTarget language) {
+        void rangedGetKcGcmInstructionMutatedIFails(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -1578,7 +1578,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Fail to ranged get KC-GCM with invalid C length (too short) in metadata")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
-        void ranged_get_kc_gcm_metadata_invalid_c_length_short_fails(TestUtils.LanguageServerTarget language) {
+        void rangedGetKcGcmMetadataInvalidCLengthShortFails(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -1602,7 +1602,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Fail to ranged get KC-GCM with invalid D length (too long) in metadata")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
-        void ranged_get_kc_gcm_metadata_invalid_d_length_long_fails(TestUtils.LanguageServerTarget language) {
+        void rangedGetKcGcmMetadataInvalidDLengthLongFails(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -1626,7 +1626,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Fail to ranged get KC-GCM Instruction File with invalid D length (too short) in metadata")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
-        void ranged_get_kc_gcm_instruction_invalid_d_length_short_fails(TestUtils.LanguageServerTarget language) {
+        void rangedGetKcGcmInstructionInvalidDLengthShortFails(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -1650,7 +1650,7 @@ public class RangedGetTests {
 
         @ParameterizedTest(name = "{0}: Fail to ranged get KC-GCM Instruction File with invalid D length (too long) in metadata")
         @MethodSource("software.amazon.encryption.s3.RangedGetTests$RangedGetTestsNested#rangedGetSupportedClients")
-        void ranged_get_kc_gcm_instruction_invalid_d_length_long_fails(TestUtils.LanguageServerTarget language) {
+        void rangedGetKcGcmInstructionInvalidDLengthLongFails(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()

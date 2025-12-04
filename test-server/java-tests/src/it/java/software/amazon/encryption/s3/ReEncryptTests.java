@@ -220,7 +220,7 @@ public class ReEncryptTests {
 
         @ParameterizedTest(name = "{0}: Encrypt AES objects for AES => AES re-encryption")
         @MethodSource("software.amazon.encryption.s3.ReEncryptTests$EncryptTests#improvedClientsCanPutRawAESWithInstructionFile")
-        void encrypt_aes_for_aes_to_aes_reencrypt(TestUtils.LanguageServerTarget language) {
+        void encryptAesForAesToAesReencrypt(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -239,7 +239,7 @@ public class ReEncryptTests {
 
         @ParameterizedTest(name = "{0}: Encrypt AES objects for AES => RSA custom suffix re-encryption")
         @MethodSource("software.amazon.encryption.s3.ReEncryptTests$EncryptTests#improvedClientsCanPutRawAESWithInstructionFile")
-        void encrypt_aes_for_aes_to_rsa_custom_reencrypt(TestUtils.LanguageServerTarget language) {
+        void encryptAesForAesToRsaCustomReencrypt(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -258,7 +258,7 @@ public class ReEncryptTests {
 
         @ParameterizedTest(name = "{0}: Encrypt AES objects for AES => RSA default suffix re-encryption")
         @MethodSource("software.amazon.encryption.s3.ReEncryptTests$EncryptTests#improvedClientsCanPutRawAESWithInstructionFile")
-        void encrypt_aes_for_aes_to_rsa_default_reencrypt(TestUtils.LanguageServerTarget language) {
+        void encryptAesForAesToRsaDefaultReencrypt(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -277,7 +277,7 @@ public class ReEncryptTests {
 
         @ParameterizedTest(name = "{0}: Encrypt RSA objects for RSA => RSA re-encryption")
         @MethodSource("software.amazon.encryption.s3.ReEncryptTests$EncryptTests#improvedClientsCanPutRawRSAWithInstructionFile")
-        void encrypt_rsa_for_rsa_to_rsa_reencrypt(TestUtils.LanguageServerTarget language) {
+        void encryptRsaForRsaToRsaReencrypt(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -296,7 +296,7 @@ public class ReEncryptTests {
 
         @ParameterizedTest(name = "{0}: Encrypt RSA objects for RSA => AES default suffix re-encryption")
         @MethodSource("software.amazon.encryption.s3.ReEncryptTests$EncryptTests#improvedClientsCanPutRawRSAWithInstructionFile")
-        void encrypt_rsa_for_rsa_to_aes_default_reencrypt(TestUtils.LanguageServerTarget language) {
+        void encryptRsaForRsaToAesDefaultReencrypt(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -346,7 +346,7 @@ public class ReEncryptTests {
 
         @ParameterizedTest(name = "{0}: ReEncrypt AES => AES instruction file")
         @MethodSource("software.amazon.encryption.s3.ReEncryptTests$ReEncryptTestsNested#reencryptSupportedClients")
-        void reencrypt_aes_to_aes_instruction_file(TestUtils.LanguageServerTarget language) {
+        void reencryptAesToAesInstructionFile(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             
             for (int i = 0; i < kcGcmObjectsAesToAes.size(); i++) {
@@ -372,7 +372,7 @@ public class ReEncryptTests {
 
         @ParameterizedTest(name = "{0}: ReEncrypt RSA => RSA instruction file")
         @MethodSource("software.amazon.encryption.s3.ReEncryptTests$ReEncryptTestsNested#reencryptSupportedClients")
-        void reencrypt_rsa_to_rsa_instruction_file(TestUtils.LanguageServerTarget language) {
+        void reencryptRsaToRsaInstructionFile(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             
             for (int i = 0; i < kcGcmObjectsRsaToRsa.size(); i++) {
@@ -398,7 +398,7 @@ public class ReEncryptTests {
 
         @ParameterizedTest(name = "{0}: ReEncrypt AES => RSA instruction file with custom suffix")
         @MethodSource("software.amazon.encryption.s3.ReEncryptTests$ReEncryptTestsNested#reencryptSupportedClients")
-        void reencrypt_aes_to_rsa_instruction_file(TestUtils.LanguageServerTarget language) {
+        void reencryptAesToRsaInstructionFile(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             
             for (int i = 0; i < kcGcmObjectsAesToRsaCustom.size(); i++) {
@@ -427,7 +427,7 @@ public class ReEncryptTests {
 
         @ParameterizedTest(name = "{0}: ReEncrypt RSA => AES instruction file (default suffix)")
         @MethodSource("software.amazon.encryption.s3.ReEncryptTests$ReEncryptTestsNested#reencryptSupportedClients")
-        void reencrypt_rsa_to_aes_default_instruction_file(TestUtils.LanguageServerTarget language) {
+        void reencryptRsaToAesDefaultInstructionFile(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             
             for (int i = 0; i < kcGcmObjectsRsaToAesDefault.size(); i++) {
@@ -454,7 +454,7 @@ public class ReEncryptTests {
 
         @ParameterizedTest(name = "{0}: ReEncrypt AES => RSA instruction file (default suffix)")
         @MethodSource("software.amazon.encryption.s3.ReEncryptTests$ReEncryptTestsNested#reencryptSupportedClients")
-        void reencrypt_aes_to_rsa_default_instruction_file(TestUtils.LanguageServerTarget language) {
+        void reencryptAesToRsaDefaultInstructionFile(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             
             for (int i = 0; i < kcGcmObjectsAesToRsaDefault.size(); i++) {
@@ -536,7 +536,7 @@ public class ReEncryptTests {
 
         @ParameterizedTest(name = "{0}: Decrypt AES => AES re-encrypted objects")
         @MethodSource("software.amazon.encryption.s3.ReEncryptTests$DecryptReEncryptedTests#clientsCanGetRawAESWithInstructionFile")
-        void decrypt_reencrypted_aes_to_aes_objects(TestUtils.LanguageServerTarget language) {
+        void decryptReencryptedAesToAesObjects(TestUtils.LanguageServerTarget language) {
             if (reEncryptedAesToAes.isEmpty()) return;
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
@@ -556,7 +556,7 @@ public class ReEncryptTests {
 
         @ParameterizedTest(name = "{0}: Decrypt RSA => RSA re-encrypted objects")
         @MethodSource("software.amazon.encryption.s3.ReEncryptTests$DecryptReEncryptedTests#clientsCanGetRawRSAWithInstructionFile")
-        void decrypt_reencrypted_rsa_to_rsa_objects(TestUtils.LanguageServerTarget language) {
+        void decryptReencryptedRsaToRsaObjects(TestUtils.LanguageServerTarget language) {
             if (reEncryptedRsaToRsa.isEmpty()) return;
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
@@ -576,7 +576,7 @@ public class ReEncryptTests {
 
         @ParameterizedTest(name = "{0}: Decrypt AES => RSA re-encrypted objects with custom suffix")
         @MethodSource("software.amazon.encryption.s3.ReEncryptTests$DecryptReEncryptedTests#clientsCanGetRawRSAWithInstructionFileAndCustomSuffix")
-        void decrypt_reencrypted_aes_to_rsa_objects(TestUtils.LanguageServerTarget language) {
+        void decryptReencryptedAesToRsaObjects(TestUtils.LanguageServerTarget language) {
             if (reEncryptedAesToRsa.isEmpty()) return;
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
@@ -599,7 +599,7 @@ public class ReEncryptTests {
 
         @ParameterizedTest(name = "{0}: Decrypt RSA => AES re-encrypted objects (default suffix)")
         @MethodSource("software.amazon.encryption.s3.ReEncryptTests$DecryptReEncryptedTests#clientsCanGetRawAESWithInstructionFile")
-        void decrypt_reencrypted_rsa_to_aes_default_objects(TestUtils.LanguageServerTarget language) {
+        void decryptReencryptedRsaToAesDefaultObjects(TestUtils.LanguageServerTarget language) {
             if (reEncryptedRsaToAesDefault.isEmpty()) return;
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
@@ -621,7 +621,7 @@ public class ReEncryptTests {
 
         @ParameterizedTest(name = "{0}: Decrypt AES => RSA re-encrypted objects (default suffix)")
         @MethodSource("software.amazon.encryption.s3.ReEncryptTests$DecryptReEncryptedTests#clientsCanGetRawRSAWithInstructionFile")
-        void decrypt_reencrypted_aes_to_rsa_default_objects(TestUtils.LanguageServerTarget language) {
+        void decryptReencryptedAesToRsaDefaultObjects(TestUtils.LanguageServerTarget language) {
             if (reEncryptedAesToRsaDefault.isEmpty()) return;
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
