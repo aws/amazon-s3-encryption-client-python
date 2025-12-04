@@ -27,8 +27,8 @@ build-all-servers:
 
 $(BUILD_SERVER_TARGETS): build-%:
 	@if [ -f $*/Makefile ]; then \
-		echo "[`date +%H:%M:%S`] Building server in $*..."; \
-		$(MAKE) -C $* build-server; \
+		echo "[`date +%H:%M:%S`] Building server in $*..." && \
+		$(MAKE) -C $* build-server && \
 		echo "[`date +%H:%M:%S`] Server $* built successfully"; \
 	else \
 		echo "❌ Error: no Makefile found in $*"; \
@@ -52,12 +52,12 @@ start-all-servers:
 
 $(START_SERVER_TARGETS): start-%:
 	@if [ -f $*/Makefile ]; then \
-		echo "Starting server in $*..."; \
+		echo "Starting server in $*..." && \
 		$(MAKE) -C $* start-server; \
 	else \
 		echo "❌ Error: no Makefile found in $*"; \
 		exit 1; \
-	fi;
+	fi
 
 wait-all-servers:
 	@echo "Waiting for all servers to be ready..."
@@ -66,12 +66,12 @@ wait-all-servers:
 
 $(WAIT_SERVER_TARGETS): wait-%:
 	@if [ -f $*/Makefile ]; then \
-		echo "Waiting server in $*..."; \
+		echo "Waiting server in $*..." && \
 		$(MAKE) -C $* wait-for-server; \
 	else \
 		echo "❌ Error: no Makefile found in $*"; \
 		exit 1; \
-	fi;
+	fi
 
 
 # Run the Java tests
