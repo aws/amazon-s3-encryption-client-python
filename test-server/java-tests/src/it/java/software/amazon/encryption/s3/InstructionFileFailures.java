@@ -60,6 +60,11 @@ import software.amazon.encryption.s3.model.S3ECConfig;
 public class InstructionFileFailures {
     // Synchronization latch - released when encrypt phase completes
     private static final CountDownLatch encryptPhaseComplete = new CountDownLatch(1);
+    
+    // Object key suffixes for test copies
+    private static final String SUFFIX_GOOD_COPY = "-good-copy";
+    private static final String SUFFIX_BAD_BOTH_META_AND_INSTRUCTION = "-bad-both-meta-and-instruction";
+    private static final String SUFFIX_BAD_ONLY_INSTRUCTION = "-bad-only-instruction";
 
     /**
      * Encryption Tests - Encrypt Phase
@@ -255,7 +260,7 @@ public class InstructionFileFailures {
                     // Put a strict copy, to verify that we know how to do this
                     putObjectWithInstructionFile(
                         ptS3Client,
-                        objectKey + "-good-copy",
+                        objectKey + SUFFIX_GOOD_COPY,
                         encryptedObject.asByteArray(),
                         objectMetadata,
                         instructionFileJson
@@ -273,7 +278,7 @@ public class InstructionFileFailures {
                     // Put instruction files that should fail:
                     putObjectWithInstructionFile(
                         ptS3Client,
-                        objectKey + "-bad-both-meta-and-instruction",
+                        objectKey + SUFFIX_BAD_BOTH_META_AND_INSTRUCTION,
                         encryptedObject.asByteArray(),
                         objectMetadata,
                         instructionFileWithCommitmentValues
@@ -281,7 +286,7 @@ public class InstructionFileFailures {
 
                     putObjectWithInstructionFile(
                         ptS3Client,
-                        objectKey + "-bad-only-instruction",
+                        objectKey + SUFFIX_BAD_ONLY_INSTRUCTION,
                         encryptedObject.asByteArray(),
                         Map.of(),
                         instructionFileWithCommitmentValues
@@ -416,7 +421,7 @@ public class InstructionFileFailures {
                 S3ECId,
                 crossLanguageObjectsKms
                     .stream()
-                    .map(key -> key + "-good-copy")
+                    .map(key -> key + SUFFIX_GOOD_COPY)
                     .collect(Collectors.toList()),
                 EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
                 crossLanguageObjectsKms
@@ -440,7 +445,7 @@ public class InstructionFileFailures {
                 S3ECId,
                 crossLanguageObjectsKms
                     .stream()
-                    .map(key -> key + "-bad-both-meta-and-instruction")
+                    .map(key -> key + SUFFIX_BAD_BOTH_META_AND_INSTRUCTION)
                     .collect(Collectors.toList()),
                 EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
             );
@@ -463,7 +468,7 @@ public class InstructionFileFailures {
                 S3ECId,
                 crossLanguageObjectsKms
                     .stream()
-                    .map(key -> key + "-bad-only-instruction")
+                    .map(key -> key + SUFFIX_BAD_ONLY_INSTRUCTION)
                     .collect(Collectors.toList()),
                 EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
             );
@@ -488,7 +493,7 @@ public class InstructionFileFailures {
                 S3ECId,
                 crossLanguageObjectsKms
                     .stream()
-                    .map(key -> key + "-bad-both-meta-and-instruction")
+                    .map(key -> key + SUFFIX_BAD_BOTH_META_AND_INSTRUCTION)
                     .collect(Collectors.toList()),
                 EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
             );
@@ -513,7 +518,7 @@ public class InstructionFileFailures {
                 S3ECId,
                 crossLanguageObjectsKms
                     .stream()
-                    .map(key -> key + "-bad-only-instruction")
+                    .map(key -> key + SUFFIX_BAD_ONLY_INSTRUCTION)
                     .collect(Collectors.toList()),
                 EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
             );
@@ -545,7 +550,7 @@ public class InstructionFileFailures {
                 S3ECId,
                 crossLanguageObjectsRsa
                     .stream()
-                    .map(key -> key + "-good-copy")
+                    .map(key -> key + SUFFIX_GOOD_COPY)
                     .collect(Collectors.toList()),
                 EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
                 crossLanguageObjectsRsa
@@ -569,7 +574,7 @@ public class InstructionFileFailures {
                 S3ECId,
                 crossLanguageObjectsRsa
                     .stream()
-                    .map(key -> key + "-bad-both-meta-and-instruction")
+                    .map(key -> key + SUFFIX_BAD_BOTH_META_AND_INSTRUCTION)
                     .collect(Collectors.toList()),
                 EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
             );
@@ -592,7 +597,7 @@ public class InstructionFileFailures {
                 S3ECId,
                 crossLanguageObjectsRsa
                     .stream()
-                    .map(key -> key + "-bad-only-instruction")
+                    .map(key -> key + SUFFIX_BAD_ONLY_INSTRUCTION)
                     .collect(Collectors.toList()),
                 EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
             );
@@ -617,7 +622,7 @@ public class InstructionFileFailures {
                 S3ECId,
                 crossLanguageObjectsRsa
                     .stream()
-                    .map(key -> key + "-bad-both-meta-and-instruction")
+                    .map(key -> key + SUFFIX_BAD_BOTH_META_AND_INSTRUCTION)
                     .collect(Collectors.toList()),
                 EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
             );
@@ -642,7 +647,7 @@ public class InstructionFileFailures {
                 S3ECId,
                 crossLanguageObjectsRsa
                     .stream()
-                    .map(key -> key + "-bad-only-instruction")
+                    .map(key -> key + SUFFIX_BAD_ONLY_INSTRUCTION)
                     .collect(Collectors.toList()),
                 EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
             );
@@ -674,7 +679,7 @@ public class InstructionFileFailures {
                 S3ECId,
                 crossLanguageObjectsAes
                     .stream()
-                    .map(key -> key + "-good-copy")
+                    .map(key -> key + SUFFIX_GOOD_COPY)
                     .collect(Collectors.toList()),
                 EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
                 crossLanguageObjectsAes
@@ -698,7 +703,7 @@ public class InstructionFileFailures {
                 S3ECId,
                 crossLanguageObjectsAes
                     .stream()
-                    .map(key -> key + "-bad-both-meta-and-instruction")
+                    .map(key -> key + SUFFIX_BAD_BOTH_META_AND_INSTRUCTION)
                     .collect(Collectors.toList()),
                 EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
             );
@@ -721,7 +726,7 @@ public class InstructionFileFailures {
                 S3ECId,
                 crossLanguageObjectsAes
                     .stream()
-                    .map(key -> key + "-bad-only-instruction")
+                    .map(key -> key + SUFFIX_BAD_ONLY_INSTRUCTION)
                     .collect(Collectors.toList()),
                 EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
             );
@@ -746,7 +751,7 @@ public class InstructionFileFailures {
                 S3ECId,
                 crossLanguageObjectsAes
                     .stream()
-                    .map(key -> key + "-bad-both-meta-and-instruction")
+                    .map(key -> key + SUFFIX_BAD_BOTH_META_AND_INSTRUCTION)
                     .collect(Collectors.toList()),
                 EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
             );
@@ -771,7 +776,7 @@ public class InstructionFileFailures {
                 S3ECId,
                 crossLanguageObjectsAes
                     .stream()
-                    .map(key -> key + "-bad-only-instruction")
+                    .map(key -> key + SUFFIX_BAD_ONLY_INSTRUCTION)
                     .collect(Collectors.toList()),
                 EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
             );

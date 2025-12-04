@@ -138,6 +138,15 @@ public class RangedGetTests {
     
     // Random number generator for bit flipping (seeded for reproducibility)
     private static final Random random = new Random(System.currentTimeMillis());
+    
+    // Object key suffixes for test copies
+    private static final String SUFFIX_GOOD_COPY = "-good-copy";
+    private static final String SUFFIX_BAD_MUTATED_C = "-bad-mutated-c-bit-";
+    private static final String SUFFIX_BAD_MUTATED_D = "-bad-mutated-d-bit-";
+    private static final String SUFFIX_BAD_MUTATED_I = "-bad-mutated-i-bit-";
+    private static final String SUFFIX_BAD_INVALID_D_LENGTH_SHORT = "-bad-invalid-d-length-short";
+    private static final String SUFFIX_BAD_INVALID_D_LENGTH_LONG = "-bad-invalid-d-length-long";
+    private static final String SUFFIX_BAD_COMMITMENT_IN_INSTRUCTION = "-bad-commitment-in-instruction";
 
     /**
      * Encryption Tests - Encrypt Phase
@@ -422,7 +431,7 @@ public class RangedGetTests {
                     Map<String, String> objectMetadata = encryptedObject.response().metadata();
 
                     // Create good copy
-                    putObjectWithMetadata(ptS3Client, objectKey + "-good-copy", objectData, objectMetadata);
+                    putObjectWithMetadata(ptS3Client, objectKey + SUFFIX_GOOD_COPY, objectData, objectMetadata);
 
                     // Extract commitment values from metadata
                     String commitC = objectMetadata.get("x-amz-c");
@@ -436,7 +445,7 @@ public class RangedGetTests {
                         String mutatedC = Base64.getEncoder().encodeToString(commitCBytes);
                         Map<String, String> mutatedMetadata = new java.util.HashMap<>(objectMetadata);
                         mutatedMetadata.put("x-amz-c", mutatedC);
-                        String mutatedKey = objectKey + "-bad-mutated-c-bit-" + bitPos;
+                        String mutatedKey = objectKey + SUFFIX_BAD_MUTATED_C + bitPos;
                         putObjectWithMetadata(ptS3Client, mutatedKey, objectData, mutatedMetadata);
                         mutatedCObjectsMetadata.add(mutatedKey);
                     }
@@ -447,7 +456,7 @@ public class RangedGetTests {
                         String mutatedD = Base64.getEncoder().encodeToString(commitDBytes);
                         Map<String, String> mutatedMetadata = new java.util.HashMap<>(objectMetadata);
                         mutatedMetadata.put("x-amz-d", mutatedD);
-                        String mutatedKey = objectKey + "-bad-mutated-d-bit-" + bitPos;
+                        String mutatedKey = objectKey + SUFFIX_BAD_MUTATED_D + bitPos;
                         putObjectWithMetadata(ptS3Client, mutatedKey, objectData, mutatedMetadata);
                         mutatedDObjectsMetadata.add(mutatedKey);
                     }
@@ -458,7 +467,7 @@ public class RangedGetTests {
                         String mutatedI = Base64.getEncoder().encodeToString(commitIBytes);
                         Map<String, String> mutatedMetadata = new java.util.HashMap<>(objectMetadata);
                         mutatedMetadata.put("x-amz-i", mutatedI);
-                        String mutatedKey = objectKey + "-bad-mutated-i-bit-" + bitPos;
+                        String mutatedKey = objectKey + SUFFIX_BAD_MUTATED_I + bitPos;
                         putObjectWithMetadata(ptS3Client, mutatedKey, objectData, mutatedMetadata);
                         mutatedIObjectsMetadata.add(mutatedKey);
                     }
@@ -474,7 +483,7 @@ public class RangedGetTests {
                         String shortD = Base64.getEncoder().encodeToString(shortDBytes);
                         Map<String, String> shortDMetadata = new java.util.HashMap<>(objectMetadata);
                         shortDMetadata.put("x-amz-d", shortD);
-                        String shortDKey = objectKey + "-bad-invalid-d-length-short";
+                        String shortDKey = objectKey + SUFFIX_BAD_INVALID_D_LENGTH_SHORT;
                         putObjectWithMetadata(ptS3Client, shortDKey, objectData, shortDMetadata);
                         invalidDLengthShortMetadata.add(shortDKey);
                         
@@ -488,7 +497,7 @@ public class RangedGetTests {
                         String longD = Base64.getEncoder().encodeToString(longDBytes);
                         Map<String, String> longDMetadata = new java.util.HashMap<>(objectMetadata);
                         longDMetadata.put("x-amz-d", longD);
-                        String longDKey = objectKey + "-bad-invalid-d-length-long";
+                        String longDKey = objectKey + SUFFIX_BAD_INVALID_D_LENGTH_LONG;
                         putObjectWithMetadata(ptS3Client, longDKey, objectData, longDMetadata);
                         invalidDLengthLongMetadata.add(longDKey);
                     }
@@ -516,7 +525,7 @@ public class RangedGetTests {
                     // Create good copy (both object and instruction file)
                     putObjectWithInstructionFile(
                         ptS3Client,
-                        objectKey + "-good-copy",
+                        objectKey + SUFFIX_GOOD_COPY,
                         objectData,
                         objectMetadata,
                         originalInstructionFileJson
@@ -536,7 +545,7 @@ public class RangedGetTests {
                     
                     putObjectWithInstructionFile(
                         ptS3Client,
-                        objectKey + "-bad-commitment-in-instruction",
+                        objectKey + SUFFIX_BAD_COMMITMENT_IN_INSTRUCTION,
                         objectData,
                         objectMetadata,
                         corruptedInstructionJson
@@ -549,7 +558,7 @@ public class RangedGetTests {
                         String mutatedC = Base64.getEncoder().encodeToString(commitCBytes);
                         Map<String, String> mutatedMetadata = new java.util.HashMap<>(objectMetadata);
                         mutatedMetadata.put("x-amz-c", mutatedC);
-                        String mutatedKey = objectKey + "-bad-mutated-c-bit-" + bitPos;
+                        String mutatedKey = objectKey + SUFFIX_BAD_MUTATED_C + bitPos;
                         putObjectWithInstructionFile(ptS3Client, mutatedKey, objectData, mutatedMetadata, originalInstructionFileJson);
                         mutatedCObjectsInstruction.add(mutatedKey);
                     }
@@ -560,7 +569,7 @@ public class RangedGetTests {
                         String mutatedD = Base64.getEncoder().encodeToString(commitDBytes);
                         Map<String, String> mutatedMetadata = new java.util.HashMap<>(objectMetadata);
                         mutatedMetadata.put("x-amz-d", mutatedD);
-                        String mutatedKey = objectKey + "-bad-mutated-d-bit-" + bitPos;
+                        String mutatedKey = objectKey + SUFFIX_BAD_MUTATED_D + bitPos;
                         putObjectWithInstructionFile(ptS3Client, mutatedKey, objectData, mutatedMetadata, originalInstructionFileJson);
                         mutatedDObjectsInstruction.add(mutatedKey);
                     }
@@ -571,7 +580,7 @@ public class RangedGetTests {
                         String mutatedI = Base64.getEncoder().encodeToString(commitIBytes);
                         Map<String, String> mutatedMetadata = new java.util.HashMap<>(objectMetadata);
                         mutatedMetadata.put("x-amz-i", mutatedI);
-                        String mutatedKey = objectKey + "-bad-mutated-i-bit-" + bitPos;
+                        String mutatedKey = objectKey + SUFFIX_BAD_MUTATED_I + bitPos;
                         putObjectWithInstructionFile(ptS3Client, mutatedKey, objectData, mutatedMetadata, originalInstructionFileJson);
                         mutatedIObjectsInstruction.add(mutatedKey);
                     }
@@ -587,7 +596,7 @@ public class RangedGetTests {
                         String shortD = Base64.getEncoder().encodeToString(shortDBytes);
                         Map<String, String> shortDMetadata = new java.util.HashMap<>(objectMetadata);
                         shortDMetadata.put("x-amz-d", shortD);
-                        String shortDKey = objectKey + "-bad-invalid-d-length-short";
+                        String shortDKey = objectKey + SUFFIX_BAD_INVALID_D_LENGTH_SHORT;
                         putObjectWithInstructionFile(ptS3Client, shortDKey, objectData, shortDMetadata, originalInstructionFileJson);
                         invalidDLengthShortInstruction.add(shortDKey);
                         
@@ -601,7 +610,7 @@ public class RangedGetTests {
                         String longD = Base64.getEncoder().encodeToString(longDBytes);
                         Map<String, String> longDMetadata = new java.util.HashMap<>(objectMetadata);
                         longDMetadata.put("x-amz-d", longD);
-                        String longDKey = objectKey + "-bad-invalid-d-length-long";
+                        String longDKey = objectKey + SUFFIX_BAD_INVALID_D_LENGTH_LONG;
                         putObjectWithInstructionFile(ptS3Client, longDKey, objectData, longDMetadata, originalInstructionFileJson);
                         invalidDLengthLongInstruction.add(longDKey);
                     }
