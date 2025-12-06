@@ -17,6 +17,7 @@ import java.util.concurrent.CountDownLatch;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -52,6 +53,7 @@ public class KC_GCMTestSuite {
      * The encrypted objects are stored in thread-safe lists for use by DecryptTests.
      */
     @Nested
+    @DisplayName("KC_GCMTestSuite - Encrypt")
     class EncryptTests {
         private static final String sharedObjectKeyBaseMetaDataMode = "test-kc-gcm-kms";
         private static final String sharedObjectKeyBaseInsFileMode = "test-kc-gcm-rsa-instruction-file";
@@ -195,6 +197,7 @@ public class KC_GCMTestSuite {
      * They depend on EncryptTests completing first (enforced by @Order).
      */
     @Nested
+    @DisplayName("KC_GCMTestSuite - Decrypt")
     class DecryptTests {
         private static List<String> crossLanguageObjectsMetaDataMode;
         private static List<String> crossLanguageObjectsInstructionFiles;

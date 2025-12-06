@@ -27,6 +27,7 @@ import javax.crypto.SecretKey;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -155,6 +156,7 @@ public class RangedGetTests {
      * corrupted copies for failure testing. All tests in this class can run in parallel.
      */
     @Nested
+    @DisplayName("RangedGetTests - Encrypt")
     class EncryptTests {
         private static final String sharedObjectKeyBase = "test-ranged-get";
         private static KeyMaterial kmsKeyArn = KeyMaterial.builder()
@@ -673,6 +675,7 @@ public class RangedGetTests {
      * They depend on EncryptTests completing first.
      */
     @Nested
+    @DisplayName("RangedGetTests - RangedGet")
     class RangedGetTestsNested {
         private static List<String> cbcObjects;
         private static List<String> gcmObjects;

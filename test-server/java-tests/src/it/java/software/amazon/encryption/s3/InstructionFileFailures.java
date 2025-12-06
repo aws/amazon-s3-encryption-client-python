@@ -23,6 +23,7 @@ import javax.crypto.SecretKey;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -74,6 +75,7 @@ public class InstructionFileFailures {
      * The encrypted objects are stored in thread-safe lists for use by DecryptTests.
      */
     @Nested
+    @DisplayName("InstructionFileFailures - Encrypt")
     class EncryptTests {
         private static final String sharedObjectKeyBaseMetaDataMode = "test-instruction-files-cases";
         private static KeyMaterial kmsKeyArn = KeyMaterial.builder()
@@ -337,6 +339,7 @@ public class InstructionFileFailures {
      * They depend on EncryptTests completing first.
      */
     @Nested
+    @DisplayName("InstructionFileFailures - Decrypt")
     class DecryptTests {
         private static List<String> crossLanguageObjectsKms;
         private static List<String> crossLanguageObjectsRsa;

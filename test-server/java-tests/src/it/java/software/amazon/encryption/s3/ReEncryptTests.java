@@ -27,6 +27,7 @@ import javax.crypto.SecretKey;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -140,6 +141,7 @@ public class ReEncryptTests {
     private static final List<String> reEncryptedAesToRsaDefault = Collections.synchronizedList(new ArrayList<>());
 
     @Nested
+    @DisplayName("ReEncryptTests - Encrypt")
     class EncryptTests {
         private static final String sharedObjectKeyBase = "test-reencrypt";
         
@@ -320,6 +322,7 @@ public class ReEncryptTests {
     }
 
     @Nested
+    @DisplayName("ReEncryptTests - ReEncrypt")
     class ReEncryptTestsNested {
         private static List<String> kcGcmObjectsAesToAes, kcGcmObjectsAesToRsaCustom, kcGcmObjectsAesToRsaDefault;
         private static List<String> kcGcmObjectsRsaToRsa, kcGcmObjectsRsaToAesDefault;
@@ -486,6 +489,7 @@ public class ReEncryptTests {
     }
 
     @Nested
+    @DisplayName("ReEncryptTests - DecryptReEncrypted")
     class DecryptReEncryptedTests {
         private static KeyMaterial aesKeyMaterial1, aesKeyMaterial2, rsaKeyMaterial1, rsaKeyMaterial2;
 
