@@ -10,7 +10,7 @@ build-server:
 	cd s3ec-staging && mvn --batch-mode -no-transfer-progress clean compile && mvn -B -ntp install -DskipTests
 	@echo "S3EC build completed."
 	@echo "Building Java V4 server..."
-	./gradlew --build-cache --parallel build
+	./gradlew --build-cache --parallel --no-daemon build
 
 start-server:
 	@echo "Starting Java V4 server..."

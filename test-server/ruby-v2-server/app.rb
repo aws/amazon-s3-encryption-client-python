@@ -132,7 +132,7 @@ class S3ECRubyServer < Sinatra::Base
         metadata: response_metadata
       }.to_json
 
-    rescue Aws::S3::EncryptionV2::Errors::EncryptionError => e
+    rescue Aws::S3::EncryptionV2::Errors::EncryptionError, Aws::S3::EncryptionV3::Errors::EncryptionError => e
       S3ECLogger.log_error(e, { endpoint: '/put', error_category: 'EncryptionError' }, @request_id)
       ErrorHandlers.send_s3_encryption_client_error(self, e.message)
     rescue StandardError => e
@@ -176,8 +176,15 @@ class S3ECRubyServer < Sinatra::Base
         key: key
       }
 
-      # Add encryption context if present
-      get_params[:kms_encryption_context] = encryption_context unless encryption_context.empty?
+      # Add custom instruction file suffix if present
+      instruction_file_suffix = request.env['HTTP_INSTRUCTIONFILESUFFIX']
+      if instruction_file_suffix && !instruction_file_suffix.empty?
+        get_params[:envelope_location] = :instruction_file
+        get_params[:instruction_file_suffix] = instruction_file_suffix
+        S3ECLogger.debug("GET_ENDPOINT [#{@request_id}]: Using custom instruction file suffix: #{instruction_file_suffix}")
+      elsif !encryption_context.empty?
+        get_params[:kms_encryption_context] = encryption_context
+      end
 
       # Log S3 operation
       S3ECLogger.log_s3_operation('get', bucket, key, encryption_context, "ClientID: #{client_id}")
@@ -201,7 +208,7 @@ class S3ECRubyServer < Sinatra::Base
       content_type 'application/octet-stream'
       body
 
-    rescue Aws::S3::EncryptionV2::Errors::DecryptionError => e
+    rescue Aws::S3::EncryptionV2::Errors::DecryptionError, Aws::S3::EncryptionV3::Errors::DecryptionError => e
       S3ECLogger.log_error(e, { endpoint: '/get', error_category: 'DecryptionError' }, @request_id)
       ErrorHandlers.send_s3_encryption_client_error(self, e.message)
     rescue StandardError => e
