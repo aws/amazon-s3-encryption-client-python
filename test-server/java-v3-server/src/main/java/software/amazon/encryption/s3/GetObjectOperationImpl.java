@@ -34,10 +34,16 @@ public class GetObjectOperationImpl implements GetObjectOperation {
       Map<String, String> ecMap = metadataListToMap(input.getMetadata());
 
       try {
-        ResponseBytes<GetObjectResponse> resp = s3Client.getObjectAsBytes(builder -> builder
-          .bucket(input.getBucket())
-          .key(input.getKey())
-          .overrideConfiguration(withAdditionalConfiguration(ecMap)));
+        ResponseBytes<GetObjectResponse> resp = s3Client.getObjectAsBytes(builder -> {
+          builder.bucket(input.getBucket())
+                 .key(input.getKey())
+                 .overrideConfiguration(withAdditionalConfiguration(ecMap));
+          
+          // Add range header if provided
+          if (input.getRange() != null && !input.getRange().isEmpty()) {
+            builder.range(input.getRange());
+          }
+        });
 
         List<String> mdAsList = metadataMapToList(resp.response().metadata());
         // Can't use asBB else it gets mad bc cant access backing array
