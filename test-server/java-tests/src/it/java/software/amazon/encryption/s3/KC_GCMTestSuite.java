@@ -93,7 +93,7 @@ public class KC_GCMTestSuite {
         
         @ParameterizedTest(name = "{0}: Improved configured with RequireEncryptAllowDecrypt should encrypt KC-GCM")
         @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
-        void improved_configured_with_require_encrypt_allow_decrypt_should_encrypt_kc_gcm(
+        void improved_configured_with_require_encrypt_allow_decrypt_should_encrypt_kc_gcm_kms(
             TestUtils.LanguageServerTarget language
         ) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
@@ -113,7 +113,7 @@ public class KC_GCMTestSuite {
 
         @ParameterizedTest(name = "{0}: Improved configured with RequireEncryptRequireDecrypt should encrypt KC-GCM (instruction file)")
         @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
-        void improved_configured_with_require_encrypt_require_decrypt_should_encrypt_kc_gcm_ins_file(
+        void improved_configured_with_require_encrypt_require_decrypt_should_encrypt_kc_gcm_ins_file_rsa(
             TestUtils.LanguageServerTarget language
         ) {
             if (!RAW_SUPPORTED.contains(language.getLanguageName())) {
@@ -144,7 +144,7 @@ public class KC_GCMTestSuite {
 
         @ParameterizedTest(name = "{0}: Improved configured with RequireEncryptRequireDecrypt should encrypt KC-GCM")
         @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
-        void improved_configured_with_require_encrypt_require_decrypt_should_encrypt_kc_gcm(
+        void improved_configured_with_require_encrypt_require_decrypt_should_encrypt_kc_gcm_kms(
             TestUtils.LanguageServerTarget language
         ) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
@@ -225,14 +225,13 @@ public class KC_GCMTestSuite {
         
         @ParameterizedTest(name = "{0}: Transition configured with the default should decrypt KC-GCM")
         @MethodSource("software.amazon.encryption.s3.TestUtils#transitionClientsForTest")
-        void transition_configured_with_the_default_should_decrypt_kc_gcm(
+        void transition_configured_with_the_default_should_decrypt_kc_gcm_kms(
             TestUtils.LanguageServerTarget language
         ) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
                     .keyMaterial(kmsKeyArn)
-                    // .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
                     .build())
                 .build());
             String S3ECId = clientOutput.getClientId();
@@ -363,7 +362,7 @@ public class KC_GCMTestSuite {
 
         @ParameterizedTest(name = "{0}: Transition configured with default should decrypt KC-GCM (instruction file)")
         @MethodSource("software.amazon.encryption.s3.TestUtils#transitionClientsForTest")
-        void transition_configured_with_require_encrypt_require_decrypt_should_decrypt_kc_gcm_ins_file(
+        void transition_configured_with_require_encrypt_require_decrypt_should_decrypt_kc_gcm_ins_file_rsa(
             final TestUtils.LanguageServerTarget language
         ) {
             if (!RAW_SUPPORTED.contains(language.getLanguageName())) {

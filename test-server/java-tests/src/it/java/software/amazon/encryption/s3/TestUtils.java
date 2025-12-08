@@ -6,6 +6,7 @@
 package software.amazon.encryption.s3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 
 import java.net.Socket;
@@ -147,6 +148,7 @@ public class TestUtils {
 
     // Languages that support custom instruction file suffix on GetObject
     // Only Java, Ruby, and PHP servers have been updated with this feature
+    // This is a current gap.
     public static final Set<String> CUSTOM_INSTRUCTION_SUFFIX_GET_SUPPORTED =
       Set.of(
         JAVA_V3_TRANSITION,
@@ -618,7 +620,7 @@ public class TestUtils {
         String instructionFileSuffix
     ) {
         if (crossLanguageObjects.isEmpty()) {
-            throw new AssertionError("There is nothing to decrypt");
+            fail("There is nothing to decrypt");
         }
 
         List<String> failures = new ArrayList<>();
