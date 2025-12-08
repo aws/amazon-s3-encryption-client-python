@@ -1,15 +1,7 @@
-#include <aws/core/Aws.h>
-#include <aws/kms/KMSClient.h>
-#include <aws/s3-encryption/CryptoConfiguration.h>
 #include <aws/s3-encryption/S3EncryptionClient.h>
 #include <aws/s3-encryption/materials/KMSEncryptionMaterials.h>
 #include <aws/s3/model/GetObjectRequest.h>
 #include <aws/s3/model/PutObjectRequest.h>
-#include <aws/core/client/ClientConfiguration.h>
-
-#include <memory>
-#include <string>
-#include <unordered_map>
 
 using namespace Aws::S3Encryption;
 using Aws::S3Encryption::Materials::KMSWithContextEncryptionMaterials;
@@ -21,6 +13,78 @@ static Aws::Map<Aws::String, Aws::String> get_encryption_context(const char * ve
         {"version", version},
         {"language", "c++"}
     };
+}
+
+static int test_migration(const char *bucket, const char *object, const char *kms_key_id, const char *region)
+{
+  Aws::Client::ClientConfiguration s3ClientConfig;
+  s3ClientConfig.region = region;
+
+  auto materials = std::make_shared<KMSWithContextEncryptionMaterials>(kms_key_id, s3ClientConfig);
+  CryptoConfigurationV3 config(materials);
+
+  // STEP 1: Upgrade to V3 client to prepare to read messages with commitment.
+  //         You want to update your readers before you update your writers
+  config.SetCommitmentPolicy(CommitmentPolicy::FORBID_ENCRYPT_ALLOW_DECRYPT);
+  auto client = std::make_shared<S3EncryptionClientV3>(config, s3ClientConfig);
+
+  auto encryption_context = get_encryption_context("V3");
+
+  // Put Object - writes objects WITHOUT commitment
+  Aws::S3::Model::PutObjectRequest put_request;
+  put_request.SetBucket(bucket);
+  put_request.SetKey(object);
+
+  auto data = std::string("This is the sample content.");
+
+  auto stream = std::make_shared<std::stringstream>(data);
+  put_request.SetBody(stream);
+
+  // Put Object - writes objects WITHOUT commitment
+  auto put_outcome = client->PutObject(put_request, encryption_context);
+  assert(put_outcome.IsSuccess());
+
+  Aws::S3::Model::GetObjectRequest get_request;
+  get_request.SetBucket(bucket);
+  get_request.SetKey(object);
+
+  // Get Object - can read objects with or without commitment
+  auto get_outcome = client->GetObject(get_request, encryption_context);
+  assert(get_outcome.IsSuccess());
+
+  // STEP 2: If all of the readers can read with or without commitment
+  // you can upgrade the commitment policy to write objects with commitment
+  config.SetCommitmentPolicy(CommitmentPolicy::REQUIRE_ENCRYPT_ALLOW_DECRYPT);
+  client = std::make_shared<S3EncryptionClientV3>(config, s3ClientConfig);
+
+  stream = std::make_shared<std::stringstream>(data);
+  put_request.SetBody(stream);
+
+  // Put Object - writes objects WITH commitment
+  put_outcome = client->PutObject(put_request, encryption_context);
+  assert(put_outcome.IsSuccess());
+
+  // Get Object - can read objects with or without commitment
+  get_outcome = client->GetObject(get_request, encryption_context);
+  assert(get_outcome.IsSuccess());
+
+  // STEP 3: Once your system no longer has to read messages without commitment,
+  // you may update your client to only read messages written with key commitment
+  config.SetCommitmentPolicy(CommitmentPolicy::REQUIRE_ENCRYPT_REQUIRE_DECRYPT);
+  client = std::make_shared<S3EncryptionClientV3>(config, s3ClientConfig);
+
+  stream = std::make_shared<std::stringstream>(data);
+  put_request.SetBody(stream);
+
+  // Put Object - writes objects WITH commitment
+  put_outcome = client->PutObject(put_request, encryption_context);
+  assert(put_outcome.IsSuccess());
+
+  // Get Object - can only read objects with commitment
+  get_outcome = client->GetObject(get_request, encryption_context);
+  assert(get_outcome.IsSuccess());
+
+  return 0;
 }
 
 static int test_v3(const char *bucket, const char *object, const char *kms_key_id, const char *region)
