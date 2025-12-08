@@ -36,7 +36,7 @@ public class S3ECJavaTestServer implements Runnable {
                                 .addCreateClientOperation(new CreateClientOperationImpl(clientCache, keyringCache))
                                 .addGetObjectOperation(new GetObjectOperationImpl(clientCache))
                                 .addPutObjectOperation(new PutObjectOperationImpl(clientCache))
-                                .addReEncryptOperation(new ReEncryptOperationImpl(clientCache, keyringCache))
+                                .addReEncryptOperation(new ReEncryptOperationImpl(clientCache))
                                 .build())
                 .build();
         System.out.println("Starting server...");

@@ -30,11 +30,9 @@ import java.util.Map;
 
 public class ReEncryptOperationImpl implements ReEncryptOperation {
     private final Map<String, S3Client> clientCache_;
-    private final Map<String, software.amazon.encryption.s3.materials.Keyring> keyringCache_;
 
-    public ReEncryptOperationImpl(Map<String, S3Client> clientCache, Map<String, software.amazon.encryption.s3.materials.Keyring> keyringCache) {
+    public ReEncryptOperationImpl(Map<String, S3Client> clientCache) {
         clientCache_ = clientCache;
-        keyringCache_ = keyringCache;
     }
 
     @Override
