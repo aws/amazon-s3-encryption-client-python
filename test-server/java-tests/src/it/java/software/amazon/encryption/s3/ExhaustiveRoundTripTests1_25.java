@@ -177,10 +177,10 @@ public class ExhaustiveRoundTripTests1_25 {
     @MethodSource("software.amazon.encryption.s3.TestUtils#encryptImprovedDecryptImproved")
     public void GIVEN_KCGCMEncryptedData_AND_ImprovedClientDecryptingWithForbidEncryptAllowDecrypt_WHEN_Decrypt_THEN_Pass(
             TestUtils.LanguageServerTarget encLang, TestUtils.LanguageServerTarget decLang
-    ) {
+    ) throws Exception {
 
         S3ECTestServerClient encClient = TestUtils.testServerClientFor(encLang);
-        final String objectKey = "encrypt-kc-gcm-decrypt-improved-test-key-" + encLang;
+        final String objectKey = "encrypt-kc-gcm-decrypt-improved-test-key-" + encLang + "-" + decLang;
         final String input = "simple-test-input";
         KeyMaterial kmsKeyArn = KeyMaterial.builder()
                 .kmsKeyId(TestUtils.KMS_KEY_ARN)
@@ -210,6 +210,13 @@ public class ExhaustiveRoundTripTests1_25 {
                         .build())
                 .build());
         String decS3ECId = decClientOutput.getClientId();
+
+        // At high concurrency, this test tends to get:
+        // BadDigest Message: The CRC64NVME you specified did not match the calculated checksum.
+        // I think this is a read after write issue.
+        // A better fix, would be to break this tests suite up into encrypt/decrypt
+        // rather than having a test for many pairs and doing encrypt/decrypt on each pair
+        Thread.sleep(100);
 
         // When: decrypt KC-GCM object with an improved version client with ForbidEncryptAllowDecrypt policy
         GetObjectOutput output = decClient.getObject(GetObjectInput.builder()

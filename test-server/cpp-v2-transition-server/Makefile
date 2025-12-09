@@ -10,7 +10,7 @@ build/s3ec-server:
 
 build-server: | build/s3ec-server
 	@echo "Building Cpp transition server..."
-	cd build && make
+	cd build && $(MAKE)
 
 start-server:
 	@echo "Starting Cpp transition server..."
@@ -19,7 +19,7 @@ start-server:
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
-	./s3ec-server > server.log 2>&1 & echo $$! > ../$(PID_FILE)
+	./s3ec-server > ../server.log 2>&1 & echo $$! > ../$(PID_FILE)
 	@echo "Cpp transition server starting..."
 
 stop-server:
@@ -30,7 +30,7 @@ stop-server:
 		kill -9 $$(cat $(PID_FILE)) 2>/dev/null || true; \
 		rm -f $(PID_FILE); \
 	fi
-	@rm -f build/server.log
+	@rm -f server.log
 	@echo "Server stopped"
 
 wait-for-server:

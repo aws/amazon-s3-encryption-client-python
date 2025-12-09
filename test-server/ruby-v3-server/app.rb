@@ -176,8 +176,15 @@ class S3ECRubyServer < Sinatra::Base
         key: key
       }
 
-      # Add encryption context if present
-      get_params[:kms_encryption_context] = encryption_context unless encryption_context.empty?
+      # Add custom instruction file suffix if present
+      instruction_file_suffix = request.env['HTTP_INSTRUCTIONFILESUFFIX']
+      if instruction_file_suffix && !instruction_file_suffix.empty?
+        get_params[:envelope_location] = :instruction_file
+        get_params[:instruction_file_suffix] = instruction_file_suffix
+        S3ECLogger.debug("GET_ENDPOINT [#{@request_id}]: Using custom instruction file suffix: #{instruction_file_suffix}")
+      elsif !encryption_context.empty?
+        get_params[:kms_encryption_context] = encryption_context
+      end
 
       # Log S3 operation
       S3ECLogger.log_s3_operation('get', bucket, key, encryption_context, "ClientID: #{client_id}")
