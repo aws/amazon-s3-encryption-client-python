@@ -293,7 +293,7 @@ function testMigration(): void {
         echo "Data length: " . strlen($testData) . " bytes\n";
         echo "\n";
         
-        $v2EncryptionClient = new S3EncryptionClientV3(
+        $v3EncryptionClient = new S3EncryptionClientV3(
             new S3Client([
                 'region' => $region,
                 'version' => 'latest',
@@ -313,7 +313,7 @@ function testMigration(): void {
             'KeySize' => 256,
         ];
 
-        $v2EncryptionClient->putObject([
+        $v3EncryptionClient->putObject([
             '@MaterialsProvider' => $materialsProviderV3,
             '@CipherOptions' => $cipherOptions,
             '@CommitmentPolicy' => 'REQUIRE_ENCRYPT_ALLOW_DECRYPT',
@@ -323,7 +323,7 @@ function testMigration(): void {
             'Body' => $testData,
         ]);
 
-        $getResponse = $v2EncryptionClient->getObject([
+        $getResponse = $v3EncryptionClient->getObject([
             '@KmsAllowDecryptWithAnyCmk' => true,
             '@SecurityProfile' => 'V3_AND_LEGACY',
             '@CommitmentPolicy' => 'REQUIRE_ENCRYPT_ALLOW_DECRYPT',
@@ -403,7 +403,7 @@ function testMigration(): void {
         echo "Data length: " . strlen($testData) . " bytes\n";
         echo "\n";
         
-        $v2EncryptionClient = new S3EncryptionClientV3(
+        $v3EncryptionClient = new S3EncryptionClientV3(
             new S3Client([
                 'region' => $region,
                 'version' => 'latest',
@@ -423,7 +423,7 @@ function testMigration(): void {
             'KeySize' => 256,
         ];
 
-        $v2EncryptionClient->putObject([
+        $v3EncryptionClient->putObject([
             '@MaterialsProvider' => $materialsProviderV3,
             '@CipherOptions' => $cipherOptions,
             '@CommitmentPolicy' => 'REQUIRE_ENCRYPT_REQUIRE_DECRYPT',
@@ -433,7 +433,7 @@ function testMigration(): void {
             'Body' => $testData,
         ]);
 
-        $getResponse = $v2EncryptionClient->getObject([
+        $getResponse = $v3EncryptionClient->getObject([
             '@KmsAllowDecryptWithAnyCmk' => true,
             '@SecurityProfile' => 'V3',
             '@CommitmentPolicy' => 'REQUIRE_ENCRYPT_REQUIRE_DECRYPT',
