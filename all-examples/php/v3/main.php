@@ -186,7 +186,6 @@ function testMigration(): void {
 
         $v2EncryptionClient = new S3EncryptionClientV2(
         new S3Client([
-            'profile' => 'default',
             'region' => $region,
             'version' => 'latest',
         ])
@@ -194,7 +193,6 @@ function testMigration(): void {
 
         $materialsProviderV2 = new KmsMaterialsProviderV2(
             new KmsClient([
-                'profile' => 'default',
                 'region' => $region,
                 'version' => 'latest',
             ]),
@@ -297,7 +295,6 @@ function testMigration(): void {
         
         $v2EncryptionClient = new S3EncryptionClientV3(
             new S3Client([
-                'profile' => 'default',
                 'region' => $region,
                 'version' => 'latest',
             ])
@@ -305,7 +302,6 @@ function testMigration(): void {
 
         $materialsProviderV3 = new KmsMaterialsProviderV3(
             new KmsClient([
-                'profile' => 'default',
                 'region' => $region,
                 'version' => 'latest',
             ]),
@@ -409,7 +405,6 @@ function testMigration(): void {
         
         $v2EncryptionClient = new S3EncryptionClientV3(
             new S3Client([
-                'profile' => 'default',
                 'region' => $region,
                 'version' => 'latest',
             ])
@@ -417,7 +412,6 @@ function testMigration(): void {
 
         $materialsProviderV3 = new KmsMaterialsProviderV3(
             new KmsClient([
-                'profile' => 'default',
                 'region' => $region,
                 'version' => 'latest',
             ]),
