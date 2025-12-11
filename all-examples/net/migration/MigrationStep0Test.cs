@@ -31,13 +31,13 @@ namespace migration
             // Given: Step 2 round trip has succeeded with put/get object key = 2
             await MigrationStep2.MigrationExampleStep2(kmsKeyId, bucket, objectKeys[2], objectKeys[2], content);
 
-            // When: Execute Step 0 with getObjectKey=2, Then: should error out
+            // When: Execute Step 0 with getObjectKey=2, Then: Success (can read commited objects)
             await MigrationStep0.MigrationExampleStep0(kmsKeyId, bucket, dummyObjectKey, objectKeys[2], content);
 
             // Given: Step 3 round trip has succeeded with put/get object key = 3
             await MigrationStep3.MigrationExampleStep3(kmsKeyId, bucket, objectKeys[3], objectKeys[3], content);
 
-            // When: Execute Step 0 with getObjectKey=3, Then: should error out
+            // When: Execute Step 0 with getObjectKey=3, Then: Success (can read commited objects)
             await MigrationStep0.MigrationExampleStep0(kmsKeyId, bucket, dummyObjectKey, objectKeys[3], content);
 
             // Cleanup
