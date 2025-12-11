@@ -25,7 +25,16 @@ structure CreateClientOutput {
 structure KeyMaterial {
     rsaKey: Blob,
     aesKey: Blob,
-    kmsKeyId: String
+    kmsKeyId: String,
+    /// Optional materials description for keyring differentiation
+    /// Used to distinguish between different key materials for rotation enforcement
+    materialsDescription: MaterialsDescriptionMap
+}
+
+/// Map of materials description key-value pairs
+map MaterialsDescriptionMap {
+    key: String,
+    value: String
 }
 
 enum CommitmentPolicy {

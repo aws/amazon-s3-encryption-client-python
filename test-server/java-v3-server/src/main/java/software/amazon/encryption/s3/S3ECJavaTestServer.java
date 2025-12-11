@@ -27,14 +27,16 @@ public class S3ECJavaTestServer implements Runnable {
         // Obviously this can get messy in a real service.
         // Assume that the tests behave and don't induce weird race conditions.
         Map<String, S3Client> clientCache = new ConcurrentHashMap<>();
+        Map<String, software.amazon.encryption.s3.materials.Keyring> keyringCache = new ConcurrentHashMap<>();
 
         Server server = Server.builder()
           .endpoints(endpoint)
           .addService(
             S3ECTestServer.builder()
-              .addCreateClientOperation(new CreateClientOperationImpl(clientCache))
+              .addCreateClientOperation(new CreateClientOperationImpl(clientCache, keyringCache))
               .addGetObjectOperation(new GetObjectOperationImpl(clientCache))
               .addPutObjectOperation(new PutObjectOperationImpl(clientCache))
+              .addReEncryptOperation(new ReEncryptOperationImpl(clientCache, keyringCache))
               .build())
           .build();
         System.out.println("Starting server...");

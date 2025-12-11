@@ -7,7 +7,7 @@ PORT := 8080
 
 build-server:
 	@echo "Building Java V3 server..."
-	./gradlew --build-cache --parallel build
+	./gradlew --build-cache --parallel --no-daemon build
 
 start-server:
 	@echo "Starting Java V3 server..."
