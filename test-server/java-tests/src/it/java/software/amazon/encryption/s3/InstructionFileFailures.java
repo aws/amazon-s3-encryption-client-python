@@ -5,9 +5,11 @@
 
 package software.amazon.encryption.s3;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static software.amazon.encryption.s3.TestUtils.*;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.util.ArrayList;
@@ -21,6 +23,7 @@ import java.util.stream.Stream;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -32,6 +35,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.opentest4j.TestAbortedException;
 
 import software.amazon.awssdk.core.ResponseBytes;
+import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
@@ -39,13 +43,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import software.amazon.encryption.s3.TestUtils.LanguageServerTarget;
 import software.amazon.encryption.s3.client.S3ECTestServerClient;
-import software.amazon.encryption.s3.model.CommitmentPolicy;
-import software.amazon.encryption.s3.model.CreateClientInput;
-import software.amazon.encryption.s3.model.CreateClientOutput;
-import software.amazon.encryption.s3.model.EncryptionAlgorithm;
-import software.amazon.encryption.s3.model.InstructionFileConfig;
-import software.amazon.encryption.s3.model.KeyMaterial;
-import software.amazon.encryption.s3.model.S3ECConfig;
+import software.amazon.encryption.s3.model.*;
 
 /**
 * Instruction File Failures Test Suite
