@@ -15,9 +15,11 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import com.amazonaws.services.s3.AmazonS3EncryptionClientV2;
 import com.amazonaws.services.s3.AmazonS3EncryptionV2;
@@ -28,6 +30,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.opentest4j.TestAbortedException;
 import software.amazon.awssdk.core.ResponseBytes;
+import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.encryption.s3.TestUtils.LanguageServerTarget;
@@ -58,6 +61,87 @@ public class RoundTripTests {
     public static void setup() {
         validateServersRunning();
     }
+
+    /**
+     * Verifies input validation via fuzzing of commitment parameters.
+     * - Iterates multiple times with random garbage in critical metadata fields.
+     * - Ensures client handles invalid input gracefully (throws exception, doesn't
+     * crash).
+     */
+    @ParameterizedTest(name = "{displayName}: Fuzzing {0}")
+    @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
+    public void testCommitmentParameterFuzzing(TestUtils.LanguageServerTarget target) throws Exception {
+        S3ECTestServerClient testClient = TestUtils.testServerClientFor(target);
+        final String objectKey = TestUtils.appendTestSuffix("fuzzing-" + target);
+        final String testInput = "fuzzing metadata";
+        KeyMaterial kmsKeyArn = KeyMaterial.builder().kmsKeyId(TestUtils.KMS_KEY_ARN).build();
+
+        // 1. Create Valid Object
+        String clientId = testClient.createClient(CreateClientInput.builder()
+                .config(S3ECConfig.builder()
+                        .keyMaterial(kmsKeyArn)
+                        .commitmentPolicy(CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT)
+                        .build())
+                .build()).getClientId();
+
+        testClient.putObject(PutObjectInput.builder()
+                .clientID(clientId)
+                .bucket(TestUtils.BUCKET)
+                .key(objectKey)
+                .body(ByteBuffer.wrap(testInput.getBytes(StandardCharsets.UTF_8)))
+                .build());
+
+        // 2. Get Original Metadata
+        S3Client s3Client = S3Client.create();
+        ResponseBytes<GetObjectResponse> objectBytes = s3Client
+                .getObjectAsBytes(b -> b.bucket(TestUtils.BUCKET).key(objectKey));
+        Map<String, String> originalMetadata = objectBytes.response().metadata();
+
+        // 3. Fuzzing Loop
+        Random random = new Random();
+        String[] fieldsToFuzz = { "x-amz-c", "x-amz-i", "x-amz-3" };
+
+        for (int i = 0; i < 20; i++) {
+            String field = fieldsToFuzz[random.nextInt(fieldsToFuzz.length)];
+            Map<String, String> fuzzedMetadata = new HashMap<>(originalMetadata);
+
+            // Generate random garbage
+            byte[] garbage = new byte[random.nextInt(50) + 1];
+            random.nextBytes(garbage);
+            String garbageStr = Base64.getEncoder().encodeToString(garbage);
+
+            // Occasionally inject non-Base64 garbage
+            if (random.nextBoolean()) {
+                garbageStr = "INVALID_BASE64_!@#$%^&*()";
+            }
+
+            fuzzedMetadata.put(field, garbageStr);
+
+            // Upload with fuzzed metadata
+            s3Client.putObject(software.amazon.awssdk.services.s3.model.PutObjectRequest.builder()
+                            .bucket(TestUtils.BUCKET)
+                            .key(objectKey) // Overwrite
+                            .metadata(fuzzedMetadata)
+                            .build(),
+                    RequestBody.fromBytes(objectBytes.asByteArray()));
+
+            // Attempt Decryption
+            try {
+                testClient.getObject(GetObjectInput.builder()
+                        .clientID(clientId)
+                        .bucket(TestUtils.BUCKET)
+                        .key(objectKey)
+                        .build());
+                fail("Should fail with fuzzed metadata field: " + field);
+            } catch (S3EncryptionClientError e) {
+                // Expected
+            }
+        }
+
+        // cleanup
+        s3Client.close();
+    }
+
 
     @ParameterizedTest(name = "{displayName} for Encrypt: {0}, Decrypt: {1}")
     @MethodSource("software.amazon.encryption.s3.TestUtils#crossLanguageClients")
