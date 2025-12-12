@@ -135,6 +135,10 @@ public class RoundTripTests {
                 fail("Should fail with fuzzed metadata field: " + field);
             } catch (S3EncryptionClientError e) {
                 // Expected
+                // throw exception
+                if (e.getMessage().contains("null") || e.getMessage().contains("Cannot invoke")) {
+                    throw e;
+                }
             }
         }
 
