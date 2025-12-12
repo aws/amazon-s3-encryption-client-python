@@ -89,6 +89,12 @@ public class InstructionFileFailures {
             Collections.synchronizedList(new ArrayList<>());
         private static final List<String> crossLanguageObjectsAes = 
             Collections.synchronizedList(new ArrayList<>());
+        
+        // Thread-safe lists for envelope merge tests
+        private static final List<String> crossLanguageObjectsMetadataOnly = 
+            Collections.synchronizedList(new ArrayList<>());
+        private static final List<String> crossLanguageObjectsInstructionFileDeleted = 
+            Collections.synchronizedList(new ArrayList<>());
 
         private static KeyMaterial RSA_KEY;
         private static KeyMaterial AES_KEY;
@@ -137,6 +143,14 @@ public class InstructionFileFailures {
 
         static KeyMaterial getKmsKeyArn() {
             return kmsKeyArn;
+        }
+
+        static List<String> getCrossLanguageObjectsMetadataOnly() {
+            return new ArrayList<>(crossLanguageObjectsMetadataOnly);
+        }
+
+        static List<String> getCrossLanguageObjectsInstructionFileDeleted() {
+            return new ArrayList<>(crossLanguageObjectsInstructionFileDeleted);
         }
 
         public static Stream<Arguments> improvedClientsCanPutKMSWithInstructionFile() {
@@ -234,6 +248,55 @@ public class InstructionFileFailures {
             );
         }
 
+        @ParameterizedTest(name = "{0}: Encrypt RSA KC-GCM metadata-only for envelope merge test")
+        @MethodSource("software.amazon.encryption.s3.InstructionFileFailures$EncryptTests#improvedClientsCanPutRawRSAWithInstructionFile")
+        void encryptMetadataOnlyRsaKcGcm(TestUtils.LanguageServerTarget language) {
+            S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+            // Encrypt with metadata-only (no instruction file)
+            CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+              .config(S3ECConfig.builder()
+                .keyMaterial(RSA_KEY)
+                .build())
+              .build());
+
+            String S3ECId = clientOutput.getClientId();
+
+            TestUtils.Encrypt(
+                client,
+                S3ECId,
+                appendTestSuffix(sharedObjectKeyBaseMetaDataMode + "-envelope-merge-metadata-only-" + language.getLanguageName()),
+                crossLanguageObjectsMetadataOnly,
+                EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+            );
+        }
+
+        @ParameterizedTest(name = "{0}: Encrypt RSA KC-GCM with instruction file for deletion test")
+        @MethodSource("software.amazon.encryption.s3.InstructionFileFailures$EncryptTests#improvedClientsCanPutRawRSAWithInstructionFile")
+        void encryptWithInstructionFileForDeletionRsaKcGcm(TestUtils.LanguageServerTarget language) {
+            S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+            // Encrypt with instruction file (will be deleted later)
+            CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+              .config(S3ECConfig.builder()
+                .keyMaterial(RSA_KEY)
+                .instructionFileConfig(
+                    InstructionFileConfig.builder()
+                    .enableInstructionFilePutObject(true)
+                    .build()
+                )
+                .build())
+              .build());
+
+            String S3ECId = clientOutput.getClientId();
+
+            TestUtils.Encrypt(
+                client,
+                S3ECId,
+                appendTestSuffix(sharedObjectKeyBaseMetaDataMode + "-envelope-merge-instruction-deleted-" + language.getLanguageName()),
+                crossLanguageObjectsInstructionFileDeleted,
+                EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+            );
+        }
+
         static void makeCopiesToVerifyThings() throws Exception {
             // Create a plaintext S3 client to copy objects with instruction files
             try (S3Client ptS3Client = S3Client.create()) {
@@ -295,6 +358,19 @@ public class InstructionFileFailures {
                     );
 
                 }
+                
+                // Delete instruction files for envelope merge tests
+                for (String objectKey : crossLanguageObjectsInstructionFileDeleted) {
+                    String instructionFileKey = objectKey + ".instruction";
+                    try {
+                        ptS3Client.deleteObject(builder -> builder
+                            .bucket(TestUtils.BUCKET)
+                            .key(instructionFileKey)
+                            .build());
+                    } catch (Exception e) {
+                        // Ignore if file doesn't exist
+                    }
+                }
             }
         }
 
@@ -344,6 +420,8 @@ public class InstructionFileFailures {
         private static List<String> crossLanguageObjectsKms;
         private static List<String> crossLanguageObjectsRsa;
         private static List<String> crossLanguageObjectsAes;
+        private static List<String> crossLanguageObjectsMetadataOnly;
+        private static List<String> crossLanguageObjectsInstructionFileDeleted;
         private static KeyMaterial kmsKeyArn;
         private static KeyMaterial RSA_KEY;
         private static KeyMaterial AES_KEY;
@@ -357,6 +435,8 @@ public class InstructionFileFailures {
             crossLanguageObjectsKms = EncryptTests.getCrossLanguageObjectsKms();
             crossLanguageObjectsRsa = EncryptTests.getCrossLanguageObjectsRsa();
             crossLanguageObjectsAes = EncryptTests.getCrossLanguageObjectsAes();
+            crossLanguageObjectsMetadataOnly = EncryptTests.getCrossLanguageObjectsMetadataOnly();
+            crossLanguageObjectsInstructionFileDeleted = EncryptTests.getCrossLanguageObjectsInstructionFileDeleted();
             kmsKeyArn = EncryptTests.getKmsKeyArn();
             RSA_KEY = EncryptTests.getRsaKey();
             AES_KEY = EncryptTests.getAesKey();
@@ -781,6 +861,87 @@ public class InstructionFileFailures {
                     .stream()
                     .map(key -> key + SUFFIX_BAD_ONLY_INSTRUCTION)
                     .collect(Collectors.toList()),
+                EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+            );
+        }
+
+        // Envelope merge tests
+
+        @ParameterizedTest(name = "{0}: Successfully decrypt metadata-only object with instruction file config")
+        @MethodSource("software.amazon.encryption.s3.InstructionFileFailures$DecryptTests#clientsCanGetRawRSAWithInstructionFile")
+        void decryptMetadataOnlyObjectWithInstructionFileConfigSucceeds(TestUtils.LanguageServerTarget language) {
+            if (crossLanguageObjectsMetadataOnly.isEmpty()) return;
+
+            S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+            // Configure client to look for instruction file but metadata has complete envelope
+            CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+            .config(S3ECConfig.builder()
+            .keyMaterial(RSA_KEY)
+            .instructionFileConfig(
+                InstructionFileConfig.builder()
+                .enableInstructionFilePutObject(true)
+                .build()
+            )
+            .build())
+            .build());
+            String S3ECId = clientOutput.getClientId();
+
+            // Should succeed - instruction file doesn't exist but metadata has complete envelope
+            TestUtils.Decrypt(
+                client,
+                S3ECId,
+                crossLanguageObjectsMetadataOnly,
+                EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+            );
+        }
+
+        @ParameterizedTest(name = "{0}: Fail to decrypt when metadata incomplete and instruction file deleted")
+        @MethodSource("software.amazon.encryption.s3.InstructionFileFailures$DecryptTests#clientsCanGetRawRSAWithInstructionFile")
+        void decryptWithIncompleteMetadataAndNoInstructionFileFails(TestUtils.LanguageServerTarget language) {
+            if (crossLanguageObjectsInstructionFileDeleted.isEmpty()) return;
+
+            S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+            // Configure client for metadata-only but metadata is incomplete
+            CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+            .config(S3ECConfig.builder()
+            .keyMaterial(RSA_KEY)
+            .build())
+            .build());
+            String S3ECId = clientOutput.getClientId();
+
+            // Should fail - metadata incomplete (missing x-amz-3, x-amz-w), instruction file deleted
+            TestUtils.Decrypt_fails(
+                client,
+                S3ECId,
+                crossLanguageObjectsInstructionFileDeleted,
+                EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+            );
+        }
+
+        @ParameterizedTest(name = "{0}: Fail to decrypt with instruction file config when file deleted and metadata incomplete")
+        @MethodSource("software.amazon.encryption.s3.InstructionFileFailures$DecryptTests#clientsCanGetRawRSAWithInstructionFile")
+        void decryptWithInstructionFileConfigWhenFileDeletedFails(TestUtils.LanguageServerTarget language) {
+            if (crossLanguageObjectsInstructionFileDeleted.isEmpty()) return;
+
+            S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+            // Configure client to look for instruction file but it's been deleted
+            CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+            .config(S3ECConfig.builder()
+            .keyMaterial(RSA_KEY)
+            .instructionFileConfig(
+                InstructionFileConfig.builder()
+                .enableInstructionFilePutObject(true)
+                .build()
+            )
+            .build())
+            .build());
+            String S3ECId = clientOutput.getClientId();
+
+            // Should fail - instruction file deleted, metadata incomplete (missing x-amz-3, x-amz-w)
+            TestUtils.Decrypt_fails(
+                client,
+                S3ECId,
+                crossLanguageObjectsInstructionFileDeleted,
                 EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
             );
         }
