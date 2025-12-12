@@ -1107,8 +1107,6 @@ public class InstructionFileFailures {
         @ParameterizedTest(name = "{0}: Fail to decrypt with manipulated V3 Instruction File")
         @MethodSource("software.amazon.encryption.s3.InstructionFileFailures$DecryptTests#clientsCanGetKMSWithInstructionFile")
         void decryptWithManipulatedInstructionFileV3ImprovedClients(TestUtils.LanguageServerTarget language) {
-            if (crossLanguageObjectsInstructionFileManipulatedV3.isEmpty()) return;
-
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
@@ -1143,8 +1141,6 @@ public class InstructionFileFailures {
         @ParameterizedTest(name = "{0}: Fail to decrypt with manipulated V2 Instruction File")
         @MethodSource("software.amazon.encryption.s3.InstructionFileFailures$DecryptTests#clientsCanGetKMSWithInstructionFile")
         void decryptWithManipulatedInstructionFileV2ImprovedClients(TestUtils.LanguageServerTarget language) {
-            if (crossLanguageObjectsInstructionFileManipulatedV2.isEmpty()) return;
-
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
