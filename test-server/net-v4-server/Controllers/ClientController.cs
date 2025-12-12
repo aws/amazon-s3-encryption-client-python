@@ -20,8 +20,6 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             return StatusCode(501, new GenericServerError { Message = "[NET-V4] EnableDelayedAuthenticationMode not supported" });
         if (request.Config.SetBufferSize.HasValue)
             return StatusCode(501, new GenericServerError { Message = "[NET-V4] SetBufferSize not supported" });
-        if (request.Config.KeyMaterial.AesKey != null)
-            return StatusCode(501, new GenericServerError { Message = "[NET-V4] AesKey not supported" });
         
         try
         {
@@ -46,6 +44,15 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
                 encryptionMaterial = new EncryptionMaterialsV4(rsaKey, AsymmetricAlgorithmType.RsaOaepSha1);
                 logger.LogInformation(
                     "[NET-V4] Created EncryptionMaterialsV4: RSA");
+            }
+            else if (request.Config.KeyMaterial.AesKey != null)
+            {
+                var aesKeyBytes = request.Config.KeyMaterial.AesKey;
+                var aes = Aes.Create();
+                aes.Key = aesKeyBytes;
+                encryptionMaterial = new EncryptionMaterialsV4(aes, SymmetricAlgorithmType.AesGcm);
+                logger.LogInformation(
+                    "[NET-V4] Created EncryptionMaterialsV4: AES");
             } else
             {
                 return StatusCode(501, new GenericServerError { Message = "[NET-V4] Unknown or missing key material!" });
@@ -78,6 +85,16 @@ public class ClientController(IClientCacheService clientCacheService, ILogger<Cl
             var configuration = useDefaultConf
                 ? new AmazonS3CryptoConfigurationV4() 
                 : new AmazonS3CryptoConfigurationV4(securityProfile, commitmentPolicy, encryptionAlgorithm);
+            
+            // Add retry configuration for throttling
+            configuration.RetryMode = Amazon.Runtime.RequestRetryMode.Adaptive;
+            configuration.MaxErrorRetry = 5;
+            
+            if (request.Config.InstructionFileConfig?.EnableInstructionFilePutObject == true)
+            {
+                configuration.StorageMode = CryptoStorageMode.InstructionFile;
+                logger.LogInformation("[NET-V3-Transitional] Created StorageMode= InstructionFile");
+            }
             
             // Create S3 encryption client
             var encryptionClient = new AmazonS3EncryptionClientV4(configuration, encryptionMaterial);

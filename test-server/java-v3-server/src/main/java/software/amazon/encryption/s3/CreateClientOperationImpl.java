@@ -1,5 +1,8 @@
 package software.amazon.encryption.s3;
 
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.core.retry.RetryPolicy;
+import software.amazon.awssdk.core.retry.backoff.BackoffStrategy;
 import software.amazon.awssdk.core.traits.Trait;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.encryption.s3.S3EncryptionClient;
@@ -34,9 +37,11 @@ import java.util.UUID;
 
 public class CreateClientOperationImpl implements CreateClientOperation {
   private Map<String, S3Client> clientCache_;
+  private Map<String, Keyring> keyringCache_;
 
-  public CreateClientOperationImpl(Map<String, S3Client> clientCache) {
+  public CreateClientOperationImpl(Map<String, S3Client> clientCache, Map<String, Keyring> keyringCache) {
     clientCache_ = clientCache;
+    keyringCache_ = keyringCache;
   }
 
   // Copied from S3EC.
@@ -106,12 +111,25 @@ public class CreateClientOperationImpl implements CreateClientOperation {
         throw new RuntimeException("No KeyMaterial found!");
       }
 
+      // Configure S3 client with adaptive retry for throttling
+      RetryPolicy retryPolicy = RetryPolicy.builder()
+              .numRetries(5)
+              .throttlingBackoffStrategy(BackoffStrategy.defaultThrottlingStrategy())
+              .build();
+
+      S3Client wrappedClient = S3Client.builder()
+              .overrideConfiguration(ClientOverrideConfiguration.builder()
+                      .retryPolicy(retryPolicy)
+                      .build())
+              .build();
+
       // Client Creation
       boolean instFilePut = false;
       if (input.getConfig().getInstructionFileConfig() != null) {
         instFilePut = input.getConfig().getInstructionFileConfig().isEnableInstructionFilePutObject();
       }
       S3Client s3Client = S3EncryptionClient.builder()
+        .wrappedClient(wrappedClient)
         .instructionFileConfig(InstructionFileConfig.builder()
           .instructionFileClient(S3Client.create())
           .enableInstructionFilePutObject(instFilePut)
@@ -121,6 +139,7 @@ public class CreateClientOperationImpl implements CreateClientOperation {
       UUID uuid = UUID.randomUUID();
       String uuidString = uuid.toString();
       clientCache_.put(uuidString, s3Client);
+      keyringCache_.put(uuidString, keyring);
       return CreateClientOutput.builder()
         .clientId(uuidString)
         .build();

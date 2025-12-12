@@ -2,9 +2,6 @@
 
 .PHONY: all start-servers run-tests stop-servers clean ci check-env help
 
-# Default target
-all: start-all-servers wait-all-servers run-tests
-
 # CI target for GitHub Actions
 ci:
 	$(MAKE) build-all-servers
@@ -20,13 +17,19 @@ START_SERVER_TARGETS := $(addprefix start-, $(SERVER_DIRS))
 WAIT_SERVER_TARGETS := $(addprefix wait-, $(SERVER_DIRS))
 
 # Build all servers in parallel
-build-all-servers: export MAKEFLAGS=-j$(shell sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo 1)
-build-all-servers: $(BUILD_SERVER_TARGETS)
+build-all-servers:
+	@echo "[`date +%H:%M:%S`] Building all servers..."
+	@$(MAKE) $(BUILD_SERVER_TARGETS)
+	@echo "[`date +%H:%M:%S`] All servers built."
+	@echo "Stopping dotnet servers... this is here to speed up CI because if this target is run with -j it will stay open until it shutdown."
+	@dotnet build-server shutdown
+	@echo "[`date +%H:%M:%S`] Dotnet build servers stopped"
 
 $(BUILD_SERVER_TARGETS): build-%:
 	@if [ -f $*/Makefile ]; then \
-		echo "Building server in $*..."; \
-		$(MAKE) -C $* build-server; \
+		echo "[`date +%H:%M:%S`] Building server in $*..." && \
+		$(MAKE) -C $* build-server && \
+		echo "[`date +%H:%M:%S`] Server $* built successfully"; \
 	else \
 		echo "❌ Error: no Makefile found in $*"; \
 		exit 1; \
@@ -44,18 +47,17 @@ start-servers:
 		$(MAKE) -C $$dir wait-for-server; \
 	done
 
-# Start servers sequentially (no parallel execution)
 start-all-servers:
-	@$(MAKE) MAKEFLAGS= $(START_SERVER_TARGETS)
+	@$(MAKE) $(START_SERVER_TARGETS)
 
 $(START_SERVER_TARGETS): start-%:
 	@if [ -f $*/Makefile ]; then \
-		echo "Starting server in $*..."; \
+		echo "Starting server in $*..." && \
 		$(MAKE) -C $* start-server; \
 	else \
 		echo "❌ Error: no Makefile found in $*"; \
 		exit 1; \
-	fi;
+	fi
 
 wait-all-servers:
 	@echo "Waiting for all servers to be ready..."
@@ -64,12 +66,12 @@ wait-all-servers:
 
 $(WAIT_SERVER_TARGETS): wait-%:
 	@if [ -f $*/Makefile ]; then \
-		echo "Waiting server in $*..."; \
+		echo "Waiting server in $*..." && \
 		$(MAKE) -C $* wait-for-server; \
 	else \
 		echo "❌ Error: no Makefile found in $*"; \
 		exit 1; \
-	fi;
+	fi
 
 
 # Run the Java tests
@@ -82,7 +84,9 @@ run-tests:
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
-	./gradlew --build-cache --info --parallel integ -Dtest.filter.servers="$(FILTER)"
+	./gradlew --build-cache --info --parallel --no-daemon integ \
+	$(if $(TEST),--tests "$(TEST)",) \
+	-Dtest.filter.servers="$(FILTER)"
 	@echo "Tests completed successfully"
 
 # Stop the servers
