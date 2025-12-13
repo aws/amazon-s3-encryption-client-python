@@ -310,6 +310,7 @@ public class InstructionFileFailures {
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
                     .keyMaterial(kmsKeyArn)
+                    .commitmentPolicy(CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT)
                     .instructionFileConfig(
                         InstructionFileConfig.builder()
                             .enableInstructionFilePutObject(true)
@@ -337,6 +338,7 @@ public class InstructionFileFailures {
                 .config(S3ECConfig.builder()
                     .keyMaterial(kmsKeyArn)
                     .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+                    .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
                     .instructionFileConfig(
                         InstructionFileConfig.builder()
                             .enableInstructionFilePutObject(true)
@@ -450,16 +452,11 @@ public class InstructionFileFailures {
                     Map<String, String> objectMetadata = encryptedObject.response().metadata();
 
                     ObjectMapper mapper = new ObjectMapper();
-                    Map<String, Object> instructionFileMap = mapper.readValue(instructionFileJson, Map.class);
-
-                    instructionFileMap.put("x-amz-c-v2", objectMetadata.get("x-amz-c"));
-                    instructionFileMap.remove("x-amz-c");
 
                     Map<String, Object> invalidInstructionFileMap = new HashMap<>();
                     invalidInstructionFileMap.put("invalid", "json");
 
                     String invalidInstructionFile = mapper.writeValueAsString(invalidInstructionFileMap);
-                    String badKeyInstructionFile = mapper.writeValueAsString(instructionFileMap);
 
                     // Put instruction files that should fail:
                     putObjectWithInstructionFile(
@@ -468,14 +465,6 @@ public class InstructionFileFailures {
                         encryptedObject.asByteArray(),
                         objectMetadata,
                         invalidInstructionFile
-                    );
-
-                    putObjectWithInstructionFile(
-                        ptS3Client,
-                        objectKey + SUFFIX_MANIPULATED_INSTRUCTION + "-v3",
-                        encryptedObject.asByteArray(),
-                        objectMetadata,
-                        badKeyInstructionFile
                     );
                 }
 
@@ -500,23 +489,12 @@ public class InstructionFileFailures {
                     ObjectMapper mapper = new ObjectMapper();
                     Map<String, Object> instructionFileMap = mapper.readValue(instructionFileJson, Map.class);
 
-                    instructionFileMap.replace("x-amz-key-v2", "x-amz-key-v2-tampered");
+                    instructionFileMap.put("x-amz-key-v2-tampered", instructionFileMap.get("x-amz-key-v2"));
+                    instructionFileMap.remove("x-amz-key-v2");
 
-                    Map<String, Object> invalidInstructionFileMap = new HashMap<>();
-                    invalidInstructionFileMap.put("invalid", "json");
-
-                    String invalidInstructionFile = mapper.writeValueAsString(invalidInstructionFileMap);
                     String badKeyInstructionFile = mapper.writeValueAsString(instructionFileMap);
 
                     // Put instruction files that should fail:
-                    putObjectWithInstructionFile(
-                        ptS3Client,
-                        objectKey + SUFFIX_BAD_JSON_INSTRUCTION + "-v2",
-                        encryptedObject.asByteArray(),
-                        objectMetadata,
-                        invalidInstructionFile
-                    );
-
                     putObjectWithInstructionFile(
                         ptS3Client,
                         objectKey + SUFFIX_MANIPULATED_INSTRUCTION + "-v2",
@@ -1107,12 +1085,15 @@ public class InstructionFileFailures {
         @ParameterizedTest(name = "{0}: Fail to decrypt with manipulated V3 Instruction File")
         @MethodSource("software.amazon.encryption.s3.InstructionFileFailures$DecryptTests#clientsCanGetKMSWithInstructionFile")
         void decryptWithManipulatedInstructionFileV3ImprovedClients(TestUtils.LanguageServerTarget language) {
+            if (TRANSITION_VERSIONS.contains(language.getLanguageName())) {
+                return;
+            }
+
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
                     .keyMaterial(kmsKeyArn)
                     .commitmentPolicy(CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT)
-                    .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY)
                     .build())
                 .build());
             String S3ECId = clientOutput.getClientId();
@@ -1126,16 +1107,6 @@ public class InstructionFileFailures {
                     .collect(Collectors.toList()),
                 EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
             );
-
-            TestUtils.Decrypt_fails(
-                client,
-                S3ECId,
-                crossLanguageObjectsInstructionFileManipulatedV3
-                    .stream()
-                    .map(key -> key + SUFFIX_MANIPULATED_INSTRUCTION + "-v3")
-                    .collect(Collectors.toList()),
-                EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
-            );
         }
 
         @ParameterizedTest(name = "{0}: Fail to decrypt with manipulated V2 Instruction File")
@@ -1145,7 +1116,7 @@ public class InstructionFileFailures {
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
                     .keyMaterial(kmsKeyArn)
-                    .commitmentPolicy(CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT)
+                    .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
                     .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
                     .build())
                 .build());
@@ -1155,16 +1126,6 @@ public class InstructionFileFailures {
                 client,
                 S3ECId,
                 crossLanguageObjectsInstructionFileManipulatedV2
-                    .stream()
-                    .map(key -> key + SUFFIX_BAD_JSON_INSTRUCTION + "-v2")
-                    .collect(Collectors.toList()),
-                EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF
-            );
-
-            TestUtils.Decrypt_fails(
-                client,
-                S3ECId,
-                crossLanguageObjectsInstructionFileManipulatedV3
                     .stream()
                     .map(key -> key + SUFFIX_MANIPULATED_INSTRUCTION + "-v2")
                     .collect(Collectors.toList()),

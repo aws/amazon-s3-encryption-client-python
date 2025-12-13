@@ -98,6 +98,8 @@ function handleGetObject($params)
             return S3EncryptionClientError($e->getMessage());
         } elseif (strpos($e->getMessage(), "Expected a V3 envelope but was unable to constuct one.") !== false) {
             return S3EncryptionClientError($e->getMessage());
+        } elseif (strpos($e->getMessage(), "Malformed metadata envelope.") !== false) {
+            return S3EncryptionClientError($e->getMessage());
         } else {
             error_log("This is the error: " . $e->getMessage());
             return GenericServerError("Server argument: " . $e->getMessage(), 500);
