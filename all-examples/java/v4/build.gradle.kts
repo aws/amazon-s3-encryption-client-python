@@ -19,7 +19,7 @@ dependencies {
     implementation("software.amazon.awssdk:auth")
     
     // S3 Encryption Client v4 from local Maven repository
-    implementation("software.amazon.encryption.s3:amazon-s3-encryption-client-java:3.4.0-add-kc")
+    implementation("software.amazon.encryption.s3:amazon-s3-encryption-client-java:3.6.0")
 }
 
 application {
