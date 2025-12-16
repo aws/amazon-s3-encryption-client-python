@@ -18,7 +18,7 @@
 [submodule "test-server/java-v3-transition-server/s3ec-staging"]
 	path = test-server/java-v3-transition-server/s3ec-staging
 	url = git@github.com:aws/private-amazon-s3-encryption-client-java-staging.git
-	branch = imabhichow/transition-read-kc
+	branch = imabhichow/transition-read-kc-merge
 [submodule "test-server/java-v4-server/s3ec-staging"]
 	path = test-server/java-v4-server/s3ec-staging
 	url = git@github.com:aws/private-amazon-s3-encryption-client-java-staging.git
