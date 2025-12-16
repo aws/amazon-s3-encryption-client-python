@@ -5,15 +5,13 @@
 
 package software.amazon.encryption.s3;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static software.amazon.encryption.s3.TestUtils.*;
 
 import java.nio.ByteBuffer;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -25,11 +23,9 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.opentest4j.TestAbortedException;
 
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -39,13 +35,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import software.amazon.encryption.s3.TestUtils.LanguageServerTarget;
 import software.amazon.encryption.s3.client.S3ECTestServerClient;
-import software.amazon.encryption.s3.model.CommitmentPolicy;
-import software.amazon.encryption.s3.model.CreateClientInput;
-import software.amazon.encryption.s3.model.CreateClientOutput;
-import software.amazon.encryption.s3.model.EncryptionAlgorithm;
-import software.amazon.encryption.s3.model.InstructionFileConfig;
-import software.amazon.encryption.s3.model.KeyMaterial;
-import software.amazon.encryption.s3.model.S3ECConfig;
+import software.amazon.encryption.s3.model.*;
 
 /**
 * Instruction File Failures Test Suite
@@ -66,6 +56,8 @@ public class InstructionFileFailures {
     private static final String SUFFIX_GOOD_COPY = "-good-copy";
     private static final String SUFFIX_BAD_BOTH_META_AND_INSTRUCTION = "-bad-both-meta-and-instruction";
     private static final String SUFFIX_BAD_ONLY_INSTRUCTION = "-bad-only-instruction";
+    private static final String SUFFIX_BAD_JSON_INSTRUCTION = "-manipulated-bad-json-instruction";
+    private static final String SUFFIX_MANIPULATED_INSTRUCTION = "-manipuldate-incorrect-key-instruction";
 
     /**
      * Encryption Tests - Encrypt Phase
@@ -94,6 +86,10 @@ public class InstructionFileFailures {
         private static final List<String> crossLanguageObjectsMetadataOnly = 
             Collections.synchronizedList(new ArrayList<>());
         private static final List<String> crossLanguageObjectsInstructionFileDeleted = 
+            Collections.synchronizedList(new ArrayList<>());
+        private static final List<String> crossLanguageObjectsV3InstructionFileManipulated =
+            Collections.synchronizedList(new ArrayList<>());
+        private static final List<String> crossLanguageObjectsV2InstructionFileManipulated =
             Collections.synchronizedList(new ArrayList<>());
 
         private static KeyMaterial RSA_KEY;
@@ -152,6 +148,15 @@ public class InstructionFileFailures {
         static List<String> getCrossLanguageObjectsInstructionFileDeleted() {
             return new ArrayList<>(crossLanguageObjectsInstructionFileDeleted);
         }
+
+        static List<String> getCrossLanguageObjectsInstructionFileManipulatedV3() {
+            return new ArrayList<>(crossLanguageObjectsV3InstructionFileManipulated);
+        }
+
+        static List<String> getCrossLanguageObjectsInstructionFileManipulatedV2() {
+            return new ArrayList<>(crossLanguageObjectsV2InstructionFileManipulated);
+        }
+
 
         public static Stream<Arguments> improvedClientsCanPutKMSWithInstructionFile() {
             return improvedClientsForTest()
@@ -297,6 +302,62 @@ public class InstructionFileFailures {
             );
         }
 
+        @ParameterizedTest(name = "{0}: Encrypt KMS KC-GCM (V3) with instruction file for manipulation test")
+        @MethodSource("software.amazon.encryption.s3.InstructionFileFailures$EncryptTests#improvedClientsCanPutKMSWithInstructionFile")
+        void encryptWithInstructionFileV3ForManipulationKmsKcGcm(TestUtils.LanguageServerTarget language) {
+            S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+            // Encrypt with instruction file, will be manipulated later on.
+            CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+                .config(S3ECConfig.builder()
+                    .keyMaterial(kmsKeyArn)
+                    .commitmentPolicy(CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT)
+                    .instructionFileConfig(
+                        InstructionFileConfig.builder()
+                            .enableInstructionFilePutObject(true)
+                            .build()
+                    )
+                    .build())
+                .build());
+            String S3ECId = clientOutput.getClientId();
+
+            TestUtils.Encrypt(
+                client,
+                S3ECId,
+                appendTestSuffix(sharedObjectKeyBaseMetaDataMode + "-envelope-manipulation-instruction-" + language.getLanguageName()),
+                crossLanguageObjectsV3InstructionFileManipulated,
+                EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+            );
+        }
+
+        @ParameterizedTest(name = "{0}: Encrypt KMS (V2) with instruction file for manipulation test")
+        @MethodSource("software.amazon.encryption.s3.InstructionFileFailures$EncryptTests#improvedClientsCanPutKMSWithInstructionFile")
+        void encryptWithInstructionFileV2ForManipulationKms(TestUtils.LanguageServerTarget language) {
+            S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+            // Encrypt with instruction file, will be manipulated later on.
+            CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+                .config(S3ECConfig.builder()
+                    .keyMaterial(kmsKeyArn)
+                    .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+                    .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
+                    .instructionFileConfig(
+                        InstructionFileConfig.builder()
+                            .enableInstructionFilePutObject(true)
+                            .build()
+                    )
+                    .build())
+                .build());
+            String S3ECId = clientOutput.getClientId();
+
+            TestUtils.Encrypt(
+                client,
+                S3ECId,
+                appendTestSuffix(sharedObjectKeyBaseMetaDataMode + "-envelope-manipulation-instruction-" + language.getLanguageName()),
+                crossLanguageObjectsV2InstructionFileManipulated,
+                EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF
+            );
+        }
+
+
         static void makeCopiesToVerifyThings() throws Exception {
             // Create a plaintext S3 client to copy objects with instruction files
             try (S3Client ptS3Client = S3Client.create()) {
@@ -371,6 +432,77 @@ public class InstructionFileFailures {
                         // Ignore if file doesn't exist
                     }
                 }
+
+                // manipulate V3 instruction files
+                for (String objectKey: crossLanguageObjectsV3InstructionFileManipulated) {
+                    // Get the encrypted object
+                    ResponseBytes<GetObjectResponse> encryptedObject = ptS3Client.getObjectAsBytes(builder -> builder
+                        .bucket(TestUtils.BUCKET)
+                        .key(objectKey)
+                        .build());
+
+                    // Get the instruction file
+                    String instructionFileKey = objectKey + ".instruction";
+                    ResponseBytes<GetObjectResponse> instructionFile = ptS3Client.getObjectAsBytes(builder -> builder
+                        .bucket(TestUtils.BUCKET)
+                        .key(instructionFileKey)
+                        .build());
+
+                    String instructionFileJson = instructionFile.asUtf8String();
+                    Map<String, String> objectMetadata = encryptedObject.response().metadata();
+
+                    ObjectMapper mapper = new ObjectMapper();
+
+                    Map<String, Object> invalidInstructionFileMap = new HashMap<>();
+                    invalidInstructionFileMap.put("invalid", "json");
+
+                    String invalidInstructionFile = mapper.writeValueAsString(invalidInstructionFileMap);
+
+                    // Put instruction files that should fail:
+                    putObjectWithInstructionFile(
+                        ptS3Client,
+                        objectKey + SUFFIX_BAD_JSON_INSTRUCTION + "-v3",
+                        encryptedObject.asByteArray(),
+                        objectMetadata,
+                        invalidInstructionFile
+                    );
+                }
+
+                // manipulate V2 instruction files
+                for (String objectKey: crossLanguageObjectsV2InstructionFileManipulated) {
+                    // Get the encrypted object
+                    ResponseBytes<GetObjectResponse> encryptedObject = ptS3Client.getObjectAsBytes(builder -> builder
+                        .bucket(TestUtils.BUCKET)
+                        .key(objectKey)
+                        .build());
+
+                    // Get the instruction file
+                    String instructionFileKey = objectKey + ".instruction";
+                    ResponseBytes<GetObjectResponse> instructionFile = ptS3Client.getObjectAsBytes(builder -> builder
+                        .bucket(TestUtils.BUCKET)
+                        .key(instructionFileKey)
+                        .build());
+
+                    String instructionFileJson = instructionFile.asUtf8String();
+                    Map<String, String> objectMetadata = encryptedObject.response().metadata();
+
+                    ObjectMapper mapper = new ObjectMapper();
+                    Map<String, Object> instructionFileMap = mapper.readValue(instructionFileJson, Map.class);
+
+                    instructionFileMap.put("x-amz-key-v2-tampered", instructionFileMap.get("x-amz-key-v2"));
+                    instructionFileMap.remove("x-amz-key-v2");
+
+                    String badKeyInstructionFile = mapper.writeValueAsString(instructionFileMap);
+
+                    // Put instruction files that should fail:
+                    putObjectWithInstructionFile(
+                        ptS3Client,
+                        objectKey + SUFFIX_MANIPULATED_INSTRUCTION + "-v2",
+                        encryptedObject.asByteArray(),
+                        objectMetadata,
+                        badKeyInstructionFile
+                    );
+                }
             }
         }
 
@@ -422,6 +554,8 @@ public class InstructionFileFailures {
         private static List<String> crossLanguageObjectsAes;
         private static List<String> crossLanguageObjectsMetadataOnly;
         private static List<String> crossLanguageObjectsInstructionFileDeleted;
+        private static List<String> crossLanguageObjectsInstructionFileManipulatedV3;
+        private static List<String> crossLanguageObjectsInstructionFileManipulatedV2;
         private static KeyMaterial kmsKeyArn;
         private static KeyMaterial RSA_KEY;
         private static KeyMaterial AES_KEY;
@@ -437,6 +571,8 @@ public class InstructionFileFailures {
             crossLanguageObjectsAes = EncryptTests.getCrossLanguageObjectsAes();
             crossLanguageObjectsMetadataOnly = EncryptTests.getCrossLanguageObjectsMetadataOnly();
             crossLanguageObjectsInstructionFileDeleted = EncryptTests.getCrossLanguageObjectsInstructionFileDeleted();
+            crossLanguageObjectsInstructionFileManipulatedV3 = EncryptTests.getCrossLanguageObjectsInstructionFileManipulatedV3();
+            crossLanguageObjectsInstructionFileManipulatedV2 = EncryptTests.getCrossLanguageObjectsInstructionFileManipulatedV2();
             kmsKeyArn = EncryptTests.getKmsKeyArn();
             RSA_KEY = EncryptTests.getRsaKey();
             AES_KEY = EncryptTests.getAesKey();
@@ -943,6 +1079,57 @@ public class InstructionFileFailures {
                 S3ECId,
                 crossLanguageObjectsInstructionFileDeleted,
                 EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+            );
+        }
+
+        @ParameterizedTest(name = "{0}: Fail to decrypt with manipulated V3 Instruction File")
+        @MethodSource("software.amazon.encryption.s3.InstructionFileFailures$DecryptTests#clientsCanGetKMSWithInstructionFile")
+        void decryptWithManipulatedInstructionFileV3ImprovedClients(TestUtils.LanguageServerTarget language) {
+            if (TRANSITION_VERSIONS.contains(language.getLanguageName())) {
+                return;
+            }
+
+            S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+            CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+                .config(S3ECConfig.builder()
+                    .keyMaterial(kmsKeyArn)
+                    .commitmentPolicy(CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT)
+                    .build())
+                .build());
+            String S3ECId = clientOutput.getClientId();
+
+            TestUtils.Decrypt_fails(
+                client,
+                S3ECId,
+                crossLanguageObjectsInstructionFileManipulatedV3
+                    .stream()
+                    .map(key -> key + SUFFIX_BAD_JSON_INSTRUCTION + "-v3")
+                    .collect(Collectors.toList()),
+                EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+            );
+        }
+
+        @ParameterizedTest(name = "{0}: Fail to decrypt with manipulated V2 Instruction File")
+        @MethodSource("software.amazon.encryption.s3.InstructionFileFailures$DecryptTests#clientsCanGetKMSWithInstructionFile")
+        void decryptWithManipulatedInstructionFileV2ImprovedClients(TestUtils.LanguageServerTarget language) {
+            S3ECTestServerClient client = TestUtils.testServerClientFor(language);
+            CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+                .config(S3ECConfig.builder()
+                    .keyMaterial(kmsKeyArn)
+                    .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+                    .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
+                    .build())
+                .build());
+            String S3ECId = clientOutput.getClientId();
+
+            TestUtils.Decrypt_fails(
+                client,
+                S3ECId,
+                crossLanguageObjectsInstructionFileManipulatedV2
+                    .stream()
+                    .map(key -> key + SUFFIX_MANIPULATED_INSTRUCTION + "-v2")
+                    .collect(Collectors.toList()),
+                EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF
             );
         }
     }
