@@ -7,7 +7,7 @@ This library provides an S3 client that supports client-side encryption.
 ### Prerequisites
 
 - Python 3.11 or higher
-- [Poetry](https://python-poetry.org/) for dependency management
+- [uv](https://github.com/astral-sh/uv) for package and project management
 
 ### Setup
 
