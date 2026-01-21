@@ -5,6 +5,7 @@
 This module provides pipelines for encrypting objects before they are put into S3
 and decrypting objects after they are retrieved from S3.
 """
+
 import base64
 import os
 

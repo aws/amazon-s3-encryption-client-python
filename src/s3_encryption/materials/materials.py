@@ -6,6 +6,7 @@ This module provides classes for encryption and decryption materials,
 which contain the cryptographic materials needed for S3 object encryption
 and decryption operations.
 """
+
 from typing import Any
 
 from attrs import define, field
