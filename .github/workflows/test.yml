@@ -65,6 +65,8 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.4"
+          bundler: "2.7.2"
+          bundler-cache: true
 
       - name: Set up PHP with Composer
         uses: shivammathur/setup-php@verbose
