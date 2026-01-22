@@ -61,6 +61,13 @@ jobs:
             test-server/cpp-v3-server/aws-sdk-cpp \
             test-server/cpp-v2-server/aws-sdk-cpp
 
+      - name: Setup build environment
+        run: |
+          # Verify Xcode CLI tools are available
+          xcode-select -p || xcode-select --install
+          # Accept Xcode license if needed
+          sudo xcodebuild -license accept || true
+
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
