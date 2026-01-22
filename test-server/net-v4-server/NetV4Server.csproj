@@ -6,6 +6,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
         <RootNamespace>NetV2V3Server</RootNamespace>
+        <NuGetAuditLevel>moderate</NuGetAuditLevel>
     </PropertyGroup>
 
     <PropertyGroup>

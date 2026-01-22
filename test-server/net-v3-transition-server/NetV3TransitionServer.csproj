@@ -2,6 +2,7 @@
 
     <PropertyGroup>
         <TargetFramework>net8.0</TargetFramework>
+        <NuGetAuditLevel>moderate</NuGetAuditLevel>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
