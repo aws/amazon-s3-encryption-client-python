@@ -19,7 +19,8 @@ test = [
     "pytest>=8.4.1",
 ]
 dev = [
-    "black>=24.3.0",
+    # black >= 26 requires a reformat
+    "black>=24.3.0,<26.0.0",
     "ruff>=0.3.0",
 ]
 
@@ -52,3 +53,6 @@ max-complexity = 10
 
 [tool.ruff.lint.isort]
 known-first-party = ["s3_encryption"]
+
+[tool.ruff.lint.per-file-ignores]
+"test/**/*.py" = ["D100", "D101", "D102", "D103", "D104", "E501"]
