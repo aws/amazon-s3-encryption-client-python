@@ -77,8 +77,7 @@ When contributing to this project, please try to fix linting issues in the files
 ### Pull Request Command
 While this project is in development,
 it is useful to use `gh pr` to create the pull-requests,
-so they can be associated with the GitHub project,
-as compared to the FireEgg event.
+so they can be associated with the GitHub project.
 
 ```sh
 gh pr create -B staging -p "S3EC-Python" -f 
