@@ -37,3 +37,9 @@ clean:
 	find . -type d -name .pytest_cache -exec rm -rf {} +
 	find . -type d -name .coverage -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
+
+duvet:
+	duvet report --config-path .duvet/config.toml
+
+view-report-mac:
+	open .duvet/reports/report.html
