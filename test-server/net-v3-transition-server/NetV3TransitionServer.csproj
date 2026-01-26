@@ -2,7 +2,6 @@
 
     <PropertyGroup>
         <TargetFramework>net8.0</TargetFramework>
-        <NuGetAuditLevel>moderate</NuGetAuditLevel>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
@@ -23,10 +22,6 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.12"/>
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2"/>
-    </ItemGroup>
-
-    <ItemGroup>
-        <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-9cvc-h2w8-phrp" />
     </ItemGroup>
 
 </Project>
