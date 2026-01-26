@@ -8,12 +8,12 @@
 	branch = version-3
 [submodule "test-server/php-v2-server/local-php-sdk"]
 	path = test-server/php-v2-server/local-php-sdk
-	url = git@github.com:aws/private-aws-sdk-php-staging.git
+	url = git@github.com:aws/aws-sdk-php.git
 	branch = master
 [submodule "test-server/php-v3-server/local-php-sdk"]
 	path = test-server/php-v3-server/local-php-sdk
-	url = git@github.com:aws/private-aws-sdk-php-staging.git
-	branch = s3ec/improved
+	url = git@github.com:aws/aws-sdk-php.git
+	branch = master
 [submodule "test-server/go-v4-server/local-go-s3ec"]
 	path = test-server/go-v4-server/local-go-s3ec
 	url = https://github.com/aws/private-amazon-s3-encryption-client-go-staging
@@ -51,12 +51,13 @@
 	branch = v4sdk-development
 [submodule "test-server/cpp-v2-transition-server/aws-sdk-cpp"]
 	path = test-server/cpp-v2-transition-server/aws-sdk-cpp
-	url = git@github.com:awslabs/aws-sdk-cpp-staging.git
-	branch = fire-egg-dev
+	url = git@github.com:aws/aws-sdk-cpp.git
+	branch = main
 [submodule "test-server/cpp-v3-server/aws-sdk-cpp"]
 	path = test-server/cpp-v3-server/aws-sdk-cpp
-	url = git@github.com:awslabs/aws-sdk-cpp-staging.git
-	branch = fire-egg-dev
+	url = git@github.com:aws/aws-sdk-cpp.git
+	branch = main
 [submodule "test-server/cpp-v2-server/aws-sdk-cpp"]
 	path = test-server/cpp-v2-server/aws-sdk-cpp
-	url = git@github.com:awslabs/aws-sdk-cpp-staging.git
+	url = git@github.com:aws/aws-sdk-cpp.git
+	branch = main
