@@ -22,8 +22,8 @@ jobs:
         with:
           submodules: recursive
           token: ${{ secrets.PAT_FOR_CPP }}
-          repository: awslabs/aws-sdk-cpp-staging
-          ref: fire-egg-dev
+          repository: aws/aws-sdk-cpp
+          ref: main
           path: all-examples/cpp/aws-sdk-cpp/
 
       - name: Set up Python
