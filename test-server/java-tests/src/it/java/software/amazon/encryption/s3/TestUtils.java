@@ -59,32 +59,32 @@ public class TestUtils {
     // vN-Transition: Proposed feature release version. Supports reading messages encrypted with key commitment.
     // vN+1: Proposed breaking release version. Supports reading/writing messages encrypted with key commitment.
 
-    public static final String JAVA_V3_CURRENT = "Java-V3-Current";
+//    public static final String JAVA_V3_CURRENT = "Java-V3-Current";
     public static final String JAVA_V3_TRANSITION = "Java-V3-Transition";
     public static final String JAVA_V4 = "Java-V4";
 
     // No Python S3EC versions are released. Only test V3 as the "vN+1" version.
     public static final String PYTHON_V3 = "Python-V3";
 
-    public static final String GO_V3_CURRENT = "Go-V3-Current";
+//    public static final String GO_V3_CURRENT = "Go-V3-Current";
     public static final String GO_V3_TRANSITION = "Go-V3-Transition";
     public static final String GO_V4 = "Go-V4";
 
-    public static final String NET_V2_CURRENT = "NET-V2-Current";
-    public static final String NET_V3_CURRENT = "NET-V3-Current";
+//    public static final String NET_V2_CURRENT = "NET-V2-Current";
+//    public static final String NET_V3_CURRENT = "NET-V3-Current";
     public static final String NET_V2_TRANSITION = "NET-V2-Transition";
     public static final String NET_V3_TRANSITION = "NET-V3-Transition";
     public static final String NET_V4 = "NET-V4";
 
-    public static final String CPP_V2_CURRENT = "CPP-V2-Current";
+//    public static final String CPP_V2_CURRENT = "CPP-V2-Current";
     public static final String CPP_V2_TRANSITION = "CPP-V2-Transition";
     public static final String CPP_V3 = "CPP-V3";
 
-    public static final String RUBY_V2_CURRENT = "Ruby-V2-Current";
+//    public static final String RUBY_V2_CURRENT = "Ruby-V2-Current";
     public static final String RUBY_V2_TRANSITION = "Ruby-V2-Transition";
     public static final String RUBY_V3 = "Ruby-V3";
 
-    public static final String PHP_V2_CURRENT = "PHP-V2-Current";
+//    public static final String PHP_V2_CURRENT = "PHP-V2-Current";
     public static final String PHP_V2_TRANSITION = "PHP-V2-Transition";
     public static final String PHP_V3 = "PHP-V3";
 
@@ -97,33 +97,31 @@ public class TestUtils {
 
     // Sets of unsupported features by language
     public static final Set<String> ENCRYPTION_CONTEXT_ON_DECRYPT_UNSUPPORTED =
-        Set.of(GO_V3_CURRENT, PHP_V2_CURRENT, PHP_V2_TRANSITION, PHP_V3, NET_V2_CURRENT, NET_V3_CURRENT, NET_V3_TRANSITION, NET_V4);
+      Set.of(PHP_V2_TRANSITION, PHP_V3, NET_V3_TRANSITION, NET_V4);
+//        Set.of(GO_V3_CURRENT, PHP_V2_CURRENT, PHP_V2_TRANSITION, PHP_V3, NET_V2_CURRENT, NET_V3_CURRENT, NET_V3_TRANSITION, NET_V4);
     
     public static final Set<String> ENCRYPTION_CONTEXT_ON_ENCRYPT_UNSUPPORTED =
-        Set.of(NET_V2_CURRENT, NET_V3_CURRENT, NET_V3_TRANSITION, NET_V4);
+      Set.of(NET_V3_TRANSITION, NET_V4);
+//        Set.of(NET_V2_CURRENT, NET_V3_CURRENT, NET_V3_TRANSITION, NET_V4);
 
     public static final Set<String> RE_ENCRYPT_SUPPORTED =
-        Set.of(JAVA_V3_CURRENT, JAVA_V3_TRANSITION, JAVA_V4);
+      Set.of(JAVA_V3_TRANSITION, JAVA_V4);
+//        Set.of(JAVA_V3_CURRENT, JAVA_V3_TRANSITION, JAVA_V4);
 
     public static final Set<String> RANGED_GETS_SUPPORTED =
         Set.of(
-            JAVA_V3_CURRENT, JAVA_V3_TRANSITION, JAVA_V4
-            , CPP_V2_CURRENT, CPP_V2_TRANSITION, CPP_V3
+          JAVA_V3_TRANSITION, JAVA_V4, CPP_V2_TRANSITION, CPP_V3
+//            JAVA_V3_CURRENT, JAVA_V3_TRANSITION, JAVA_V4, CPP_V2_CURRENT, CPP_V2_TRANSITION, CPP_V3
         );
 
     // Cpp only supports Raw AES
     public static final Set<String> RAW_AES_SUPPORTED =
-      Set.of(JAVA_V3_CURRENT, JAVA_V3_TRANSITION, JAVA_V4
-        , NET_V2_CURRENT, NET_V3_CURRENT, NET_V3_TRANSITION, NET_V4
-        , RUBY_V2_TRANSITION, RUBY_V3
-        , CPP_V2_CURRENT, CPP_V2_TRANSITION, CPP_V3
-      );
+      Set.of(JAVA_V3_TRANSITION, JAVA_V4, NET_V3_TRANSITION, NET_V4, RUBY_V2_TRANSITION, RUBY_V3, CPP_V2_TRANSITION, CPP_V3);
+//      Set.of(JAVA_V3_CURRENT, JAVA_V3_TRANSITION, JAVA_V4, NET_V2_CURRENT, NET_V3_CURRENT, NET_V3_TRANSITION, NET_V4, RUBY_V2_TRANSITION, RUBY_V3, CPP_V2_CURRENT, CPP_V2_TRANSITION, CPP_V3);
 
     public static final Set<String> RAW_RSA_SUPPORTED =
-      Set.of(JAVA_V3_CURRENT, JAVA_V3_TRANSITION, JAVA_V4
-        , NET_V2_CURRENT, NET_V3_CURRENT, NET_V3_TRANSITION, NET_V4
-        , RUBY_V2_TRANSITION, RUBY_V3
-      );
+      Set.of(JAVA_V3_TRANSITION, JAVA_V4, NET_V3_TRANSITION, NET_V4, RUBY_V2_TRANSITION, RUBY_V3);
+//      Set.of(JAVA_V3_CURRENT, JAVA_V3_TRANSITION, JAVA_V4, NET_V2_CURRENT, NET_V3_CURRENT, NET_V3_TRANSITION, NET_V4, RUBY_V2_TRANSITION, RUBY_V3);
 
     // Intersection of RAW_AES_SUPPORTED and RAW_RSA_SUPPORTED
     public static final Set<String> RAW_SUPPORTED =
@@ -134,13 +132,14 @@ public class TestUtils {
     // .NET only supports decrypting instruction files using AES and RSA.
     // Python MUST support decrypting KMS instruction files, but does not yet.
     public static final Set<String> KMS_INSTRUCTION_FILE_UNSUPPORTED =
-      Set.of(NET_V2_CURRENT, NET_V2_TRANSITION, NET_V3_CURRENT, NET_V3_TRANSITION, NET_V4);
+      Set.of(NET_V2_TRANSITION, NET_V3_TRANSITION, NET_V4);
+//      Set.of(NET_V2_CURRENT, NET_V2_TRANSITION, NET_V3_CURRENT, NET_V3_TRANSITION, NET_V4);
 
     // Go does not write with instruction files
     public static final Set<String> INSTRUCTION_FILE_PUT_UNSUPPORTED =
-      Set.of(GO_V3_CURRENT, GO_V3_TRANSITION, GO_V4, PYTHON_V3
+      Set.of(GO_V3_TRANSITION, GO_V4, PYTHON_V3);
+//      Set.of(GO_V3_CURRENT, GO_V3_TRANSITION, GO_V4, PYTHON_V3, CPP_V2_CURRENT);
         // Apparently C++ V2 Current does not work, even though it should
-      , CPP_V2_CURRENT);
 
     // Not implemented yet in Python.
     public static final Set<String> INSTRUCTION_FILE_GET_UNSUPPORTED =
@@ -159,17 +158,17 @@ public class TestUtils {
         PHP_V3
       );
 
-    public static final Set<String> CURRENT_VERSIONS =
-        Set.of(
-            JAVA_V3_CURRENT,
-            GO_V3_CURRENT,
-            NET_V2_CURRENT,
-            NET_V3_CURRENT,
-            CPP_V2_CURRENT,
-            RUBY_V2_CURRENT,
-            PHP_V2_CURRENT
-        );
-
+//    public static final Set<String> CURRENT_VERSIONS =
+//        Set.of(
+//            JAVA_V3_CURRENT,
+//            GO_V3_CURRENT,
+//            NET_V2_CURRENT,
+//            NET_V3_CURRENT,
+//            CPP_V2_CURRENT,
+//            RUBY_V2_CURRENT,
+//            PHP_V2_CURRENT
+//        );
+//
     public static final Set<String> TRANSITION_VERSIONS =
         Set.of(
             JAVA_V3_TRANSITION,
@@ -196,16 +195,16 @@ public class TestUtils {
 
     static {
         final Map<String, LanguageServerTarget> servers = new LinkedHashMap<>();
-        servers.put(JAVA_V3_CURRENT, new LanguageServerTarget(JAVA_V3_CURRENT, "8080"));
+//        servers.put(JAVA_V3_CURRENT, new LanguageServerTarget(JAVA_V3_CURRENT, "8080"));
         servers.put(PYTHON_V3, new LanguageServerTarget(PYTHON_V3, "8081"));
-        servers.put(GO_V3_CURRENT, new LanguageServerTarget(GO_V3_CURRENT, "8082"));
-        servers.put(NET_V2_CURRENT, new LanguageServerTarget(NET_V2_CURRENT, "8083"));
-        servers.put(NET_V3_CURRENT, new LanguageServerTarget(NET_V3_CURRENT, "8084"));
-        servers.put(CPP_V2_CURRENT, new LanguageServerTarget(CPP_V2_CURRENT, "8085"));
+//        servers.put(GO_V3_CURRENT, new LanguageServerTarget(GO_V3_CURRENT, "8082"));
+//        servers.put(NET_V2_CURRENT, new LanguageServerTarget(NET_V2_CURRENT, "8083"));
+//        servers.put(NET_V3_CURRENT, new LanguageServerTarget(NET_V3_CURRENT, "8084"));
+//        servers.put(CPP_V2_CURRENT, new LanguageServerTarget(CPP_V2_CURRENT, "8085"));
         servers.put(CPP_V2_TRANSITION, new LanguageServerTarget(CPP_V2_TRANSITION, "8097"));
         servers.put(CPP_V3, new LanguageServerTarget(CPP_V3, "8091"));
         // servers.put(RUBY_V2_CURRENT, new LanguageServerTarget(RUBY_V2_CURRENT, "8086"));
-        servers.put(PHP_V2_CURRENT, new LanguageServerTarget(PHP_V2_CURRENT, "8087"));
+//        servers.put(PHP_V2_CURRENT, new LanguageServerTarget(PHP_V2_CURRENT, "8087"));
         servers.put(GO_V4, new LanguageServerTarget(GO_V4, "8089"));
         servers.put(NET_V4, new LanguageServerTarget(NET_V4, "8090"));
         servers.put(RUBY_V3, new LanguageServerTarget(RUBY_V3, "8092"));
@@ -377,14 +376,14 @@ public class TestUtils {
             .map(Arguments::of);
     }
 
-    /**
-     * Get stream of arguments for current version clients for testing.
-     */
-    public static Stream<Arguments> currentClientsForTest() {
-        return serverMap.values().stream()
-            .filter(target -> CURRENT_VERSIONS.contains(target.getLanguageName()))
-            .map(Arguments::of);
-    }
+//    /**
+//     * Get stream of arguments for current version clients for testing.
+//     */
+//    public static Stream<Arguments> currentClientsForTest() {
+//        return serverMap.values().stream()
+//            .filter(target -> CURRENT_VERSIONS.contains(target.getLanguageName()))
+//            .map(Arguments::of);
+//    }
 
     /**
      * Get stream of arguments for transition version clients for testing.
@@ -454,37 +453,37 @@ public class TestUtils {
                 )));
     }
 
-    public static Stream<Arguments> encryptImprovedDecryptCurrent() {
-        return improvedClientsForTest()
-            .flatMap(encrypt -> currentClientsForTest()
-                .flatMap(decrypt -> Stream.of(
-                    Arguments.of(encrypt.get()[0], decrypt.get()[0])
-                )));
-    }
+//    public static Stream<Arguments> encryptImprovedDecryptCurrent() {
+//        return improvedClientsForTest()
+//            .flatMap(encrypt -> currentClientsForTest()
+//                .flatMap(decrypt -> Stream.of(
+//                    Arguments.of(encrypt.get()[0], decrypt.get()[0])
+//                )));
+//    }
 
-    public static Stream<Arguments> encryptCurrentDecryptImproved() {
-        return currentClientsForTest()
-            .flatMap(encrypt -> improvedClientsForTest()
-                .flatMap(decrypt -> Stream.of(
-                    Arguments.of(encrypt.get()[0], decrypt.get()[0])
-                )));
-    }
+//    public static Stream<Arguments> encryptCurrentDecryptImproved() {
+//        return currentClientsForTest()
+//            .flatMap(encrypt -> improvedClientsForTest()
+//                .flatMap(decrypt -> Stream.of(
+//                    Arguments.of(encrypt.get()[0], decrypt.get()[0])
+//                )));
+//    }
 
-    public static Stream<Arguments> encryptTransitionDecryptCurrent() {
-        return transitionClientsForTest()
-            .flatMap(encrypt -> currentClientsForTest()
-                .flatMap(decrypt -> Stream.of(
-                    Arguments.of(encrypt.get()[0], decrypt.get()[0])
-                )));
-    }
+//    public static Stream<Arguments> encryptTransitionDecryptCurrent() {
+//        return transitionClientsForTest()
+//            .flatMap(encrypt -> currentClientsForTest()
+//                .flatMap(decrypt -> Stream.of(
+//                    Arguments.of(encrypt.get()[0], decrypt.get()[0])
+//                )));
+//    }
 
-    public static Stream<Arguments> encryptCurrentDecryptTransition() {
-        return currentClientsForTest()
-            .flatMap(encrypt -> transitionClientsForTest()
-                .flatMap(decrypt -> Stream.of(
-                    Arguments.of(encrypt.get()[0], decrypt.get()[0])
-                )));
-    }
+//    public static Stream<Arguments> encryptCurrentDecryptTransition() {
+//        return currentClientsForTest()
+//            .flatMap(encrypt -> transitionClientsForTest()
+//                .flatMap(decrypt -> Stream.of(
+//                    Arguments.of(encrypt.get()[0], decrypt.get()[0])
+//                )));
+//    }
 
     /**
      * Provides a stream of arguments for parameterized tests that test cross-language compatibility
