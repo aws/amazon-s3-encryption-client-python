@@ -7,7 +7,7 @@ This library provides an S3 client that supports client-side encryption.
 ### Prerequisites
 
 - Python 3.11 or higher
-- [Poetry](https://python-poetry.org/) for dependency management
+- [uv](https://github.com/astral-sh/uv) for package and project management
 
 ### Setup
 
@@ -73,3 +73,13 @@ Common Flake8 issues in the codebase include:
 - **Code complexity** (C901): Refactor complex functions
 
 When contributing to this project, please try to fix linting issues in the files you modify.
+
+### Pull Request Command
+While this project is in development,
+it is useful to use `gh pr` to create the pull-requests,
+so they can be associated with the GitHub project.
+
+```sh
+gh pr create -B staging -p "S3EC-Python" -f 
+```
+

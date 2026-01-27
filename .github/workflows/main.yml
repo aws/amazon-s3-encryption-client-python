@@ -2,7 +2,7 @@ name: Main Workflow
 
 on:
   push:
-    branches: [ main ]
+    branches: [ staging ]
   pull_request:
   workflow_dispatch:
     inputs:
@@ -22,4 +22,7 @@ jobs:
     uses: ./.github/workflows/test.yml
     with:
       python-version: ${{ inputs.python-version || '3.11' }}
+    permissions:
+      id-token: write
+      contents: read  
     secrets: inherit
