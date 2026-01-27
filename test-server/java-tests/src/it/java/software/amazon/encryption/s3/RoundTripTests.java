@@ -213,7 +213,7 @@ public class RoundTripTests {
               .build());
             fail("Expected exception!");
         } catch (S3EncryptionClientError e) {
-            if (decLang.getLanguageName().equals(RUBY_V3) || decLang.getLanguageName().equals(RUBY_V2_CURRENT) || decLang.getLanguageName().equals(RUBY_V2_TRANSITION)) {
+            if (decLang.getLanguageName().equals(RUBY_V3) || decLang.getLanguageName().equals(RUBY_V2_TRANSITION)) {
                 assertTrue(e.getMessage().contains("Value of encryption context from envelope does not match the provided encryption context"), "Actual error: " + e.getMessage());
             } else {
                 assertTrue(e.getMessage().contains("Provided encryption context does not match information retrieved from S3"), "Actual error: " + e.getMessage());
@@ -277,7 +277,7 @@ public class RoundTripTests {
               .build());
             fail("Expected exception!");
         } catch (S3EncryptionClientError e) {
-            if (decLang.getLanguageName().equals(RUBY_V3) || decLang.getLanguageName().equals(RUBY_V2_CURRENT) || decLang.getLanguageName().equals(RUBY_V2_TRANSITION)) {
+            if (decLang.getLanguageName().equals(RUBY_V3) || decLang.getLanguageName().equals(RUBY_V2_TRANSITION)) {
                 assertTrue(e.getMessage().contains("Value of encryption context from envelope does not match the provided encryption context"), "Actual error: " + e.getMessage());
             } else {
                 assertTrue(e.getMessage().contains("Provided encryption context does not match information retrieved from S3"), "Actual error: " + e.getMessage());
@@ -423,12 +423,12 @@ public class RoundTripTests {
               .build());
             fail("Expected Exception");
         } catch (S3EncryptionClientError e) {
-            if (language.getLanguageName().equals(NET_V3_CURRENT) || language.getLanguageName().equals(NET_V2_CURRENT) || language.getLanguageName().equals(NET_V3_TRANSITION) || language.getLanguageName().equals(NET_V4)
-            || language.getLanguageName().equals(CPP_V2_CURRENT) || language.getLanguageName().equals(CPP_V2_TRANSITION) || language.getLanguageName().equals(CPP_V3)) {
+            if (language.getLanguageName().equals(NET_V3_TRANSITION) || language.getLanguageName().equals(NET_V4)
+            || language.getLanguageName().equals(CPP_V2_TRANSITION) || language.getLanguageName().equals(CPP_V3)) {
               assertTrue(e.getMessage().contains(
                 "The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration"
               ), "Actual error:" + e.getMessage());
-            } else if (language.getLanguageName().equals(RUBY_V3) || language.getLanguageName().equals(RUBY_V2_CURRENT) || language.getLanguageName().equals(RUBY_V2_TRANSITION)) {
+            } else if (language.getLanguageName().equals(RUBY_V3) || language.getLanguageName().equals(RUBY_V2_TRANSITION)) {
                 assertTrue(e.getMessage().contains(
                   "The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration security_profile = :v2. Retry with :v2_and_legacy or re-encrypt the object."
                 ), "Actual error:" + e.getMessage());
