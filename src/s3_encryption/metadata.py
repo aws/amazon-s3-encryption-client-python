@@ -5,6 +5,7 @@
 This module provides classes and utilities for managing encryption metadata
 for S3 objects, including serialization and deserialization of metadata.
 """
+
 import json
 from typing import Any
 
