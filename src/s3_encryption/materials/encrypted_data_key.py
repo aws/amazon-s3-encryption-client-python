@@ -5,6 +5,7 @@
 This module provides the EncryptedDataKey class which represents an encrypted
 data key used in the S3 encryption process.
 """
+
 from attrs import define
 
 
