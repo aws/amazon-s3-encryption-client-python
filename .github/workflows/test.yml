@@ -58,8 +58,7 @@ jobs:
             --jobs ${{ steps.cpu-count.outputs.count }} \
             --force \
             test-server/cpp-v2-transition-server/aws-sdk-cpp \
-            test-server/cpp-v3-server/aws-sdk-cpp \
-            test-server/cpp-v2-server/aws-sdk-cpp
+            test-server/cpp-v3-server/aws-sdk-cpp
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1

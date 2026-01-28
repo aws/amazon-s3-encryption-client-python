@@ -76,7 +76,6 @@ public class TestUtils {
     public static final String NET_V3_TRANSITION = "NET-V3-Transition";
     public static final String NET_V4 = "NET-V4";
 
-//    public static final String CPP_V2_CURRENT = "CPP-V2-Current";
     public static final String CPP_V2_TRANSITION = "CPP-V2-Transition";
     public static final String CPP_V3 = "CPP-V3";
 
@@ -200,7 +199,6 @@ public class TestUtils {
 //        servers.put(GO_V3_CURRENT, new LanguageServerTarget(GO_V3_CURRENT, "8082"));
 //        servers.put(NET_V2_CURRENT, new LanguageServerTarget(NET_V2_CURRENT, "8083"));
 //        servers.put(NET_V3_CURRENT, new LanguageServerTarget(NET_V3_CURRENT, "8084"));
-//        servers.put(CPP_V2_CURRENT, new LanguageServerTarget(CPP_V2_CURRENT, "8085"));
         servers.put(CPP_V2_TRANSITION, new LanguageServerTarget(CPP_V2_TRANSITION, "8097"));
         servers.put(CPP_V3, new LanguageServerTarget(CPP_V3, "8091"));
         // servers.put(RUBY_V2_CURRENT, new LanguageServerTarget(RUBY_V2_CURRENT, "8086"));

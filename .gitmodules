@@ -57,7 +57,3 @@
 	path = test-server/cpp-v3-server/aws-sdk-cpp
 	url = git@github.com:aws/aws-sdk-cpp.git
 	branch = main
-[submodule "test-server/cpp-v2-server/aws-sdk-cpp"]
-	path = test-server/cpp-v2-server/aws-sdk-cpp
-	url = git@github.com:aws/aws-sdk-cpp.git
-	branch = main
