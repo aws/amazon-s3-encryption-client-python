@@ -2,7 +2,7 @@ name: Main Workflow
 
 on:
   push:
-    branches: [ main, fireegg-test-servers ]
+    branches: [ main, staging ]
   pull_request:
   workflow_dispatch:
     inputs:
