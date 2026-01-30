@@ -27,6 +27,16 @@ jobs:
       python-version: ${{ inputs.python-version || '3.11' }}
     secrets: inherit
 
+  python-integ:
+    permissions:
+      id-token: write
+      contents: read
+    name: Python Integration Tests
+    uses: ./.github/workflows/python-integ.yml
+    with:
+      python-version: ${{ inputs.python-version || '3.11' }}
+    secrets: inherit
+
   run-duvet:
     permissions:
       id-token: write

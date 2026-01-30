@@ -87,36 +87,6 @@ jobs:
         run: |
           brew install libmicrohttpd nlohmann-json ossp-uuid
 
-      # Legacy Python tests:
-      # - name: Set up Python
-      #   uses: actions/setup-python@v5
-      #   with:
-      #     python-version: ${{ inputs.python-version || '3.11' }}
-      # 
-      # # Cache uv dependencies
-      # - name: Cache uv dependencies
-      #   uses: actions/cache@v3
-      #   with:
-      #     path: ~/.cache/uv
-      #     key: ${{ runner.os }}-uv-${{ hashFiles('./test-server/python-v3-server/**/pyproject.toml') }}
-      #     restore-keys: |
-      #       ${{ runner.os }}-uv-
-
-      # - name: Install Uv
-      #   run: pip install uv
-
-      # - name: Install dependencies
-      #   run: make install
-
-      # - name: Run unit tests
-      #   run: make test-unit
-
-      # - name: Run integration tests
-      #   run: make test-integration
-      #   env:
-      #     CI_S3_BUCKET: ${{ vars.CI_S3_BUCKET }}
-      #     CI_KMS_KEY_ALIAS: ${{ vars.CI_KMS_KEY_ALIAS }}
-
       # Cache Gradle dependencies and build outputs
       - name: Cache Gradle packages
         uses: actions/cache@v4
