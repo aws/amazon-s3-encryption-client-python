@@ -171,8 +171,6 @@ jobs:
           name: server-logs
           path: |
             test-server/*/server.log
-            test-server/*/net-v2-server.log
-            test-server/*/net-v3-server.log
 
       - name: Stop the servers
         run: cd test-server && make stop-servers

@@ -1,11 +1,11 @@
-# Net-V2-V3-Server
+# Net-V3-Transition-Server
 
 A .NET test server for Amazon S3 encryption client .NET v3 transition.
 
 ## Project Structure
 
 ```
-net-v2-v3-server/
+net-v3-transition-server/
 ├── Controllers/                        # API controllers
 ├── Models/                             # Data models
 ├── Services/                           # Business logic services

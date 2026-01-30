@@ -1,11 +1,11 @@
-# Net-V2-V3-Server
+# Net-V4-Server
 
-A .NET test server for Amazon S3 encryption client .NET v2 and v3.
+A .NET test server for Amazon S3 encryption client .NET v4.
 
 ## Project Structure
 
 ```
-net-v2-v3-server/
+net-v4-server/
 ├── Controllers/         # API controllers
 ├── Models/              # Data models
 ├── Services/            # Business logic services

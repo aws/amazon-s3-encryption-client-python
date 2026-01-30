@@ -68,8 +68,6 @@ public class TestUtils {
     public static final String GO_V3_TRANSITION = "Go-V3-Transition";
     public static final String GO_V4 = "Go-V4";
 
-//    public static final String NET_V2_CURRENT = "NET-V2-Current";
-//    public static final String NET_V3_CURRENT = "NET-V3-Current";
     public static final String NET_V2_TRANSITION = "NET-V2-Transition";
     public static final String NET_V3_TRANSITION = "NET-V3-Transition";
     public static final String NET_V4 = "NET-V4";
@@ -191,22 +189,15 @@ public class TestUtils {
 
     static {
         final Map<String, LanguageServerTarget> servers = new LinkedHashMap<>();
-//        servers.put(JAVA_V3_CURRENT, new LanguageServerTarget(JAVA_V3_CURRENT, "8080"));
         servers.put(PYTHON_V3, new LanguageServerTarget(PYTHON_V3, "8081"));
-//        servers.put(GO_V3_CURRENT, new LanguageServerTarget(GO_V3_CURRENT, "8082"));
-//        servers.put(NET_V2_CURRENT, new LanguageServerTarget(NET_V2_CURRENT, "8083"));
-//        servers.put(NET_V3_CURRENT, new LanguageServerTarget(NET_V3_CURRENT, "8084"));
         servers.put(CPP_V2_TRANSITION, new LanguageServerTarget(CPP_V2_TRANSITION, "8097"));
         servers.put(CPP_V3, new LanguageServerTarget(CPP_V3, "8091"));
-        // servers.put(RUBY_V2_CURRENT, new LanguageServerTarget(RUBY_V2_CURRENT, "8086"));
-//        servers.put(PHP_V2_CURRENT, new LanguageServerTarget(PHP_V2_CURRENT, "8087"));
         servers.put(GO_V4, new LanguageServerTarget(GO_V4, "8089"));
         servers.put(NET_V4, new LanguageServerTarget(NET_V4, "8090"));
         servers.put(RUBY_V3, new LanguageServerTarget(RUBY_V3, "8092"));
         servers.put(PHP_V3, new LanguageServerTarget(PHP_V3, "8093"));
         servers.put(JAVA_V3_TRANSITION, new LanguageServerTarget(JAVA_V3_TRANSITION, "8094"));
         servers.put(GO_V3_TRANSITION, new LanguageServerTarget(GO_V3_TRANSITION, "8095"));
-        // servers.put(NET_V2_TRANSITION, new LanguageServerTarget(NET_V2_TRANSITION, "8096"));
         servers.put(RUBY_V2_TRANSITION, new LanguageServerTarget(RUBY_V2_TRANSITION, "8098"));
         servers.put(PHP_V2_TRANSITION, new LanguageServerTarget(PHP_V2_TRANSITION, "8099"));
         servers.put(JAVA_V4, new LanguageServerTarget(JAVA_V4, "8088"));
