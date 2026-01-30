@@ -31,6 +31,10 @@ jobs:
         id: cpu-count
         run: echo "count=$(node -p 'require("os").cpus().length')" >> $GITHUB_OUTPUT
 
+      - name: Configure git to use HTTPS instead of SSH for public repos
+        run: |
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+
       - name: Optimize git for performance
         run: |
           git config --global fetch.parallel ${{ steps.cpu-count.outputs.count }}
