@@ -17,12 +17,12 @@ jobs:
     name: Lint
     uses: ./.github/workflows/lint.yml
 
-  run-tests:
+  run-test-server:
     permissions:
       id-token: write
       contents: read
-    name: Run Tests
-    uses: ./.github/workflows/test.yml
+    name: Run TestServer Tests
+    uses: ./.github/workflows/test-server.yml
     with:
       python-version: ${{ inputs.python-version || '3.11' }}
     secrets: inherit
