@@ -25,9 +25,6 @@ jobs:
     uses: ./.github/workflows/test.yml
     with:
       python-version: ${{ inputs.python-version || '3.11' }}
-    permissions:
-      id-token: write
-      contents: read  
     secrets: inherit
 
   run-duvet:
