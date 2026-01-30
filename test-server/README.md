@@ -31,12 +31,6 @@ make start-servers
 # Start only the Python S3EC V3 server
 make start-python-v3-server
 
-# Start only the Java S3EC V3 server
-make start-java-v3-server
-
-# Start only the Go S3EC V3 server
-make start-go-v3-server
-
 # Run Java tests
 make run-tests
 
@@ -83,7 +77,6 @@ You can adjust the source pattern or comment style as needed.
 Examples:
 
 - `ruby-v2-server/.duvet/config.toml`
-- `php-v2-server/.duvet/config.toml`
 
 There are Makefile targets,
 but you can just run `make duvet` or `duvet report` inside a server directory to run the report.

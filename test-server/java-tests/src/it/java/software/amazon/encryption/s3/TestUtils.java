@@ -59,14 +59,12 @@ public class TestUtils {
     // vN-Transition: Proposed feature release version. Supports reading messages encrypted with key commitment.
     // vN+1: Proposed breaking release version. Supports reading/writing messages encrypted with key commitment.
 
-//    public static final String JAVA_V3_CURRENT = "Java-V3-Current";
     public static final String JAVA_V3_TRANSITION = "Java-V3-Transition";
     public static final String JAVA_V4 = "Java-V4";
 
     // No Python S3EC versions are released. Only test V3 as the "vN+1" version.
     public static final String PYTHON_V3 = "Python-V3";
 
-//    public static final String GO_V3_CURRENT = "Go-V3-Current";
     public static final String GO_V3_TRANSITION = "Go-V3-Transition";
     public static final String GO_V4 = "Go-V4";
 
@@ -83,7 +81,6 @@ public class TestUtils {
     public static final String RUBY_V2_TRANSITION = "Ruby-V2-Transition";
     public static final String RUBY_V3 = "Ruby-V3";
 
-//    public static final String PHP_V2_CURRENT = "PHP-V2-Current";
     public static final String PHP_V2_TRANSITION = "PHP-V2-Transition";
     public static final String PHP_V3 = "PHP-V3";
 

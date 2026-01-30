@@ -549,10 +549,6 @@ public class RoundTripTests {
         if (KMS_INSTRUCTION_FILE_UNSUPPORTED.contains(decLang.getLanguageName())) {
             throw new TestAbortedException("not testing " + encLang.getLanguageName());
         }
-        // We skip PHP-V2-Current because it writes an instruction file that other languages may not read.
-        if (encLang.getLanguageName().equals("PHP-V2-Current")) {
-          throw new TestAbortedException("not testing " + encLang.getLanguageName());
-        }
         S3ECTestServerClient encClient = testServerClientFor(encLang);
         S3ECTestServerClient decClient = testServerClientFor(decLang);
         final String objectKey = appendTestSuffix(String.format("write-%s-read-%s-instruction-file", encLang.getLanguageName(), decLang.getLanguageName()));

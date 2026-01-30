@@ -71,11 +71,6 @@ jobs:
         with:
           php-version: "8.1"
 
-      - name: Install PHP V2 dependencies
-        working-directory: ./test-server/php-v2-server
-        shell: bash
-        run: composer install
-
       - name: Install PHP V2 Transition dependencies
         working-directory: ./test-server/php-v2-transition-server
         shell: bash
@@ -132,9 +127,8 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-            test-server/java-v3-server/.gradle
             test-server/java-tests/.gradle
-          key: ${{ runner.os }}-gradle-${{ hashFiles('test-server/java-v3-server/**/*.gradle*', 'test-server/java-tests/**/gradle-wrapper.properties', 'test-server/java-tests/**/*.gradle*', 'test-server/java-v3-server/**/gradle-wrapper.properties') }}
+          key: ${{ runner.os }}-gradle-${{ hashFiles('test-server/java-tests/**/gradle-wrapper.properties', 'test-server/java-tests/**/*.gradle*') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
 

@@ -6,10 +6,6 @@
 	path = test-server/ruby-v3-server/local-ruby-sdk
 	url = git@github.com:aws/aws-sdk-ruby.git
 	branch = version-3
-[submodule "test-server/php-v2-server/local-php-sdk"]
-	path = test-server/php-v2-server/local-php-sdk
-	url = git@github.com:aws/aws-sdk-php.git
-	branch = master
 [submodule "test-server/php-v3-server/local-php-sdk"]
 	path = test-server/php-v3-server/local-php-sdk
 	url = git@github.com:aws/aws-sdk-php.git
