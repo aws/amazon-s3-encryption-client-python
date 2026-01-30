@@ -296,6 +296,11 @@ MHD_Result handle_create_client(struct MHD_Connection *connection,
     clientConfig.maxConnections = 512;  // Large pool per client
     clientConfig.retryStrategy = Aws::Client::InitRetryStrategy("standard");
     
+    // Increase timeouts for CI environments where SSL handshakes can be slow
+    // Default connectTimeoutMs is 1000ms, which is too short for busy CI runners
+    clientConfig.connectTimeoutMs = 10000;  // 10 seconds for SSL connection establishment
+    clientConfig.requestTimeoutMs = 30000;  // 30 seconds for complete request/response
+    
     // Disable automatic checksum calculation for encrypted streams
     // The ChecksumInterceptor cannot handle non-seekable SymmetricCryptoStream
     // which causes intermittent "BadDigest: CRC64NVME you specified did not match" errors
