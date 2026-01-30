@@ -4,6 +4,10 @@ plugins {
     application
 }
 
+// Dynamically read S3EC version from submodule's pom.xml
+val s3ecVersion = file("s3ec-staging/pom.xml").readText()
+    .let { Regex("<version>(.*?)</version>").find(it)?.groupValues?.get(1) ?: "4.0.0" }
+
 dependencies {
     val smithyJavaVersion: String by project
 
@@ -14,7 +18,8 @@ dependencies {
     implementation("software.amazon.smithy.java:aws-server-restjson:$smithyJavaVersion")
 
     // S3EC from local Maven repository (installed by mvn install)
-    implementation("software.amazon.encryption.s3:amazon-s3-encryption-client-java:3.4.0-add-kc")
+    // Version is dynamically read from s3ec-staging/pom.xml
+    implementation("software.amazon.encryption.s3:amazon-s3-encryption-client-java:$s3ecVersion")
 }
 
 // Use that application plugin to start the service via the `run` task.
