@@ -52,9 +52,14 @@ enum EncryptionAlgorithm {
 structure InstructionFileConfig {
     /// This allows specifying a (non-encrypted) client for languages which
     /// support this for instruction files.
-    /// In general, languages should not require specifying it,
-    /// so it is best to leave it null until there's a good reason not to.
+    /// In general, languages do not require specifying a client;
+    /// they use the usual wrapped client for instruction file operations,
+    /// so it is fine to leave it null for now.
     /// This also requires a way to create non-encrypted clients which we don't have yet.
+    /// Some languages (Java) do allow a client to be passed specifically for instruction files,
+    /// so this should be implemented eventually for full coverage,
+    /// especially if other languages add this feature. Until then,
+    /// the Java integ tests are sufficient.
     clientId: String,
     enableInstructionFilePutObject: Boolean = false,
     disableInstructionFile: Boolean = false

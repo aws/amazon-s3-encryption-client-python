@@ -124,7 +124,7 @@ jobs:
           MAKEFLAGS: -j${{ steps.cpu-count.outputs.count }}
 
       - name: Run run-tests
-        run: cd test-server && make run-tests
+        run: cd test-server && make test-servers-run-tests
         env:
           AWS_REGION: us-west-2
           TEST_SERVER_S3_BUCKET: ${{ vars.TEST_SERVER_S3_BUCKET }}
@@ -140,7 +140,7 @@ jobs:
             test-server/*/server.log
 
       - name: Stop the servers
-        run: cd test-server && make stop-servers
+        run: cd test-server && make test-servers-stop
 
       - name: Upload results
         if: always()

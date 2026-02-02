@@ -1,11 +1,11 @@
-name: Run Tests
+name: Generate Duvet Report for TestServer
 
 on:
   workflow_call:
     # Optional inputs that can be provided when calling this workflow
 
 jobs:
-  test:
+  duvet:
     runs-on: macos-latest
     permissions:
       id-token: write
@@ -90,15 +90,15 @@ jobs:
             test-server/index.html
 
       - name: Setup Pages
-        if: always() && github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
+        if: always() && (github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/fireegg-test-servers') && github.event_name == 'push'
         uses: actions/configure-pages@v5
 
       - name: Upload Pages artifact
-        if: always() && github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
+        if: always() && (github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/fireegg-test-servers') && github.event_name == 'push'
         uses: actions/upload-pages-artifact@v3
         with:
           path: test-server/
 
       - name: Deploy to GitHub Pages
-        if: always() && github.ref == 'refs/heads/fireegg-test-servers' && github.event_name == 'push'
+        if: always() && (github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/fireegg-test-servers') && github.event_name == 'push'
         uses: actions/deploy-pages@v4

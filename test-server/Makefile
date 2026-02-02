@@ -1,14 +1,14 @@
 # Makefile for S3 Encryption Client Testing
 
-.PHONY: all start-servers run-tests stop-servers clean ci check-env help
+.PHONY: test-servers-all test-servers-start test-servers-run-tests test-servers-stop test-servers-clean test-servers-ci test-servers-check-env test-servers-help
 
 # CI target for GitHub Actions
-ci:
+test-servers-ci:
 	$(MAKE) build-all-servers
 	$(MAKE) start-all-servers
 	$(MAKE) wait-all-servers
-	$(MAKE) run-tests
-	$(MAKE) stop-servers
+	$(MAKE) test-servers-run-tests
+	$(MAKE) test-servers-stop
 
 SERVER_DIRS := $(shell find . -maxdepth 1 -type d -name '*-server' | sed 's|^\./||' | $(if $(FILTER),grep -E "$$(echo '$(FILTER)' | sed 's/,/|/g')",cat) | sort)
 
@@ -36,7 +36,7 @@ $(BUILD_SERVER_TARGETS): build-%:
 	fi
 
 # Build and start all servers
-start-servers:
+test-servers-start:
 	@echo "Building all servers..."
 	$(MAKE) build-all-servers
 	@echo "Starting all servers..."
@@ -75,7 +75,7 @@ $(WAIT_SERVER_TARGETS): wait-%:
 
 
 # Run the Java tests
-run-tests:
+test-servers-run-tests:
 	@echo "Running Java tests..."
 	@echo "Exporting environment variables from servers to tests..."
 	@# Extract AWS environment variables from the current shell and pass them to the tests
@@ -90,7 +90,7 @@ run-tests:
 	@echo "Tests completed successfully"
 
 # Stop the servers
-stop-servers:
+test-servers-stop:
 	@echo "Stopping servers..."
 	@for dir in $(SERVER_DIRS); do \
 		echo "Stopping server in $$dir..."; \
@@ -99,18 +99,18 @@ stop-servers:
 	@echo "Servers stopped"
 
 # Help target
-help:
+test-servers-help:
 	@echo "Available targets:"
-	@echo "  all                     : Start servers and run tests (default, output to stdout)"
-	@echo "  ci                      : Run in CI mode (start servers, run tests, stop servers)"
-	@echo "  start-servers           : Start all servers in parallel"
-	@echo "  run-tests               : Run Java tests"
-	@echo "  stop-servers            : Stop running servers"
-	@echo "  check-env               : Check if required environment variables are set"
-	@echo "  help                    : Show this help message"
+	@echo "  test-servers-all        : Start servers and run tests (default, output to stdout)"
+	@echo "  test-servers-ci         : Run in CI mode (start servers, run tests, stop servers)"
+	@echo "  test-servers-start      : Start all servers in parallel"
+	@echo "  test-servers-run-tests  : Run Java tests"
+	@echo "  test-servers-stop       : Stop running servers"
+	@echo "  test-servers-check-env  : Check if required environment variables are set"
+	@echo "  test-servers-help       : Show this help message"
 
 # Check if required environment variables are set
-check-env:
+test-servers-check-env:
 	@echo "Checking required environment variables..."
 	@if [ -z "$$AWS_ACCESS_KEY_ID" ]; then echo "AWS_ACCESS_KEY_ID is not set"; else echo "AWS_ACCESS_KEY_ID is set"; fi
 	@if [ -z "$$AWS_SECRET_ACCESS_KEY" ]; then echo "AWS_SECRET_ACCESS_KEY is not set"; else echo "AWS_SECRET_ACCESS_KEY is set"; fi

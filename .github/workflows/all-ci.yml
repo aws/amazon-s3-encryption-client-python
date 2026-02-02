@@ -1,4 +1,4 @@
-name: Main Workflow
+name: All CI
 
 on:
   push:
@@ -13,7 +13,7 @@ on:
         type: string
 
 jobs:
-  lint:
+  python-lint:
     name: Lint
     uses: ./.github/workflows/lint.yml
 
@@ -37,11 +37,11 @@ jobs:
       python-version: ${{ inputs.python-version || '3.11' }}
     secrets: inherit
 
-  run-duvet:
+  run-duvet-test-server:
     permissions:
       id-token: write
       contents: read
       pages: write
     name: Run Duvet
-    uses: ./.github/workflows/duvet.yml
+    uses: ./.github/workflows/duvet-test-server.yml
     secrets: inherit
