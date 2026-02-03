@@ -22,7 +22,7 @@ jobs:
         uses: actions/checkout@v5
         with:
           submodules: false
-          token: ${{ secrets.PAT_FOR_PRIVATE_RUBY }}
+          token: ${{ secrets.PAT_FOR_SPEC }}
 
       # There are a lot of submodules here
       # This initializes the checkouts in parallel (--jobs)
@@ -36,7 +36,7 @@ jobs:
         run: |
           git config --global url."https://github.com/".insteadOf "git@github.com:"
           git config --global credential.helper store
-          echo "https://x-token-auth:${{ secrets.PAT_FOR_PRIVATE_RUBY }}@github.com" > ~/.git-credentials
+          echo "https://x-token-auth:${{ secrets.PAT_FOR_SPEC }}@github.com" > ~/.git-credentials
 
       - name: Optimize git for performance
         run: |
