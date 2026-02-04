@@ -1,0 +1,48 @@
+[submodule "test-server/ruby-v2-server/local-ruby-sdk"]
+	path = test-server/ruby-v2-server/local-ruby-sdk
+	url = git@github.com:aws/aws-sdk-ruby.git
+	branch = version-3
+[submodule "test-server/ruby-v3-server/local-ruby-sdk"]
+	path = test-server/ruby-v3-server/local-ruby-sdk
+	url = git@github.com:aws/aws-sdk-ruby.git
+	branch = version-3
+[submodule "test-server/php-v3-server/local-php-sdk"]
+	path = test-server/php-v3-server/local-php-sdk
+	url = git@github.com:aws/aws-sdk-php.git
+	branch = master
+[submodule "test-server/go-v4-server/local-go-s3ec"]
+	path = test-server/go-v4-server/local-go-s3ec
+	url = https://github.com/aws/amazon-s3-encryption-client-go
+        branch = main
+[submodule "test-server/java-v3-transition-server/s3ec-staging"]
+	path = test-server/java-v3-transition-server/s3ec-staging
+	url = git@github.com:aws/amazon-s3-encryption-client-java.git
+	branch = main-3.x
+[submodule "test-server/java-v4-server/s3ec-staging"]
+	path = test-server/java-v4-server/s3ec-staging
+	url = git@github.com:aws/amazon-s3-encryption-client-java.git
+	branch = main
+[submodule "test-server/specification"]
+	path = test-server/specification
+	url = git@github.com:awslabs/private-aws-encryption-sdk-specification-staging.git
+	branch = fire-egg-staging
+[submodule "test-server/net-v4-server/s3ec-net-v4-improved"]
+        path = test-server/net-v4-server/s3ec-net-v4-improved
+        url = https://github.com/aws/amazon-s3-encryption-client-dotnet.git
+        branch = main
+[submodule "test-server/go-v3-transition-server/local-go-s3ec"]
+	path = test-server/go-v3-transition-server/local-go-s3ec
+	url = https://github.com/aws/amazon-s3-encryption-client-go
+	branch = main
+[submodule "test-server/net-v3-transition-server/s3ec-v3-transition-branch"]
+	path = test-server/net-v3-transition-server/s3ec-v3-transition-branch
+	url = https://github.com/aws/amazon-s3-encryption-client-dotnet.git
+	branch = v4sdk-development
+[submodule "test-server/cpp-v2-transition-server/aws-sdk-cpp"]
+	path = test-server/cpp-v2-transition-server/aws-sdk-cpp
+	url = git@github.com:aws/aws-sdk-cpp.git
+	branch = main
+[submodule "test-server/cpp-v3-server/aws-sdk-cpp"]
+	path = test-server/cpp-v3-server/aws-sdk-cpp
+	url = git@github.com:aws/aws-sdk-cpp.git
+	branch = main

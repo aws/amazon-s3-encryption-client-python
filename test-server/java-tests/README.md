@@ -1,8 +1,8 @@
-## Java Tests
+# Java Tests
 
 This project contains Java client tests for the S3 Encryption Client.
 
-### Running Tests
+## Running Tests
 
 To run the integration tests for this project:
 

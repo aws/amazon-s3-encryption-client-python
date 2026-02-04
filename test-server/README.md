@@ -28,11 +28,8 @@ make ci
 # Start Python and Java servers in parallel
 make start-servers
 
-# Start only the Python server
-make start-python-server
-
-# Start only the Java server
-make start-java-server
+# Start only the Python S3EC V3 server
+make start-python-v3-server
 
 # Run Java tests
 make run-tests
@@ -59,3 +56,28 @@ Performance optimizations have been implemented to speed up the test-server CI p
 - JVM optimizations
 
 For detailed information about the optimizations, see [OPTIMIZATION.md](./OPTIMIZATION.md).
+
+### Duvet
+
+To check duvet you need to install Rust.
+Until the latest version of Duvet is release
+
+```bash
+  git clone https://github.com/awslabs/duvet.git /tmp/duvet
+  pushd /tmp/duvet
+  cargo xtask build
+  cargo install --path ./duvet
+  popd rm -rf /tmp/duvet
+```
+
+Inside each test server directory there is a `.duvet` directory that contains a `config.toml`.
+This is the best way to configure `duvet`.
+
+You can adjust the source pattern or comment style as needed.
+Examples:
+
+- `ruby-v2-server/.duvet/config.toml`
+
+There are Makefile targets,
+but you can just run `make duvet` or `duvet report` inside a server directory to run the report.
+To view the report `make view-report-mac` or `open .duvet/reports/report.html`

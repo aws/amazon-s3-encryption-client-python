@@ -10,6 +10,8 @@ import {
   PolicyDocument,
   PolicyStatement,
   FederatedPrincipal,
+  ArnPrincipal,
+  CompositePrincipal,
   ManagedPolicy,
 } from "aws-cdk-lib/aws-iam";
 import { 
@@ -99,23 +101,31 @@ export class S3ECPythonGithub extends cdk.Stack {
             new PolicyStatement({
               effect: Effect.ALLOW,
               actions: [
+                "s3:HeadObject", // Only get object metadata
                 "s3:PutObject",
                 "s3:GetObject",
                 "s3:DeleteObject",
+                "s3:DeleteObjectVersion" // For S3EC-NET repo
               ],
               resources: [
                 S3ECGithubTestS3Bucket.bucketArn + "/*", // object-level permissions need this extra path
                 S3ECTestServerGithubBucket.bucketArn + "/*", // Add permissions for the new test-server bucket
+                "arn:aws:s3:::aws-net-sdk-*/*" // permission for object inside S3EC .net bucket. For S3EC-NET repo
               ],
             }),
             new PolicyStatement({
               effect: Effect.ALLOW,
               actions: [
+                "s3:CreateBucket", // For S3EC-NET repo
+                "s3:DeleteBucket", // For S3EC-NET repo
                 "s3:ListBucket",
+                "s3:ListBucketVersions", // For S3EC-NET repo
+                "s3:GetBucketAcl" // For S3EC-NET repo
               ],
               resources: [
                 S3ECGithubTestS3Bucket.bucketArn,
                 S3ECTestServerGithubBucket.bucketArn, // Add permissions for the new test-server bucket
+                "arn:aws:s3:::aws-net-sdk-*", // permission for S3EC .net bucket. For S3EC-NET repo
               ],
             }),
           ]
@@ -155,16 +165,29 @@ export class S3ECPythonGithub extends cdk.Stack {
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
         },
         "StringLike": {
-          "token.actions.githubusercontent.com:sub": "repo:aws/amazon-s3-encryption-client-python:*"
+          "token.actions.githubusercontent.com:sub": [
+            "repo:aws/amazon-s3-encryption-client-python:*",
+            "repo:aws/private-amazon-s3-encryption-client-dotnet-staging:*" // For S3EC-NET repo
+          ]
         }
       },
       "sts:AssumeRoleWithWebIdentity"
     )
+    
+    // ToolsDevelopment role principal
+    const ToolsDevelopmentPrincipal = new ArnPrincipal("arn:aws:iam::" + this.account + ":role/ToolsDevelopment")
+    
+    // Composite principal to allow both GitHub Actions and ToolsDevelopment to assume the role
+    const CompositePrincipalForRole = new CompositePrincipal(
+      GithubActionsPrincipal,
+      ToolsDevelopmentPrincipal
+    )
+    
     const S3ECGithubTestRole = new Role(
       this,
       "s3-github-test-role",
       {
-        assumedBy: GithubActionsPrincipal,
+        assumedBy: CompositePrincipalForRole,
         roleName: "S3EC-Python-Github-test-role",
         description: " Grant GitHub S3 put and get and KMS encrypt, decrypt, and generate access for testing",
         path: "/",

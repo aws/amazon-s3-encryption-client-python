@@ -1,0 +1,47 @@
+name: All CI
+
+on:
+  push:
+    branches: [ main, staging ]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      python-version:
+        description: 'Python version to use'
+        default: '3.11'
+        required: false
+        type: string
+
+jobs:
+  python-lint:
+    name: Lint
+    uses: ./.github/workflows/lint.yml
+
+  run-test-server:
+    permissions:
+      id-token: write
+      contents: read
+    name: Run TestServer Tests
+    uses: ./.github/workflows/test-server.yml
+    with:
+      python-version: ${{ inputs.python-version || '3.11' }}
+    secrets: inherit
+
+  python-integ:
+    permissions:
+      id-token: write
+      contents: read
+    name: Python Integration Tests
+    uses: ./.github/workflows/python-integ.yml
+    with:
+      python-version: ${{ inputs.python-version || '3.11' }}
+    secrets: inherit
+
+  run-duvet-test-server:
+    permissions:
+      id-token: write
+      contents: read
+      pages: write
+    name: Run Duvet
+    uses: ./.github/workflows/duvet-test-server.yml
+    secrets: inherit
