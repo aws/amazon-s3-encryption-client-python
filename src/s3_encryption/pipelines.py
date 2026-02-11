@@ -102,6 +102,7 @@ class GetEncryptedObjectPipeline:
             bytes: The decrypted data
         """
         # Convert the metadata dictionary to an ObjectMetadata instance
+        # TODO: Stream + Buffered Decryption
         encrypted_data = response.get("Body").read()
         encryption_metadata = response.get("Metadata", {})
         metadata = ObjectMetadata.from_dict(encryption_metadata)
