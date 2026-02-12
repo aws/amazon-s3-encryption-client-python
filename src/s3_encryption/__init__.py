@@ -167,19 +167,17 @@ class S3EncryptionClient:
         """
         # Extract EncryptionContext if provided (not a standard S3 parameter)
         encryption_context = kwargs.pop("EncryptionContext", None)
-        
+
         # Store encryption context in thread-local storage for the event handler
         self._plugin._context.encryption_context = encryption_context
-        
+
         try:
             return self.wrapped_s3_client.put_object(**kwargs)
         except S3EncryptionClientError:
             # Re-raise our own exceptions without wrapping
             raise
         except Exception as e:
-            raise S3EncryptionClientError(
-                f"Failed to encryption object: {str(e)}"
-            ) from e
+            raise S3EncryptionClientError(f"Failed to encryption object: {str(e)}") from e
         finally:
             # Clean up thread-local storage
             if hasattr(self._plugin._context, "encryption_context"):
@@ -204,10 +202,10 @@ class S3EncryptionClient:
         """
         # Extract EncryptionContext if provided (not a standard S3 parameter)
         encryption_context = kwargs.pop("EncryptionContext", None)
-        
+
         # Store encryption context in thread-local storage for the event handler
         self._plugin._context.encryption_context = encryption_context
-        
+
         try:
             return self.wrapped_s3_client.get_object(**kwargs)
         except S3EncryptionClientError:
@@ -215,9 +213,7 @@ class S3EncryptionClient:
             raise
         except Exception as e:
             # Wrap any unexpected errors during decryption
-            raise S3EncryptionClientError(
-                f"Failed to decrypt object: {str(e)}"
-            ) from e
+            raise S3EncryptionClientError(f"Failed to decrypt object: {str(e)}") from e
         finally:
             # Clean up thread-local storage
             if hasattr(self._plugin._context, "encryption_context"):
