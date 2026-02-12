@@ -111,16 +111,11 @@ class KmsKeyring(S3Keyring):
                             )
 
                         # The stored EC, minus default key/values, MUST match provided EC
-                        # If no EC is provided from request (empty dict), use stored EC
                         encryption_context_stored_copy = encryption_context_stored.copy()
                         encryption_context_stored_copy.pop(KMS_V1_DEFAULT_KEY, None)
                         encryption_context_stored_copy.pop(KMS_CONTEXT_DEFAULT_KEY, None)
 
-                        # Only validate if encryption context was explicitly provided in request
-                        if (
-                            encryption_context_from_request
-                            and encryption_context_stored_copy != encryption_context_from_request
-                        ):
+                        if encryption_context_stored_copy != encryption_context_from_request:
                             # TODO: modeled error
                             raise S3EncryptionClientError(
                                 "Provided encryption context does not match information "

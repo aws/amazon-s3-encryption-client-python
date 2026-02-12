@@ -65,7 +65,8 @@ class S3EncryptionClientPlugin:
             body_bytes = body
         elif hasattr(body, "read"):
             # It's a file-like object (BytesIO, etc.)
-            # TODO(streaming): Add support for streaming encryption without reading entire body into memory
+            # TODO(streaming): Add support for streaming encryption without reading entire body
+            # into memory
             body_bytes = body.read()
         else:
             # Unexpected body type - should not happen as boto3 validates before this point
@@ -163,7 +164,8 @@ class S3EncryptionClient:
             The response from the S3 client's put_object method.
 
         Raises:
-            S3EncryptionClientError: Any problem with encryption, including if the Body parameter has an invalid type.
+            S3EncryptionClientError: Any problem with encryption, including if the Body parameter
+            has an invalid type.
         """
         # Extract EncryptionContext if provided (not a standard S3 parameter)
         encryption_context = kwargs.pop("EncryptionContext", None)
