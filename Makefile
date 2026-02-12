@@ -1,7 +1,7 @@
 .PHONY: lint format test test-unit test-integration install
 
 # Default target
-all: lint test
+all: lint test duvet
 
 # Install dependencies
 install:
@@ -37,3 +37,13 @@ clean:
 	find . -type d -name .pytest_cache -exec rm -rf {} +
 	find . -type d -name .coverage -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
+	rm -rf .duvet/reports/ .duvet/requirements/
+
+duvet: | clean duvet-report
+
+duvet-report:
+	duvet report
+
+duvet-view-report-mac:
+	open .duvet/reports/report.html
+
