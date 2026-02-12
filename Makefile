@@ -10,14 +10,14 @@ install:
 
 # Run linting checks
 lint:
-	uv run black --check .
+	uv run black --check src/ test/
 	# Enforce ruff checks on src/ but allow test/ to fail
 	uv run ruff check src/
 	uv run ruff check test/ || true
 
 # Format code with Black and Ruff
 format:
-	uv run black .
+	uv run black src/ test/
 	uv run ruff check --fix src/ test/
 
 # Run all tests
