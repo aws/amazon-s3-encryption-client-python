@@ -46,8 +46,9 @@ class KmsKeyring(S3Keyring):
             # Call parent class validation
             enc_materials = super().on_encrypt(enc_materials)
 
+            # Copy encryption context to avoid modifying the original
+            encryption_context = enc_materials.encryption_context.copy()
             # Add default encryption context
-            encryption_context = enc_materials.encryption_context
             encryption_context["aws:x-amz-cek-alg"] = "AES/GCM/NoPadding"
 
             response = self.kms_client.generate_data_key(
@@ -61,6 +62,8 @@ class KmsKeyring(S3Keyring):
             )
             enc_materials.encrypted_data_key = encrypted_data_key
             enc_materials.plaintext_data_key = response["Plaintext"]
+            # Update enc_materials with the modified encryption context (with default added)
+            enc_materials.encryption_context = encryption_context
             return enc_materials
         except Exception:
             raise
@@ -108,10 +111,13 @@ class KmsKeyring(S3Keyring):
                             )
 
                         # The stored EC, minus default key/values, MUST match provided EC
+                        # If no EC is provided from request (empty dict), use stored EC
                         encryption_context_stored_copy = encryption_context_stored.copy()
                         encryption_context_stored_copy.pop(KMS_V1_DEFAULT_KEY, None)
                         encryption_context_stored_copy.pop(KMS_CONTEXT_DEFAULT_KEY, None)
-                        if encryption_context_stored_copy != encryption_context_from_request:
+                        
+                        # Only validate if encryption context was explicitly provided in request
+                        if encryption_context_from_request and encryption_context_stored_copy != encryption_context_from_request:
                             # TODO: modeled error
                             raise S3EncryptionClientError(
                                 "Provided encryption context does not match information "

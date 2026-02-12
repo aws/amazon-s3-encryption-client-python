@@ -3,9 +3,9 @@
 """Top-level S3 Encryption Client v3 for Python package."""
 
 import io
+import threading
 
 from attrs import define, field
-from botocore.exceptions import ParamValidationError
 from botocore.response import StreamingBody
 
 from .exceptions import S3EncryptionClientError
@@ -16,7 +16,7 @@ from .materials.crypto_materials_manager import (
 from .materials.keyring import AbstractKeyring
 from .pipelines import GetEncryptedObjectPipeline, PutEncryptedObjectPipeline
 
-DEFAULT_ENCODING = "utf-8"
+S3_METADATA_PREFIX = "x-amz-meta-"
 
 
 @define
@@ -45,6 +45,7 @@ class S3EncryptionClientPlugin:
             config: S3EncryptionClientConfig containing keyring and CMM
         """
         self.config = config
+        self._context = threading.local()
 
     def on_put_object_before_call(self, params, **kwargs):
         """Event handler for before-call.s3.PutObject.
@@ -64,41 +65,31 @@ class S3EncryptionClientPlugin:
             body_bytes = body
         elif hasattr(body, "read"):
             # It's a file-like object (BytesIO, etc.)
-            # TODO: Stream Encryption
+            # TODO(streaming): Add support for streaming encryption without reading entire body into memory
             body_bytes = body.read()
         else:
-            body_bytes = b""
+            # Unexpected body type - should not happen as boto3 validates before this point
+            raise S3EncryptionClientError("Unexpected type of body parameter!")
 
-        # Extract encryption context from headers if present
-        headers = params.get("headers", {})
-        encryption_context = None
+        encryption_context = getattr(self._context, "encryption_context", None)
 
-        # Check if EncryptionContext was passed (it would be in a custom header)
-        # For now, we'll handle it through metadata
-
-        # Get metadata from headers
-        metadata = {}
-        for key, value in headers.items():
-            if key.lower().startswith("x-amz-meta-"):
-                # Extract the metadata key (remove x-amz-meta- prefix)
-                meta_key = key[11:]  # len("x-amz-meta-") = 11
-                metadata[meta_key] = value
-
-        # Create a pipeline and encrypt the data
         pipeline = PutEncryptedObjectPipeline(self.config.cmm)
         encrypted_data, encryption_metadata = pipeline.encrypt(
             body_bytes, encryption_context=encryption_context
         )
 
-        # Update the body with encrypted data
         params["body"] = encrypted_data
+
+        headers = params.get("headers", {})
 
         # Add encryption metadata to headers
         if encryption_metadata:
             for key, value in encryption_metadata.items():
                 # Add as S3 metadata headers
-                header_key = f"x-amz-meta-{key}"
+                header_key = f"{S3_METADATA_PREFIX}{key}"
                 headers[header_key] = value
+
+        params["headers"] = headers
 
     def on_get_object_after_call(self, parsed, **kwargs):
         """Event handler for after-call.s3.GetObject.
@@ -109,9 +100,8 @@ class S3EncryptionClientPlugin:
             parsed: Dictionary containing the parsed response
             **kwargs: Additional event arguments (includes 'params' with request parameters)
         """
-        # Extract encryption context from original request params if available
-        request_params = kwargs.get("params", {})
-        encryption_context = request_params.pop("EncryptionContext", None)
+        # Get encryption context from thread-local storage (set by get_object wrapper)
+        encryption_context = getattr(self._context, "encryption_context", None)
 
         # The parsed response already has the Body as a StreamingBody
         # We need to read it, decrypt it, and replace it
@@ -154,12 +144,7 @@ class S3EncryptionClient:
 
         # Register event handlers using boto3's event system
         event_system = self.wrapped_s3_client.meta.events
-
-        # Register before-call handler for PutObject to encrypt data
-        # This happens after serialization, so Body is already bytes
         event_system.register("before-call.s3.PutObject", self._plugin.on_put_object_before_call)
-
-        # Register after-call handler for GetObject to decrypt data
         event_system.register("after-call.s3.GetObject", self._plugin.on_get_object_after_call)
 
     def put_object(self, **kwargs):
@@ -178,16 +163,27 @@ class S3EncryptionClient:
             The response from the S3 client's put_object method.
 
         Raises:
-            S3EncryptionClientError: If the Body parameter has an invalid type.
+            S3EncryptionClientError: Any problem with encryption, including if the Body parameter has an invalid type.
         """
+        # Extract EncryptionContext if provided (not a standard S3 parameter)
+        encryption_context = kwargs.pop("EncryptionContext", None)
+        
+        # Store encryption context in thread-local storage for the event handler
+        self._plugin._context.encryption_context = encryption_context
+        
         try:
             return self.wrapped_s3_client.put_object(**kwargs)
-        except ParamValidationError as e:
-            # Wrap boto3's ParamValidationError with our custom error
+        except S3EncryptionClientError:
+            # Re-raise our own exceptions without wrapping
+            raise
+        except Exception as e:
             raise S3EncryptionClientError(
-                f"Body parameter of type {type(kwargs.get('Body'))} is not an acceptable type! "
-                f"Use bytes or a file-like object."
+                f"Failed to encryption object: {str(e)}"
             ) from e
+        finally:
+            # Clean up thread-local storage
+            if hasattr(self._plugin._context, "encryption_context"):
+                delattr(self._plugin._context, "encryption_context")
 
     def get_object(self, **kwargs):
         """Download and decrypt an object from S3.
@@ -202,5 +198,27 @@ class S3EncryptionClient:
         Returns:
             The response from the S3 client's get_object method with the Body
             replaced with a StreamingBody containing the decrypted data.
+
+        Raises:
+            S3EncryptionClientError: If decryption fails or the object is not properly encrypted.
         """
-        return self.wrapped_s3_client.get_object(**kwargs)
+        # Extract EncryptionContext if provided (not a standard S3 parameter)
+        encryption_context = kwargs.pop("EncryptionContext", None)
+        
+        # Store encryption context in thread-local storage for the event handler
+        self._plugin._context.encryption_context = encryption_context
+        
+        try:
+            return self.wrapped_s3_client.get_object(**kwargs)
+        except S3EncryptionClientError:
+            # Re-raise our own exceptions without wrapping
+            raise
+        except Exception as e:
+            # Wrap any unexpected errors during decryption
+            raise S3EncryptionClientError(
+                f"Failed to decrypt object: {str(e)}"
+            ) from e
+        finally:
+            # Clean up thread-local storage
+            if hasattr(self._plugin._context, "encryption_context"):
+                delattr(self._plugin._context, "encryption_context")
