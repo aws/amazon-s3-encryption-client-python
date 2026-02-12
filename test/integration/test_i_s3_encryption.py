@@ -434,7 +434,7 @@ def test_encryption_context_mismatch():
 
 
 def test_encryption_context_missing_on_decrypt():
-    """Test that decryption succeeds using stored encryption context when not provided in request."""
+    """Test that decryption fails when encryption context is not provided for an object encrypted with context."""
     key = "encryption-context-missing"
     key += datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
 
@@ -452,22 +452,21 @@ def test_encryption_context_missing_on_decrypt():
     # Put object with encryption context
     s3ec.put_object(Bucket=bucket, Key=key, Body=data, EncryptionContext=encryption_context)
 
-    # Get the object back WITHOUT encryption context - should succeed using stored context
+    # Try to get the object back WITHOUT encryption context - should fail
     get_req = {"Bucket": bucket, "Key": key}
 
-    response = s3ec.get_object(**get_req)
-
-    # Verify the data decrypts correctly
-    output = response["Body"].read().decode("utf-8")
-    if output != data:
-        print("Uh oh! Input and output don't match!")
-        print("Input:")
-        print(repr(data))
-        print("Output:")
-        print(repr(output))
-        raise RuntimeError
-
-    print(
-        "Success! Decryption correctly used stored encryption context when not provided in request."
-    )
-    print(f"Original encryption context: {encryption_context}")
+    try:
+        s3ec.get_object(**get_req)
+        # If we get here, the test failed - decryption should have failed
+        print("Uh oh! Decryption succeeded without providing required encryption context!")
+        print(f"Original context: {encryption_context}")
+        raise RuntimeError("Expected decryption to fail when encryption context not provided")
+    except S3EncryptionClientError as e:
+        # This is expected - decryption should fail
+        print("Success! Decryption correctly failed when encryption context was not provided.")
+        print(f"Error message: {str(e)}")
+    except Exception as e:
+        # Some other error occurred
+        print(f"Unexpected error type: {type(e).__name__}")
+        print(f"Error message: {str(e)}")
+        raise
