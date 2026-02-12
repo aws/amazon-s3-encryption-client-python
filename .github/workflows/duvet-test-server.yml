@@ -71,7 +71,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: reports
+          name: test-server-reports
           include-hidden-files: true
           path: test-server/*-server/.duvet/reports/report.html
 
