@@ -6,8 +6,8 @@ These tests verify that the thread-local storage of encryption context
 is properly isolated between threads when using a single S3EncryptionClient
 instance across multiple threads.
 """
+
 import os
-import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 
@@ -61,14 +61,10 @@ def test_multithreaded_encryption_context_isolation():
             data = f"Thread {thread_id} test data with unique encryption context"
 
             # Encrypt with thread-specific encryption context
-            s3ec.put_object(
-                Bucket=bucket, Key=key, Body=data, EncryptionContext=encryption_context
-            )
+            s3ec.put_object(Bucket=bucket, Key=key, Body=data, EncryptionContext=encryption_context)
 
             # Decrypt with the SAME encryption context - should succeed
-            response = s3ec.get_object(
-                Bucket=bucket, Key=key, EncryptionContext=encryption_context
-            )
+            response = s3ec.get_object(Bucket=bucket, Key=key, EncryptionContext=encryption_context)
             decrypted_data = response["Body"].read().decode("utf-8")
 
             if decrypted_data != data:
@@ -81,8 +77,8 @@ def test_multithreaded_encryption_context_isolation():
             # Try to decrypt with a DIFFERENT encryption context - should fail
             wrong_context = {
                 "thread_id": str(thread_id + 1000),
-                "department": f"wrong-dept",
-                "project": f"wrong-project",
+                "department": "wrong-dept",
+                "project": "wrong-project",
             }
 
             try:
@@ -172,7 +168,9 @@ def test_multithreaded_rapid_context_switching():
                 else:
                     encryption_context = {"iteration": str(i), "type": "typeC"}
 
-                key = f"rapid-switch-t{thread_id}-i{i}-{datetime.now().strftime('%Y%m%d-%H%M%S-%f')}"
+                key = (
+                    f"rapid-switch-t{thread_id}-i{i}-{datetime.now().strftime('%Y%m%d-%H%M%S-%f')}"
+                )
                 data = f"Thread {thread_id} iteration {i}"
 
                 # Encrypt
@@ -207,7 +205,9 @@ def test_multithreaded_rapid_context_switching():
         for future in as_completed(futures):
             result = future.result()
             if not result["success"]:
-                errors.append(f"Thread {result['thread_id']}: {result.get('error', 'Unknown error')}")
+                errors.append(
+                    f"Thread {result['thread_id']}: {result.get('error', 'Unknown error')}"
+                )
 
     if errors:
         print("Errors occurred during rapid context switching test:")
@@ -240,13 +240,9 @@ def test_multithreaded_mixed_with_and_without_context():
             key = f"mixed-with-ctx-{thread_id}-{datetime.now().strftime('%Y%m%d-%H%M%S-%f')}"
             data = f"Thread {thread_id} WITH context"
 
-            s3ec.put_object(
-                Bucket=bucket, Key=key, Body=data, EncryptionContext=encryption_context
-            )
+            s3ec.put_object(Bucket=bucket, Key=key, Body=data, EncryptionContext=encryption_context)
 
-            response = s3ec.get_object(
-                Bucket=bucket, Key=key, EncryptionContext=encryption_context
-            )
+            response = s3ec.get_object(Bucket=bucket, Key=key, EncryptionContext=encryption_context)
             decrypted_data = response["Body"].read().decode("utf-8")
 
             if decrypted_data != data:
@@ -293,7 +289,9 @@ def test_multithreaded_mixed_with_and_without_context():
         for future in as_completed(futures):
             result = future.result()
             if not result["success"]:
-                errors.append(f"Thread {result['thread_id']}: {result.get('error', 'Unknown error')}")
+                errors.append(
+                    f"Thread {result['thread_id']}: {result.get('error', 'Unknown error')}"
+                )
 
     if errors:
         print("Errors occurred during mixed context test:")

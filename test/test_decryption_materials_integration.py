@@ -1,7 +1,7 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from src.s3_encryption.materials.crypto_materials_manager import DefaultCryptoMaterialsManager
 from src.s3_encryption.materials.encrypted_data_key import EncryptedDataKey
