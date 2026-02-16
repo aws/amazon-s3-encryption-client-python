@@ -47,6 +47,15 @@ class ObjectMetadata:
     content_cipher_tag_length: str | None = field(default="128")
     # Marker for instruction files
     instruction_file: str | None = field(default=None)
+    
+    # V3 format fields (compressed)
+    content_cipher_v3: str | None = field(default=None)
+    encrypted_data_key_v3: str | None = field(default=None)
+    mat_desc_v3: str | None = field(default=None)
+    encryption_context_v3: str | None = field(default=None)
+    encrypted_data_key_algorithm_v3: str | None = field(default=None)
+    key_commitment_v3: str | None = field(default=None)
+    message_id_v3: str | None = field(default=None)
 
     # Constants for metadata keys
     ENCRYPTED_DATA_KEY_V1 = "x-amz-key"
@@ -57,6 +66,15 @@ class ObjectMetadata:
     CONTENT_CIPHER = "x-amz-cek-alg"
     CONTENT_CIPHER_TAG_LENGTH = "x-amz-tag-len"
     INSTRUCTION_FILE = "x-amz-crypto-instr-file"
+    
+    # V3 format constants (compressed)
+    CONTENT_CIPHER_V3 = "x-amz-c"
+    ENCRYPTED_DATA_KEY_V3 = "x-amz-3"
+    MAT_DESC_V3 = "x-amz-m"
+    ENCRYPTION_CONTEXT_V3 = "x-amz-t"
+    ENCRYPTED_DATA_KEY_ALGORITHM_V3 = "x-amz-w"
+    KEY_COMMITMENT_V3 = "x-amz-d"
+    MESSAGE_ID_V3 = "x-amz-i"
 
     @classmethod
     def from_dict(cls, metadata_dict: dict[str, Any]) -> "ObjectMetadata":
@@ -84,6 +102,13 @@ class ObjectMetadata:
             content_cipher=metadata_dict.get(cls.CONTENT_CIPHER),
             content_cipher_tag_length=metadata_dict.get(cls.CONTENT_CIPHER_TAG_LENGTH),
             instruction_file=metadata_dict.get(cls.INSTRUCTION_FILE),
+            content_cipher_v3=metadata_dict.get(cls.CONTENT_CIPHER_V3),
+            encrypted_data_key_v3=metadata_dict.get(cls.ENCRYPTED_DATA_KEY_V3),
+            mat_desc_v3=metadata_dict.get(cls.MAT_DESC_V3),
+            encryption_context_v3=metadata_dict.get(cls.ENCRYPTION_CONTEXT_V3),
+            encrypted_data_key_algorithm_v3=metadata_dict.get(cls.ENCRYPTED_DATA_KEY_ALGORITHM_V3),
+            key_commitment_v3=metadata_dict.get(cls.KEY_COMMITMENT_V3),
+            message_id_v3=metadata_dict.get(cls.MESSAGE_ID_V3),
         )
 
     def to_dict(self) -> dict[str, str]:
@@ -118,4 +143,81 @@ class ObjectMetadata:
         if self.instruction_file is not None:
             result[self.INSTRUCTION_FILE] = self.instruction_file
 
+        if self.content_cipher_v3 is not None:
+            result[self.CONTENT_CIPHER_V3] = self.content_cipher_v3
+
+        if self.encrypted_data_key_v3 is not None:
+            result[self.ENCRYPTED_DATA_KEY_V3] = self.encrypted_data_key_v3
+
+        if self.mat_desc_v3 is not None:
+            result[self.MAT_DESC_V3] = self.mat_desc_v3
+
+        if self.encryption_context_v3 is not None:
+            result[self.ENCRYPTION_CONTEXT_V3] = self.encryption_context_v3
+
+        if self.encrypted_data_key_algorithm_v3 is not None:
+            result[self.ENCRYPTED_DATA_KEY_ALGORITHM_V3] = self.encrypted_data_key_algorithm_v3
+
+        if self.key_commitment_v3 is not None:
+            result[self.KEY_COMMITMENT_V3] = self.key_commitment_v3
+
+        if self.message_id_v3 is not None:
+            result[self.MESSAGE_ID_V3] = self.message_id_v3
+
         return result
+
+    def is_v1_format(self) -> bool:
+        """Check if metadata is in V1 format.
+
+        Returns:
+            bool: True if metadata contains V1 keys and excludes V2/V3 keys
+        """
+        return (
+            self.content_iv is not None
+            and self.encrypted_data_key_context is not None
+            and self.encrypted_data_key_v1 is not None
+            and self.encrypted_data_key_v2 is None
+        )
+
+    def is_v2_format(self) -> bool:
+        """Check if metadata is in V2 format.
+
+        Returns:
+            bool: True if metadata contains V2 keys and excludes V1/V3 keys
+        """
+        return (
+            self.content_cipher is not None
+            and self.content_iv is not None
+            and self.encrypted_data_key_algorithm is not None
+            and self.encrypted_data_key_v2 is not None
+            and self.encrypted_data_key_v1 is None
+        )
+
+    def is_v3_format(self) -> bool:
+        """Check if metadata is in V3 format.
+
+        Returns:
+            bool: True if metadata contains V3 keys and excludes V1/V2 keys
+        """
+        return (
+            self.content_cipher_v3 is not None
+            and self.encrypted_data_key_algorithm_v3 is not None
+            and self.key_commitment_v3 is not None
+            and self.message_id_v3 is not None
+            and self.encrypted_data_key_v3 is not None
+            and self.encrypted_data_key_v2 is None
+            and self.encrypted_data_key_v1 is None
+        )
+
+    def has_exclusive_key_collision(self) -> bool:
+        """Check if metadata has multiple exclusive version keys.
+
+        Returns:
+            bool: True if more than one version key (V1, V2, V3) is present
+        """
+        has_v1_key = self.encrypted_data_key_v1 is not None
+        has_v2_key = self.encrypted_data_key_v2 is not None
+        has_v3_key = self.encrypted_data_key_v3 is not None
+        
+        exclusive_key_count = sum([has_v1_key, has_v2_key, has_v3_key])
+        return exclusive_key_count > 1
