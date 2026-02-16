@@ -7,6 +7,7 @@ and decrypting objects after they are retrieved from S3.
 """
 
 import base64
+import json
 import os
 
 from attrs import define, field
@@ -93,12 +94,14 @@ class GetEncryptedObjectPipeline:
     cmm: AbstractCryptoMaterialsManager = field()
     s3_client: object = field(default=None)
 
-    def decrypt(self, response, encryption_context=None):
+    def decrypt(self, response, encryption_context=None, bucket=None, key=None):
         """Decrypt the data after it is retrieved from S3.
 
         Args:
             response (dict): The response from S3 containing the encrypted data and metadata
             encryption_context (dict, optional): Additional context for decryption
+            bucket (str, optional): S3 bucket name (required for instruction file)
+            key (str, optional): S3 object key (required for instruction file)
 
         Returns:
             bytes: The decrypted data
@@ -112,6 +115,21 @@ class GetEncryptedObjectPipeline:
         # Use empty dict if encryption_context is None
         if encryption_context is None:
             encryption_context = {}
+
+        # Check if we need to fetch instruction file
+        if metadata.should_use_instruction_file():
+            if self.s3_client is None:
+                raise S3EncryptionClientError(
+                    "S3 client required to fetch instruction file"
+                )
+            if bucket is None or key is None:
+                raise S3EncryptionClientError(
+                    "Bucket and key required to fetch instruction file"
+                )
+            
+            instruction_metadata = self._fetch_instruction_file(bucket, key)
+            instruction_metadata.update(encryption_metadata)
+            metadata = ObjectMetadata.from_dict(instruction_metadata)
 
         # Determine which format we're dealing with and get decryption materials
         if metadata.is_v1_format():
@@ -135,6 +153,22 @@ class GetEncryptedObjectPipeline:
         # Perform decryption
         aesgcm = AESGCM(dec_materials.plaintext_data_key)
         return aesgcm.decrypt(nonce=dec_materials.iv, data=encrypted_data, associated_data=None)
+
+    def _fetch_instruction_file(self, bucket: str, key: str, suffix: str = ".instruction") -> dict:
+        """Fetch instruction file from S3.
+
+        Args:
+            bucket: S3 bucket name
+            key: S3 object key
+            suffix: Instruction file suffix (default: .instruction)
+
+        Returns:
+            dict: Parsed JSON metadata from instruction file
+        """
+        instruction_key = key + suffix
+        response = self.s3_client.get_object(Bucket=bucket, Key=instruction_key)
+        instruction_data = response["Body"].read()
+        return json.loads(instruction_data)
 
     def _decrypt_v2(self, metadata, encryption_context) -> DecryptionMaterials:
         """Prepare V2 decryption materials."""
