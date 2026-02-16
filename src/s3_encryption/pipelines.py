@@ -12,6 +12,7 @@ import os
 from attrs import define, field
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+from .exceptions import S3EncryptionClientError
 from .materials.crypto_materials_manager import AbstractCryptoMaterialsManager
 from .materials.encrypted_data_key import EncryptedDataKey
 from .materials.materials import DecryptionMaterials, EncryptionMaterials
@@ -90,6 +91,7 @@ class GetEncryptedObjectPipeline:
     """
 
     cmm: AbstractCryptoMaterialsManager = field()
+    s3_client: object = field(default=None)
 
     def decrypt(self, response, encryption_context=None):
         """Decrypt the data after it is retrieved from S3.
@@ -111,44 +113,17 @@ class GetEncryptedObjectPipeline:
         if encryption_context is None:
             encryption_context = {}
 
-        iv_b64 = metadata.content_iv
-        edk_b64 = metadata.encrypted_data_key_v2
-
-        # TODO: probably move this to ObjectMetadata
-        iv_bytes = base64.b64decode(iv_b64)
-
-        # Create a list of encrypted data keys to try
-        encrypted_data_keys = []
-        # Create an instance of EncryptedDataKey
-        if edk_b64:
-            edk_bytes = base64.b64decode(edk_b64)
-            encrypted_data_key = EncryptedDataKey(
-                key_provider_id=b"S3Keyring",
-                key_provider_info=metadata.encrypted_data_key_algorithm,
-                encrypted_data_key=edk_bytes,
+        # Determine which format we're dealing with and get decryption materials
+        if metadata.is_v1_format():
+            dec_materials = self._decrypt_v1(metadata, encryption_context)
+        elif metadata.is_v2_format():
+            dec_materials = self._decrypt_v2(metadata, encryption_context)
+        elif metadata.is_v3_format():
+            dec_materials = self._decrypt_v3(metadata, encryption_context)
+        else:
+            raise S3EncryptionClientError(
+                "Unable to determine S3 Encryption Client message format."
             )
-            encrypted_data_keys.append(encrypted_data_key)
-
-        # Also check for legacy encrypted data key (v1) if available
-        if metadata.encrypted_data_key_v1:
-            legacy_edk_bytes = base64.b64decode(metadata.encrypted_data_key_v1)
-            legacy_encrypted_data_key = EncryptedDataKey(
-                key_provider_id=b"S3Keyring",
-                key_provider_info=metadata.encrypted_data_key_algorithm,
-                encrypted_data_key=legacy_edk_bytes,
-            )
-            encrypted_data_keys.append(legacy_encrypted_data_key)
-
-        # Create a DecryptionMaterials instance
-        dec_materials = DecryptionMaterials(
-            iv=iv_bytes,
-            encrypted_data_keys=encrypted_data_keys,
-            encryption_context_stored=metadata.encrypted_data_key_context or {},
-            encryption_context_from_request=encryption_context or {},
-        )
-
-        # Get decryption materials from the crypto materials manager
-        dec_materials = self.cmm.decrypt_materials(dec_materials)
 
         ##= specification/s3-encryption/decryption.md#cbc-decryption
         ##= type=TODO
@@ -157,6 +132,51 @@ class GetEncryptedObjectPipeline:
         ##% the S3EC MUST throw an error which details that client was
         ##% not configured to decrypt objects with ALG_AES_256_CBC_IV16_NO_KDF.
 
+        # Perform decryption
         aesgcm = AESGCM(dec_materials.plaintext_data_key)
+        return aesgcm.decrypt(nonce=dec_materials.iv, data=encrypted_data, associated_data=None)
 
-        return aesgcm.decrypt(nonce=iv_bytes, data=encrypted_data, associated_data=None)
+    def _decrypt_v2(self, metadata, encryption_context) -> DecryptionMaterials:
+        """Prepare V2 decryption materials."""
+        iv_bytes = base64.b64decode(metadata.content_iv)
+        edk_bytes = base64.b64decode(metadata.encrypted_data_key_v2)
+
+        encrypted_data_key = EncryptedDataKey(
+            key_provider_id=b"S3Keyring",
+            key_provider_info=metadata.encrypted_data_key_algorithm,
+            encrypted_data_key=edk_bytes,
+        )
+
+        dec_materials = DecryptionMaterials(
+            iv=iv_bytes,
+            encrypted_data_keys=[encrypted_data_key],
+            encryption_context_stored=metadata.encrypted_data_key_context or {},
+            encryption_context_from_request=encryption_context,
+        )
+
+        return self.cmm.decrypt_materials(dec_materials)
+
+    def _decrypt_v1(self, metadata, encryption_context) -> DecryptionMaterials:
+        """Prepare V1 decryption materials."""
+        iv_bytes = base64.b64decode(metadata.content_iv)
+        edk_bytes = base64.b64decode(metadata.encrypted_data_key_v1)
+
+        encrypted_data_key = EncryptedDataKey(
+            key_provider_id=b"S3Keyring",
+            key_provider_info=metadata.encrypted_data_key_algorithm,
+            encrypted_data_key=edk_bytes,
+        )
+
+        dec_materials = DecryptionMaterials(
+            iv=iv_bytes,
+            encrypted_data_keys=[encrypted_data_key],
+            encryption_context_stored=metadata.encrypted_data_key_context or {},
+            encryption_context_from_request=encryption_context,
+        )
+
+        return self.cmm.decrypt_materials(dec_materials)
+
+    def _decrypt_v3(self, metadata, encryption_context) -> DecryptionMaterials:
+        """Prepare V3 decryption materials."""
+        # TODO: Implement V3 decryption
+        raise NotImplementedError("V3 decryption not yet implemented")

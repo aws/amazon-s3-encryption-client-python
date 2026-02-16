@@ -221,3 +221,34 @@ class ObjectMetadata:
 
         exclusive_key_count = sum([has_v1_key, has_v2_key, has_v3_key])
         return exclusive_key_count > 1
+
+    def is_v3_in_object_metadata(self) -> bool:
+        """Check if V3 content keys are in object metadata (without encrypted data key).
+
+        Returns:
+            bool: True if V3 content keys present but no encrypted data key
+        """
+        return (
+            self.content_cipher_v3 is not None
+            and self.key_commitment_v3 is not None
+            and self.message_id_v3 is not None
+            and self.encrypted_data_key_v3 is None
+        )
+
+    def should_use_instruction_file(self) -> bool:
+        """Check if instruction file should be used for decryption.
+
+        Returns:
+            bool: True if instruction file should be fetched
+        """
+        # V3 with content keys but no encrypted data key -> instruction file
+        if self.is_v3_in_object_metadata():
+            return True
+
+        # No version keys at all -> try instruction file for V1/V2
+        has_any_key = (
+            self.encrypted_data_key_v1 is not None
+            or self.encrypted_data_key_v2 is not None
+            or self.encrypted_data_key_v3 is not None
+        )
+        return not has_any_key
