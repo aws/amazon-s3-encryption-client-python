@@ -119,14 +119,10 @@ class GetEncryptedObjectPipeline:
         # Check if we need to fetch instruction file
         if metadata.should_use_instruction_file():
             if self.s3_client is None:
-                raise S3EncryptionClientError(
-                    "S3 client required to fetch instruction file"
-                )
+                raise S3EncryptionClientError("S3 client required to fetch instruction file")
             if bucket is None or key is None:
-                raise S3EncryptionClientError(
-                    "Bucket and key required to fetch instruction file"
-                )
-            
+                raise S3EncryptionClientError("Bucket and key required to fetch instruction file")
+
             instruction_metadata = self._fetch_instruction_file(bucket, key)
             instruction_metadata.update(encryption_metadata)
             metadata = ObjectMetadata.from_dict(instruction_metadata)

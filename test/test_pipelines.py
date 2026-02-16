@@ -5,7 +5,7 @@ import json
 import os
 import sys
 from io import BytesIO
-from unittest.mock import MagicMock, Mock
+from unittest.mock import Mock
 
 import pytest
 
@@ -54,7 +54,9 @@ class TestGetEncryptedObjectPipelineInstructionFile:
         }
 
         # Mock the keyring to raise an error so we don't actually decrypt
-        mock_keyring.on_decrypt.side_effect = Exception("Keyring called - instruction file was fetched")
+        mock_keyring.on_decrypt.side_effect = Exception(
+            "Keyring called - instruction file was fetched"
+        )
 
         # Should fail when trying to decrypt (proving instruction file was fetched)
         with pytest.raises(Exception, match="Keyring called"):
@@ -102,7 +104,9 @@ class TestGetEncryptedObjectPipelineInstructionFile:
         }
 
         # Mock the keyring to raise an error so we don't actually decrypt
-        mock_keyring.on_decrypt.side_effect = Exception("Keyring called - instruction file was fetched")
+        mock_keyring.on_decrypt.side_effect = Exception(
+            "Keyring called - instruction file was fetched"
+        )
 
         # Should fail when trying to decrypt (proving instruction file was fetched)
         with pytest.raises(Exception, match="Keyring called"):
@@ -147,7 +151,7 @@ class TestGetEncryptedObjectPipelineInstructionFile:
         # Create mock response with encrypted data
         iv = os.urandom(12)
         encrypted_data = b"encrypted-test-data"
-        
+
         mock_response = {
             "Body": BytesIO(encrypted_data),
             "Metadata": object_metadata,
@@ -155,8 +159,9 @@ class TestGetEncryptedObjectPipelineInstructionFile:
 
         # Mock the keyring to return decryption materials
         from s3_encryption.materials.materials import DecryptionMaterials
+
         plaintext_data_key = os.urandom(32)
-        
+
         mock_dec_materials = DecryptionMaterials(
             iv=iv,
             encrypted_data_keys=[],
@@ -164,7 +169,7 @@ class TestGetEncryptedObjectPipelineInstructionFile:
             encryption_context_from_request={},
         )
         mock_dec_materials.plaintext_data_key = plaintext_data_key
-        
+
         mock_keyring.on_decrypt.return_value = mock_dec_materials
 
         # This should fail with NotImplementedError since V3 decryption isn't implemented yet
