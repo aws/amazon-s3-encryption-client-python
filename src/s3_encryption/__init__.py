@@ -114,12 +114,19 @@ class S3EncryptionClientPlugin:
         }
 
         # Create a pipeline and decrypt the data
-        pipeline = GetEncryptedObjectPipeline(self.config.cmm)
-        decrypted_data = pipeline.decrypt(response, encryption_context)
+        pipeline = GetEncryptedObjectPipeline(
+            self.config.cmm,
+            s3_client=getattr(self._context, "wrapped_s3_client", None))
+        decrypted_data = pipeline.decrypt(
+            response, encryption_context,
+            bucket=kwargs.get("Bucket", None), key=kwargs.get("Key", None)
+        )
 
-        # Replace body with decrypted data
+        # Create a new streaming body with the decrypted data
         stream = io.BytesIO(decrypted_data)
         streaming_body = StreamingBody(stream, len(decrypted_data))
+
+        # Replace body with decrypted data
         parsed["Body"] = streaming_body
 
 
@@ -207,6 +214,8 @@ class S3EncryptionClient:
 
         # Store encryption context in thread-local storage for the event handler
         self._plugin._context.encryption_context = encryption_context
+        # Store wrapped client in thread-local storage for the event handler to fetch instruction files
+        self._plugin._context.wrapped_s3_client = self.wrapped_s3_client
 
         try:
             return self.wrapped_s3_client.get_object(**kwargs)
