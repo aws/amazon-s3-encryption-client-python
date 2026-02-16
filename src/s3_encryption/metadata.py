@@ -47,7 +47,7 @@ class ObjectMetadata:
     content_cipher_tag_length: str | None = field(default="128")
     # Marker for instruction files
     instruction_file: str | None = field(default=None)
-    
+
     # V3 format fields (compressed)
     content_cipher_v3: str | None = field(default=None)
     encrypted_data_key_v3: str | None = field(default=None)
@@ -66,7 +66,7 @@ class ObjectMetadata:
     CONTENT_CIPHER = "x-amz-cek-alg"
     CONTENT_CIPHER_TAG_LENGTH = "x-amz-tag-len"
     INSTRUCTION_FILE = "x-amz-crypto-instr-file"
-    
+
     # V3 format constants (compressed)
     CONTENT_CIPHER_V3 = "x-amz-c"
     ENCRYPTED_DATA_KEY_V3 = "x-amz-3"
@@ -218,6 +218,6 @@ class ObjectMetadata:
         has_v1_key = self.encrypted_data_key_v1 is not None
         has_v2_key = self.encrypted_data_key_v2 is not None
         has_v3_key = self.encrypted_data_key_v3 is not None
-        
+
         exclusive_key_count = sum([has_v1_key, has_v2_key, has_v3_key])
         return exclusive_key_count > 1
