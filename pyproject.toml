@@ -55,4 +55,3 @@ known-first-party = ["s3_encryption"]
 
 [tool.ruff.lint.per-file-ignores]
 "test/**/*.py" = ["D100", "D101", "D102", "D103", "D104", "E501"]
-"src/**/*.py" = ["E501"]
