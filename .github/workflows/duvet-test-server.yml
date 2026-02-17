@@ -54,14 +54,9 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Clone duvet repository  
-        run: git clone https://github.com/awslabs/duvet.git /tmp/duvet
-
       - name: Build and install duvet
         run: |
-          cd /tmp/duvet
-          cargo xtask build
-          cargo install --path ./duvet
+          cargo install duvet --locked
 
       - name: Run duvet
         if: always()
