@@ -39,9 +39,9 @@ class PutEncryptedObjectPipeline:
             bytes: The encrypted data
             dict: Metadata about the encryption to be stored with the object
         """
-        # Create encryption materials request with encryption context
+        # Create encryption materials request with encryption context copy
         enc_mats_request = EncryptionMaterials(
-            encryption_context={} if encryption_context is None else encryption_context
+            encryption_context={} if encryption_context is None else encryption_context.copy()
         )
 
         # Get encryption materials from the crypto materials manager
@@ -102,6 +102,7 @@ class GetEncryptedObjectPipeline:
             bytes: The decrypted data
         """
         # Convert the metadata dictionary to an ObjectMetadata instance
+        # TODO: Stream + Buffered Decryption
         encrypted_data = response.get("Body").read()
         encryption_metadata = response.get("Metadata", {})
         metadata = ObjectMetadata.from_dict(encryption_metadata)

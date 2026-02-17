@@ -46,7 +46,6 @@ class KmsKeyring(S3Keyring):
             # Call parent class validation
             enc_materials = super().on_encrypt(enc_materials)
 
-            # Add default encryption context
             encryption_context = enc_materials.encryption_context
             encryption_context["aws:x-amz-cek-alg"] = "AES/GCM/NoPadding"
 
@@ -111,6 +110,7 @@ class KmsKeyring(S3Keyring):
                         encryption_context_stored_copy = encryption_context_stored.copy()
                         encryption_context_stored_copy.pop(KMS_V1_DEFAULT_KEY, None)
                         encryption_context_stored_copy.pop(KMS_CONTEXT_DEFAULT_KEY, None)
+
                         if encryption_context_stored_copy != encryption_context_from_request:
                             # TODO: modeled error
                             raise S3EncryptionClientError(

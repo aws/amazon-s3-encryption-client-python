@@ -1,7 +1,7 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from src.s3_encryption.materials.crypto_materials_manager import DefaultCryptoMaterialsManager
 from src.s3_encryption.materials.encrypted_data_key import EncryptedDataKey
@@ -30,17 +30,15 @@ class TestDecryptionMaterialsIntegration:
             encryption_context_from_request={"key2": "value2"},
         )
 
-        # Mock the validation method to return the materials
-        with patch.object(S3Keyring, "on_decrypt", return_value=materials) as mock_on_decrypt:
-            # Call on_decrypt
-            result = keyring.on_decrypt(materials, [edk])
+        # Call on_decrypt
+        result = keyring.on_decrypt(materials, [edk])
 
-            # Verify the result is a DecryptionMaterials instance
-            assert isinstance(result, DecryptionMaterials)
-            assert result.iv == b"initialization-vector"
-            assert result.encrypted_data_keys == [edk]
-            assert result.encryption_context_stored == {"key1": "value1"}
-            assert result.encryption_context_from_request == {"key2": "value2"}
+        # Verify the result is a DecryptionMaterials instance
+        assert isinstance(result, DecryptionMaterials)
+        assert result.iv == b"initialization-vector"
+        assert result.encrypted_data_keys == [edk]
+        assert result.encryption_context_stored == {"key1": "value1"}
+        assert result.encryption_context_from_request == {"key2": "value2"}
 
     def test_keyring_on_decrypt_default_enc_ctx(self):
         """Test that S3Keyring.on_decrypt properly handles DecryptionMaterials."""
@@ -63,16 +61,15 @@ class TestDecryptionMaterialsIntegration:
         )
 
         # Mock the validation method to return the materials
-        with patch.object(S3Keyring, "on_decrypt", return_value=materials) as mock_on_decrypt:
-            # Call on_decrypt
-            result = keyring.on_decrypt(materials, [edk])
+        # Call on_decrypt
+        result = keyring.on_decrypt(materials, [edk])
 
-            # Verify the result is a DecryptionMaterials instance
-            assert isinstance(result, DecryptionMaterials)
-            assert result.iv == b"initialization-vector"
-            assert result.encrypted_data_keys == [edk]
-            assert result.encryption_context_stored == {}
-            assert result.encryption_context_from_request == {}
+        # Verify the result is a DecryptionMaterials instance
+        assert isinstance(result, DecryptionMaterials)
+        assert result.iv == b"initialization-vector"
+        assert result.encrypted_data_keys == [edk]
+        assert result.encryption_context_stored == {}
+        assert result.encryption_context_from_request == {}
 
     def test_cmm_decrypt_materials_with_dict(self):
         """Test that DefaultCryptoMaterialsManager.decrypt_materials properly handles dictionary input."""

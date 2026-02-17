@@ -43,6 +43,7 @@ exclude = [".git", "__pycache__", "build", "dist"]
 [tool.ruff.lint]
 # Enable all rules by default, then configure specific rule settings below
 select = ["E", "F", "W", "I", "N", "D", "UP", "B", "A", "C4", "PT", "RET", "SIM", "ARG", "ERA"]
+ignore = ["ARG002"]  # Allow unused method arguments (e.g., **kwargs for API compatibility)
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
