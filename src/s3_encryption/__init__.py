@@ -179,7 +179,7 @@ class S3EncryptionClient:
             # Re-raise our own exceptions without wrapping
             raise
         except Exception as e:
-            raise S3EncryptionClientError(f"Failed to encryption object: {str(e)}") from e
+            raise S3EncryptionClientError(f"Failed to encrypt object: {str(e)}") from e
         finally:
             # Clean up thread-local storage
             if hasattr(self._plugin._context, "encryption_context"):
