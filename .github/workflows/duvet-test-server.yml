@@ -15,9 +15,31 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
-        with:
-          submodules: true
-          token: ${{ secrets.PAT_FOR_SPEC }}
+
+      # There are a lot of submodules here
+      # This initializes the checkouts in parallel (--jobs)
+      # rather than in series the way actions/checkout@v5 does it.
+
+      - name: Get CPU count
+        id: cpu-count
+        run: echo "count=$(node -p 'require("os").cpus().length')" >> $GITHUB_OUTPUT
+
+      - name: Setup git submodules with PAT
+        run: |
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git config --global credential.helper store
+          echo "https://x-token-auth:${{ secrets.PAT_FOR_SPEC }}@github.com" > ~/.git-credentials
+
+      - name: Optimize git for performance
+        run: |
+          git config --global fetch.parallel ${{ steps.cpu-count.outputs.count }}
+          git config --global submodule.fetchJobs ${{ steps.cpu-count.outputs.count }}
+          git config --global remote.origin.tagOpt --no-tags
+
+      - name: Checkout submodules with --jobs
+        run: |
+          git submodule update --init --depth 1 --single-branch --jobs ${{ steps.cpu-count.outputs.count }} test-server/
+        
       
       - name: Checkout CPP code cpp-v3
         uses: actions/checkout@v5
@@ -32,14 +54,9 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Clone duvet repository  
-        run: git clone https://github.com/awslabs/duvet.git /tmp/duvet
-
       - name: Build and install duvet
         run: |
-          cd /tmp/duvet
-          cargo xtask build
-          cargo install --path ./duvet
+          cargo install duvet --locked
 
       - name: Run duvet
         if: always()
@@ -49,7 +66,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: reports
+          name: test-server-reports
           include-hidden-files: true
           path: test-server/*-server/.duvet/reports/report.html
 

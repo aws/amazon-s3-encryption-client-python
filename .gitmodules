@@ -46,3 +46,7 @@
 	path = test-server/cpp-v3-server/aws-sdk-cpp
 	url = git@github.com:aws/aws-sdk-cpp.git
 	branch = main
+[submodule "specification"]
+	path = specification
+	url = https://github.com/awslabs/aws-encryption-sdk-specification.git
+	branch = tonyknap/s3ec-v3.0.1-candidate

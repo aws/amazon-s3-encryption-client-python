@@ -46,7 +46,7 @@ jobs:
 
       - name: Checkout submodules with --jobs
         run: |
-          git submodule update --init --depth 1 --single-branch --jobs ${{ steps.cpu-count.outputs.count }}
+          git submodule update --init --depth 1 --single-branch --jobs ${{ steps.cpu-count.outputs.count }} test-server/
 
       - name: Update cpp submodules recursively with --jobs
         run: |

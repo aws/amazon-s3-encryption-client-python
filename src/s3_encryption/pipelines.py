@@ -150,6 +150,13 @@ class GetEncryptedObjectPipeline:
         # Get decryption materials from the crypto materials manager
         dec_materials = self.cmm.decrypt_materials(dec_materials)
 
+        ##= specification/s3-encryption/decryption.md#cbc-decryption
+        ##= type=TODO
+        ##% If an object is encrypted with ALG_AES_256_CBC_IV16_NO_KDF and
+        ##% [legacy unauthenticated algorithm suites](#legacy-decryption) is NOT enabled,
+        ##% the S3EC MUST throw an error which details that client was
+        ##% not configured to decrypt objects with ALG_AES_256_CBC_IV16_NO_KDF.
+
         aesgcm = AESGCM(dec_materials.plaintext_data_key)
 
         return aesgcm.decrypt(nonce=iv_bytes, data=encrypted_data, associated_data=None)
