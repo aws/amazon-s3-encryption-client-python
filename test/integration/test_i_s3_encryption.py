@@ -6,7 +6,7 @@ from datetime import datetime
 import boto3
 import pytest
 
-from s3_encryption import S3EncryptionClient, S3EncryptionClientConfig, InstructionFileSetting
+from s3_encryption import InstructionFileSetting, S3EncryptionClient, S3EncryptionClientConfig
 from s3_encryption.exceptions import S3EncryptionClientError
 from s3_encryption.materials.kms_keyring import KmsKeyring
 
@@ -58,7 +58,9 @@ def test_empty_string_roundtrip():
 
     wrapped_client = boto3.client("s3")
     config = S3EncryptionClientConfig(keyring)
-    s3ec = S3EncryptionClient(wrapped_client, config, instruction_file_setting=InstructionFileSetting.DISABLE)
+    s3ec = S3EncryptionClient(
+        wrapped_client, config, instruction_file_setting=InstructionFileSetting.DISABLE
+    )
     s3ec.put_object(Bucket=bucket, Key=key, Body=data)
     get_req = {"Bucket": bucket, "Key": key}
     response = s3ec.get_object(**get_req)
@@ -86,7 +88,9 @@ def test_no_body_roundtrip():
 
     wrapped_client = boto3.client("s3")
     config = S3EncryptionClientConfig(keyring)
-    s3ec = S3EncryptionClient(wrapped_client, config, instruction_file_setting=InstructionFileSetting.DISABLE)
+    s3ec = S3EncryptionClient(
+        wrapped_client, config, instruction_file_setting=InstructionFileSetting.DISABLE
+    )
 
     # Call put_object without providing a Body parameter
     s3ec.put_object(Bucket=bucket, Key=key)
@@ -120,7 +124,9 @@ def test_unicode_string_roundtrip():
 
     wrapped_client = boto3.client("s3")
     config = S3EncryptionClientConfig(keyring)
-    s3ec = S3EncryptionClient(wrapped_client, config, instruction_file_setting=InstructionFileSetting.DISABLE)
+    s3ec = S3EncryptionClient(
+        wrapped_client, config, instruction_file_setting=InstructionFileSetting.DISABLE
+    )
     s3ec.put_object(Bucket=bucket, Key=key, Body=data)
     get_req = {"Bucket": bucket, "Key": key}
     response = s3ec.get_object(**get_req)
@@ -155,7 +161,9 @@ def test_specific_encoding_utf8_roundtrip():
 
     wrapped_client = boto3.client("s3")
     config = S3EncryptionClientConfig(keyring)
-    s3ec = S3EncryptionClient(wrapped_client, config, instruction_file_setting=InstructionFileSetting.DISABLE)
+    s3ec = S3EncryptionClient(
+        wrapped_client, config, instruction_file_setting=InstructionFileSetting.DISABLE
+    )
 
     # Pass the pre-encoded bytes to put_object
     s3ec.put_object(Bucket=bucket, Key=key, Body=encoded_data)
@@ -192,7 +200,9 @@ def test_specific_encoding_latin1_roundtrip():
 
     wrapped_client = boto3.client("s3")
     config = S3EncryptionClientConfig(keyring)
-    s3ec = S3EncryptionClient(wrapped_client, config, instruction_file_setting=InstructionFileSetting.DISABLE)
+    s3ec = S3EncryptionClient(
+        wrapped_client, config, instruction_file_setting=InstructionFileSetting.DISABLE
+    )
 
     # Pass the pre-encoded bytes to put_object
     s3ec.put_object(Bucket=bucket, Key=key, Body=encoded_data)
@@ -226,7 +236,9 @@ def test_binary_data_roundtrip():
 
     wrapped_client = boto3.client("s3")
     config = S3EncryptionClientConfig(keyring)
-    s3ec = S3EncryptionClient(wrapped_client, config, instruction_file_setting=InstructionFileSetting.DISABLE)
+    s3ec = S3EncryptionClient(
+        wrapped_client, config, instruction_file_setting=InstructionFileSetting.DISABLE
+    )
 
     # Pass the binary data directly
     s3ec.put_object(Bucket=bucket, Key=key, Body=data)
@@ -256,7 +268,9 @@ def test_invalid_body_types():
     keyring = KmsKeyring(kms_client, kms_key_id)
     wrapped_client = boto3.client("s3")
     config = S3EncryptionClientConfig(keyring)
-    s3ec = S3EncryptionClient(wrapped_client, config, instruction_file_setting=InstructionFileSetting.DISABLE)
+    s3ec = S3EncryptionClient(
+        wrapped_client, config, instruction_file_setting=InstructionFileSetting.DISABLE
+    )
 
     # Test with integer
     with pytest.raises(S3EncryptionClientError) as excinfo:
@@ -309,7 +323,9 @@ def test_user_metadata_preservation():
     keyring = KmsKeyring(kms_client, kms_key_id)
     wrapped_client = boto3.client("s3")
     config = S3EncryptionClientConfig(keyring)
-    s3ec = S3EncryptionClient(wrapped_client, config, instruction_file_setting=InstructionFileSetting.DISABLE)
+    s3ec = S3EncryptionClient(
+        wrapped_client, config, instruction_file_setting=InstructionFileSetting.DISABLE
+    )
 
     # Put object with user metadata
     s3ec.put_object(Bucket=bucket, Key=key, Body=data, Metadata=user_metadata)
@@ -369,7 +385,9 @@ def test_encryption_context_roundtrip():
     keyring = KmsKeyring(kms_client, kms_key_id)
     wrapped_client = boto3.client("s3")
     config = S3EncryptionClientConfig(keyring)
-    s3ec = S3EncryptionClient(wrapped_client, config, instruction_file_setting=InstructionFileSetting.DISABLE)
+    s3ec = S3EncryptionClient(
+        wrapped_client, config, instruction_file_setting=InstructionFileSetting.DISABLE
+    )
 
     # Put object with encryption context
     s3ec.put_object(Bucket=bucket, Key=key, Body=data, EncryptionContext=encryption_context)
@@ -409,7 +427,9 @@ def test_encryption_context_mismatch():
     keyring = KmsKeyring(kms_client, kms_key_id)
     wrapped_client = boto3.client("s3")
     config = S3EncryptionClientConfig(keyring)
-    s3ec = S3EncryptionClient(wrapped_client, config, instruction_file_setting=InstructionFileSetting.DISABLE)
+    s3ec = S3EncryptionClient(
+        wrapped_client, config, instruction_file_setting=InstructionFileSetting.DISABLE
+    )
 
     # Put object with encryption context
     s3ec.put_object(Bucket=bucket, Key=key, Body=data, EncryptionContext=encryption_context)
@@ -449,7 +469,9 @@ def test_encryption_context_missing_on_decrypt():
     keyring = KmsKeyring(kms_client, kms_key_id)
     wrapped_client = boto3.client("s3")
     config = S3EncryptionClientConfig(keyring)
-    s3ec = S3EncryptionClient(wrapped_client, config, instruction_file_setting=InstructionFileSetting.DISABLE)
+    s3ec = S3EncryptionClient(
+        wrapped_client, config, instruction_file_setting=InstructionFileSetting.DISABLE
+    )
 
     # Put object with encryption context
     s3ec.put_object(Bucket=bucket, Key=key, Body=data, EncryptionContext=encryption_context)

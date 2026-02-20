@@ -5,7 +5,7 @@ import os
 import boto3
 import pytest
 
-from s3_encryption import S3EncryptionClient, S3EncryptionClientConfig, InstructionFileSetting
+from s3_encryption import InstructionFileSetting, S3EncryptionClient, S3EncryptionClientConfig
 from s3_encryption.materials.kms_keyring import KmsKeyring
 
 # TODO(instructionFiles): Create a Static Bucket for Instruction File Messages
@@ -67,6 +67,7 @@ def test_decrypt_v2_instruction_file():
     assert output == "Testing encryption of instruction file with KMS Keyring"
     print("Success! V2 instruction file decryption completed.")
 
+
 def test_decrypt_instruction_file_disable_fails():
     """Test that decryption fails when instruction_file_setting is DISABLE."""
     key = TEST_OBJECTS["v2_instruction_file"]
@@ -75,11 +76,12 @@ def test_decrypt_instruction_file_disable_fails():
     keyring = KmsKeyring(kms_client, kms_key_id)
     wrapped_client = boto3.client("s3")
     instruction_file_client = boto3.client("s3")
-    config = S3EncryptionClientConfig(
-        keyring
-    )
+    config = S3EncryptionClientConfig(keyring)
 
     with pytest.raises(ValueError):
         s3ec = S3EncryptionClient(
-            wrapped_client, config, instruction_file_setting=InstructionFileSetting.DISABLE, instruction_file_client=instruction_file_client
+            wrapped_client,
+            config,
+            instruction_file_setting=InstructionFileSetting.DISABLE,
+            instruction_file_client=instruction_file_client,
         )
