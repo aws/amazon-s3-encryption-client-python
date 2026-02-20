@@ -92,7 +92,7 @@ class GetEncryptedObjectPipeline:
     """
 
     cmm: AbstractCryptoMaterialsManager = field()
-    s3_client: object = field(default=None)
+    instruction_file_client: object = field(default=None)
 
     def decrypt(self, response, encryption_context=None, bucket=None, key=None):
         """Decrypt the data after it is retrieved from S3.
@@ -117,9 +117,13 @@ class GetEncryptedObjectPipeline:
             encryption_context = {}
 
         # Check if we need to fetch instruction file
+        # TODO(instructionFile): Refactor Instruction File Support to use config
         if metadata.should_use_instruction_file():
-            if self.s3_client is None:
-                raise S3EncryptionClientError("S3 client required to fetch instruction file")
+            if self.instruction_file_client is None:
+                raise S3EncryptionClientError(
+                    "instruction_file_client argument required to use instruction file;"
+                    " pass unique S3 Client as instruction_file_client."
+                )
             if bucket is None or key is None:
                 raise S3EncryptionClientError("Bucket and key required to fetch instruction file")
 
@@ -162,7 +166,7 @@ class GetEncryptedObjectPipeline:
             dict: Parsed JSON metadata from instruction file
         """
         instruction_key = key + suffix
-        response = self.s3_client.get_object(Bucket=bucket, Key=instruction_key)
+        response = self.instruction_file_client.get_object(Bucket=bucket, Key=instruction_key)
         instruction_data = response["Body"].read()
         return json.loads(instruction_data)
 

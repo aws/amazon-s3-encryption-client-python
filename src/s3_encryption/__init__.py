@@ -115,13 +115,15 @@ class S3EncryptionClientPlugin:
 
         # Create a pipeline and decrypt the data
         pipeline = GetEncryptedObjectPipeline(
-            self.config.cmm, s3_client=getattr(self._context, "wrapped_s3_client", None)
+            self.config.cmm,
+            # TODO(instructionFile): Refactor Instruction File Support to use config
+            instruction_file_client=getattr(self._context, "instruction_file_client", None),
         )
         decrypted_data = pipeline.decrypt(
             response,
             encryption_context,
-            bucket=kwargs.get("Bucket"),
-            key=kwargs.get("Key"),
+            bucket=getattr(self._context, "bucket", None),
+            key=getattr(self._context, "key", None),
         )
 
         # Create a new streaming body with the decrypted data
@@ -146,6 +148,8 @@ class S3EncryptionClient:
     wrapped_s3_client = field()
     config: S3EncryptionClientConfig = field()
     _plugin: S3EncryptionClientPlugin = field(init=False)
+    # TODO(instructionFile): Refactor Instruction File Support to use config
+    instruction_file_client = field(default=None)
 
     def __attrs_post_init__(self):
         """Install the encryption plugin on the wrapped client using boto3 events."""
@@ -218,7 +222,10 @@ class S3EncryptionClient:
         self._plugin._context.encryption_context = encryption_context
         # Store wrapped client in thread-local storage for
         # the event handler to fetch instruction files
-        self._plugin._context.wrapped_s3_client = self.wrapped_s3_client
+        # TODO(instructionFile): Refactor Instruction File Support to use config
+        self._plugin._context.instruction_file_client = self.instruction_file_client
+        self._plugin._context.bucket = kwargs.get("Bucket")
+        self._plugin._context.key = kwargs.get("Key")
 
         try:
             return self.wrapped_s3_client.get_object(**kwargs)
@@ -229,6 +236,9 @@ class S3EncryptionClient:
             # Wrap any unexpected errors during decryption
             raise S3EncryptionClientError(f"Failed to decrypt object: {str(e)}") from e
         finally:
-            # Clean up thread-local storage
-            if hasattr(self._plugin._context, "encryption_context"):
-                delattr(self._plugin._context, "encryption_context")
+            # Clean up thread-local storage;
+            # do not clean up the client as it is not thread local only
+            attrs = ["encryption_context", "Bucket", "Key"]
+            for attr in attrs:
+                if hasattr(self._plugin._context, attr):
+                    delattr(self._plugin._context, attr)
