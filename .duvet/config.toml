@@ -8,6 +8,10 @@ comment-style = { meta = "##=", content = "##%" }
 pattern = "test/**/*.py"
 type = "test"
 comment-style = { meta = "##=", content = "##%" }
+[[source]]
+pattern = "compliance_exceptions/**/*.md"
+type = "exception"
+comment-style = { meta = "##=", content = "##%" }
 
 # Include required specifications here
 [[specification]]
