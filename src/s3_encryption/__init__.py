@@ -17,6 +17,7 @@ from .materials.keyring import AbstractKeyring
 from .pipelines import GetEncryptedObjectPipeline, PutEncryptedObjectPipeline
 
 S3_METADATA_PREFIX = "x-amz-meta-"
+S3EC_INTERNAL_PLAINTEXT_MODE = "s3ec_internal_plaintext_mode"
 
 
 @define
@@ -56,6 +57,8 @@ class S3EncryptionClientPlugin:
             params: Dictionary of parameters for the PutObject call (after serialization)
             **kwargs: Additional event arguments
         """
+        # TODO(instructionFile): ensure if S3EC_INTERNAL_PLAINTEXT_MODE error is thrown.
+        
         # At this point, boto3 has already serialized the Body
         # Extract the serialized body from the request
         body = params.get("body")
@@ -101,6 +104,11 @@ class S3EncryptionClientPlugin:
             parsed: Dictionary containing the parsed response
             **kwargs: Additional event arguments (includes 'params' with request parameters)
         """
+        # Check if plaintext mode is enabled
+        if S3EC_INTERNAL_PLAINTEXT_MODE in kwargs:
+            # Skip decryption in plaintext mode
+            return
+
         # Get encryption context from thread-local storage (set by get_object wrapper)
         encryption_context = getattr(self._context, "encryption_context", None)
 
@@ -116,7 +124,7 @@ class S3EncryptionClientPlugin:
         # Create a pipeline and decrypt the data
         pipeline = GetEncryptedObjectPipeline(
             self.config.cmm,
-            # TODO(instructionFile): Refactor Instruction File Support to use config
+            # TODO(instructionFile): Refactor Instruction File Support to use plaintext_mode
             instruction_file_client=getattr(self._context, "instruction_file_client", None),
         )
         decrypted_data = pipeline.decrypt(
@@ -148,7 +156,7 @@ class S3EncryptionClient:
     wrapped_s3_client = field()
     config: S3EncryptionClientConfig = field()
     _plugin: S3EncryptionClientPlugin = field(init=False)
-    # TODO(instructionFile): Refactor Instruction File Support to use config
+    # TODO(instructionFile): Refactor Instruction File Support to use plaintext_mode
     instruction_file_client = field(default=None)
 
     def __attrs_post_init__(self):
@@ -222,7 +230,7 @@ class S3EncryptionClient:
         self._plugin._context.encryption_context = encryption_context
         # Store wrapped client in thread-local storage for
         # the event handler to fetch instruction files
-        # TODO(instructionFile): Refactor Instruction File Support to use config
+        # TODO(instructionFile): Refactor Instruction File Support to use plaintext_mode
         self._plugin._context.instruction_file_client = self.instruction_file_client
         self._plugin._context.bucket = kwargs.get("Bucket")
         self._plugin._context.key = kwargs.get("Key")

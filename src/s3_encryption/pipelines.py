@@ -117,7 +117,7 @@ class GetEncryptedObjectPipeline:
             encryption_context = {}
 
         # Check if we need to fetch instruction file
-        # TODO(instructionFile): Refactor Instruction File Support to use config
+        # TODO(instructionFile): Refactor Instruction File Support to use plaintext_mode
         if metadata.should_use_instruction_file():
             if self.instruction_file_client is None:
                 raise S3EncryptionClientError(
