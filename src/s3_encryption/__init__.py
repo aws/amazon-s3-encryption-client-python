@@ -58,7 +58,7 @@ class S3EncryptionClientPlugin:
             **kwargs: Additional event arguments
         """
         # TODO(instructionFile): ensure if S3EC_INTERNAL_PLAINTEXT_MODE error is thrown.
-        
+
         # At this point, boto3 has already serialized the Body
         # Extract the serialized body from the request
         body = params.get("body")
