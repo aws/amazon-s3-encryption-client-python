@@ -16,7 +16,8 @@ from .materials import DecryptionMaterials, EncryptionMaterials
 
 ##= specification/s3-encryption/materials/keyrings.md#interface
 ##= type=implication
-##% The Keyring interface and its operations SHOULD adhere to the naming conventions of the implementation language.
+##% The Keyring interface and its operations SHOULD adhere to the naming conventions of the
+##% implementation language.
 ##= specification/s3-encryption/materials/keyrings.md#supported-keyrings
 ##= type=implication
 ##% Note: A user MAY create their own custom keyring(s).
@@ -48,7 +49,8 @@ class AbstractKeyring(abc.ABC):
     ##= specification/s3-encryption/materials/keyrings.md#interface
     ##= type=implication
     ##% The Keyring interface MUST include the OnDecrypt operation.
-    ##% The OnDecrypt operation MUST accept an instance of DecryptionMaterials and a collection of EncryptedDataKey instances as input.
+    ##% The OnDecrypt operation MUST accept an instance of DecryptionMaterials and a collection
+    ##% of EncryptedDataKey instances as input.
     ##% The OnDecrypt operation MUST return an instance of DecryptionMaterials as output.
     @abc.abstractmethod
     def on_decrypt(self, dec_materials, encrypted_data_keys=None) -> "DecryptionMaterials":
@@ -68,7 +70,8 @@ class AbstractKeyring(abc.ABC):
 
 ##= specification/s3-encryption/materials/s3-keyring.md#overview
 ##= type=implication
-##% The S3EC SHOULD implement an S3 Keyring to consolidate validation and other functionality common to all S3 Keyrings.
+##% The S3EC SHOULD implement an S3 Keyring to consolidate validation and other functionality
+##% common to all S3 Keyrings.
 ##% If implemented, the S3 Keyring MUST implement the Keyring interface.
 @define
 class S3Keyring(AbstractKeyring):
@@ -138,7 +141,8 @@ class S3Keyring(AbstractKeyring):
 
         ##= specification/s3-encryption/materials/s3-keyring.md#ondecrypt
         ##= type=implication
-        ##% If the input DecryptionMaterials contains a Plaintext Data Key, the S3 Keyring MUST throw an exception.
+        ##% If the input DecryptionMaterials contains a Plaintext Data Key, the S3 Keyring MUST
+        ##% throw an exception.
         if dec_materials.plaintext_data_key is not None:
             raise S3EncryptionClientError(
                 "Decryption materials already contains a plaintext data key."
@@ -146,7 +150,8 @@ class S3Keyring(AbstractKeyring):
 
         ##= specification/s3-encryption/materials/s3-keyring.md#ondecrypt
         ##= type=implication
-        ##% If the input collection of EncryptedDataKey instances contains any number of EDKs other than 1, the S3 Keyring MUST throw an exception.
+        ##% If the input collection of EncryptedDataKey instances contains any number of EDKs
+        ##% other than 1, the S3 Keyring MUST throw an exception.
         if len(edks) != 1:
             raise S3EncryptionClientError(
                 f"Only one encrypted data key is supported, found: {len(edks)}"
