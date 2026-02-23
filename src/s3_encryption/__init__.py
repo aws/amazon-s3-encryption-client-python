@@ -22,7 +22,8 @@ S3_METADATA_PREFIX = "x-amz-meta-"
 
 
 class InstructionFileSetting(Enum):
-    """Instruction file setting for the S3 Encryption Client.
+    """
+    Instruction file setting for the S3 Encryption Client.
 
     DISABLE: Do not use instruction files.
 
@@ -32,7 +33,6 @@ class InstructionFileSetting(Enum):
     """
 
     DISABLE = "disable"
-
 
 @define
 class S3EncryptionClientConfig:
@@ -163,24 +163,19 @@ class S3EncryptionClient:
     wrapped_s3_client = field()
     config: S3EncryptionClientConfig = field()
     # TODO(instructionFile): Refactor Instruction File Support to use config
-    instruction_file_setting: InstructionFileSetting | None = field(default=None)
-    instruction_file_client: Any | None = field(default=None)
+    instruction_file_setting: (InstructionFileSetting|None) = field(default=None)
+    instruction_file_client: (Any|None) = field(default=None)
     _plugin: S3EncryptionClientPlugin = field(init=False)
 
     @instruction_file_setting.validator
     def _validate_instruction_file_setting(self, attribute, value):
-        if not isinstance(value, InstructionFileSetting) and value is not None:
-            raise TypeError(
-                f"instruction_file_setting must be InstructionFileSetting or None, got {type(value)}"
-            )
+        if not isinstance(value, InstructionFileSetting) and not value is None:
+            raise TypeError(f"instruction_file_setting must be InstructionFileSetting or None, got {type(value)}")
         if value != InstructionFileSetting.DISABLE and not self.instruction_file_client:
-            raise ValueError(
-                "instruction_file_client required when instruction_file_setting is not DISABLE"
-            )
+            raise ValueError("instruction_file_client required when instruction_file_setting is not DISABLE")
         if value == InstructionFileSetting.DISABLE and self.instruction_file_client:
-            raise ValueError(
-                "instruction_file_client must be None when instruction_file_setting is DISABLE"
-            )
+            raise ValueError("instruction_file_client must be None when instruction_file_setting is DISABLE")
+
 
     def __attrs_post_init__(self):
         """Install the encryption plugin on the wrapped client using boto3 events."""
