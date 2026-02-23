@@ -39,18 +39,17 @@ class KmsKeyring(S3Keyring):
     ##= type=implication
     ##% If the caller does not provide an AWS KMS SDK client instance or provides a null value, the KmsKeyring MUST create a default KMS client instance.
     kms_client: client.BaseClient = field()
-    
+
     ##= specification/s3-encryption/materials/s3-kms-keyring.md#initialization
     ##= type=implementation
     ##% On initialization, the caller MUST provide an AWS KMS key identifier.
     kms_key_id: str = field()
-    
+
     ##= specification/s3-encryption/materials/s3-kms-keyring.md#supported-wrapping-algorithm-modes
     ##= type=implementation
     ##% The KmsV1 mode MUST be only enabled when legacy wrapping algorithms are enabled.
     enable_legacy_wrapping_algorithms: bool = field(default=False)
-    
-    
+
     def on_encrypt(self, enc_materials):
         """Process encryption materials using KMS.
 

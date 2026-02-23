@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for KMS keyring implementation."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -411,7 +411,7 @@ class TestKmsKeyringOnDecrypt:
     ##= specification/s3-encryption/materials/s3-kms-keyring.md#kmsv1
     ##= type=test
     ##% If the KmsKeyring fails to successfully decrypt the [encrypted data key](../structures.md#encrypted-data-key), then it MUST throw an exception.
-    def test_on_decrypt_fails_when_kms_fails(self):
+    def test_on_decrypt_fails_when_kms_v1_fails(self):
         """Test that on_decrypt fails when KMS call fails."""
         mock_kms_client = MagicMock()
         mock_kms_client.decrypt.side_effect = Exception("KMS decrypt error")

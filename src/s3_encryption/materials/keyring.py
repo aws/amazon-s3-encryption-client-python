@@ -14,7 +14,6 @@ from ..exceptions import S3EncryptionClientError
 from .materials import DecryptionMaterials, EncryptionMaterials
 
 
-
 ##= specification/s3-encryption/materials/keyrings.md#interface
 ##= type=implication
 ##% The Keyring interface and its operations SHOULD adhere to the naming conventions of the implementation language.
@@ -35,7 +34,7 @@ class AbstractKeyring(abc.ABC):
     ##% The OnEncrypt operation MUST accept an instance of EncryptionMaterials as input.
     ##% The OnEncrypt operation MUST return an instance of EncryptionMaterials as output.
     @abc.abstractmethod
-    def on_encrypt(self, enc_materials) -> 'EncryptionMaterials':
+    def on_encrypt(self, enc_materials) -> "EncryptionMaterials":
         """Process encryption materials.
 
         Args:
@@ -52,7 +51,7 @@ class AbstractKeyring(abc.ABC):
     ##% The OnDecrypt operation MUST accept an instance of DecryptionMaterials and a collection of EncryptedDataKey instances as input.
     ##% The OnDecrypt operation MUST return an instance of DecryptionMaterials as output.
     @abc.abstractmethod
-    def on_decrypt(self, dec_materials, encrypted_data_keys=None) -> 'DecryptionMaterials':
+    def on_decrypt(self, dec_materials, encrypted_data_keys=None) -> "DecryptionMaterials":
         """Decrypt one of the encrypted data keys and update dec_materials.
 
         Args:
@@ -141,13 +140,17 @@ class S3Keyring(AbstractKeyring):
         ##= type=implication
         ##% If the input DecryptionMaterials contains a Plaintext Data Key, the S3 Keyring MUST throw an exception.
         if dec_materials.plaintext_data_key is not None:
-            raise S3EncryptionClientError("Decryption materials already contains a plaintext data key.")
+            raise S3EncryptionClientError(
+                "Decryption materials already contains a plaintext data key."
+            )
 
         ##= specification/s3-encryption/materials/s3-keyring.md#ondecrypt
         ##= type=implication
         ##% If the input collection of EncryptedDataKey instances contains any number of EDKs other than 1, the S3 Keyring MUST throw an exception.
         if len(edks) != 1:
-            raise S3EncryptionClientError(f"Only one encrypted data key is supported, found: {len(edks)}")
+            raise S3EncryptionClientError(
+                f"Only one encrypted data key is supported, found: {len(edks)}"
+            )
 
         # Ensure encryption contexts are dictionaries
         if not isinstance(dec_materials.encryption_context_from_request, dict):
