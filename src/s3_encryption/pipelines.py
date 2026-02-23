@@ -7,13 +7,13 @@ and decrypting objects after they are retrieved from S3.
 """
 
 import base64
-import json
 import os
 
 from attrs import define, field
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from .exceptions import S3EncryptionClientError
+from .instruction_file import fetch_instruction_file
 from .materials.crypto_materials_manager import AbstractCryptoMaterialsManager
 from .materials.encrypted_data_key import EncryptedDataKey
 from .materials.materials import DecryptionMaterials, EncryptionMaterials
@@ -92,7 +92,7 @@ class GetEncryptedObjectPipeline:
     """
 
     cmm: AbstractCryptoMaterialsManager = field()
-    instruction_file_client: object = field(default=None)
+    s3_client: object = field(default=None)
 
     def decrypt(self, response, encryption_context=None, bucket=None, key=None):
         """Decrypt the data after it is retrieved from S3.
@@ -117,13 +117,9 @@ class GetEncryptedObjectPipeline:
             encryption_context = {}
 
         # Check if we need to fetch instruction file
-        # TODO(instructionFile): Refactor Instruction File Support to use plaintext_mode
         if metadata.should_use_instruction_file():
-            if self.instruction_file_client is None:
-                raise S3EncryptionClientError(
-                    "instruction_file_client argument required to use instruction file;"
-                    " pass unique S3 Client as instruction_file_client."
-                )
+            if self.s3_client is None:
+                raise S3EncryptionClientError("s3_client required to fetch instruction file")
             if bucket is None or key is None:
                 raise S3EncryptionClientError("Bucket and key required to fetch instruction file")
 
@@ -165,10 +161,7 @@ class GetEncryptedObjectPipeline:
         Returns:
             dict: Parsed JSON metadata from instruction file
         """
-        instruction_key = key + suffix
-        response = self.instruction_file_client.get_object(Bucket=bucket, Key=instruction_key)
-        instruction_data = response["Body"].read()
-        return json.loads(instruction_data)
+        return fetch_instruction_file(self.s3_client, bucket, key, suffix)
 
     def _decrypt_v2(self, metadata, encryption_context) -> DecryptionMaterials:
         """Prepare V2 decryption materials."""

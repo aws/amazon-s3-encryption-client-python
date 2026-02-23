@@ -55,14 +55,24 @@ def test_decrypt_v2_instruction_file():
     kms_client = boto3.client("kms", region_name=region)
     keyring = KmsKeyring(kms_client, kms_key_id)
     wrapped_client = boto3.client("s3")
-    instruction_file_client = boto3.client("s3")
     config = S3EncryptionClientConfig(keyring)
-    s3ec = S3EncryptionClient(
-        wrapped_client, config, instruction_file_client=instruction_file_client
-    )
+    s3ec = S3EncryptionClient(wrapped_client, config)
 
     response = s3ec.get_object(Bucket=bucket, Key=key)
     output = response["Body"].read().decode("utf-8")
 
     assert output == "Testing encryption of instruction file with KMS Keyring"
     print("Success! V2 instruction file decryption completed.")
+
+
+@pytest.mark.skip(reason="TODO: Implement test for invalid instruction file parsing")
+def test_parse_invalid_instruction_file():
+    """Test that parsing an invalid instruction file raises an error."""
+    from s3_encryption.exceptions import S3EncryptionClientError
+    from s3_encryption.instruction_file import parse_instruction_file
+
+    # TODO: Provide invalid instruction file data
+    invalid_data = b""
+
+    with pytest.raises(S3EncryptionClientError, match="file must contain a JSON object"):
+        parse_instruction_file(invalid_data, "test-key.instruction")
