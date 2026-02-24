@@ -47,7 +47,10 @@ class TestDecryptionMaterialsIntegration:
         assert isinstance(result, DecryptionMaterials)
         assert result.iv == b"initialization-vector"
         assert result.encrypted_data_keys == [edk]
-        assert result.encryption_context_stored == {"key1": "value1", "aws:x-amz-cek-alg": "AES/GCM/NoPadding"}
+        assert result.encryption_context_stored == {
+            "key1": "value1",
+            "aws:x-amz-cek-alg": "AES/GCM/NoPadding",
+        }
         assert result.encryption_context_from_request == {"key1": "value1"}
 
     def test_keyring_on_decrypt_default_enc_ctx(self):

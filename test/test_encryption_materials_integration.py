@@ -33,7 +33,10 @@ class TestEncryptionMaterialsIntegration:
 
         # Verify the result is an EncryptionMaterials instance
         assert isinstance(result, EncryptionMaterials)
-        assert result.encryption_context == {"key1": "value1", "aws:x-amz-cek-alg": "AES/GCM/NoPadding"}
+        assert result.encryption_context == {
+            "key1": "value1",
+            "aws:x-amz-cek-alg": "AES/GCM/NoPadding",
+        }
 
     def test_cmm_get_encryption_materials_with_dict(self):
         """Test that DefaultCryptoMaterialsManager.get_encryption_materials properly handles dictionary input."""

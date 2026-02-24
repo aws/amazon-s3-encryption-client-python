@@ -309,7 +309,6 @@ class TestKmsKeyringOnDecrypt:
         """Test that on_decrypt handles KmsV1 mode when legacy algorithms are enabled."""
         mock_kms_client = MagicMock()
         mock_kms_client.decrypt.return_value = {"Plaintext": b"plaintext-key"}
-        
 
         kms_key_id = "test-key-id"
         encrypted_key = b"encrypted-key"
