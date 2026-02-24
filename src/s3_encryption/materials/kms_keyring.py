@@ -66,17 +66,14 @@ class KmsKeyring(S3Keyring):
 
             encryption_context = enc_materials.encryption_context
 
-            ##= specification/s3-encryption/materials/s3-kms-keyring.md#
-            ##= supported-wrapping-algorithm-modes
+            ##= specification/s3-encryption/materials/s3-kms-keyring.md#supported-wrapping-algorithm-modes
             ##= type=implementation
             ##% The KmsKeyring MUST support encryption using Kms+Context mode.
-            ##= specification/s3-encryption/materials/s3-kms-keyring.md#
-            ##= supported-wrapping-algorithm-modes
+            ##= specification/s3-encryption/materials/s3-kms-keyring.md#supported-wrapping-algorithm-modes
             ##= type=implementation
             ##% The Kms+Context mode MUST be enabled as a fully-supported (non-legacy) wrapping
             ##% algorithm.
-            ##= specification/s3-encryption/materials/s3-kms-keyring.md#
-            ##= supported-wrapping-algorithm-modes
+            ##= specification/s3-encryption/materials/s3-kms-keyring.md#supported-wrapping-algorithm-modes
             ##= type=implication
             ##% The KmsKeyring MUST NOT support encryption using KmsV1 mode.
             encryption_context["aws:x-amz-cek-alg"] = "AES/GCM/NoPadding"
@@ -136,8 +133,7 @@ class KmsKeyring(S3Keyring):
             edk = edks[0]
             edk_bytes = edk.encrypted_data_key
 
-            ##= specification/s3-encryption/materials/s3-kms-keyring.md#
-            ##= supported-wrapping-algorithm-modes
+            ##= specification/s3-encryption/materials/s3-kms-keyring.md#supported-wrapping-algorithm-modes
             ##= type=implementation
             ##% The KmsKeyring MUST support decryption using Kms+Context mode.
             ##= specification/s3-encryption/materials/s3-kms-keyring.md#decryptdatakey
@@ -187,8 +183,7 @@ class KmsKeyring(S3Keyring):
             ##% If the Key Provider Info of the Encrypted Data Key is "kms", the KmsKeyring
             ##% MUST attempt to decrypt using KmsV1 mode.
             elif edk.key_provider_info == "kms":
-                ##= specification/s3-encryption/materials/s3-kms-keyring.md#
-                ##= supported-wrapping-algorithm-modes
+                ##= specification/s3-encryption/materials/s3-kms-keyring.md#supported-wrapping-algorithm-modes
                 ##= type=implementation
                 ##% The KmsKeyring MUST support decryption using KmsV1 mode.
                 if not self.enable_legacy_wrapping_algorithms:
