@@ -5,15 +5,24 @@ from unittest.mock import MagicMock
 
 from src.s3_encryption.materials.crypto_materials_manager import DefaultCryptoMaterialsManager
 from src.s3_encryption.materials.encrypted_data_key import EncryptedDataKey
-from src.s3_encryption.materials.keyring import S3Keyring
+from src.s3_encryption.materials.kms_keyring import KmsKeyring
 from src.s3_encryption.materials.materials import DecryptionMaterials
 
 
 class TestDecryptionMaterialsIntegration:
     def test_keyring_on_decrypt(self):
-        """Test that S3Keyring.on_decrypt properly handles DecryptionMaterials."""
+        """Test that KmsKeyring.on_decrypt properly handles DecryptionMaterials."""
+        # Create a mock KMS client
+        mock_kms_client = MagicMock()
+        mock_kms_client.decrypt.return_value = {
+            "Plaintext": b"plaintext-data-key",
+        }
+
         # Create a keyring
-        keyring = S3Keyring()
+        keyring = KmsKeyring(
+            kms_client=mock_kms_client,
+            kms_key_id="arn:aws:kms:us-west-2:123456789012:key/12345678-1234-1234-1234-123456789012",
+        )
 
         # Create an encrypted data key
         edk = EncryptedDataKey(
@@ -22,12 +31,13 @@ class TestDecryptionMaterialsIntegration:
             encrypted_data_key=b"encrypted-data-key",
         )
 
-        # Create decryption materials
+        # Create decryption materials with matching encryption contexts
+        # The stored context includes the reserved key, the request context should match (minus reserved keys)
         materials = DecryptionMaterials(
             iv=b"initialization-vector",
             encrypted_data_keys=[edk],
-            encryption_context_stored={"key1": "value1"},
-            encryption_context_from_request={"key2": "value2"},
+            encryption_context_stored={"key1": "value1", "aws:x-amz-cek-alg": "AES/GCM/NoPadding"},
+            encryption_context_from_request={"key1": "value1"},
         )
 
         # Call on_decrypt
@@ -37,13 +47,22 @@ class TestDecryptionMaterialsIntegration:
         assert isinstance(result, DecryptionMaterials)
         assert result.iv == b"initialization-vector"
         assert result.encrypted_data_keys == [edk]
-        assert result.encryption_context_stored == {"key1": "value1"}
-        assert result.encryption_context_from_request == {"key2": "value2"}
+        assert result.encryption_context_stored == {"key1": "value1", "aws:x-amz-cek-alg": "AES/GCM/NoPadding"}
+        assert result.encryption_context_from_request == {"key1": "value1"}
 
     def test_keyring_on_decrypt_default_enc_ctx(self):
-        """Test that S3Keyring.on_decrypt properly handles DecryptionMaterials."""
+        """Test that KmsKeyring.on_decrypt properly handles DecryptionMaterials."""
+        # Create a mock KMS client
+        mock_kms_client = MagicMock()
+        mock_kms_client.decrypt.return_value = {
+            "Plaintext": b"plaintext-data-key",
+        }
+
         # Create a keyring
-        keyring = S3Keyring()
+        keyring = KmsKeyring(
+            kms_client=mock_kms_client,
+            kms_key_id="arn:aws:kms:us-west-2:123456789012:key/12345678-1234-1234-1234-123456789012",
+        )
 
         # Create an encrypted data key
         edk = EncryptedDataKey(

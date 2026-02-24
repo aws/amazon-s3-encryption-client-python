@@ -309,8 +309,12 @@ class TestKmsKeyringOnDecrypt:
         """Test that on_decrypt handles KmsV1 mode when legacy algorithms are enabled."""
         mock_kms_client = MagicMock()
         mock_kms_client.decrypt.return_value = {"Plaintext": b"plaintext-key"}
+        
 
         kms_key_id = "test-key-id"
+        encrypted_key = b"encrypted-key"
+        encryption_context_stored = {"foo": "bar"}
+
         keyring = KmsKeyring(
             kms_client=mock_kms_client,
             kms_key_id=kms_key_id,
@@ -319,12 +323,12 @@ class TestKmsKeyringOnDecrypt:
         edk = EncryptedDataKey(
             key_provider_id=b"S3Keyring",
             key_provider_info="kms",
-            encrypted_data_key=b"encrypted-key",
+            encrypted_data_key=encrypted_key,
         )
         dec_materials = DecryptionMaterials(
             iv=b"initialization-vector",
             encrypted_data_keys=[edk],
-            encryption_context_stored={},
+            encryption_context_stored=encryption_context_stored,
             encryption_context_from_request={},
         )
 
