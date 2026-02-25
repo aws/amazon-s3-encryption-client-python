@@ -8,48 +8,28 @@ import pytest
 from s3_encryption import S3EncryptionClient, S3EncryptionClientConfig
 from s3_encryption.materials.kms_keyring import KmsKeyring
 
-# TODO(instructionFiles): Create a Static Bucket for Instruction File Messages
-# TODO(instructionFiles): Add Static Bucket for Instruction File Messages to test env
-bucket = os.environ.get("CI_S3_INSTRUCTION_BUCKET", "s3ec-github-test-bucket")
+# Static test objects bucket
+bucket = os.environ.get("CI_S3_STATIC_TEST_BUCKET", "s3ec-static-test-objects")
 region = os.environ.get("CI_AWS_REGION", "us-west-2")
-# TODO(instructionFiles): Add INS FILES KMS Key to test env
+# KMS key used for static test objects (S3ECTestServerKMSKey)
 kms_key_id = os.environ.get(
-    "CI_KMS_KEY_INSTRUCTION_FILES",
-    "arn:aws:kms:us-west-2:370957321024:key/c3eafb5f-e87d-4584-9400-cf419ce5d782",
+    "CI_KMS_KEY_STATIC_TESTS",
+    "arn:aws:kms:us-west-2:370957321024:key/a3889cd9-99eb-4138-a93a-aea9d52ec2ef",
 )
 
-# Test keys for objects encrypted by Java S3EC with instruction files
+# Static test object keys created by Java S3EC V4
 TEST_OBJECTS = {
-    # TODO(instructionFiles): V1 Instruction File
-    "v1_instruction_file": "test-v1-cbc-instruction",
-    # TODO(instructionFiles): Proper V2 Instruction File
-    "v2_instruction_file": "kms-instruction-file-test-260220-105428-19668",
-    # TODO(instructionFiles): V3 Instruction File
-    "v3_instruction_file": "test-v3-instruction",
+    "v2_instruction_file": "static-v2-instruction-file-from-java-v4",
+    "v3_instruction_file": "static-v3-instruction-file-from-java-v4",
 }
 
 
-@pytest.mark.skip(reason="Requires pre-existing test objects encrypted by Java S3EC")
-def test_decrypt_v1_instruction_file():
-    """Test decrypting V1 object with instruction file."""
-    key = TEST_OBJECTS["v1_instruction_file"]
-
-    kms_client = boto3.client("kms", region_name=region)
-    keyring = KmsKeyring(kms_client, kms_key_id)
-    wrapped_client = boto3.client("s3")
-    config = S3EncryptionClientConfig(keyring)
-    s3ec = S3EncryptionClient(wrapped_client, config)
-
-    response = s3ec.get_object(Bucket=bucket, Key=key)
-    output = response["Body"].read().decode("utf-8")
-
-    assert output == "test data v1 cbc"
-    print("Success! V1 instruction file decryption completed.")
-
-
-# @pytest.mark.skip(reason="Requires pre-existing test objects encrypted by Java S3EC")
 def test_decrypt_v2_instruction_file():
-    """Test decrypting V2 object with instruction file."""
+    """Test decrypting V2 object with instruction file.
+
+    V2 format uses ALG_AES_256_GCM_IV12_TAG16_NO_KDF (no key commitment).
+    Object encrypted by Java S3EC V4 with instruction file enabled.
+    """
     key = TEST_OBJECTS["v2_instruction_file"]
 
     kms_client = boto3.client("kms", region_name=region)
@@ -61,8 +41,30 @@ def test_decrypt_v2_instruction_file():
     response = s3ec.get_object(Bucket=bucket, Key=key)
     output = response["Body"].read().decode("utf-8")
 
-    assert output == "Testing encryption of instruction file with KMS Keyring"
+    assert output == "static-v2-instruction-file-from-java-v4"
     print("Success! V2 instruction file decryption completed.")
+
+
+@pytest.mark.skip(reason="V3 decryption not yet implemented")
+def test_decrypt_v3_instruction_file():
+    """Test decrypting V3 object with instruction file.
+
+    V3 format uses ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY (with key commitment).
+    Object encrypted by Java S3EC V4 with instruction file enabled.
+    """
+    key = TEST_OBJECTS["v3_instruction_file"]
+
+    kms_client = boto3.client("kms", region_name=region)
+    keyring = KmsKeyring(kms_client, kms_key_id)
+    wrapped_client = boto3.client("s3")
+    config = S3EncryptionClientConfig(keyring)
+    s3ec = S3EncryptionClient(wrapped_client, config)
+
+    response = s3ec.get_object(Bucket=bucket, Key=key)
+    output = response["Body"].read().decode("utf-8")
+
+    assert output != "static-v3-instruction-file-from-java-v4"
+    print("Success! V3 instruction file decryption completed.")
 
 
 @pytest.mark.skip(reason="TODO: Implement test for invalid instruction file parsing")
