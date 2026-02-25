@@ -91,6 +91,16 @@ export class S3ECPythonGithub extends cdk.Stack {
       }
     )
 
+    // New bucket for static test objects
+    const S3ECStaticTestObjectsBucket = new Bucket(
+      this,
+      "S3ECStaticTestObjectsBucket",
+      {
+        bucketName: "s3ec-static-test-objects",
+        blockPublicAccess: new BlockPublicAccess(AccessConfiguration)
+      }
+    )
+
     // S3 bucket policy
     const S3ECGithubS3BucketPolicy = new ManagedPolicy(
       this,
@@ -110,6 +120,7 @@ export class S3ECPythonGithub extends cdk.Stack {
               resources: [
                 S3ECGithubTestS3Bucket.bucketArn + "/*", // object-level permissions need this extra path
                 S3ECTestServerGithubBucket.bucketArn + "/*", // Add permissions for the new test-server bucket
+                S3ECStaticTestObjectsBucket.bucketArn + "/*", // Add permissions for static test objects bucket
                 "arn:aws:s3:::aws-net-sdk-*/*" // permission for object inside S3EC .net bucket. For S3EC-NET repo
               ],
             }),
@@ -125,6 +136,7 @@ export class S3ECPythonGithub extends cdk.Stack {
               resources: [
                 S3ECGithubTestS3Bucket.bucketArn,
                 S3ECTestServerGithubBucket.bucketArn, // Add permissions for the new test-server bucket
+                S3ECStaticTestObjectsBucket.bucketArn, // Add permissions for static test objects bucket
                 "arn:aws:s3:::aws-net-sdk-*", // permission for S3EC .net bucket. For S3EC-NET repo
               ],
             }),
