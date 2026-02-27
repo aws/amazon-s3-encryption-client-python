@@ -51,7 +51,7 @@ class ObjectMetadata:
     # V3 format fields (compressed)
     content_cipher_v3: str | None = field(default=None)
     encrypted_data_key_v3: str | None = field(default=None)
-    mat_desc_v3: str | None = field(default=None)
+    mat_desc_v3: str | dict | None = field(default=None)
     encryption_context_v3: str | None = field(default=None)
     encrypted_data_key_algorithm_v3: str | None = field(default=None)
     key_commitment_v3: str | None = field(default=None)
@@ -150,7 +150,10 @@ class ObjectMetadata:
             result[self.ENCRYPTED_DATA_KEY_V3] = self.encrypted_data_key_v3
 
         if self.mat_desc_v3 is not None:
-            result[self.MAT_DESC_V3] = self.mat_desc_v3
+            if isinstance(self.mat_desc_v3, dict):
+                result[self.MAT_DESC_V3] = json.dumps(self.mat_desc_v3)
+            else:
+                result[self.MAT_DESC_V3] = self.mat_desc_v3
 
         if self.encryption_context_v3 is not None:
             result[self.ENCRYPTION_CONTEXT_V3] = self.encryption_context_v3

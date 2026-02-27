@@ -8,10 +8,24 @@ and decryption operations.
 """
 
 from typing import Any
-
+from enum import Enum
 from attrs import define, field
 
 from .encrypted_data_key import EncryptedDataKey
+
+class AlgorithmSuite(Enum):
+    """Algorithm suites supported by the S3 Encryption Client."""
+
+    ALG_AES_256_GCM_IV12_TAG16_NO_KDF = "AES/GCM/NoPadding"
+    ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY = "AES/GCM/HKDF/CommitKey"
+
+
+class CommitmentPolicy(Enum):
+    """Commitment policies controlling key-commitment behavior."""
+
+    FORBID_ENCRYPT_ALLOW_DECRYPT = "ForbidEncryptAllowDecrypt"
+    REQUIRE_ENCRYPT_ALLOW_DECRYPT = "RequireEncryptAllowDecrypt"
+    REQUIRE_ENCRYPT_REQUIRE_DECRYPT = "RequireEncryptRequireDecrypt"
 
 
 @define
@@ -27,6 +41,9 @@ class EncryptionMaterials:
         plaintext_data_key (Optional[bytes]): The plaintext data key
     """
 
+    algorithm_suite: AlgorithmSuite = field(
+        default=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF
+    )
     encryption_context: dict[str, str] = field(factory=dict)
     encrypted_data_key: EncryptedDataKey | None = field(default=None)
     plaintext_data_key: bytes | None = field(default=None)
@@ -87,6 +104,7 @@ class DecryptionMaterials:
     encryption_context_stored: dict[str, str] = field(factory=dict)
     encryption_context_from_request: dict[str, str] = field(factory=dict)
     plaintext_data_key: bytes | None = field(default=None)
+    algorithm_suite: AlgorithmSuite | None = field(default=None)
 
     @classmethod
     def from_dict(cls, materials_dict: dict[str, Any]) -> "DecryptionMaterials":

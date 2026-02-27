@@ -15,6 +15,7 @@ from .materials.crypto_materials_manager import (
     DefaultCryptoMaterialsManager,
 )
 from .materials.keyring import AbstractKeyring
+from .materials.materials import AlgorithmSuite, CommitmentPolicy
 from .pipelines import GetEncryptedObjectPipeline, PutEncryptedObjectPipeline
 
 S3_METADATA_PREFIX = "x-amz-meta-"
@@ -26,6 +27,12 @@ class S3EncryptionClientConfig:
     """Configuration object for the S3 Encryption Client."""
 
     keyring: AbstractKeyring
+    algorithm_suite: AlgorithmSuite = field(
+        default=AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+    )
+    commitment_policy: CommitmentPolicy = field(
+        default=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT
+    )
     cmm: AbstractCryptoMaterialsManager = field()
 
     @cmm.default
@@ -80,7 +87,9 @@ class S3EncryptionClientPlugin:
 
         pipeline = PutEncryptedObjectPipeline(self.config.cmm)
         encrypted_data, encryption_metadata = pipeline.encrypt(
-            body_bytes, encryption_context=encryption_context
+            body_bytes,
+            encryption_context=encryption_context,
+            algorithm_suite=self.config.algorithm_suite,
         )
 
         params["body"] = encrypted_data
