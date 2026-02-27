@@ -112,15 +112,15 @@ class S3EncryptionClientPlugin:
             instruction_key = getattr(self._context, "key", None)
             instruction_metadata = parse_instruction_file(instruction_data, instruction_key)
 
-            # Verify instruction file marker is present
-            if "x-amz-crypto-instr-file" not in instruction_metadata:
+            # Verify instruction file marker is present in S3 object metadata
+            existing_metadata = parsed.get("Metadata", {})
+            if "x-amz-crypto-instr-file" not in existing_metadata:
                 raise S3EncryptionClientError(
                     f"Instruction file does not contain "
                     f"x-amz-crypto-instr-file marker: {instruction_key}"
                 )
 
             # Append parsed instruction file content to existing metadata
-            existing_metadata = parsed.get("Metadata", {})
             existing_metadata.update(instruction_metadata)
             parsed["Metadata"] = existing_metadata
 
