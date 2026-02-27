@@ -182,8 +182,11 @@ class TestGetEncryptedObjectPipelineInstructionFile:
 
         mock_keyring.on_decrypt.return_value = mock_dec_materials
 
-        # This should fail with NotImplementedError since V3 decryption isn't implemented yet
-        with pytest.raises(NotImplementedError, match="V3 decryption not yet implemented"):
+        # V3 decryption is now implemented; with fake commitment data,
+        # key commitment verification will fail.
+        from s3_encryption.exceptions import S3EncryptionClientSecurityError
+
+        with pytest.raises(S3EncryptionClientSecurityError, match="Key commitment verification failed"):
             pipeline.decrypt(mock_response, bucket="test-bucket", key="test-key")
 
         # Verify instruction file was fetched

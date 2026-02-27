@@ -7,6 +7,7 @@ import pytest
 
 from s3_encryption import S3EncryptionClient, S3EncryptionClientConfig
 from s3_encryption.materials.kms_keyring import KmsKeyring
+from s3_encryption.materials.materials import AlgorithmSuite, CommitmentPolicy
 
 # Static test objects bucket
 bucket = os.environ.get("CI_S3_STATIC_TEST_BUCKET", "s3ec-static-test-objects")
@@ -60,7 +61,11 @@ def test_decrypt_v2_instruction_file():
     kms_client = boto3.client("kms", region_name=region)
     keyring = KmsKeyring(kms_client, kms_key_id)
     wrapped_client = boto3.client("s3")
-    config = S3EncryptionClientConfig(keyring)
+    config = S3EncryptionClientConfig(
+        keyring,
+        algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+        commitment_policy=CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
+    )
     s3ec = S3EncryptionClient(wrapped_client, config)
 
     response = s3ec.get_object(Bucket=bucket, Key=key)
@@ -83,7 +88,11 @@ def test_decrypt_v3_instruction_file():
     kms_client = boto3.client("kms", region_name=region)
     keyring = KmsKeyring(kms_client, kms_key_id)
     wrapped_client = boto3.client("s3")
-    config = S3EncryptionClientConfig(keyring)
+    config = S3EncryptionClientConfig(
+        keyring,
+        algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+        commitment_policy=CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
+    )
     s3ec = S3EncryptionClient(wrapped_client, config)
 
     response = s3ec.get_object(Bucket=bucket, Key=key)
