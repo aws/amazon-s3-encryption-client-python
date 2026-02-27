@@ -118,10 +118,20 @@ class GetEncryptedObjectPipeline:
 
         # Check if we need to fetch instruction file
         if metadata.should_use_instruction_file():
+            ##= specification/s3-encryption/data-format/content-metadata.md#determining-s3ec-object-status
+            ##= type=citation
+            ##% If the object matches none of the V1/V2/V3 formats,
+            ##% the S3EC MUST attempt to get the instruction file.
+
             if self.s3_client is None:
                 raise S3EncryptionClientError("s3_client required to fetch instruction file")
             if bucket is None or key is None:
                 raise S3EncryptionClientError("Bucket and key required to fetch instruction file")
+
+            ##= specification/s3-encryption/data-format/metadata-strategy.md#v1-v2-instruction-files
+            ##= type=citation
+            ##% In the V1/V2 message format, all of the content metadata
+            ##% MUST be stored in the Instruction File.
 
             instruction_metadata = fetch_instruction_file(self.s3_client, bucket, key)
             instruction_metadata.update(encryption_metadata)

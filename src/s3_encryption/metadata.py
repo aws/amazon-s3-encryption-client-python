@@ -225,6 +225,13 @@ class ObjectMetadata:
     def is_v3_in_object_metadata(self) -> bool:
         """Check if V3 content keys are in object metadata (without encrypted data key).
 
+        ##= specification/s3-encryption/data-format/metadata-strategy.md#v3-instruction-files
+        ##= type=citation
+        ##% In the V3 message format, only the content metadata related to
+        ##% the encrypted data is stored in the Instruction File.
+        ##% In the V3 message format, the content metadata related to
+        ##% the encrypted content is stored in the Object Metadata.
+
         Returns:
             bool: True if V3 content keys present but no encrypted data key
         """

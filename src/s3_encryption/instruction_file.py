@@ -31,6 +31,14 @@ def parse_instruction_file(instruction_data: bytes, instruction_key: str) -> dic
         S3EncryptionClientError: If the instruction file is not valid JSON
             or contains non-S3EC metadata keys
     """
+    ##= specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
+    ##= type=citation
+    ##% The content metadata stored in the Instruction File MUST be serialized to a JSON string.
+
+    ##= specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
+    ##= type=citation
+    ##% The serialized JSON string MUST be the only contents of the Instruction File.
+
     # Validate JSON format
     try:
         metadata = json.loads(instruction_data)
@@ -61,6 +69,11 @@ def fetch_instruction_file(
 ) -> dict[str, Any]:
     """Fetch and parse an instruction file from S3.
 
+    ##= specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
+    ##= type=citation
+    ##% The S3EC SHOULD support providing a custom Instruction File suffix
+    ##% on GetObject requests, regardless of whether or not re-encryption is supported.
+
     This function:
     1. Fetches the instruction file in plaintext mode
     2. Returns the parsed metadata from the response Metadata field
@@ -84,6 +97,11 @@ def fetch_instruction_file(
             the instruction file is not valid JSON, or contains non-S3EC metadata keys
     """
     instruction_key = key + suffix
+
+    ##= specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
+    ##= type=citation
+    ##% The default Instruction File behavior uses the same S3 object key
+    ##% as its associated object suffixed with ".instruction".
 
     # Set plaintext mode flag in thread-local context before calling get_object
     # This will be checked by the event handler to skip decryption
