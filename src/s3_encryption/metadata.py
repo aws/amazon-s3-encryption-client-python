@@ -252,3 +252,25 @@ class ObjectMetadata:
             or self.encrypted_data_key_v3 is not None
         )
         return not has_any_key
+
+
+# Valid S3 Encryption Client metadata keys
+VALID_S3EC_METADATA_KEYS = {
+    # V1/V2 format keys
+    "x-amz-key",
+    "x-amz-key-v2",
+    "x-amz-wrap-alg",
+    "x-amz-matdesc",
+    "x-amz-iv",
+    "x-amz-cek-alg",
+    "x-amz-tag-len",
+    "x-amz-crypto-instr-file",
+    # V3 format keys (compressed)
+    "x-amz-c",
+    "x-amz-3",
+    "x-amz-m",
+    "x-amz-t",
+    "x-amz-w",
+    "x-amz-d",
+    "x-amz-i",
+}

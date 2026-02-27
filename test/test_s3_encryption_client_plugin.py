@@ -1,6 +1,6 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for S3EncryptionClientPlugin event handler."""
+"""Unit tests for S3EncryptionClientPlugin event handlers."""
 
 import io
 import json
@@ -14,8 +14,8 @@ from s3_encryption.exceptions import S3EncryptionClientError
 from s3_encryption.materials.keyring import S3Keyring
 
 
-class TestEventHandlerInstructionFile:
-    """Test event handler behavior for instruction files in plaintext mode."""
+class TestS3EncryptionClientPlugin:
+    """S3EncryptionClientPlugin event handler behavior."""
 
     def test_plaintext_mode_parses_instruction_file(self):
         """Test that plaintext mode parses instruction file and returns metadata."""

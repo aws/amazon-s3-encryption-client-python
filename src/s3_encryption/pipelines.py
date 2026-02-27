@@ -123,7 +123,7 @@ class GetEncryptedObjectPipeline:
             if bucket is None or key is None:
                 raise S3EncryptionClientError("Bucket and key required to fetch instruction file")
 
-            instruction_metadata = self._fetch_instruction_file(bucket, key)
+            instruction_metadata = fetch_instruction_file(self.s3_client, bucket, key)
             instruction_metadata.update(encryption_metadata)
             metadata = ObjectMetadata.from_dict(instruction_metadata)
 
@@ -149,19 +149,6 @@ class GetEncryptedObjectPipeline:
         # Perform decryption
         aesgcm = AESGCM(dec_materials.plaintext_data_key)
         return aesgcm.decrypt(nonce=dec_materials.iv, data=encrypted_data, associated_data=None)
-
-    def _fetch_instruction_file(self, bucket: str, key: str, suffix: str = ".instruction") -> dict:
-        """Fetch instruction file from S3.
-
-        Args:
-            bucket: S3 bucket name
-            key: S3 object key
-            suffix: Instruction file suffix (default: .instruction)
-
-        Returns:
-            dict: Parsed JSON metadata from instruction file
-        """
-        return fetch_instruction_file(self.s3_client, bucket, key, suffix)
 
     def _decrypt_v2(self, metadata, encryption_context) -> DecryptionMaterials:
         """Prepare V2 decryption materials."""

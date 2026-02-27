@@ -26,6 +26,7 @@ TEST_OBJECTS = {
 }
 
 
+# TODO(cbc): enable once CBC decryption is implemented
 @pytest.mark.skip(reason="V1 CBC decryption not yet implemented")
 def test_decrypt_v1_instruction_file():
     """Test decrypting V1 object with instruction file.
@@ -69,6 +70,7 @@ def test_decrypt_v2_instruction_file():
     print("Success! V2 instruction file decryption completed.")
 
 
+# TODO(v3): enable once v3 is implemented
 @pytest.mark.skip(reason="V3 decryption not yet implemented")
 def test_decrypt_v3_instruction_file():
     """Test decrypting V3 object with instruction file.

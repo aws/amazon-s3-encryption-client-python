@@ -18,7 +18,6 @@ from .materials.keyring import AbstractKeyring
 from .pipelines import GetEncryptedObjectPipeline, PutEncryptedObjectPipeline
 
 S3_METADATA_PREFIX = "x-amz-meta-"
-S3EC_INTERNAL_PLAINTEXT_MODE = "s3ec_internal_plaintext_mode"
 
 
 @define
@@ -58,8 +57,11 @@ class S3EncryptionClientPlugin:
             params: Dictionary of parameters for the PutObject call (after serialization)
             **kwargs: Additional event arguments
         """
-        # TODO(instructionFile): ensure if S3EC_INTERNAL_PLAINTEXT_MODE error is thrown.
-
+        if getattr(self._context, "plaintext_mode", False):
+            raise S3EncryptionClientError(
+                "Plaintext mode is exclusively for reading instruction files "
+                "and not supported in put_object!"
+            )
         # At this point, boto3 has already serialized the Body
         # Extract the serialized body from the request
         body = params.get("body")
@@ -107,27 +109,7 @@ class S3EncryptionClientPlugin:
         """
         # Check if plaintext mode is enabled via thread-local flag
         if getattr(self._context, "plaintext_mode", False):
-            # In plaintext mode, parse instruction file and append to metadata
-            instruction_data = parsed.get("Body").read()
-            instruction_key = getattr(self._context, "key", None)
-            instruction_metadata = parse_instruction_file(instruction_data, instruction_key)
-
-            # Verify instruction file marker is present in S3 object metadata
-            existing_metadata = parsed.get("Metadata", {})
-            if "x-amz-crypto-instr-file" not in existing_metadata:
-                raise S3EncryptionClientError(
-                    f"Instruction file does not contain "
-                    f"x-amz-crypto-instr-file marker: {instruction_key}"
-                )
-
-            # Append parsed instruction file content to existing metadata
-            existing_metadata.update(instruction_metadata)
-            parsed["Metadata"] = existing_metadata
-
-            # Clear the body since instruction files shouldn't return body content
-            stream = io.BytesIO(b"")
-            streaming_body = StreamingBody(stream, 0)
-            parsed["Body"] = streaming_body
+            self.process_instruction_file(parsed)
             return
 
         # Get encryption context from thread-local storage (set by get_object wrapper)
@@ -159,6 +141,38 @@ class S3EncryptionClientPlugin:
         streaming_body = StreamingBody(stream, len(decrypted_data))
 
         # Replace body with decrypted data
+        parsed["Body"] = streaming_body
+
+    def process_instruction_file(self, parsed):
+        """Process instruction file in plaintext mode.
+
+        Validates the instruction file marker, parses the JSON body,
+        and updates the response metadata with parsed content.
+
+        Args:
+            parsed: Dictionary containing the parsed response
+        """
+        instruction_key = getattr(self._context, "key", None)
+
+        # Verify instruction file marker is present in S3 object metadata
+        existing_metadata = parsed.get("Metadata", {})
+        if "x-amz-crypto-instr-file" not in existing_metadata:
+            raise S3EncryptionClientError(
+                f"Instruction file does not contain "
+                f"x-amz-crypto-instr-file marker: {instruction_key}"
+            )
+
+        # In plaintext mode, parse instruction file and append to metadata
+        instruction_data = parsed.get("Body").read()
+        instruction_metadata = parse_instruction_file(instruction_data, instruction_key)
+
+        # Append parsed instruction file content to existing metadata
+        existing_metadata.update(instruction_metadata)
+        parsed["Metadata"] = existing_metadata
+
+        # Clear the body since instruction files shouldn't return body content
+        stream = io.BytesIO(b"")
+        streaming_body = StreamingBody(stream, 0)
         parsed["Body"] = streaming_body
 
 

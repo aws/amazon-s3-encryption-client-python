@@ -10,27 +10,7 @@ import json
 from typing import Any
 
 from .exceptions import S3EncryptionClientError
-
-# Valid S3 Encryption Client metadata keys
-VALID_S3EC_METADATA_KEYS = {
-    # V1/V2 format keys
-    "x-amz-key",
-    "x-amz-key-v2",
-    "x-amz-wrap-alg",
-    "x-amz-matdesc",
-    "x-amz-iv",
-    "x-amz-cek-alg",
-    "x-amz-tag-len",
-    "x-amz-crypto-instr-file",
-    # V3 format keys (compressed)
-    "x-amz-c",
-    "x-amz-3",
-    "x-amz-m",
-    "x-amz-t",
-    "x-amz-w",
-    "x-amz-d",
-    "x-amz-i",
-}
+from .metadata import VALID_S3EC_METADATA_KEYS
 
 
 def parse_instruction_file(instruction_data: bytes, instruction_key: str) -> dict[str, Any]:
@@ -85,7 +65,7 @@ def fetch_instruction_file(
     1. Fetches the instruction file in plaintext mode
     2. Returns the parsed metadata from the response Metadata field
 
-    The event handler (on_get_object_after_call) handles:
+    S3EncryptionClientPlugin's event handler (on_get_object_after_call) handles:
     - Verifying the x-amz-crypto-instr-file marker is present
     - Parsing and validating the instruction file content
     - Placing parsed metadata in response["Metadata"]
@@ -110,6 +90,11 @@ def fetch_instruction_file(
     if hasattr(s3_client, "_s3ec_plugin_context"):
         s3_client._s3ec_plugin_context.plaintext_mode = True
         s3_client._s3ec_plugin_context.key = instruction_key
+    else:
+        raise S3EncryptionClientError(
+            f"Could not fetch instruction file without "
+            f"the S3 Encryption Client Plugin installed. Instruction key: {instruction_key}"
+        )
 
     try:
         response = s3_client.get_object(Bucket=bucket, Key=instruction_key)
@@ -117,8 +102,6 @@ def fetch_instruction_file(
         # Clear the flags after the call
         if hasattr(s3_client, "_s3ec_plugin_context"):
             s3_client._s3ec_plugin_context.plaintext_mode = False
-            if hasattr(s3_client._s3ec_plugin_context, "key"):
-                delattr(s3_client._s3ec_plugin_context, "key")
 
     # In plaintext mode, the event handler places parsed metadata in Metadata field
     metadata = response.get("Metadata", {})

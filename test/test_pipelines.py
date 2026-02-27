@@ -3,14 +3,10 @@
 import base64
 import json
 import os
-import sys
 from io import BytesIO
 from unittest.mock import Mock
 
 import pytest
-
-# Add the src directory to the Python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
 from s3_encryption.materials.crypto_materials_manager import DefaultCryptoMaterialsManager
 from s3_encryption.materials.keyring import S3Keyring
@@ -20,8 +16,7 @@ from s3_encryption.pipelines import GetEncryptedObjectPipeline
 class TestGetEncryptedObjectPipelineInstructionFile:
     def test_decrypt_v1_from_instruction_file(self):
         """Test decrypting V1 format with instruction file."""
-        # V1: Object metadata is empty, all metadata in instruction file
-        object_metadata = {}
+        object_metadata = {"x-amz-meta-x-amz-unencrypted-content-length": "39"}
 
         # Instruction file contains all V1 metadata
         instruction_file_metadata = {
