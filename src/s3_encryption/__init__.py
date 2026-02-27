@@ -107,12 +107,26 @@ class S3EncryptionClientPlugin:
         """
         # Check if plaintext mode is enabled via thread-local flag
         if getattr(self._context, "plaintext_mode", False):
-            # Skip decryption in plaintext mode BUT validate that it is an instruction file
+            # In plaintext mode, parse instruction file and append to metadata
             instruction_data = parsed.get("Body").read()
-            parse_instruction_file(instruction_data, getattr(self._context, "key", None))
-            # Replace the body with a new stream so caller can read it again
-            stream = io.BytesIO(instruction_data)
-            streaming_body = StreamingBody(stream, len(instruction_data))
+            instruction_key = getattr(self._context, "key", None)
+            instruction_metadata = parse_instruction_file(instruction_data, instruction_key)
+
+            # Verify instruction file marker is present
+            if "x-amz-crypto-instr-file" not in instruction_metadata:
+                raise S3EncryptionClientError(
+                    f"Instruction file does not contain "
+                    f"x-amz-crypto-instr-file marker: {instruction_key}"
+                )
+
+            # Append parsed instruction file content to existing metadata
+            existing_metadata = parsed.get("Metadata", {})
+            existing_metadata.update(instruction_metadata)
+            parsed["Metadata"] = existing_metadata
+
+            # Clear the body since instruction files shouldn't return body content
+            stream = io.BytesIO(b"")
+            streaming_body = StreamingBody(stream, 0)
             parsed["Body"] = streaming_body
             return
 

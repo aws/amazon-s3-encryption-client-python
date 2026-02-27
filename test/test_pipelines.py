@@ -30,14 +30,15 @@ class TestGetEncryptedObjectPipelineInstructionFile:
             "x-amz-wrap-alg": "kms",
             "x-amz-matdesc": json.dumps({"kms_cmk_id": "test-key-id"}),
             "x-amz-cek-alg": "AES/CBC/PKCS5Padding",
+            "x-amz-crypto-instr-file": "",
         }
 
         # Create mock S3 client
         mock_s3_client = Mock()
-        instruction_file_body = BytesIO(json.dumps(instruction_file_metadata).encode("utf-8"))
+        # Mock returns parsed metadata (simulating event handler behavior)
         mock_s3_client.get_object.return_value = {
-            "Body": instruction_file_body,
-            "Metadata": {"x-amz-crypto-instr-file": ""},
+            "Body": BytesIO(b""),  # Body is cleared by event handler
+            "Metadata": instruction_file_metadata,
         }
 
         # Create mock keyring and CMM
@@ -80,14 +81,15 @@ class TestGetEncryptedObjectPipelineInstructionFile:
             "x-amz-matdesc": json.dumps({"kms_cmk_id": "test-key-id"}),
             "x-amz-cek-alg": "AES/GCM/NoPadding",
             "x-amz-tag-len": "128",
+            "x-amz-crypto-instr-file": "",
         }
 
         # Create mock S3 client
         mock_s3_client = Mock()
-        instruction_file_body = BytesIO(json.dumps(instruction_file_metadata).encode("utf-8"))
+        # Mock returns parsed metadata (simulating event handler behavior)
         mock_s3_client.get_object.return_value = {
-            "Body": instruction_file_body,
-            "Metadata": {"x-amz-crypto-instr-file": ""},
+            "Body": BytesIO(b""),  # Body is cleared by event handler
+            "Metadata": instruction_file_metadata,
         }
 
         # Create mock keyring and CMM
@@ -131,14 +133,15 @@ class TestGetEncryptedObjectPipelineInstructionFile:
             "x-amz-3": base64.b64encode(b"encrypted-key-data").decode("utf-8"),
             "x-amz-w": "02",  # AES/GCM
             "x-amz-m": json.dumps({"test-instruction": "material-desc-instruction"}),
+            "x-amz-crypto-instr-file": "",
         }
 
         # Create mock S3 client
         mock_s3_client = Mock()
-        instruction_file_body = BytesIO(json.dumps(instruction_file_metadata).encode("utf-8"))
+        # Mock returns parsed metadata (simulating event handler behavior)
         mock_s3_client.get_object.return_value = {
-            "Body": instruction_file_body,
-            "Metadata": {"x-amz-crypto-instr-file": ""},
+            "Body": BytesIO(b""),  # Body is cleared by event handler
+            "Metadata": instruction_file_metadata,
         }
 
         # Create mock keyring and CMM
