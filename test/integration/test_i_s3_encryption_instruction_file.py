@@ -20,9 +20,34 @@ kms_key_id = os.environ.get(
 
 # Static test object keys created by Java S3EC V4
 TEST_OBJECTS = {
+    "v1_instruction_file": "static-v1-instruction-file-from-java-v1",
     "v2_instruction_file": "static-v2-instruction-file-from-java-v4",
     "v3_instruction_file": "static-v3-instruction-file-from-java-v4",
+    "negative_v2_instruction_file": "NEGATIVE-static-v2-instruction-file-test-from-java-v4",
 }
+
+
+# TODO(cbc): enable once CBC decryption is implemented
+@pytest.mark.skip(reason="V1 CBC decryption not yet implemented")
+def test_decrypt_v1_instruction_file():
+    """Test decrypting V1 object with instruction file.
+
+    V1 format uses ALG_AES_256_CBC_IV16_NO_KDF (CBC mode, no key commitment).
+    Object encrypted by Java S3EC V1 with instruction file enabled.
+    """
+    key = TEST_OBJECTS["v1_instruction_file"]
+
+    kms_client = boto3.client("kms", region_name=region)
+    keyring = KmsKeyring(kms_client, kms_key_id, enable_legacy_wrapping_algorithms=True)
+    wrapped_client = boto3.client("s3")
+    config = S3EncryptionClientConfig(keyring)
+    s3ec = S3EncryptionClient(wrapped_client, config)
+
+    response = s3ec.get_object(Bucket=bucket, Key=key)
+    output = response["Body"].read().decode("utf-8")
+
+    assert output == "static-v1-instruction-file-from-java-v1"
+    print("Success! V1 instruction file decryption completed.")
 
 
 def test_decrypt_v2_instruction_file():
@@ -50,6 +75,7 @@ def test_decrypt_v2_instruction_file():
     print("Success! V2 instruction file decryption completed.")
 
 
+# TODO(v3): enable once v3 is implemented
 @pytest.mark.skip(reason="V3 decryption not yet implemented")
 def test_decrypt_v3_instruction_file():
     """Test decrypting V3 object with instruction file.
@@ -76,14 +102,23 @@ def test_decrypt_v3_instruction_file():
     print("Success! V3 instruction file decryption completed.")
 
 
-@pytest.mark.skip(reason="TODO: Implement test for invalid instruction file parsing")
-def test_parse_invalid_instruction_file():
-    """Test that parsing an invalid instruction file raises an error."""
+def test_decrypt_invalid_instruction_file():
+    """Test that decrypting with an invalid instruction file raises an error.
+
+    The NEGATIVE test object has an invalid instruction file that should
+    cause the S3 Encryption Client to raise an exception during decryption.
+    """
     from s3_encryption.exceptions import S3EncryptionClientError
-    from s3_encryption.instruction_file import parse_instruction_file
 
-    # TODO: Provide invalid instruction file data
-    invalid_data = b""
+    key = TEST_OBJECTS["negative_v2_instruction_file"]
 
-    with pytest.raises(S3EncryptionClientError, match="file must contain a JSON object"):
-        parse_instruction_file(invalid_data, "test-key.instruction")
+    kms_client = boto3.client("kms", region_name=region)
+    keyring = KmsKeyring(kms_client, kms_key_id)
+    wrapped_client = boto3.client("s3")
+    config = S3EncryptionClientConfig(keyring)
+    s3ec = S3EncryptionClient(wrapped_client, config)
+
+    with pytest.raises(S3EncryptionClientError) as exc_info:
+        s3ec.get_object(Bucket=bucket, Key=key)
+
+    print(f"Error message: {exc_info.value}")

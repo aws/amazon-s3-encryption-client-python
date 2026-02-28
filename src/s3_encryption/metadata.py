@@ -231,6 +231,13 @@ class ObjectMetadata:
     def is_v3_in_object_metadata(self) -> bool:
         """Check if V3 content keys are in object metadata (without encrypted data key).
 
+        ##= specification/s3-encryption/data-format/metadata-strategy.md#v3-instruction-files
+        ##= type=citation
+        ##% In the V3 message format, only the content metadata related to
+        ##% the encrypted data is stored in the Instruction File.
+        ##% In the V3 message format, the content metadata related to
+        ##% the encrypted content is stored in the Object Metadata.
+
         Returns:
             bool: True if V3 content keys present but no encrypted data key
         """
@@ -258,3 +265,25 @@ class ObjectMetadata:
             or self.encrypted_data_key_v3 is not None
         )
         return not has_any_key
+
+
+# Valid S3 Encryption Client metadata keys
+VALID_S3EC_METADATA_KEYS = {
+    # V1/V2 format keys
+    "x-amz-key",
+    "x-amz-key-v2",
+    "x-amz-wrap-alg",
+    "x-amz-matdesc",
+    "x-amz-iv",
+    "x-amz-cek-alg",
+    "x-amz-tag-len",
+    "x-amz-crypto-instr-file",
+    # V3 format keys (compressed)
+    "x-amz-c",
+    "x-amz-3",
+    "x-amz-m",
+    "x-amz-t",
+    "x-amz-w",
+    "x-amz-d",
+    "x-amz-i",
+}
