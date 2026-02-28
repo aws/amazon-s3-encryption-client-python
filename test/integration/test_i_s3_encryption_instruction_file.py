@@ -27,8 +27,6 @@ TEST_OBJECTS = {
 }
 
 
-# TODO(cbc): enable once CBC decryption is implemented
-@pytest.mark.skip(reason="V1 CBC decryption not yet implemented")
 def test_decrypt_v1_instruction_file():
     """Test decrypting V1 object with instruction file.
 
@@ -40,7 +38,8 @@ def test_decrypt_v1_instruction_file():
     kms_client = boto3.client("kms", region_name=region)
     keyring = KmsKeyring(kms_client, kms_key_id, enable_legacy_wrapping_algorithms=True)
     wrapped_client = boto3.client("s3")
-    config = S3EncryptionClientConfig(keyring)
+    config = S3EncryptionClientConfig(keyring, enable_legacy_unauthenticated_modes=True, 
+        commitment_policy=CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
     s3ec = S3EncryptionClient(wrapped_client, config)
 
     response = s3ec.get_object(Bucket=bucket, Key=key)
@@ -75,8 +74,6 @@ def test_decrypt_v2_instruction_file():
     print("Success! V2 instruction file decryption completed.")
 
 
-# TODO(v3): enable once v3 is implemented
-@pytest.mark.skip(reason="V3 decryption not yet implemented")
 def test_decrypt_v3_instruction_file():
     """Test decrypting V3 object with instruction file.
 
@@ -90,15 +87,14 @@ def test_decrypt_v3_instruction_file():
     wrapped_client = boto3.client("s3")
     config = S3EncryptionClientConfig(
         keyring,
-        algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
-        commitment_policy=CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
+        commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
     )
     s3ec = S3EncryptionClient(wrapped_client, config)
 
     response = s3ec.get_object(Bucket=bucket, Key=key)
     output = response["Body"].read().decode("utf-8")
 
-    assert output != "static-v3-instruction-file-from-java-v4"
+    assert output == "static-v3-instruction-file-from-java-v4"
     print("Success! V3 instruction file decryption completed.")
 
 

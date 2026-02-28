@@ -12,7 +12,7 @@ import os
 from attrs import define, field
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-from .exceptions import S3EncryptionClientError
+from .exceptions import S3EncryptionClientError, S3EncryptionClientSecurityError
 from .instruction_file import fetch_instruction_file
 from .key_derivation import (
     KC_GCM_IV,
@@ -23,7 +23,7 @@ from .key_derivation import (
 )
 from .materials.crypto_materials_manager import AbstractCryptoMaterialsManager
 from .materials.encrypted_data_key import EncryptedDataKey
-from .materials.materials import AlgorithmSuite, DecryptionMaterials, EncryptionMaterials
+from .materials.materials import AlgorithmSuite, CommitmentPolicy, DecryptionMaterials, EncryptionMaterials
 from .metadata import ObjectMetadata
 
 
@@ -152,6 +152,59 @@ class GetEncryptedObjectPipeline:
 
     cmm: AbstractCryptoMaterialsManager = field()
     s3_client: object = field(default=None)
+    commitment_policy: CommitmentPolicy = field(
+        default=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT
+    )
+    enable_legacy_unauthenticated_modes: bool = field(default=False)
+
+    # Map content cipher metadata values to AlgorithmSuite
+    _CONTENT_CIPHER_TO_ALGORITHM_SUITE = {
+        "AES/CBC/PKCS5Padding": AlgorithmSuite.ALG_AES_256_CBC_IV16_NO_KDF,
+        "AES/GCM/NoPadding": AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+        "115": AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+    }
+
+    def _determine_algorithm_suite(self, metadata) -> AlgorithmSuite:
+        """Determine the algorithm suite from object metadata.
+
+        V1 objects are always CBC.
+        V2/V3 objects check x-amz-cek-alg / x-amz-c to determine the content algorithm.
+        """
+        if metadata.is_v1_format():
+            ##= specification/s3-encryption/data-format/content-metadata.md#algorithm-suite-and-message-format-version-compatibility
+            ##= type=citation
+            ##% Objects encrypted with ALG_AES_256_CBC_IV16_NO_KDF MAY use either the V1 or V2 message format version.
+            return AlgorithmSuite.ALG_AES_256_CBC_IV16_NO_KDF
+
+        if metadata.is_v2_format():
+            cek_alg = metadata.content_cipher
+            if cek_alg is None:
+                raise S3EncryptionClientError(
+                    "V2 format object missing required x-amz-cek-alg metadata."
+                )
+            suite = self._CONTENT_CIPHER_TO_ALGORITHM_SUITE.get(cek_alg)
+            if suite is None:
+                raise S3EncryptionClientError(
+                    f"Unknown content encryption algorithm: {cek_alg}"
+                )
+            return suite
+
+        if metadata.is_v3_format():
+            cek_alg = metadata.content_cipher_v3
+            if cek_alg is None:
+                raise S3EncryptionClientError(
+                    "V3 format object missing required x-amz-c metadata."
+                )
+            suite = self._CONTENT_CIPHER_TO_ALGORITHM_SUITE.get(cek_alg)
+            if suite is None:
+                raise S3EncryptionClientError(
+                    f"Unknown content encryption algorithm: {cek_alg}"
+                )
+            return suite
+
+        raise S3EncryptionClientError(
+            "Unable to determine S3 Encryption Client message format."
+        )
 
     def decrypt(
         self,
@@ -211,31 +264,68 @@ class GetEncryptedObjectPipeline:
                         "BUT Instruction File is being used. This is an illegal combination. "
                         f"bucket: {bucket}\n key:{key}\n instruction_file:{instruction_key}"
                     )
+
+        # Determine the algorithm suite from the metadata
+        algorithm_suite = self._determine_algorithm_suite(metadata)
+
         # Determine which format we're dealing with and get decryption materials
         if metadata.is_v1_format():
             dec_materials = self._decrypt_v1(metadata, encryption_context)
         elif metadata.is_v2_format():
-            # TODO: this is not how this works 
             dec_materials = self._decrypt_v2(metadata, encryption_context)
-            dec_materials.algorithm_suite = AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF
         elif metadata.is_v3_format():
             dec_materials = self._decrypt_v3(metadata, encryption_context)
-            dec_materials.algorithm_suite = AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
         else:
             raise S3EncryptionClientError(
                 "Unable to determine S3 Encryption Client message format."
             )
 
+        dec_materials.algorithm_suite = algorithm_suite
+
         ##= specification/s3-encryption/decryption.md#cbc-decryption
-        ##= type=TODO
         ##% If an object is encrypted with ALG_AES_256_CBC_IV16_NO_KDF and
         ##% [legacy unauthenticated algorithm suites](#legacy-decryption) is NOT enabled,
         ##% the S3EC MUST throw an error which details that client was
         ##% not configured to decrypt objects with ALG_AES_256_CBC_IV16_NO_KDF.
+        if algorithm_suite == AlgorithmSuite.ALG_AES_256_CBC_IV16_NO_KDF:
+            ##= specification/s3-encryption/decryption.md#legacy-decryption
+            ##% The S3EC MUST NOT decrypt objects encrypted using legacy unauthenticated algorithm suites
+            ##% unless specifically configured to do so.
+            ##= specification/s3-encryption/decryption.md#legacy-decryption
+            ##% If the S3EC is not configured to enable legacy unauthenticated content decryption,
+            ##% the client MUST throw an exception when attempting to decrypt an object encrypted
+            ##% with a legacy unauthenticated algorithm suite.
+            if not self.enable_legacy_unauthenticated_modes:
+                raise S3EncryptionClientError(
+                    "Cannot decrypt object encrypted with ALG_AES_256_CBC_IV16_NO_KDF. "
+                    "The S3 Encryption Client is not configured to decrypt objects using "
+                    "legacy unauthenticated algorithm suites. "
+                    "Set enable_legacy_unauthenticated_modes=True to allow decryption "
+                    "of objects encrypted with CBC."
+                )
 
-        # Perform decryption
-        # TODO: include CBC here too
+        ##= specification/s3-encryption/decryption.md#key-commitment
+        ##% The S3EC MUST validate the algorithm suite used for decryption against the
+        ##% key commitment policy before attempting to decrypt the content ciphertext.
+        ##= specification/s3-encryption/decryption.md#key-commitment
+        ##% If the commitment policy requires decryption using a committing algorithm suite,
+        ##% and the algorithm suite associated with the object does not support key commitment,
+        ##% then the S3EC MUST throw an exception.
+        if (
+            self.commitment_policy == CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT
+            and dec_materials.algorithm_suite != AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+        ):
+            raise S3EncryptionClientError(
+                "Configuration conflict: cannot decrypt non-key-committing object "
+                "when commitment policy is REQUIRE_ENCRYPT_REQUIRE_DECRYPT. "
+                "Use REQUIRE_ENCRYPT_ALLOW_DECRYPT or FORBID_ENCRYPT_ALLOW_DECRYPT "
+                "to allow decryption of non-committing objects."
+            )
+
+        # Perform decryption based on algorithm suite
         match dec_materials.algorithm_suite:
+            case AlgorithmSuite.ALG_AES_256_CBC_IV16_NO_KDF:
+                return self._decrypt_cbc_content(dec_materials, encrypted_data)
             case AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF:
                 ##= specification/s3-encryption/encryption.md#alg-aes-256-gcm-iv12-tag16-no-kdf
                 ##% The client MUST NOT provide any AAD when encrypting with
@@ -288,6 +378,44 @@ class GetEncryptedObjectPipeline:
         )
 
         return self.cmm.decrypt_materials(dec_materials)
+
+    def _decrypt_cbc_content(self, dec_materials, encrypted_data):
+        """Decrypt content encrypted with ALG_AES_256_CBC_IV16_NO_KDF.
+
+        ##= specification/s3-encryption/decryption.md#cbc-decryption
+        ##% If an object is encrypted with ALG_AES_256_CBC_IV16_NO_KDF and
+        ##% [legacy unauthenticated algorithm suites](#legacy-decryption) is enabled,
+        ##% then the S3EC MUST create a cipher with AES in CBC Mode with PKCS5Padding or
+        ##% PKCS7Padding compatible padding for a 16-byte block cipher
+        ##% (example: for the Java JCE, this is "AES/CBC/PKCS5Padding").
+        """
+        ##= specification/s3-encryption/decryption.md#cbc-decryption
+        ##% If the cipher object cannot be created as described above,
+        ##% Decryption MUST fail.
+        ##= specification/s3-encryption/decryption.md#cbc-decryption
+        ##% The error SHOULD detail why the cipher could not be initialized
+        ##% (such as CBC or PKCS5Padding is not supported by the underlying crypto provider).
+        try:
+            from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+            from cryptography.hazmat.primitives.padding import PKCS7
+
+            cipher = Cipher(
+                algorithms.AES(dec_materials.plaintext_data_key),
+                modes.CBC(dec_materials.iv),
+            )
+            decryptor = cipher.decryptor()
+            padded_plaintext = decryptor.update(encrypted_data) + decryptor.finalize()
+
+            # Remove PKCS7 padding (compatible with PKCS5Padding for 16-byte block ciphers)
+            unpadder = PKCS7(128).unpadder()
+            plaintext = unpadder.update(padded_plaintext) + unpadder.finalize()
+
+            return plaintext
+        except Exception as e:
+            raise S3EncryptionClientSecurityError(
+                f"Failed to decrypt CBC content: {e}. "
+                "Ensure the underlying crypto provider supports AES/CBC/PKCS7Padding."
+            ) from e
 
     ##= specification/s3-encryption/data-format/content-metadata.md#v3-only
     ##% The V3 format uses compression here such that each wrapping algorithm is represented by a two digit string.
