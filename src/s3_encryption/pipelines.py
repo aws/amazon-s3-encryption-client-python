@@ -75,7 +75,7 @@ class PutEncryptedObjectPipeline:
 
     def _encrypt_gcm(self, plaintext, enc_mats, edk_bytes):
         """Encrypt using ALG_AES_256_GCM_IV12_TAG16_NO_KDF (V2 format)."""
-        ##= specification/s3-encryption/encryption.md#alg_aes_256_gcm_iv12_tag16_no_kdf
+        ##= specification/s3-encryption/encryption.md#alg-aes-256-gcm-iv12-tag16-no-kdf
         ##% The client MUST initialize the cipher, or call an AES-GCM encryption API,
         ##% with the plaintext data key, the generated IV, and the tag length defined
         ##% in the Algorithm Suite when encrypting with ALG_AES_256_GCM_IV12_TAG16_NO_KDF.
@@ -104,14 +104,15 @@ class PutEncryptedObjectPipeline:
         ##% or Message ID defined in the algorithm suite.
         message_id = os.urandom(MESSAGE_ID_LENGTH)
 
-        ##= specification/s3-encryption/encryption.md#alg_aes_256_gcm_hkdf_sha512_commit_key
+        ##= specification/s3-encryption/encryption.md#alg-aes-256-gcm-hkdf-sha512-commit-key
         ##% The client MUST use HKDF to derive the key commitment value and the derived
-        ##% encrypting key as described in Key Derivation.
+        ##% encrypting key as described in [Key Derivation](key-derivation.md).
         derived_encryption_key, commit_key = derive_keys(enc_mats.plaintext_data_key, message_id)
 
         ##= specification/s3-encryption/key-derivation.md#hkdf-operation
-        ##% the IV used in the AES-GCM content encryption/decryption MUST consist
-        ##% entirely of bytes with the value 0x01.
+        ##% When encrypting or decrypting with ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+        ##% the IV used in the AES-GCM content encryption/decryption MUST consist entirely of bytes with the value 0x01.
+        ##= specification/s3-encryption/key-derivation.md#hkdf-operation
         ##% The client MUST set the AAD to the Algorithm Suite ID represented as bytes.
         aesgcm = AESGCM(derived_encryption_key)
         encrypted_data = aesgcm.encrypt(
@@ -236,7 +237,7 @@ class GetEncryptedObjectPipeline:
         # TODO: include CBC here too
         match dec_materials.algorithm_suite:
             case AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF:
-                ##= specification/s3-encryption/encryption.md#alg_aes_256_gcm_iv12_tag16_no_kdf
+                ##= specification/s3-encryption/encryption.md#alg-aes-256-gcm-iv12-tag16-no-kdf
                 ##% The client MUST NOT provide any AAD when encrypting with
                 ##% ALG_AES_256_GCM_IV12_TAG16_NO_KDF.
                 aesgcm = AESGCM(dec_materials.plaintext_data_key)
@@ -333,21 +334,21 @@ class GetEncryptedObjectPipeline:
         message_id = base64.b64decode(metadata.message_id_v3)
         stored_commitment = base64.b64decode(metadata.key_commitment_v3)
 
-        ##= specification/s3-encryption/key-derivation.md#hkdf-operation
-        ##% The client MUST use HKDF to derive the key commitment value and the derived
-        ##% encrypting key.
+        ##= specification/s3-encryption/encryption.md#alg-aes-256-gcm-hkdf-sha512-commit-key
+        ##% The client MUST use HKDF to derive the key commitment value and the derived encrypting key as described in [Key Derivation](key-derivation.md).
         derived_encryption_key, derived_commitment = derive_keys(
             dec_materials.plaintext_data_key, message_id
         )
 
         ##= specification/s3-encryption/decryption.md#decrypting-with-commitment
-        ##% the client MUST verify the key commitment values match before deriving
-        ##% the derived encryption key.
+        ##% When using an algorithm suite which supports key commitment, the client MUST verify the key commitment values match before deriving
+        ##% the [derived encryption key](./key-derivation.md#hkdf-operation).
         verify_commitment(stored_commitment, derived_commitment)
 
         ##= specification/s3-encryption/key-derivation.md#hkdf-operation
-        ##% the IV used in the AES-GCM content encryption/decryption MUST consist
-        ##% entirely of bytes with the value 0x01.
+        ##% When encrypting or decrypting with ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+        ##% the IV used in the AES-GCM content encryption/decryption MUST consist entirely of bytes with the value 0x01.
+        ##= specification/s3-encryption/key-derivation.md#hkdf-operation
         ##% The client MUST set the AAD to the Algorithm Suite ID represented as bytes.
         aesgcm = AESGCM(derived_encryption_key)
         return aesgcm.decrypt(
