@@ -118,7 +118,7 @@ class TestGetEncryptedObjectPipelineInstructionFile:
         )
 
     def test_decrypt_v3_from_instruction_file(self):
-        """Test decrypting V3 format with instruction file."""
+        """Test decrypting V3 format with instruction file (kms+context wrapping)."""
         # Object metadata contains V3 content keys only
         object_metadata = {
             "x-amz-c": "115",  # Compressed algorithm suite
@@ -127,10 +127,11 @@ class TestGetEncryptedObjectPipelineInstructionFile:
         }
 
         # Instruction file contains encrypted data key and wrapping algorithm
+        # Uses "12" (kms+context) with "x-amz-t" for encryption context
         instruction_file_metadata = {
             "x-amz-3": base64.b64encode(b"encrypted-key-data").decode("utf-8"),
-            "x-amz-w": "02",  # AES/GCM
-            "x-amz-m": json.dumps({"test-instruction": "material-desc-instruction"}),
+            "x-amz-w": "12",  # kms+context
+            "x-amz-t": json.dumps({"aws:x-amz-cek-alg": "AES/GCM/NoPadding"}),
         }
 
         # Create mock S3 client
@@ -183,3 +184,29 @@ class TestGetEncryptedObjectPipelineInstructionFile:
         mock_s3_client.get_object.assert_called_once_with(
             Bucket="test-bucket", Key="test-key.instruction"
         )
+
+    def test_decrypt_v3_unsupported_wrap_alg(self):
+        """Test that V3 decryption with unsupported wrapping algorithm gives a useful error."""
+        from s3_encryption.exceptions import S3EncryptionClientError
+
+        # V3 metadata with AES/GCM wrapping (02) — not supported by this client
+        metadata = {
+            "x-amz-c": "115",
+            "x-amz-3": base64.b64encode(b"encrypted-key-data").decode("utf-8"),
+            "x-amz-w": "02",  # AES/GCM — unsupported
+            "x-amz-m": json.dumps({"some": "material-desc"}),
+            "x-amz-d": base64.b64encode(b"key-commitment-data").decode("utf-8"),
+            "x-amz-i": base64.b64encode(b"test-message-id").decode("utf-8"),
+        }
+
+        mock_keyring = Mock(spec=S3Keyring)
+        cmm = DefaultCryptoMaterialsManager(mock_keyring)
+        pipeline = GetEncryptedObjectPipeline(cmm)
+
+        mock_response = {
+            "Body": BytesIO(b"encrypted-test-data"),
+            "Metadata": metadata,
+        }
+
+        with pytest.raises(S3EncryptionClientError, match="Unsupported wrapping algorithm: AES/GCM"):
+            pipeline.decrypt(mock_response)
