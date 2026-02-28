@@ -137,7 +137,7 @@ class ObjectMetadata:
         if self.content_cipher is not None:
             result[self.CONTENT_CIPHER] = self.content_cipher
 
-        if self.content_cipher_tag_length is not None:
+        if self.content_cipher_tag_length is not None and not self.is_v3_format():
             result[self.CONTENT_CIPHER_TAG_LENGTH] = self.content_cipher_tag_length
 
         if self.instruction_file is not None:
