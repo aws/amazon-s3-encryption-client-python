@@ -275,11 +275,13 @@ class GetEncryptedObjectPipeline:
         return self.cmm.decrypt_materials(dec_materials)
 
     ##= specification/s3-encryption/data-format/content-metadata.md#v3-only
-    ##% The V3 format uses compression here such that each wrapping algorithm
-    ##% is represented by a two digit string.
-    ##% The wrapping algorithm value "02" MUST be translated to AES/GCM upon retrieval, and vice versa on write.
-    ##% The wrapping algorithm value "12" MUST be translated to kms+context upon retrieval, and vice versa on write.
-    ##% The wrapping algorithm value "22" MUST be translated to RSA-OAEP-SHA1 upon retrieval, and vice versa on write.
+    ##% The V3 format uses compression here such that each wrapping algorithm is represented by a two digit string.
+    ##= specification/s3-encryption/data-format/content-metadata.md#v3-only
+    ##% - The wrapping algorithm value "02" MUST be translated to AES/GCM upon retrieval, and vice versa on write.
+    ##= specification/s3-encryption/data-format/content-metadata.md#v3-only
+    ##% - The wrapping algorithm value "12" MUST be translated to kms+context upon retrieval, and vice versa on write.
+    ##= specification/s3-encryption/data-format/content-metadata.md#v3-only
+    ##% - The wrapping algorithm value "22" MUST be translated to RSA-OAEP-SHA1 upon retrieval, and vice versa on write.
     _V3_WRAP_ALG_MAP = {
         "02": "AES/GCM",
         "12": "kms+context",
@@ -312,6 +314,7 @@ class GetEncryptedObjectPipeline:
 
         ##= specification/s3-encryption/data-format/content-metadata.md#v3-only
         ##% The Encryption Context value MUST be used for wrapping algorithm `kms+context` or `12`.
+        ##= specification/s3-encryption/data-format/content-metadata.md#v3-only
         ##% The Material Description MUST be used for wrapping algorithms `AES/GCM` (`02`) and `RSA-OAEP-SHA1` (`22`).
         # For kms+context, the stored context comes from x-amz-t (encryption_context_v3).
         # For AES/GCM and RSA-OAEP-SHA1, it comes from x-amz-m (mat_desc_v3).
