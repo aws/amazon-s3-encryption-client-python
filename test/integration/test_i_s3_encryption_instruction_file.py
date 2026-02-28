@@ -38,8 +38,11 @@ def test_decrypt_v1_instruction_file():
     kms_client = boto3.client("kms", region_name=region)
     keyring = KmsKeyring(kms_client, kms_key_id, enable_legacy_wrapping_algorithms=True)
     wrapped_client = boto3.client("s3")
-    config = S3EncryptionClientConfig(keyring, enable_legacy_unauthenticated_modes=True, 
-        commitment_policy=CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+    config = S3EncryptionClientConfig(
+        keyring,
+        enable_legacy_unauthenticated_modes=True,
+        commitment_policy=CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
+    )
     s3ec = S3EncryptionClient(wrapped_client, config)
 
     response = s3ec.get_object(Bucket=bucket, Key=key)

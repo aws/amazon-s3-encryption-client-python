@@ -52,7 +52,10 @@ class KmsKeyring(S3Keyring):
             # For committing algorithm suites (V3), the encryption context algorithm
             # value is the algorithm suite ID as a string ("115"), not the cipher name.
             # For non-committing suites (V2), use the cipher name ("AES/GCM/NoPadding").
-            if enc_materials.algorithm_suite == AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY:
+            if (
+                enc_materials.algorithm_suite
+                == AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+            ):
                 encryption_context["aws:x-amz-cek-alg"] = "115"
             else:
                 encryption_context["aws:x-amz-cek-alg"] = "AES/GCM/NoPadding"
