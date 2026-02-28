@@ -32,11 +32,28 @@ class S3EncryptionClientConfig:
     commitment_policy: CommitmentPolicy = field(
         default=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT
     )
+    ##= specification/s3-encryption/client.md#enable-legacy-unauthenticated-modes
+    ##% The S3EC MUST support the option to enable or disable legacy unauthenticated modes (content encryption algorithms).
+    ##= specification/s3-encryption/client.md#enable-legacy-unauthenticated-modes
+    ##% The option to enable legacy unauthenticated modes MUST be set to false by default.
+    enable_legacy_unauthenticated_modes: bool = field(default=False)
     cmm: AbstractCryptoMaterialsManager = field()
 
     @cmm.default
     def _default_cmm_for_keyring(self):
         return DefaultCryptoMaterialsManager(self.keyring)
+
+    ##= specification/s3-encryption/client.md#encryption-algorithm
+    ##% The S3EC MUST validate that the configured encryption algorithm is not legacy.
+    ##= specification/s3-encryption/client.md#encryption-algorithm
+    ##% If the configured encryption algorithm is legacy, then the S3EC MUST throw an exception.
+    def __attrs_post_init__(self):
+        if self.algorithm_suite.is_legacy:
+            raise S3EncryptionClientError(
+                f"Cannot configure S3 Encryption Client with legacy algorithm suite "
+                f"{self.algorithm_suite.name}. Legacy algorithm suites are only "
+                f"supported for decryption (and enable_legacy_unauthenticated_modes is True)."
+            )
 
 
 class S3EncryptionClientPlugin:
@@ -137,6 +154,8 @@ class S3EncryptionClientPlugin:
         pipeline = GetEncryptedObjectPipeline(
             self.config.cmm,
             s3_client=getattr(self._context, "s3_client", None),
+            commitment_policy=self.config.commitment_policy,
+            enable_legacy_unauthenticated_modes=self.config.enable_legacy_unauthenticated_modes,
         )
         decrypted_data = pipeline.decrypt(
             response,

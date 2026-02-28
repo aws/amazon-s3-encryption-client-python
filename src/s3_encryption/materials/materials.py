@@ -16,8 +16,14 @@ from .encrypted_data_key import EncryptedDataKey
 class AlgorithmSuite(Enum):
     """Algorithm suites supported by the S3 Encryption Client."""
 
+    ALG_AES_256_CBC_IV16_NO_KDF = "AES/CBC/PKCS5Padding"
     ALG_AES_256_GCM_IV12_TAG16_NO_KDF = "AES/GCM/NoPadding"
     ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY = "AES/GCM/HKDF/CommitKey"
+
+    @property
+    def is_legacy(self) -> bool:
+        """Return True if this algorithm suite is a legacy unauthenticated mode."""
+        return self == AlgorithmSuite.ALG_AES_256_CBC_IV16_NO_KDF
 
 
 class CommitmentPolicy(Enum):
