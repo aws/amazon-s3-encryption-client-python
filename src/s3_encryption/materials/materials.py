@@ -7,11 +7,13 @@ which contain the cryptographic materials needed for S3 object encryption
 and decryption operations.
 """
 
-from typing import Any
 from enum import Enum
+from typing import Any
+
 from attrs import define, field
 
 from .encrypted_data_key import EncryptedDataKey
+
 
 class AlgorithmSuite(Enum):
     """Algorithm suites supported by the S3 Encryption Client."""

@@ -186,7 +186,9 @@ class TestGetEncryptedObjectPipelineInstructionFile:
         # key commitment verification will fail.
         from s3_encryption.exceptions import S3EncryptionClientSecurityError
 
-        with pytest.raises(S3EncryptionClientSecurityError, match="Key commitment verification failed"):
+        with pytest.raises(
+            S3EncryptionClientSecurityError, match="Key commitment verification failed"
+        ):
             pipeline.decrypt(mock_response, bucket="test-bucket", key="test-key")
 
         # Verify instruction file was fetched
@@ -266,5 +268,7 @@ class TestGetEncryptedObjectPipelineInstructionFile:
             "Metadata": metadata,
         }
 
-        with pytest.raises(S3EncryptionClientError, match="Unsupported wrapping algorithm: AES/GCM"):
+        with pytest.raises(
+            S3EncryptionClientError, match="Unsupported wrapping algorithm: AES/GCM"
+        ):
             pipeline.decrypt(mock_response)

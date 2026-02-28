@@ -23,7 +23,12 @@ from .key_derivation import (
 )
 from .materials.crypto_materials_manager import AbstractCryptoMaterialsManager
 from .materials.encrypted_data_key import EncryptedDataKey
-from .materials.materials import AlgorithmSuite, CommitmentPolicy, DecryptionMaterials, EncryptionMaterials
+from .materials.materials import (
+    AlgorithmSuite,
+    CommitmentPolicy,
+    DecryptionMaterials,
+    EncryptionMaterials,
+)
 from .metadata import ObjectMetadata
 
 
@@ -70,8 +75,7 @@ class PutEncryptedObjectPipeline:
 
         if algorithm_suite == AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY:
             return self._encrypt_kc_gcm(plaintext, enc_mats, edk_bytes)
-        else:
-            return self._encrypt_gcm(plaintext, enc_mats, edk_bytes)
+        return self._encrypt_gcm(plaintext, enc_mats, edk_bytes)
 
     def _encrypt_gcm(self, plaintext, enc_mats, edk_bytes):
         """Encrypt using ALG_AES_256_GCM_IV12_TAG16_NO_KDF (V2 format)."""
@@ -136,7 +140,9 @@ class PutEncryptedObjectPipeline:
             encrypted_data_key_v3=b64_edk,
             message_id_v3=b64_message_id,
             key_commitment_v3=b64_commit_key,
-            encryption_context_v3=enc_mats.encryption_context if enc_mats.encryption_context else None,
+            encryption_context_v3=(
+                enc_mats.encryption_context if enc_mats.encryption_context else None
+            ),
         )
 
         return encrypted_data, metadata.to_dict()
@@ -184,27 +190,19 @@ class GetEncryptedObjectPipeline:
                 )
             suite = self._CONTENT_CIPHER_TO_ALGORITHM_SUITE.get(cek_alg)
             if suite is None:
-                raise S3EncryptionClientError(
-                    f"Unknown content encryption algorithm: {cek_alg}"
-                )
+                raise S3EncryptionClientError(f"Unknown content encryption algorithm: {cek_alg}")
             return suite
 
         if metadata.is_v3_format():
             cek_alg = metadata.content_cipher_v3
             if cek_alg is None:
-                raise S3EncryptionClientError(
-                    "V3 format object missing required x-amz-c metadata."
-                )
+                raise S3EncryptionClientError("V3 format object missing required x-amz-c metadata.")
             suite = self._CONTENT_CIPHER_TO_ALGORITHM_SUITE.get(cek_alg)
             if suite is None:
-                raise S3EncryptionClientError(
-                    f"Unknown content encryption algorithm: {cek_alg}"
-                )
+                raise S3EncryptionClientError(f"Unknown content encryption algorithm: {cek_alg}")
             return suite
 
-        raise S3EncryptionClientError(
-            "Unable to determine S3 Encryption Client message format."
-        )
+        raise S3EncryptionClientError("Unable to determine S3 Encryption Client message format.")
 
     def decrypt(
         self,
@@ -313,7 +311,8 @@ class GetEncryptedObjectPipeline:
         ##% then the S3EC MUST throw an exception.
         if (
             self.commitment_policy == CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT
-            and dec_materials.algorithm_suite != AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+            and dec_materials.algorithm_suite
+            != AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
         ):
             raise S3EncryptionClientError(
                 "Configuration conflict: cannot decrypt non-key-committing object "
@@ -408,9 +407,7 @@ class GetEncryptedObjectPipeline:
 
             # Remove PKCS7 padding (compatible with PKCS5Padding for 16-byte block ciphers)
             unpadder = PKCS7(128).unpadder()
-            plaintext = unpadder.update(padded_plaintext) + unpadder.finalize()
-
-            return plaintext
+            return unpadder.update(padded_plaintext) + unpadder.finalize()
         except Exception as e:
             raise S3EncryptionClientSecurityError(
                 f"Failed to decrypt CBC content: {e}. "
@@ -508,6 +505,4 @@ class GetEncryptedObjectPipeline:
         ##= specification/s3-encryption/key-derivation.md#hkdf-operation
         ##% The client MUST set the AAD to the Algorithm Suite ID represented as bytes.
         aesgcm = AESGCM(derived_encryption_key)
-        return aesgcm.decrypt(
-            nonce=KC_GCM_IV, data=encrypted_data, associated_data=SUITE_ID_BYTES
-        )
+        return aesgcm.decrypt(nonce=KC_GCM_IV, data=encrypted_data, associated_data=SUITE_ID_BYTES)

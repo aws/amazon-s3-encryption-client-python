@@ -15,7 +15,6 @@ import hmac
 
 from cryptography.hazmat.primitives.hashes import SHA512
 from cryptography.hazmat.primitives.kdf.hkdf import HKDFExpand
-from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 # Algorithm suite ID for S3EC.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
 SUITE_ID_BYTES = b"\x00\x73"
@@ -87,9 +86,7 @@ def derive_keys(plaintext_data_key: bytes, message_id: bytes) -> tuple[bytes, by
     ##= specification/s3-encryption/key-derivation.md#hkdf-operation
     ##% The input info MUST be a concatenation of the algorithm suite ID as bytes
     ##% followed by the string COMMITKEY as UTF8 encoded bytes.
-    commit_key = _hkdf_expand(
-        prk, info=SUITE_ID_BYTES + b"COMMITKEY", length=COMMIT_KEY_LENGTH
-    )
+    commit_key = _hkdf_expand(prk, info=SUITE_ID_BYTES + b"COMMITKEY", length=COMMIT_KEY_LENGTH)
 
     return derived_encryption_key, commit_key
 
