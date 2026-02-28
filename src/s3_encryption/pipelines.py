@@ -125,18 +125,18 @@ class PutEncryptedObjectPipeline:
 
         # V3 metadata format
         # x-amz-c: content cipher identifier (compressed algorithm suite)
-        # x-amz-w: wrapping algorithm identifier
+        # x-amz-w: wrapping algorithm identifier (12 = kms+context)
         # x-amz-3: encrypted data key
         # x-amz-i: message ID
         # x-amz-d: key commitment
-        # x-amz-m: material description (encryption context as JSON)
+        # x-amz-t: encryption context (for kms+context wrapping)
         metadata = ObjectMetadata(
             content_cipher_v3="115",
-            encrypted_data_key_algorithm_v3="02",
+            encrypted_data_key_algorithm_v3="12",
             encrypted_data_key_v3=b64_edk,
             message_id_v3=b64_message_id,
             key_commitment_v3=b64_commit_key,
-            mat_desc_v3=enc_mats.encryption_context if enc_mats.encryption_context else None,
+            encryption_context_v3=enc_mats.encryption_context if enc_mats.encryption_context else None,
         )
 
         return encrypted_data, metadata.to_dict()
@@ -289,18 +289,35 @@ class GetEncryptedObjectPipeline:
 
         return self.cmm.decrypt_materials(dec_materials)
 
-    # V3 compressed wrapping algorithm identifiers → canonical names
+    ##= specification/s3-encryption/data-format/content-metadata.md#v3-only
+    ##% The V3 format uses compression here such that each wrapping algorithm
+    ##% is represented by a two digit string.
+    ##% The wrapping algorithm value "02" MUST be translated to AES/GCM upon retrieval, and vice versa on write.
+    ##% The wrapping algorithm value "12" MUST be translated to kms+context upon retrieval, and vice versa on write.
+    ##% The wrapping algorithm value "22" MUST be translated to RSA-OAEP-SHA1 upon retrieval, and vice versa on write.
     _V3_WRAP_ALG_MAP = {
-        "02": "kms+context",
+        "02": "AES/GCM",
+        "12": "kms+context",
+        "22": "RSA-OAEP-SHA1",
     }
+
+    # Wrapping algorithms that this client currently supports for decryption
+    _SUPPORTED_WRAP_ALGS = {"kms+context", "kms"}
 
     def _decrypt_v3(self, metadata, encryption_context) -> DecryptionMaterials:
         """Prepare V3 decryption materials."""
         edk_bytes = base64.b64decode(metadata.encrypted_data_key_v3)
 
         # Map V3 compressed wrapping algorithm to canonical key_provider_info
-        raw_wrap_alg = metadata.encrypted_data_key_algorithm_v3 or "02"
+        raw_wrap_alg = metadata.encrypted_data_key_algorithm_v3 or "12"
         wrap_alg = self._V3_WRAP_ALG_MAP.get(raw_wrap_alg, raw_wrap_alg)
+
+        if wrap_alg not in self._SUPPORTED_WRAP_ALGS:
+            raise S3EncryptionClientError(
+                f"Unsupported wrapping algorithm: {wrap_alg}. "
+                f"The S3 Encryption Client for Python currently supports: "
+                f"{', '.join(sorted(self._SUPPORTED_WRAP_ALGS))}."
+            )
 
         encrypted_data_key = EncryptedDataKey(
             key_provider_id=b"S3Keyring",
@@ -308,15 +325,24 @@ class GetEncryptedObjectPipeline:
             encrypted_data_key=edk_bytes,
         )
 
-        # V3 stores encryption context in mat_desc_v3 (as dict or JSON string)
+        ##= specification/s3-encryption/data-format/content-metadata.md#v3-only
+        ##% The Encryption Context value MUST be used for wrapping algorithm `kms+context` or `12`.
+        ##% The Material Description MUST be used for wrapping algorithms `AES/GCM` (`02`) and `RSA-OAEP-SHA1` (`22`).
+        # For kms+context, the stored context comes from x-amz-t (encryption_context_v3).
+        # For AES/GCM and RSA-OAEP-SHA1, it comes from x-amz-m (mat_desc_v3).
         stored_context = {}
-        if metadata.mat_desc_v3 is not None:
-            if isinstance(metadata.mat_desc_v3, dict):
-                stored_context = metadata.mat_desc_v3
-            elif isinstance(metadata.mat_desc_v3, str):
+        if wrap_alg == "kms+context":
+            raw_ctx = metadata.encryption_context_v3
+        else:
+            raw_ctx = metadata.mat_desc_v3
+
+        if raw_ctx is not None:
+            if isinstance(raw_ctx, dict):
+                stored_context = raw_ctx
+            elif isinstance(raw_ctx, str):
                 import json
 
-                stored_context = json.loads(metadata.mat_desc_v3)
+                stored_context = json.loads(raw_ctx)
 
         dec_materials = DecryptionMaterials(
             encrypted_data_keys=[encrypted_data_key],
