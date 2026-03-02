@@ -94,7 +94,14 @@ class GetEncryptedObjectPipeline:
     cmm: AbstractCryptoMaterialsManager = field()
     s3_client: object = field(default=None)
 
-    def decrypt(self, response, encryption_context=None, bucket=None, key=None):
+    def decrypt(
+        self,
+        response,
+        encryption_context=None,
+        bucket=None,
+        key=None,
+        instruction_suffix=".instruction",
+    ):
         """Decrypt the data after it is retrieved from S3.
 
         Args:
@@ -102,6 +109,7 @@ class GetEncryptedObjectPipeline:
             encryption_context (dict, optional): Additional context for decryption
             bucket (str, optional): S3 bucket name (required for instruction file)
             key (str, optional): S3 object key (required for instruction file)
+            instruction_suffix(str, optional): suffix for instruction file; defaults to ".instruction".
 
         Returns:
             bytes: The decrypted data
@@ -118,25 +126,32 @@ class GetEncryptedObjectPipeline:
 
         # Check if we need to fetch instruction file
         if metadata.should_use_instruction_file():
-            ##= specification/s3-encryption/data-format/content-metadata.md#determining-s3ec-object-status
-            ##= type=citation
-            ##% If the object matches none of the V1/V2/V3 formats,
-            ##% the S3EC MUST attempt to get the instruction file.
 
             if self.s3_client is None:
                 raise S3EncryptionClientError("s3_client required to fetch instruction file")
             if bucket is None or key is None:
                 raise S3EncryptionClientError("Bucket and key required to fetch instruction file")
 
+            instruction_key = key + instruction_suffix
+            instruction_metadata = fetch_instruction_file(self.s3_client, bucket, instruction_key)
+            instruction_metadata.update(encryption_metadata)
+            metadata = ObjectMetadata.from_dict(instruction_metadata)
             ##= specification/s3-encryption/data-format/metadata-strategy.md#v1-v2-instruction-files
             ##= type=citation
             ##% In the V1/V2 message format, all of the content metadata
             ##% MUST be stored in the Instruction File.
-
-            instruction_metadata = fetch_instruction_file(self.s3_client, bucket, key)
-            instruction_metadata.update(encryption_metadata)
-            metadata = ObjectMetadata.from_dict(instruction_metadata)
-
+            if metadata.is_v1_format() or metadata.is_v2_format():
+                object_metadata = ObjectMetadata.from_dict(encryption_metadata)
+                if not (
+                    object_metadata.content_cipher is None
+                    and object_metadata.content_iv is None
+                    and object_metadata.encrypted_data_key_algorithm is None
+                ):
+                    raise S3EncryptionClientError(
+                        "Content metadata found in object metadata for V1 or V2 message format "
+                        "BUT Instruction File is being used. This is an illegal combination. "
+                        f"bucket: {bucket}\n key:{key}\n instruction_file:{instruction_key}"
+                    )
         # Determine which format we're dealing with and get decryption materials
         if metadata.is_v1_format():
             dec_materials = self._decrypt_v1(metadata, encryption_context)

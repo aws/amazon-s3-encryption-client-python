@@ -26,6 +26,16 @@ class S3EncryptionClientConfig:
 
     keyring: AbstractKeyring
     cmm: AbstractCryptoMaterialsManager = field()
+    ##= specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
+    ##= type=citation
+    ##% The S3EC SHOULD support providing a custom Instruction File suffix
+    ##% on GetObject requests, regardless of whether or not re-encryption is supported.
+
+    ##= specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
+    ##= type=citation
+    ##% The default Instruction File behavior uses the same S3 object key
+    ##% as its associated object suffixed with ".instruction".
+    instruction_file_suffix: str = field(default=".instruction")
 
     @cmm.default
     def _default_cmm_for_keyring(self):
@@ -134,6 +144,7 @@ class S3EncryptionClientPlugin:
             encryption_context,
             bucket=getattr(self._context, "bucket", None),
             key=getattr(self._context, "key", None),
+            instruction_suffix=self.config.instruction_file_suffix,
         )
 
         # Create a new streaming body with the decrypted data
