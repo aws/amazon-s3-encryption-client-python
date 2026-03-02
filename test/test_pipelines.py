@@ -14,6 +14,10 @@ from s3_encryption.pipelines import GetEncryptedObjectPipeline
 
 
 class TestGetEncryptedObjectPipelineInstructionFile:
+    ##= specification/s3-encryption/data-format/metadata-strategy.md#v1-v2-instruction-files
+    ##= type=test
+    ##% In the V1/V2 message format, all of the content metadata
+    ##% MUST be stored in the Instruction File.
     def test_decrypt_v1_from_instruction_file(self):
         """Test decrypting V1 format with instruction file."""
         object_metadata = {"x-amz-meta-x-amz-unencrypted-content-length": "39"}
@@ -63,6 +67,10 @@ class TestGetEncryptedObjectPipelineInstructionFile:
             Bucket="test-bucket", Key="test-key.instruction"
         )
 
+    ##= specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
+    ##= type=test
+    ##% The default Instruction File behavior uses the same S3 object key
+    ##% as its associated object suffixed with ".instruction".
     def test_decrypt_v2_from_instruction_file(self):
         """Test decrypting V2 format with instruction file."""
         # V2: Object metadata is empty, all metadata in instruction file
@@ -114,6 +122,10 @@ class TestGetEncryptedObjectPipelineInstructionFile:
             Bucket="test-bucket", Key="test-key.instruction"
         )
 
+    ##= specification/s3-encryption/data-format/metadata-strategy.md#v3-instruction-files
+    ##= type=test
+    ##% In the V3 message format, only the content metadata related to
+    ##% the encrypted data is stored in the Instruction File.
     def test_decrypt_v3_from_instruction_file(self):
         """Test decrypting V3 format with instruction file."""
         # Object metadata contains V3 content keys only
@@ -177,4 +189,53 @@ class TestGetEncryptedObjectPipelineInstructionFile:
         # Verify instruction file was fetched
         mock_s3_client.get_object.assert_called_once_with(
             Bucket="test-bucket", Key="test-key.instruction"
+        )
+
+    ##= specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
+    ##= type=test
+    ##% The S3EC SHOULD support providing a custom Instruction File suffix
+    ##% on GetObject requests, regardless of whether or not re-encryption is supported.
+    def test_decrypt_with_custom_instruction_file_suffix(self):
+        """Test that a custom instruction file suffix is used when provided."""
+        object_metadata = {}
+
+        instruction_file_metadata = {
+            "x-amz-iv": base64.b64encode(os.urandom(12)).decode("utf-8"),
+            "x-amz-key-v2": base64.b64encode(b"encrypted-key-data").decode("utf-8"),
+            "x-amz-wrap-alg": "kms+context",
+            "x-amz-matdesc": json.dumps({"kms_cmk_id": "test-key-id"}),
+            "x-amz-cek-alg": "AES/GCM/NoPadding",
+            "x-amz-tag-len": "128",
+            "x-amz-crypto-instr-file": "",
+        }
+
+        mock_s3_client = Mock()
+        mock_s3_client.get_object.return_value = {
+            "Body": BytesIO(b""),
+            "Metadata": instruction_file_metadata,
+        }
+
+        mock_keyring = Mock(spec=S3Keyring)
+        cmm = DefaultCryptoMaterialsManager(mock_keyring)
+        pipeline = GetEncryptedObjectPipeline(cmm, mock_s3_client)
+
+        mock_response = {
+            "Body": BytesIO(b"encrypted-test-data"),
+            "Metadata": object_metadata,
+        }
+
+        mock_keyring.on_decrypt.side_effect = Exception(
+            "Keyring called - instruction file was fetched"
+        )
+
+        with pytest.raises(Exception, match="Keyring called"):
+            pipeline.decrypt(
+                mock_response,
+                bucket="test-bucket",
+                key="test-key",
+                instruction_suffix=".custom-suffix",
+            )
+
+        mock_s3_client.get_object.assert_called_once_with(
+            Bucket="test-bucket", Key="test-key.custom-suffix"
         )

@@ -87,6 +87,9 @@ class TestS3EncryptionClientPlugin:
         ):
             plugin.on_get_object_after_call(parsed)
 
+    ##= specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
+    ##= type=test
+    ##% The content metadata stored in the Instruction File MUST be serialized to a JSON string.
     def test_plaintext_mode_invalid_json_raises_error(self):
         """Test that invalid JSON in instruction file raises error."""
         # Create plugin
@@ -137,6 +140,9 @@ class TestS3EncryptionClientPlugin:
         ):
             plugin.on_get_object_after_call(parsed)
 
+    ##= specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
+    ##= type=test
+    ##% The serialized JSON string MUST be the only contents of the Instruction File.
     def test_plaintext_mode_invalid_keys_raises_error(self):
         """Test that invalid keys in instruction file raises error."""
         # Create plugin

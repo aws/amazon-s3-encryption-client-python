@@ -200,3 +200,39 @@ class TestObjectMetadata:
             encrypted_data_key_v3="edk-v3",
         )
         assert metadata_all.has_exclusive_key_collision() is True
+
+    ##= specification/s3-encryption/data-format/content-metadata.md#determining-s3ec-object-status
+    ##= type=test
+    ##% If the object matches none of the V1/V2/V3 formats,
+    ##% the S3EC MUST attempt to get the instruction file.
+    def test_should_use_instruction_file(self):
+        # No keys at all -> should use instruction file
+        metadata_empty = ObjectMetadata()
+        assert metadata_empty.should_use_instruction_file() is True
+
+        # V3 in object metadata (has content keys but no EDK) -> instruction file
+        metadata_v3_partial = ObjectMetadata(
+            content_cipher_v3="02",
+            encrypted_data_key_algorithm_v3="12",
+            key_commitment_v3="commitment",
+            message_id_v3="msg-id",
+        )
+        assert metadata_v3_partial.should_use_instruction_file() is True
+
+        # V1 with EDK -> no instruction file needed
+        metadata_v1 = ObjectMetadata(encrypted_data_key_v1="edk-v1")
+        assert metadata_v1.should_use_instruction_file() is False
+
+        # V2 with EDK -> no instruction file needed
+        metadata_v2 = ObjectMetadata(encrypted_data_key_v2="edk-v2")
+        assert metadata_v2.should_use_instruction_file() is False
+
+        # V3 with EDK -> no instruction file needed
+        metadata_v3 = ObjectMetadata(
+            content_cipher_v3="02",
+            encrypted_data_key_algorithm_v3="12",
+            key_commitment_v3="commitment",
+            message_id_v3="msg-id",
+            encrypted_data_key_v3="edk-v3",
+        )
+        assert metadata_v3.should_use_instruction_file() is False
