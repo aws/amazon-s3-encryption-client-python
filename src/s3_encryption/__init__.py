@@ -67,9 +67,9 @@ class S3EncryptionClientPlugin:
             params: Dictionary of parameters for the PutObject call (after serialization)
             **kwargs: Additional event arguments
         """
-        if getattr(self._context, "plaintext_mode", False):
+        if getattr(self._context, "instruction_file_mode", False):
             raise S3EncryptionClientError(
-                "Plaintext mode is exclusively for reading instruction files "
+                "Instruction file mode is exclusively for reading instruction files "
                 "and not supported in put_object!"
             )
         # At this point, boto3 has already serialized the Body
@@ -118,7 +118,7 @@ class S3EncryptionClientPlugin:
             **kwargs: Additional event arguments (includes 'params' with request parameters)
         """
         # Check if plaintext mode is enabled via thread-local flag
-        if getattr(self._context, "plaintext_mode", False):
+        if getattr(self._context, "instruction_file_mode", False):
             self.process_instruction_file(parsed)
             return
 
@@ -165,15 +165,8 @@ class S3EncryptionClientPlugin:
         """
         instruction_key = getattr(self._context, "key", None)
 
-        # Verify instruction file marker is present in S3 object metadata
-        existing_metadata = parsed.get("Metadata", {})
-        if "x-amz-crypto-instr-file" not in existing_metadata:
-            raise S3EncryptionClientError(
-                f"Instruction file does not contain "
-                f"x-amz-crypto-instr-file marker: {instruction_key}"
-            )
-
         # In plaintext mode, parse instruction file and append to metadata
+        existing_metadata = parsed.get("Metadata", {})
         instruction_data = parsed.get("Body").read()
         instruction_metadata = parse_instruction_file(instruction_data, instruction_key)
 

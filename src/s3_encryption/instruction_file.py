@@ -68,7 +68,6 @@ def fetch_instruction_file(s3_client, bucket: str, key: str) -> dict[str, Any]:
     2. Returns the parsed metadata from the response Metadata field
 
     S3EncryptionClientPlugin's event handler (on_get_object_after_call) handles:
-    - Verifying the x-amz-crypto-instr-file marker is present
     - Parsing and validating the instruction file content
     - Placing parsed metadata in response["Metadata"]
 
@@ -80,13 +79,13 @@ def fetch_instruction_file(s3_client, bucket: str, key: str) -> dict[str, Any]:
         dict: Parsed JSON metadata from instruction file
 
     Raises:
-        S3EncryptionClientError: If the instruction file marker is missing,
-            the instruction file is not valid JSON, or contains non-S3EC metadata keys
+        S3EncryptionClientError: If the instruction file is not valid JSON,
+            or contains non-S3EC metadata keys
     """
     # Set plaintext mode flag in thread-local context before calling get_object
     # This will be checked by the event handler to skip decryption
     if hasattr(s3_client, "_s3ec_plugin_context"):
-        s3_client._s3ec_plugin_context.plaintext_mode = True
+        s3_client._s3ec_plugin_context.instruction_file_mode = True
         s3_client._s3ec_plugin_context.key = key
     else:
         raise S3EncryptionClientError(
@@ -99,7 +98,7 @@ def fetch_instruction_file(s3_client, bucket: str, key: str) -> dict[str, Any]:
     finally:
         # Clear the flags after the call
         if hasattr(s3_client, "_s3ec_plugin_context"):
-            s3_client._s3ec_plugin_context.plaintext_mode = False
+            s3_client._s3ec_plugin_context.instruction_file_mode = False
 
     # In plaintext mode, the event handler places parsed metadata in Metadata field
     metadata = response.get("Metadata", {})
