@@ -189,6 +189,7 @@ async def client_endpoint(request: Request):
         key_material = config_data.get("keyMaterial", {})
 
         enable_legacy_wrapping_algorithms = config_data.get("enableLegacyWrappingAlgorithms", False)
+        enable_legacy_unauthenticated_modes = config_data.get("enableLegacyUnauthenticatedModes", False)
 
         # TODO pull region from ARN
         kms_client = boto3.client("kms", region_name="us-west-2")
@@ -201,7 +202,10 @@ async def client_endpoint(request: Request):
         wrapped_client = boto3.client("s3")
 
         # Build config kwargs, only including algorithm_suite and commitment_policy if provided
-        config_kwargs = {"keyring": keyring}
+        config_kwargs = {
+            "keyring": keyring,
+            "enable_legacy_unauthenticated_modes": enable_legacy_unauthenticated_modes,
+        }
 
         encryption_algorithm = config_data.get("encryptionAlgorithm")
         if encryption_algorithm is not None:
