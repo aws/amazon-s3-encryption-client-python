@@ -217,9 +217,6 @@ class TestKmsKeyringOnDecrypt:
         assert result.plaintext_data_key == b"plaintext-key"
         mock_kms_client.decrypt.assert_called_once()
 
-    ##= specification/s3-encryption/materials/s3-kms-keyring.md#kms-context
-    ##= type=test
-    ##% When decrypting using Kms+Context mode, the KmsKeyring MUST validate the provided (request) encryption context with the stored (materials) encryption context.
     ##= specification/s3-encryption/materials/s3-kms-keyring.md#decryptdatakey
     ##= type=test
     ##% If the Key Provider Info of the Encrypted Data Key is "kms+context", the KmsKeyring MUST attempt to decrypt using Kms+Context mode.
@@ -250,7 +247,7 @@ class TestKmsKeyringOnDecrypt:
 
     ##= specification/s3-encryption/materials/s3-kms-keyring.md#kms-context
     ##= type=test
-    ##% The stored encryption context with the two reserved keys removed MUST match the provided encryption context.
+    ##% When decrypting using Kms+Context mode, the KmsKeyring MUST validate the provided (request) encryption context with the stored (materials) encryption context.
     ##% If the stored encryption context with the two reserved keys removed does not match the provided encryption context, the KmsKeyring MUST throw an exception.
     def test_on_decrypt_fails_with_mismatched_encryption_context(self):
         """Test that on_decrypt fails when encryption contexts don't match."""
@@ -279,7 +276,7 @@ class TestKmsKeyringOnDecrypt:
 
     ##= specification/s3-encryption/materials/s3-kms-keyring.md#kms-context
     ##= type=test
-    ##% When decrypting using Kms+Context mode, the KmsKeyring MUST validate the provided (request) encryption context with the stored (materials) encryption context.
+    ##% The stored encryption context with the two reserved keys removed MUST match the provided encryption context.
     def test_on_decrypt_rejects_reserved_key_in_request_context(self):
         """Test that on_decrypt rejects reserved keys in request encryption context."""
         mock_kms_client = MagicMock()
@@ -417,9 +414,14 @@ class TestKmsKeyringOnDecrypt:
     def test_on_decrypt_fails_when_kms_v1_fails(self):
         """Test that on_decrypt fails when KMS call fails."""
         mock_kms_client = MagicMock()
-        mock_kms_client.decrypt.side_effect = Exception("KMS decrypt error")
+        kms_exception = Exception("KMS decrypt error")
+        mock_kms_client.decrypt.side_effect = kms_exception
 
-        keyring = KmsKeyring(kms_client=mock_kms_client, kms_key_id="test-key-id")
+        keyring = KmsKeyring(
+            kms_client=mock_kms_client,
+            kms_key_id="test-key-id",
+            enable_legacy_wrapping_algorithms=True,
+        )
         edk = EncryptedDataKey(
             key_provider_id=b"S3Keyring",
             key_provider_info="kms",
@@ -432,8 +434,10 @@ class TestKmsKeyringOnDecrypt:
             encryption_context_from_request={},
         )
 
-        with pytest.raises(Exception):
+        with pytest.raises(Exception, match="KMS decrypt error") as exc_info:
             keyring.on_decrypt(dec_materials)
+
+        assert exc_info.value is kms_exception
 
     ##= specification/s3-encryption/materials/s3-kms-keyring.md#kms-context
     ##= type=test
@@ -441,7 +445,8 @@ class TestKmsKeyringOnDecrypt:
     def test_on_decrypt_fails_when_kms_fails(self):
         """Test that on_decrypt fails when KMS call fails."""
         mock_kms_client = MagicMock()
-        mock_kms_client.decrypt.side_effect = Exception("KMS decrypt error")
+        kms_exception = Exception("KMS decrypt error")
+        mock_kms_client.decrypt.side_effect = kms_exception
 
         keyring = KmsKeyring(kms_client=mock_kms_client, kms_key_id="test-key-id")
         edk = EncryptedDataKey(
@@ -456,5 +461,7 @@ class TestKmsKeyringOnDecrypt:
             encryption_context_from_request={},
         )
 
-        with pytest.raises(Exception):
+        with pytest.raises(Exception, match="KMS decrypt error") as exc_info:
             keyring.on_decrypt(dec_materials)
+
+        assert exc_info.value is kms_exception

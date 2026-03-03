@@ -78,11 +78,6 @@ class KmsKeyring(S3Keyring):
             ##% The KmsKeyring MUST NOT support encryption using KmsV1 mode.
             encryption_context["aws:x-amz-cek-alg"] = "AES/GCM/NoPadding"
 
-            ##= specification/s3-encryption/materials/s3-kms-keyring.md#encryptdatakey
-            ##= type=exception
-            ##% The KmsKeyring MUST implement the EncryptDataKey method.
-            ##% The keyring MUST call [AWS KMS Encrypt](https://docs.aws.amazon.com/kms/latest/
-            ##% APIReference/API_Encrypt.html) using the configured AWS KMS client.
             # Python implementation uses KMS GenerateDataKey instead of the spec's
             # EncryptDataKey pattern
             # The spec is wrong and needs to be updated.
