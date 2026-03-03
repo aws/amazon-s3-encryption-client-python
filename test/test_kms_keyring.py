@@ -248,6 +248,8 @@ class TestKmsKeyringOnDecrypt:
     ##= specification/s3-encryption/materials/s3-kms-keyring.md#kms-context
     ##= type=test
     ##% When decrypting using Kms+Context mode, the KmsKeyring MUST validate the provided (request) encryption context with the stored (materials) encryption context.
+    ##= specification/s3-encryption/materials/s3-kms-keyring.md#kms-context
+    ##= type=test
     ##% If the stored encryption context with the two reserved keys removed does not match the provided encryption context, the KmsKeyring MUST throw an exception.
     def test_on_decrypt_fails_with_mismatched_encryption_context(self):
         """Test that on_decrypt fails when encryption contexts don't match."""
