@@ -38,6 +38,16 @@ class S3EncryptionClientConfig:
     ##% The option to enable legacy unauthenticated modes MUST be set to false by default.
     enable_legacy_unauthenticated_modes: bool = field(default=False)
     cmm: AbstractCryptoMaterialsManager = field()
+    ##= specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
+    ##= type=citation
+    ##% The S3EC SHOULD support providing a custom Instruction File suffix
+    ##% on GetObject requests, regardless of whether or not re-encryption is supported.
+
+    ##= specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
+    ##= type=citation
+    ##% The default Instruction File behavior uses the same S3 object key
+    ##% as its associated object suffixed with ".instruction".
+    instruction_file_suffix: str = field(default=".instruction")
 
     @cmm.default
     def _default_cmm_for_keyring(self):
@@ -81,9 +91,9 @@ class S3EncryptionClientPlugin:
             params: Dictionary of parameters for the PutObject call (after serialization)
             **kwargs: Additional event arguments
         """
-        if getattr(self._context, "plaintext_mode", False):
+        if getattr(self._context, "instruction_file_mode", False):
             raise S3EncryptionClientError(
-                "Plaintext mode is exclusively for reading instruction files "
+                "Instruction file mode is exclusively for reading instruction files "
                 "and not supported in put_object!"
             )
         # At this point, boto3 has already serialized the Body
@@ -134,7 +144,7 @@ class S3EncryptionClientPlugin:
             **kwargs: Additional event arguments (includes 'params' with request parameters)
         """
         # Check if plaintext mode is enabled via thread-local flag
-        if getattr(self._context, "plaintext_mode", False):
+        if getattr(self._context, "instruction_file_mode", False):
             self.process_instruction_file(parsed)
             return
 
@@ -162,6 +172,7 @@ class S3EncryptionClientPlugin:
             encryption_context,
             bucket=getattr(self._context, "bucket", None),
             key=getattr(self._context, "key", None),
+            instruction_suffix=self.config.instruction_file_suffix,
         )
 
         # Create a new streaming body with the decrypted data
@@ -182,15 +193,8 @@ class S3EncryptionClientPlugin:
         """
         instruction_key = getattr(self._context, "key", None)
 
-        # Verify instruction file marker is present in S3 object metadata
-        existing_metadata = parsed.get("Metadata", {})
-        if "x-amz-crypto-instr-file" not in existing_metadata:
-            raise S3EncryptionClientError(
-                f"Instruction file does not contain "
-                f"x-amz-crypto-instr-file marker: {instruction_key}"
-            )
-
         # In plaintext mode, parse instruction file and append to metadata
+        existing_metadata = parsed.get("Metadata", {})
         instruction_data = parsed.get("Body").read()
         instruction_metadata = parse_instruction_file(instruction_data, instruction_key)
 

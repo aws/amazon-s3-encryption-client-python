@@ -248,6 +248,10 @@ class ObjectMetadata:
             and self.encrypted_data_key_v3 is None
         )
 
+    ##= specification/s3-encryption/data-format/content-metadata.md#determining-s3ec-object-status
+    ##= type=citation
+    ##% If the object matches none of the V1/V2/V3 formats,
+    ##% the S3EC MUST attempt to get the instruction file.
     def should_use_instruction_file(self) -> bool:
         """Check if instruction file should be used for decryption.
 

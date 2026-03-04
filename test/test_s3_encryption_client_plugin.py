@@ -17,7 +17,7 @@ from s3_encryption.materials.keyring import S3Keyring
 class TestS3EncryptionClientPlugin:
     """S3EncryptionClientPlugin event handler behavior."""
 
-    def test_plaintext_mode_parses_instruction_file(self):
+    def test_instruction_file_mode_parses_instruction_file(self):
         """Test that plaintext mode parses instruction file and returns metadata."""
         # Create plugin
         mock_keyring = Mock(spec=S3Keyring)
@@ -25,7 +25,7 @@ class TestS3EncryptionClientPlugin:
         plugin = S3EncryptionClientPlugin(config)
 
         # Set plaintext mode
-        plugin._context.plaintext_mode = True
+        plugin._context.instruction_file_mode = True
         plugin._context.key = "test-key.instruction"
 
         # Create instruction file body
@@ -56,38 +56,10 @@ class TestS3EncryptionClientPlugin:
         # Verify body was cleared
         assert parsed["Body"].read() == b""
 
-    def test_plaintext_mode_missing_marker_raises_error(self):
-        """Test that missing instruction file marker raises error."""
-        # Create plugin
-        mock_keyring = Mock(spec=S3Keyring)
-        config = S3EncryptionClientConfig(keyring=mock_keyring)
-        plugin = S3EncryptionClientPlugin(config)
-
-        # Set plaintext mode
-        plugin._context.plaintext_mode = True
-        plugin._context.key = "test-key.instruction"
-
-        # Create instruction file body
-        instruction_metadata = {
-            "x-amz-iv": "test-iv",
-            "x-amz-key-v2": "test-key",
-        }
-        instruction_body = json.dumps(instruction_metadata).encode("utf-8")
-
-        # Create parsed response WITHOUT instruction file marker
-        parsed = {
-            "Body": StreamingBody(io.BytesIO(instruction_body), len(instruction_body)),
-            "Metadata": {},  # Missing x-amz-crypto-instr-file
-        }
-
-        # Should raise error
-        with pytest.raises(
-            S3EncryptionClientError,
-            match="Instruction file does not contain x-amz-crypto-instr-file marker",
-        ):
-            plugin.on_get_object_after_call(parsed)
-
-    def test_plaintext_mode_invalid_json_raises_error(self):
+    ##= specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
+    ##= type=test
+    ##% The content metadata stored in the Instruction File MUST be serialized to a JSON string.
+    def test_instruction_file_mode_invalid_json_raises_error(self):
         """Test that invalid JSON in instruction file raises error."""
         # Create plugin
         mock_keyring = Mock(spec=S3Keyring)
@@ -95,7 +67,7 @@ class TestS3EncryptionClientPlugin:
         plugin = S3EncryptionClientPlugin(config)
 
         # Set plaintext mode
-        plugin._context.plaintext_mode = True
+        plugin._context.instruction_file_mode = True
         plugin._context.key = "test-key.instruction"
 
         # Create invalid JSON body
@@ -111,7 +83,7 @@ class TestS3EncryptionClientPlugin:
         with pytest.raises(S3EncryptionClientError, match="Instruction file is not valid JSON"):
             plugin.on_get_object_after_call(parsed)
 
-    def test_plaintext_mode_non_dict_json_raises_error(self):
+    def test_instruction_file_mode_non_dict_json_raises_error(self):
         """Test that non-dict JSON in instruction file raises error."""
         # Create plugin
         mock_keyring = Mock(spec=S3Keyring)
@@ -119,7 +91,7 @@ class TestS3EncryptionClientPlugin:
         plugin = S3EncryptionClientPlugin(config)
 
         # Set plaintext mode
-        plugin._context.plaintext_mode = True
+        plugin._context.instruction_file_mode = True
         plugin._context.key = "test-key.instruction"
 
         # Create JSON array instead of object
@@ -137,7 +109,10 @@ class TestS3EncryptionClientPlugin:
         ):
             plugin.on_get_object_after_call(parsed)
 
-    def test_plaintext_mode_invalid_keys_raises_error(self):
+    ##= specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
+    ##= type=test
+    ##% The serialized JSON string MUST be the only contents of the Instruction File.
+    def test_instruction_file_mode_invalid_keys_raises_error(self):
         """Test that invalid keys in instruction file raises error."""
         # Create plugin
         mock_keyring = Mock(spec=S3Keyring)
@@ -145,7 +120,7 @@ class TestS3EncryptionClientPlugin:
         plugin = S3EncryptionClientPlugin(config)
 
         # Set plaintext mode
-        plugin._context.plaintext_mode = True
+        plugin._context.instruction_file_mode = True
         plugin._context.key = "test-key.instruction"
 
         # Create instruction file with invalid keys
