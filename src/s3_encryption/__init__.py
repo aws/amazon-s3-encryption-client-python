@@ -27,12 +27,12 @@ class S3EncryptionClientConfig:
     keyring: AbstractKeyring
     cmm: AbstractCryptoMaterialsManager = field()
     ##= specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
-    ##= type=citation
+    ##= type=implementation
     ##% The S3EC SHOULD support providing a custom Instruction File suffix
     ##% on GetObject requests, regardless of whether or not re-encryption is supported.
 
     ##= specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
-    ##= type=citation
+    ##= type=implementation
     ##% The default Instruction File behavior uses the same S3 object key
     ##% as its associated object suffixed with ".instruction".
     instruction_file_suffix: str = field(default=".instruction")

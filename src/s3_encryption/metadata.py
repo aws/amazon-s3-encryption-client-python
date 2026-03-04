@@ -226,7 +226,7 @@ class ObjectMetadata:
         """Check if V3 content keys are in object metadata (without encrypted data key).
 
         ##= specification/s3-encryption/data-format/metadata-strategy.md#v3-instruction-files
-        ##= type=citation
+        ##= type=implementation
         ##% In the V3 message format, only the content metadata related to
         ##% the encrypted data is stored in the Instruction File.
         ##% In the V3 message format, the content metadata related to
@@ -243,7 +243,7 @@ class ObjectMetadata:
         )
 
     ##= specification/s3-encryption/data-format/content-metadata.md#determining-s3ec-object-status
-    ##= type=citation
+    ##= type=implementation
     ##% If the object matches none of the V1/V2/V3 formats,
     ##% the S3EC MUST attempt to get the instruction file.
     def should_use_instruction_file(self) -> bool:

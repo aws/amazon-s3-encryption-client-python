@@ -113,3 +113,39 @@ def test_decrypt_invalid_instruction_file():
         s3ec.get_object(Bucket=bucket, Key=key)
 
     print(f"Error message: {exc_info.value}")
+
+
+# TODO(v3): enable once v3 is implemented
+@pytest.mark.skip(reason="V3 decryption not yet implemented")
+def test_decrypt_v3_instruction_file_custom_suffix():
+    """Test decrypting V3 object with a custom instruction file suffix."""
+    key = TEST_OBJECTS["v3_instruction_file"]
+
+    kms_client = boto3.client("kms", region_name=region)
+    keyring = KmsKeyring(kms_client, kms_key_id)
+    wrapped_client = boto3.client("s3")
+    config = S3EncryptionClientConfig(keyring, instruction_file_suffix=".custom-suffix-instruction")
+    s3ec = S3EncryptionClient(wrapped_client, config)
+
+    response = s3ec.get_object(Bucket=bucket, Key=key)
+    output = response["Body"].read().decode("utf-8")
+
+    assert output == "static-v3-instruction-file-from-java-v4"
+    print("Success! V3 custom suffix instruction file decryption completed.")
+
+
+def test_decrypt_v2_instruction_file_custom_suffix():
+    """Test decrypting V2 object with a custom instruction file suffix."""
+    key = TEST_OBJECTS["v2_instruction_file"]
+
+    kms_client = boto3.client("kms", region_name=region)
+    keyring = KmsKeyring(kms_client, kms_key_id)
+    wrapped_client = boto3.client("s3")
+    config = S3EncryptionClientConfig(keyring, instruction_file_suffix=".custom-suffix-instruction")
+    s3ec = S3EncryptionClient(wrapped_client, config)
+
+    response = s3ec.get_object(Bucket=bucket, Key=key)
+    output = response["Body"].read().decode("utf-8")
+
+    assert output == "static-v2-instruction-file-from-java-v4"
+    print("Success! V2 custom suffix instruction file decryption completed.")

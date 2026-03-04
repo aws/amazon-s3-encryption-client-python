@@ -137,7 +137,7 @@ class GetEncryptedObjectPipeline:
             instruction_metadata.update(encryption_metadata)
             metadata = ObjectMetadata.from_dict(instruction_metadata)
             ##= specification/s3-encryption/data-format/metadata-strategy.md#v1-v2-instruction-files
-            ##= type=citation
+            ##= type=implementation
             ##% In the V1/V2 message format, all of the content metadata
             ##% MUST be stored in the Instruction File.
             if metadata.is_v1_format() or metadata.is_v2_format():

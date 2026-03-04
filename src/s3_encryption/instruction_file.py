@@ -32,7 +32,7 @@ def parse_instruction_file(instruction_data: bytes, key: str) -> dict[str, Any]:
             or contains non-S3EC metadata keys
     """
     ##= specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
-    ##= type=citation
+    ##= type=implementation
     ##% The content metadata stored in the Instruction File MUST be serialized to a JSON string.
 
     # Validate JSON format
@@ -49,7 +49,7 @@ def parse_instruction_file(instruction_data: bytes, key: str) -> dict[str, Any]:
 
     # Validate that all keys are S3EC metadata keys
     ##= specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
-    ##= type=citation
+    ##= type=implementation
     ##% The serialized JSON string MUST be the only contents of the Instruction File.
     invalid_keys = set(metadata.keys()) - VALID_S3EC_METADATA_KEYS
     if invalid_keys:
