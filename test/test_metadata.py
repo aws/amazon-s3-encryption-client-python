@@ -79,3 +79,160 @@ class TestObjectMetadata:
 
         # Verify that the result matches the original
         assert result_dict == original_dict
+
+    def test_from_dict_v3_fields(self):
+        # Create a metadata dictionary with V3 fields
+        metadata_dict = {
+            "x-amz-c": "02",
+            "x-amz-3": "encrypted-key-v3",
+            "x-amz-w": "12",
+            "x-amz-d": "key-commitment",
+            "x-amz-i": "message-id",
+            "x-amz-m": "mat-desc",
+            "x-amz-t": "encryption-context",
+        }
+
+        metadata = ObjectMetadata.from_dict(metadata_dict)
+
+        assert metadata.content_cipher_v3 == "02"
+        assert metadata.encrypted_data_key_v3 == "encrypted-key-v3"
+        assert metadata.encrypted_data_key_algorithm_v3 == "12"
+        assert metadata.key_commitment_v3 == "key-commitment"
+        assert metadata.message_id_v3 == "message-id"
+        assert metadata.mat_desc_v3 == "mat-desc"
+        assert metadata.encryption_context_v3 == "encryption-context"
+
+    def test_to_dict_v3_fields(self):
+        # Create an ObjectMetadata instance with V3 fields
+        metadata = ObjectMetadata(
+            content_cipher_v3="02",
+            encrypted_data_key_v3="encrypted-key-v3",
+            encrypted_data_key_algorithm_v3="12",
+            key_commitment_v3="key-commitment",
+            message_id_v3="message-id",
+            mat_desc_v3="mat-desc",
+            encryption_context_v3="encryption-context",
+        )
+
+        metadata_dict = metadata.to_dict()
+
+        assert metadata_dict["x-amz-c"] == "02"
+        assert metadata_dict["x-amz-3"] == "encrypted-key-v3"
+        assert metadata_dict["x-amz-w"] == "12"
+        assert metadata_dict["x-amz-d"] == "key-commitment"
+        assert metadata_dict["x-amz-i"] == "message-id"
+        assert metadata_dict["x-amz-m"] == "mat-desc"
+        assert metadata_dict["x-amz-t"] == "encryption-context"
+
+    def test_is_v1_format(self):
+        metadata = ObjectMetadata(
+            content_iv="iv",
+            encrypted_data_key_context={"key": "value"},
+            encrypted_data_key_v1="edk-v1",
+        )
+        assert metadata.is_v1_format() is True
+
+        # V2 key present should return False
+        metadata_v2 = ObjectMetadata(
+            content_iv="iv",
+            encrypted_data_key_context={"key": "value"},
+            encrypted_data_key_v1="edk-v1",
+            encrypted_data_key_v2="edk-v2",
+        )
+        assert metadata_v2.is_v1_format() is False
+
+    def test_is_v2_format(self):
+        metadata = ObjectMetadata(
+            content_cipher="AES/GCM/NoPadding",
+            content_iv="iv",
+            encrypted_data_key_algorithm="kms+context",
+            encrypted_data_key_v2="edk-v2",
+        )
+        assert metadata.is_v2_format() is True
+
+        # V1 key present should return False
+        metadata_v1 = ObjectMetadata(
+            content_cipher="AES/GCM/NoPadding",
+            content_iv="iv",
+            encrypted_data_key_algorithm="kms+context",
+            encrypted_data_key_v2="edk-v2",
+            encrypted_data_key_v1="edk-v1",
+        )
+        assert metadata_v1.is_v2_format() is False
+
+    def test_is_v3_format(self):
+        metadata = ObjectMetadata(
+            content_cipher_v3="02",
+            encrypted_data_key_algorithm_v3="12",
+            key_commitment_v3="commitment",
+            message_id_v3="msg-id",
+            encrypted_data_key_v3="edk-v3",
+        )
+        assert metadata.is_v3_format() is True
+
+        # V1 or V2 keys present should return False
+        metadata_v2 = ObjectMetadata(
+            content_cipher_v3="02",
+            encrypted_data_key_algorithm_v3="12",
+            key_commitment_v3="commitment",
+            message_id_v3="msg-id",
+            encrypted_data_key_v3="edk-v3",
+            encrypted_data_key_v2="edk-v2",
+        )
+        assert metadata_v2.is_v3_format() is False
+
+    def test_has_exclusive_key_collision(self):
+        # No collision - only V2
+        metadata_v2 = ObjectMetadata(encrypted_data_key_v2="edk-v2")
+        assert metadata_v2.has_exclusive_key_collision() is False
+
+        # Collision - V1 and V2
+        metadata_collision = ObjectMetadata(
+            encrypted_data_key_v1="edk-v1",
+            encrypted_data_key_v2="edk-v2",
+        )
+        assert metadata_collision.has_exclusive_key_collision() is True
+
+        # Collision - all three
+        metadata_all = ObjectMetadata(
+            encrypted_data_key_v1="edk-v1",
+            encrypted_data_key_v2="edk-v2",
+            encrypted_data_key_v3="edk-v3",
+        )
+        assert metadata_all.has_exclusive_key_collision() is True
+
+    ##= specification/s3-encryption/data-format/content-metadata.md#determining-s3ec-object-status
+    ##= type=test
+    ##% If the object matches none of the V1/V2/V3 formats,
+    ##% the S3EC MUST attempt to get the instruction file.
+    def test_should_use_instruction_file(self):
+        # No keys at all -> should use instruction file
+        metadata_empty = ObjectMetadata()
+        assert metadata_empty.should_use_instruction_file() is True
+
+        # V3 in object metadata (has content keys but no EDK) -> instruction file
+        metadata_v3_partial = ObjectMetadata(
+            content_cipher_v3="02",
+            encrypted_data_key_algorithm_v3="12",
+            key_commitment_v3="commitment",
+            message_id_v3="msg-id",
+        )
+        assert metadata_v3_partial.should_use_instruction_file() is True
+
+        # V1 with EDK -> no instruction file needed
+        metadata_v1 = ObjectMetadata(encrypted_data_key_v1="edk-v1")
+        assert metadata_v1.should_use_instruction_file() is False
+
+        # V2 with EDK -> no instruction file needed
+        metadata_v2 = ObjectMetadata(encrypted_data_key_v2="edk-v2")
+        assert metadata_v2.should_use_instruction_file() is False
+
+        # V3 with EDK -> no instruction file needed
+        metadata_v3 = ObjectMetadata(
+            content_cipher_v3="02",
+            encrypted_data_key_algorithm_v3="12",
+            key_commitment_v3="commitment",
+            message_id_v3="msg-id",
+            encrypted_data_key_v3="edk-v3",
+        )
+        assert metadata_v3.should_use_instruction_file() is False
