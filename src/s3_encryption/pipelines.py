@@ -248,7 +248,11 @@ class GetEncryptedObjectPipeline:
             ##= specification/s3-encryption/data-format/metadata-strategy.md#v3-instruction-files
             ##= type=implementation
             ##% - The V3 message format MUST NOT store the mapkey "x-amz-c" and its value in the Instruction File.
+            ##= specification/s3-encryption/data-format/metadata-strategy.md#v3-instruction-files
+            ##= type=implementation
             ##% - The V3 message format MUST NOT store the mapkey "x-amz-d" and its value in the Instruction File.
+            ##= specification/s3-encryption/data-format/metadata-strategy.md#v3-instruction-files
+            ##= type=implementation
             ##% - The V3 message format MUST NOT store the mapkey "x-amz-i" and its value in the Instruction File.
             v3_object_metadata_exclusive_keys = {
                 ObjectMetadata.CONTENT_CIPHER_V3,
