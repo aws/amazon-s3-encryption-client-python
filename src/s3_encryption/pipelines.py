@@ -244,6 +244,25 @@ class GetEncryptedObjectPipeline:
 
             instruction_key = key + instruction_suffix
             instruction_metadata = fetch_instruction_file(self.s3_client, bucket, instruction_key)
+
+            ##= specification/s3-encryption/data-format/metadata-strategy.md#v3-instruction-files
+            ##= type=implementation
+            ##% - The V3 message format MUST NOT store the mapkey "x-amz-c" and its value in the Instruction File.
+            ##% - The V3 message format MUST NOT store the mapkey "x-amz-d" and its value in the Instruction File.
+            ##% - The V3 message format MUST NOT store the mapkey "x-amz-i" and its value in the Instruction File.
+            v3_object_metadata_exclusive_keys = {
+                ObjectMetadata.CONTENT_CIPHER_V3,
+                ObjectMetadata.KEY_COMMITMENT_V3,
+                ObjectMetadata.MESSAGE_ID_V3,
+            }
+            forbidden_keys_in_instruction = set(instruction_metadata.keys()) & v3_object_metadata_exclusive_keys
+            if forbidden_keys_in_instruction:
+                raise S3EncryptionClientError(
+                    "Instruction file is tampered, instruction file contains object metadata "
+                    f"exclusive mapkeys: {forbidden_keys_in_instruction}. "
+                    f"bucket: {bucket}\n key:{key}\n instruction_file:{instruction_key}"
+                )
+
             instruction_metadata.update(encryption_metadata)
             metadata = ObjectMetadata.from_dict(instruction_metadata)
             ##= specification/s3-encryption/data-format/metadata-strategy.md#v1-v2-instruction-files
