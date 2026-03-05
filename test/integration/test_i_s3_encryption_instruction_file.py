@@ -149,7 +149,11 @@ def test_decrypt_v2_instruction_file_custom_suffix():
     kms_client = boto3.client("kms", region_name=region)
     keyring = KmsKeyring(kms_client, kms_key_id)
     wrapped_client = boto3.client("s3")
-    config = S3EncryptionClientConfig(keyring, instruction_file_suffix=".custom-suffix-instruction")
+    config = S3EncryptionClientConfig(
+        keyring,
+        instruction_file_suffix=".custom-suffix-instruction",
+        commitment_policy=CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
+    )
     s3ec = S3EncryptionClient(wrapped_client, config)
 
     response = s3ec.get_object(Bucket=bucket, Key=key)
