@@ -16,6 +16,8 @@ import hmac
 from cryptography.hazmat.primitives.hashes import SHA512
 from cryptography.hazmat.primitives.kdf.hkdf import HKDFExpand
 
+from .exceptions import S3EncryptionClientSecurityError
+
 # Algorithm suite ID for S3EC.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
 SUITE_ID_BYTES = b"\x00\x73"
 
@@ -105,8 +107,6 @@ def verify_commitment(stored_commitment: bytes, derived_commitment: bytes) -> No
     ##% When using an algorithm suite which supports key commitment, the verification of the derived key commitment value MUST be done in constant time.
     ##% When using an algorithm suite which supports key commitment, the client MUST throw an exception when the derived key commitment value
     ##% and stored key commitment value do not match.
-    from .exceptions import S3EncryptionClientSecurityError
-
     if not hmac.compare_digest(stored_commitment, derived_commitment):
         raise S3EncryptionClientSecurityError(
             "Key commitment verification failed: stored commitment does not match derived commitment."

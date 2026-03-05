@@ -7,10 +7,13 @@ and decrypting objects after they are retrieved from S3.
 """
 
 import base64
+import json
 import os
 
 from attrs import define, field
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.padding import PKCS7
 
 from .exceptions import S3EncryptionClientError, S3EncryptionClientSecurityError
 from .instruction_file import fetch_instruction_file
@@ -363,39 +366,41 @@ class GetEncryptedObjectPipeline:
 
     def _decrypt_v2(self, metadata, encryption_context) -> DecryptionMaterials:
         """Prepare V2 decryption materials."""
-        iv_bytes = base64.b64decode(metadata.content_iv)
-        edk_bytes = base64.b64decode(metadata.encrypted_data_key_v2)
-
-        encrypted_data_key = EncryptedDataKey(
-            key_provider_id=b"S3Keyring",
-            key_provider_info=metadata.encrypted_data_key_algorithm,
-            encrypted_data_key=edk_bytes,
+        return self._decrypt_v1_v2(
+            iv_b64=metadata.content_iv,
+            edk_b64=metadata.encrypted_data_key_v2,
+            wrap_alg=metadata.encrypted_data_key_algorithm,
+            stored_context=metadata.encrypted_data_key_context or {},
+            encryption_context=encryption_context,
         )
-
-        dec_materials = DecryptionMaterials(
-            iv=iv_bytes,
-            encrypted_data_keys=[encrypted_data_key],
-            encryption_context_stored=metadata.encrypted_data_key_context or {},
-            encryption_context_from_request=encryption_context,
-        )
-
-        return self.cmm.decrypt_materials(dec_materials)
 
     def _decrypt_v1(self, metadata, encryption_context) -> DecryptionMaterials:
         """Prepare V1 decryption materials."""
-        iv_bytes = base64.b64decode(metadata.content_iv)
-        edk_bytes = base64.b64decode(metadata.encrypted_data_key_v1)
+        return self._decrypt_v1_v2(
+            iv_b64=metadata.content_iv,
+            edk_b64=metadata.encrypted_data_key_v1,
+            wrap_alg=metadata.encrypted_data_key_algorithm,
+            stored_context=metadata.encrypted_data_key_context or {},
+            encryption_context=encryption_context,
+        )
+
+    def _decrypt_v1_v2(
+        self, iv_b64, edk_b64, wrap_alg, stored_context, encryption_context
+    ) -> DecryptionMaterials:
+        """Shared logic for preparing V1/V2 decryption materials."""
+        iv_bytes = base64.b64decode(iv_b64)
+        edk_bytes = base64.b64decode(edk_b64)
 
         encrypted_data_key = EncryptedDataKey(
             key_provider_id=b"S3Keyring",
-            key_provider_info=metadata.encrypted_data_key_algorithm,
+            key_provider_info=wrap_alg,
             encrypted_data_key=edk_bytes,
         )
 
         dec_materials = DecryptionMaterials(
             iv=iv_bytes,
             encrypted_data_keys=[encrypted_data_key],
-            encryption_context_stored=metadata.encrypted_data_key_context or {},
+            encryption_context_stored=stored_context,
             encryption_context_from_request=encryption_context,
         )
 
@@ -418,9 +423,6 @@ class GetEncryptedObjectPipeline:
         ##% The error SHOULD detail why the cipher could not be initialized
         ##% (such as CBC or PKCS5Padding is not supported by the underlying crypto provider).
         try:
-            from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-            from cryptography.hazmat.primitives.padding import PKCS7
-
             cipher = Cipher(
                 algorithms.AES(dec_materials.plaintext_data_key),
                 modes.CBC(dec_materials.iv),
@@ -491,8 +493,6 @@ class GetEncryptedObjectPipeline:
             if isinstance(raw_ctx, dict):
                 stored_context = raw_ctx
             elif isinstance(raw_ctx, str):
-                import json
-
                 stored_context = json.loads(raw_ctx)
 
         dec_materials = DecryptionMaterials(
