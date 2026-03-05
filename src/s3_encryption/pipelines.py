@@ -453,9 +453,6 @@ class GetEncryptedObjectPipeline:
         "22": "RSA-OAEP-SHA1",
     }
 
-    # Wrapping algorithms that this client currently supports for decryption
-    _SUPPORTED_WRAP_ALGS = {"kms+context", "kms"}
-
     def _decrypt_v3(self, metadata, encryption_context) -> DecryptionMaterials:
         """Prepare V3 decryption materials."""
         edk_bytes = base64.b64decode(metadata.encrypted_data_key_v3)
@@ -463,13 +460,6 @@ class GetEncryptedObjectPipeline:
         # Map V3 compressed wrapping algorithm to canonical key_provider_info
         raw_wrap_alg = metadata.encrypted_data_key_algorithm_v3 or "12"
         wrap_alg = self._V3_WRAP_ALG_MAP.get(raw_wrap_alg, raw_wrap_alg)
-
-        if wrap_alg not in self._SUPPORTED_WRAP_ALGS:
-            raise S3EncryptionClientError(
-                f"Unsupported wrapping algorithm: {wrap_alg}. "
-                f"The S3 Encryption Client for Python currently supports: "
-                f"{', '.join(sorted(self._SUPPORTED_WRAP_ALGS))}."
-            )
 
         encrypted_data_key = EncryptedDataKey(
             key_provider_id=b"S3Keyring",

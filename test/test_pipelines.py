@@ -8,8 +8,10 @@ from unittest.mock import Mock
 
 import pytest
 
+from s3_encryption.exceptions import S3EncryptionClientError, S3EncryptionClientSecurityError
 from s3_encryption.materials.crypto_materials_manager import DefaultCryptoMaterialsManager
 from s3_encryption.materials.keyring import S3Keyring
+from s3_encryption.materials.materials import DecryptionMaterials
 from s3_encryption.pipelines import GetEncryptedObjectPipeline
 
 
@@ -168,8 +170,6 @@ class TestGetEncryptedObjectPipelineInstructionFile:
         }
 
         # Mock the keyring to return decryption materials
-        from s3_encryption.materials.materials import DecryptionMaterials
-
         plaintext_data_key = os.urandom(32)
 
         mock_dec_materials = DecryptionMaterials(
@@ -184,8 +184,6 @@ class TestGetEncryptedObjectPipelineInstructionFile:
 
         # V3 decryption is now implemented; with fake commitment data,
         # key commitment verification will fail.
-        from s3_encryption.exceptions import S3EncryptionClientSecurityError
-
         with pytest.raises(
             S3EncryptionClientSecurityError, match="Key commitment verification failed"
         ):
@@ -244,22 +242,23 @@ class TestGetEncryptedObjectPipelineInstructionFile:
         mock_s3_client.get_object.assert_called_once_with(
             Bucket="test-bucket", Key="test-key.custom-suffix"
         )
-
     def test_decrypt_v3_unsupported_wrap_alg(self):
-        """Test that V3 decryption with unsupported wrapping algorithm gives a useful error."""
-        from s3_encryption.exceptions import S3EncryptionClientError
-
-        # V3 metadata with AES/GCM wrapping (02) — not supported by this client
+        """Test that V3 decryption with unsupported wrapping algorithm is rejected by the keyring."""
+        # V3 metadata with AES/GCM wrapping (02) — not supported by the KMS keyring
         metadata = {
             "x-amz-c": "115",
             "x-amz-3": base64.b64encode(b"encrypted-key-data").decode("utf-8"),
-            "x-amz-w": "02",  # AES/GCM — unsupported
+            "x-amz-w": "02",  # AES/GCM — unsupported by KMS keyring
             "x-amz-m": json.dumps({"some": "material-desc"}),
             "x-amz-d": base64.b64encode(b"key-commitment-data").decode("utf-8"),
             "x-amz-i": base64.b64encode(b"test-message-id").decode("utf-8"),
         }
 
         mock_keyring = Mock(spec=S3Keyring)
+        # The keyring rejects wrapping algorithms it doesn't support
+        mock_keyring.on_decrypt.side_effect = S3EncryptionClientError(
+            "AES/GCM is not a valid key wrapping algorithm!"
+        )
         cmm = DefaultCryptoMaterialsManager(mock_keyring)
         pipeline = GetEncryptedObjectPipeline(cmm)
 
@@ -269,6 +268,6 @@ class TestGetEncryptedObjectPipelineInstructionFile:
         }
 
         with pytest.raises(
-            S3EncryptionClientError, match="Unsupported wrapping algorithm: AES/GCM"
+            S3EncryptionClientError, match="AES/GCM is not a valid key wrapping algorithm"
         ):
             pipeline.decrypt(mock_response)

@@ -20,6 +20,17 @@ from .pipelines import GetEncryptedObjectPipeline, PutEncryptedObjectPipeline
 
 S3_METADATA_PREFIX = "x-amz-meta-"
 
+# Thread-local context attribute names
+_CTX_ENCRYPTION_CONTEXT = "encryption_context"
+_CTX_BUCKET = "bucket"
+_CTX_KEY = "key"
+_CTX_S3_CLIENT = "s3_client"
+_CTX_INSTRUCTION_FILE_MODE = "instruction_file_mode"
+
+# Attributes to clean up after get_object completes
+# (s3_client is intentionally excluded — it is not request-scoped)
+_GET_OBJECT_CLEANUP_ATTRS = (_CTX_ENCRYPTION_CONTEXT, _CTX_BUCKET, _CTX_KEY)
+
 
 @define
 class S3EncryptionClientConfig:
@@ -91,7 +102,7 @@ class S3EncryptionClientPlugin:
             params: Dictionary of parameters for the PutObject call (after serialization)
             **kwargs: Additional event arguments
         """
-        if getattr(self._context, "instruction_file_mode", False):
+        if getattr(self._context, _CTX_INSTRUCTION_FILE_MODE, False):
             raise S3EncryptionClientError(
                 "Instruction file mode is exclusively for reading instruction files "
                 "and not supported in put_object!"
@@ -112,7 +123,7 @@ class S3EncryptionClientPlugin:
             # Unexpected body type - should not happen as boto3 validates before this point
             raise S3EncryptionClientError("Unexpected type of body parameter!")
 
-        encryption_context = getattr(self._context, "encryption_context", None)
+        encryption_context = getattr(self._context, _CTX_ENCRYPTION_CONTEXT, None)
 
         pipeline = PutEncryptedObjectPipeline(self.config.cmm)
         encrypted_data, encryption_metadata = pipeline.encrypt(
@@ -144,12 +155,12 @@ class S3EncryptionClientPlugin:
             **kwargs: Additional event arguments (includes 'params' with request parameters)
         """
         # Check if plaintext mode is enabled via thread-local flag
-        if getattr(self._context, "instruction_file_mode", False):
+        if getattr(self._context, _CTX_INSTRUCTION_FILE_MODE, False):
             self.process_instruction_file(parsed)
             return
 
         # Get encryption context from thread-local storage (set by get_object wrapper)
-        encryption_context = getattr(self._context, "encryption_context", None)
+        encryption_context = getattr(self._context, _CTX_ENCRYPTION_CONTEXT, None)
 
         # The parsed response already has the Body as a StreamingBody
         # We need to read it, decrypt it, and replace it
@@ -163,15 +174,15 @@ class S3EncryptionClientPlugin:
         # Create a pipeline and decrypt the data
         pipeline = GetEncryptedObjectPipeline(
             self.config.cmm,
-            s3_client=getattr(self._context, "s3_client", None),
+            s3_client=getattr(self._context, _CTX_S3_CLIENT, None),
             commitment_policy=self.config.commitment_policy,
             enable_legacy_unauthenticated_modes=self.config.enable_legacy_unauthenticated_modes,
         )
         decrypted_data = pipeline.decrypt(
             response,
             encryption_context,
-            bucket=getattr(self._context, "bucket", None),
-            key=getattr(self._context, "key", None),
+            bucket=getattr(self._context, _CTX_BUCKET, None),
+            key=getattr(self._context, _CTX_KEY, None),
             instruction_suffix=self.config.instruction_file_suffix,
         )
 
@@ -191,7 +202,7 @@ class S3EncryptionClientPlugin:
         Args:
             parsed: Dictionary containing the parsed response
         """
-        instruction_key = getattr(self._context, "key", None)
+        instruction_key = getattr(self._context, _CTX_KEY, None)
 
         # In plaintext mode, parse instruction file and append to metadata
         existing_metadata = parsed.get("Metadata", {})
@@ -270,8 +281,8 @@ class S3EncryptionClient:
             raise S3EncryptionClientError(f"Failed to encrypt object: {str(e)}") from e
         finally:
             # Clean up thread-local storage
-            if hasattr(self._plugin._context, "encryption_context"):
-                delattr(self._plugin._context, "encryption_context")
+            if hasattr(self._plugin._context, _CTX_ENCRYPTION_CONTEXT):
+                delattr(self._plugin._context, _CTX_ENCRYPTION_CONTEXT)
 
     def get_object(self, **kwargs):
         """Download and decrypt an object from S3.
@@ -294,12 +305,12 @@ class S3EncryptionClient:
         encryption_context = kwargs.pop("EncryptionContext", None)
 
         # Store encryption context in thread-local storage for the event handler
-        self._plugin._context.encryption_context = encryption_context
+        setattr(self._plugin._context, _CTX_ENCRYPTION_CONTEXT, encryption_context)
         # Store wrapped client in thread-local storage for
         # the event handler to fetch instruction files
-        self._plugin._context.s3_client = self.wrapped_s3_client
-        self._plugin._context.bucket = kwargs.get("Bucket")
-        self._plugin._context.key = kwargs.get("Key")
+        setattr(self._plugin._context, _CTX_S3_CLIENT, self.wrapped_s3_client)
+        setattr(self._plugin._context, _CTX_BUCKET, kwargs.get("Bucket"))
+        setattr(self._plugin._context, _CTX_KEY, kwargs.get("Key"))
 
         try:
             return self.wrapped_s3_client.get_object(**kwargs)
@@ -312,7 +323,6 @@ class S3EncryptionClient:
         finally:
             # Clean up thread-local storage;
             # do not clean up the client as it is not thread local only
-            attrs = ["encryption_context", "Bucket", "Key"]
-            for attr in attrs:
+            for attr in _GET_OBJECT_CLEANUP_ATTRS:
                 if hasattr(self._plugin._context, attr):
                     delattr(self._plugin._context, attr)
