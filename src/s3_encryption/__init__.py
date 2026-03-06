@@ -147,12 +147,8 @@ class S3EncryptionClientPlugin:
             instruction_suffix=self.config.instruction_file_suffix,
         )
 
-        # Create a new streaming body with the decrypted data
-        stream = io.BytesIO(decrypted_data)
-        streaming_body = StreamingBody(stream, len(decrypted_data))
-
-        # Replace body with decrypted data
-        parsed["Body"] = streaming_body
+        # Replace body with decrypting stream
+        parsed["Body"] = decrypted_data
 
     def process_instruction_file(self, parsed):
         """Process instruction file in plaintext mode.

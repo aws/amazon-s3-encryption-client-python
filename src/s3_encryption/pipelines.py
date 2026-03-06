@@ -18,6 +18,7 @@ from .materials.crypto_materials_manager import AbstractCryptoMaterialsManager
 from .materials.encrypted_data_key import EncryptedDataKey
 from .materials.materials import DecryptionMaterials, EncryptionMaterials
 from .metadata import ObjectMetadata
+from .stream import BufferedDecryptingStream
 
 
 @define
@@ -112,11 +113,10 @@ class GetEncryptedObjectPipeline:
             instruction_suffix(str, optional): suffix for instruction file; defaults to ".instruction".
 
         Returns:
-            bytes: The decrypted data
+            BufferedDecryptingStream: A stream that decrypts data lazily on first read.
         """
         # Convert the metadata dictionary to an ObjectMetadata instance
-        # TODO: Stream + Buffered Decryption
-        encrypted_data = response.get("Body").read()
+        streaming_body = response.get("Body")
         encryption_metadata = response.get("Metadata", {})
         metadata = ObjectMetadata.from_dict(encryption_metadata)
 
@@ -171,9 +171,11 @@ class GetEncryptedObjectPipeline:
         ##% the S3EC MUST throw an error which details that client was
         ##% not configured to decrypt objects with ALG_AES_256_CBC_IV16_NO_KDF.
 
-        # Perform decryption
-        aesgcm = AESGCM(dec_materials.plaintext_data_key)
-        return aesgcm.decrypt(nonce=dec_materials.iv, data=encrypted_data, associated_data=None)
+        # Return a buffered decrypting stream — no plaintext is released
+        # until the entire ciphertext is read and the GCM tag is verified.
+        return BufferedDecryptingStream(
+            streaming_body, dec_materials.plaintext_data_key, dec_materials.iv
+        )
 
     def _decrypt_v2(self, metadata, encryption_context) -> DecryptionMaterials:
         """Prepare V2 decryption materials."""
