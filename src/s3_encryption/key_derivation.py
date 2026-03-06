@@ -104,7 +104,10 @@ def verify_commitment(stored_commitment: bytes, derived_commitment: bytes) -> No
         S3EncryptionClientSecurityError: If the commitment values do not match.
     """
     ##= specification/s3-encryption/decryption.md#decrypting-with-commitment
+    ##= type=implementation
     ##% When using an algorithm suite which supports key commitment, the verification of the derived key commitment value MUST be done in constant time.
+    ##= specification/s3-encryption/decryption.md#decrypting-with-commitment
+    ##= type=implementation
     ##% When using an algorithm suite which supports key commitment, the client MUST throw an exception when the derived key commitment value
     ##% and stored key commitment value do not match.
     if not hmac.compare_digest(stored_commitment, derived_commitment):

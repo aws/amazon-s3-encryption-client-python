@@ -307,15 +307,18 @@ class GetEncryptedObjectPipeline:
         dec_materials.algorithm_suite = algorithm_suite
 
         ##= specification/s3-encryption/decryption.md#cbc-decryption
+        ##= type=implementation
         ##% If an object is encrypted with ALG_AES_256_CBC_IV16_NO_KDF and
         ##% [legacy unauthenticated algorithm suites](#legacy-decryption) is NOT enabled,
         ##% the S3EC MUST throw an error which details that client was
         ##% not configured to decrypt objects with ALG_AES_256_CBC_IV16_NO_KDF.
         if algorithm_suite == AlgorithmSuite.ALG_AES_256_CBC_IV16_NO_KDF:
             ##= specification/s3-encryption/decryption.md#legacy-decryption
+            ##= type=implementation
             ##% The S3EC MUST NOT decrypt objects encrypted using legacy unauthenticated algorithm suites
             ##% unless specifically configured to do so.
             ##= specification/s3-encryption/decryption.md#legacy-decryption
+            ##= type=implementation
             ##% If the S3EC is not configured to enable legacy unauthenticated content decryption,
             ##% the client MUST throw an exception when attempting to decrypt an object encrypted
             ##% with a legacy unauthenticated algorithm suite.
@@ -329,9 +332,11 @@ class GetEncryptedObjectPipeline:
                 )
 
         ##= specification/s3-encryption/decryption.md#key-commitment
+        ##= type=implementation
         ##% The S3EC MUST validate the algorithm suite used for decryption against the
         ##% key commitment policy before attempting to decrypt the content ciphertext.
         ##= specification/s3-encryption/decryption.md#key-commitment
+        ##= type=implementation
         ##% If the commitment policy requires decryption using a committing algorithm suite,
         ##% and the algorithm suite associated with the object does not support key commitment,
         ##% then the S3EC MUST throw an exception.
@@ -410,6 +415,7 @@ class GetEncryptedObjectPipeline:
         """Decrypt content encrypted with ALG_AES_256_CBC_IV16_NO_KDF.
 
         ##= specification/s3-encryption/decryption.md#cbc-decryption
+        ##= type=implementation
         ##% If an object is encrypted with ALG_AES_256_CBC_IV16_NO_KDF and
         ##% [legacy unauthenticated algorithm suites](#legacy-decryption) is enabled,
         ##% then the S3EC MUST create a cipher with AES in CBC Mode with PKCS5Padding or
@@ -417,9 +423,11 @@ class GetEncryptedObjectPipeline:
         ##% (example: for the Java JCE, this is "AES/CBC/PKCS5Padding").
         """
         ##= specification/s3-encryption/decryption.md#cbc-decryption
+        ##= type=implementation
         ##% If the cipher object cannot be created as described above,
         ##% Decryption MUST fail.
         ##= specification/s3-encryption/decryption.md#cbc-decryption
+        ##= type=implementation
         ##% The error SHOULD detail why the cipher could not be initialized
         ##% (such as CBC or PKCS5Padding is not supported by the underlying crypto provider).
         try:
@@ -508,6 +516,12 @@ class GetEncryptedObjectPipeline:
         )
 
         ##= specification/s3-encryption/decryption.md#decrypting-with-commitment
+        ##= type=implementation
+        ##% When using an algorithm suite which supports key commitment, the client MUST verify
+        ##% that the [derived key commitment](./key-derivation.md#hkdf-operation) contains the
+        ##% same bytes as the stored key commitment retrieved from the stored object's metadata.
+        ##= specification/s3-encryption/decryption.md#decrypting-with-commitment
+        ##= type=implementation
         ##% When using an algorithm suite which supports key commitment, the client MUST verify the key commitment values match before deriving
         ##% the [derived encryption key](./key-derivation.md#hkdf-operation).
         verify_commitment(stored_commitment, derived_commitment)
