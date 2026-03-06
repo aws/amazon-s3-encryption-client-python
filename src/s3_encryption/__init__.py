@@ -6,6 +6,7 @@ import io
 import threading
 
 from attrs import define, field
+from botocore.exceptions import ClientError
 from botocore.response import StreamingBody
 
 from .exceptions import S3EncryptionClientError
@@ -125,6 +126,11 @@ class S3EncryptionClientPlugin:
         # Get encryption context from thread-local storage (set by get_object wrapper)
         encryption_context = getattr(self._context, "encryption_context", None)
 
+        # If Body is None, the S3 request failed (e.g., NoSuchKey).
+        # Return early and let boto3 raise the original error.
+        if parsed.get("Body") is None:
+            return
+
         # The parsed response already has the Body as a StreamingBody
         # We need to read it, decrypt it, and replace it
 
@@ -165,9 +171,17 @@ class S3EncryptionClientPlugin:
         """
         instruction_key = getattr(self._context, "key", None)
 
+        body = parsed.get("Body")
+        if body is None:
+            raise S3EncryptionClientError(
+                "Exception encountered while fetching Instruction File."
+                " Ensure the object you are attempting to decrypt has been encrypted"
+                " using the S3 Encryption Client and instruction files are enabled."
+            )
+
         # In plaintext mode, parse instruction file and append to metadata
-        existing_metadata = parsed.get("Metadata", {})
-        instruction_data = parsed.get("Body").read()
+        existing_metadata = parsed.get("Metadata", {}) or {}
+        instruction_data = body.read()
         instruction_metadata = parse_instruction_file(instruction_data, instruction_key)
 
         # Append parsed instruction file content to existing metadata
@@ -278,6 +292,9 @@ class S3EncryptionClient:
         except S3EncryptionClientError:
             # Re-raise our own exceptions without wrapping
             raise
+        except ClientError as e:
+            # Wrap S3 service errors (e.g., NoSuchKey) with context
+            raise S3EncryptionClientError(f"Unable to retrieve object: {str(e)}") from e
         except Exception as e:
             # Wrap any unexpected errors during decryption
             raise S3EncryptionClientError(f"Failed to decrypt object: {str(e)}") from e

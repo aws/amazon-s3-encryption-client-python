@@ -9,6 +9,8 @@ that contain encryption metadata for S3 objects.
 import json
 from typing import Any
 
+from botocore.exceptions import ClientError
+
 from .exceptions import S3EncryptionClientError
 from .metadata import VALID_S3EC_METADATA_KEYS
 
@@ -95,6 +97,12 @@ def fetch_instruction_file(s3_client, bucket: str, key: str) -> dict[str, Any]:
 
     try:
         response = s3_client.get_object(Bucket=bucket, Key=key)
+    except ClientError as e:
+        raise S3EncryptionClientError(
+            "Exception encountered while fetching Instruction File."
+            " Ensure the object you are attempting to decrypt has been encrypted"
+            " using the S3 Encryption Client and instruction files are enabled."
+        ) from e
     finally:
         # Clear the flags after the call
         if hasattr(s3_client, "_s3ec_plugin_context"):

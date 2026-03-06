@@ -149,3 +149,50 @@ def test_decrypt_v2_instruction_file_custom_suffix():
 
     assert output == "static-v2-instruction-file-from-java-v4"
     print("Success! V2 custom suffix instruction file decryption completed.")
+
+
+def test_get_nonexistent_object_raises_s3_encryption_client_error():
+    """Test that getting a non-existent object raises S3EncryptionClientError.
+
+    Matches Java S3EC behavior: NoSuchKeyException is wrapped in
+    S3EncryptionClientException with the original as the cause.
+    """
+    from botocore.exceptions import ClientError
+
+    from s3_encryption.exceptions import S3EncryptionClientError
+
+    kms_client = boto3.client("kms", region_name=region)
+    keyring = KmsKeyring(kms_client, kms_key_id)
+    wrapped_client = boto3.client("s3")
+    config = S3EncryptionClientConfig(keyring)
+    s3ec = S3EncryptionClient(wrapped_client, config)
+
+    with pytest.raises(S3EncryptionClientError, match="Unable to retrieve object") as exc_info:
+        s3ec.get_object(Bucket=bucket, Key="this-object-does-not-exist")
+
+    assert isinstance(exc_info.value.__cause__, ClientError)
+
+
+def test_get_object_with_missing_instruction_file_raises_s3_encryption_client_error():
+    """Test that a missing instruction file raises S3EncryptionClientError.
+
+    When an object has no encryption metadata and the instruction file
+    also doesn't exist, the error should indicate the instruction file issue.
+    """
+    from s3_encryption.exceptions import S3EncryptionClientError
+
+    kms_client = boto3.client("kms", region_name=region)
+    keyring = KmsKeyring(kms_client, kms_key_id)
+    wrapped_client = boto3.client("s3")
+    config = S3EncryptionClientConfig(keyring)
+    s3ec = S3EncryptionClient(wrapped_client, config)
+
+    # Use a separate plain S3 client to put an unencrypted object
+    plain_s3 = boto3.client("s3")
+    plain_s3.put_object(Bucket=bucket, Key="plain-object-no-instruction-file", Body=b"hello")
+
+    try:
+        with pytest.raises(S3EncryptionClientError, match="fetching Instruction File"):
+            s3ec.get_object(Bucket=bucket, Key="plain-object-no-instruction-file")
+    finally:
+        plain_s3.delete_object(Bucket=bucket, Key="plain-object-no-instruction-file")
