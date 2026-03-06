@@ -68,12 +68,40 @@ class S3EncryptionClientConfig:
     ##% The S3EC MUST validate that the configured encryption algorithm is not legacy.
     ##= specification/s3-encryption/client.md#encryption-algorithm
     ##% If the configured encryption algorithm is legacy, then the S3EC MUST throw an exception.
+    ##= specification/s3-encryption/client.md#key-commitment
+    ##% The S3EC MUST validate the configured Encryption Algorithm against the provided key commitment policy.
+    ##= specification/s3-encryption/client.md#key-commitment
+    ##% If the configured Encryption Algorithm is incompatible with the key commitment policy, then it MUST throw an exception.
     def __attrs_post_init__(self):
         if self.algorithm_suite.is_legacy:
             raise S3EncryptionClientError(
                 f"Cannot configure S3 Encryption Client with legacy algorithm suite "
                 f"{self.algorithm_suite.name}. Legacy algorithm suites are only "
                 f"supported for decryption (and enable_legacy_unauthenticated_modes is True)."
+            )
+
+        ##= specification/s3-encryption/key-commitment.md#commitment-policy
+        ##% When the commitment policy is REQUIRE_ENCRYPT_ALLOW_DECRYPT, the S3EC MUST only encrypt using an algorithm suite which supports key commitment.
+        ##= specification/s3-encryption/key-commitment.md#commitment-policy
+        ##% When the commitment policy is REQUIRE_ENCRYPT_REQUIRE_DECRYPT, the S3EC MUST only encrypt using an algorithm suite which supports key commitment.
+        if self.commitment_policy in (
+            CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT,
+            CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+        ) and not self.algorithm_suite.supports_key_commitment:
+            raise S3EncryptionClientError(
+                f"Commitment policy {self.commitment_policy.name} requires a key-committing "
+                f"algorithm suite, but {self.algorithm_suite.name} does not support key commitment."
+            )
+
+        ##= specification/s3-encryption/key-commitment.md#commitment-policy
+        ##% When the commitment policy is FORBID_ENCRYPT_ALLOW_DECRYPT, the S3EC MUST NOT encrypt using an algorithm suite which supports key commitment.
+        if (
+            self.commitment_policy == CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT
+            and self.algorithm_suite.supports_key_commitment
+        ):
+            raise S3EncryptionClientError(
+                f"Commitment policy {self.commitment_policy.name} forbids key-committing "
+                f"algorithm suites, but {self.algorithm_suite.name} supports key commitment."
             )
 
 

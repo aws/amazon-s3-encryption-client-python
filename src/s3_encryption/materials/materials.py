@@ -27,6 +27,11 @@ class AlgorithmSuite(Enum):
         """Return True if this algorithm suite is a legacy unauthenticated mode."""
         return self == AlgorithmSuite.ALG_AES_256_CBC_IV16_NO_KDF
 
+    @property
+    def supports_key_commitment(self) -> bool:
+        """Return True if this algorithm suite supports key commitment."""
+        return self == AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+
 
 class CommitmentPolicy(Enum):
     """Commitment policies controlling key-commitment behavior."""

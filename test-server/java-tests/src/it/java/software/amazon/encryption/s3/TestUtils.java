@@ -362,6 +362,17 @@ public class TestUtils {
     }
 
     /**
+     * Get stream of arguments for the Python V3 client only.
+     * Other languages can be added to this set as their commitment policy
+     * validation is confirmed.
+     */
+    public static Stream<Arguments> pythonV3ClientForTest() {
+        return serverMap.values().stream()
+            .filter(target -> PYTHON_V3.equals(target.getLanguageName()))
+            .map(Arguments::of);
+    }
+
+    /**
      * Get stream of arguments for clients that support RAW AES (includes CPP).
      */
     public static Stream<Arguments> clientsRawAesForTest() {
