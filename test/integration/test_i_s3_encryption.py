@@ -470,3 +470,52 @@ def test_encryption_context_missing_on_decrypt():
         print(f"Unexpected error type: {type(e).__name__}")
         print(f"Error message: {str(e)}")
         raise
+
+
+@pytest.mark.parametrize("delayed_auth", [False, True], ids=["buffered", "delayed-auth"])
+@pytest.mark.parametrize(
+    "key_prefix, data, encoding",
+    [
+        ("simple-rt", "test input for simple v3 round trip", "utf-8"),
+        ("empty-string-rt", "", "utf-8"),
+        ("unicode-rt", "Unicode test: 你好, こんにちは, 안녕하세요, Привет, مرحبا, ¡Hola!, ½⅓¼⅕⅙⅐⅛⅑⅒⅔⅖⅗⅘⅙⅚⅜⅝⅞", "utf-8"),
+        ("utf8-rt", "UTF-8 encoding test: 你好, こんにちは, 안녕하세요, Привет, مرحبا, ¡Hola!", "utf-8"),
+        ("latin1-rt", "Latin-1 encoding test: éèêë àâäãåá çñ ¿¡ øæå ØÆÅÉÈÊËÀÂÄÃÅÁ", "latin-1"),
+        ("binary-rt", bytes(range(256)), None),
+    ],
+    ids=["ascii", "empty", "unicode", "utf8", "latin1", "binary"],
+)
+def test_roundtrip(delayed_auth, key_prefix, data, encoding):
+    key = f"{key_prefix}-{'da' if delayed_auth else 'buf'}-"
+    key += datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
+
+    body = data.encode(encoding) if encoding and isinstance(data, str) else data
+
+    kms_client = boto3.client("kms", region_name=region)
+    keyring = KmsKeyring(kms_client, kms_key_id)
+    wrapped_client = boto3.client("s3")
+    config = S3EncryptionClientConfig(keyring, enable_delayed_authentication=delayed_auth)
+    s3ec = S3EncryptionClient(wrapped_client, config)
+    s3ec.put_object(Bucket=bucket, Key=key, Body=body)
+    response = s3ec.get_object(Bucket=bucket, Key=key)
+    output = response["Body"].read()
+
+    if encoding:
+        assert output.decode(encoding) == data
+    else:
+        assert output == data
+
+
+@pytest.mark.parametrize("delayed_auth", [False, True], ids=["buffered", "delayed-auth"])
+def test_no_body_roundtrip(delayed_auth):
+    key = f"no-body-rt-{'da' if delayed_auth else 'buf'}-"
+    key += datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
+
+    kms_client = boto3.client("kms", region_name=region)
+    keyring = KmsKeyring(kms_client, kms_key_id)
+    wrapped_client = boto3.client("s3")
+    config = S3EncryptionClientConfig(keyring, enable_delayed_authentication=delayed_auth)
+    s3ec = S3EncryptionClient(wrapped_client, config)
+    s3ec.put_object(Bucket=bucket, Key=key)
+    response = s3ec.get_object(Bucket=bucket, Key=key)
+    assert response["Body"].read() == b""
