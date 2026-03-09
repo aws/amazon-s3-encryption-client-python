@@ -23,6 +23,10 @@ TEST_OBJECTS = {
     "v2_instruction_file": "static-v2-instruction-file-from-java-v4",
     "v3_instruction_file": "static-v3-instruction-file-from-java-v4",
     "negative_v2_instruction_file": "NEGATIVE-static-v2-instruction-file-test-from-java-v4",
+    "large_v2_instruction_file": "static-large-v2-instruction-file-from-java-v4-52428800",
+    "large_v3_instruction_file": "static-large-v3-instruction-file-from-java-v4-52428800",
+    "xlarge_v2_instruction_file": "TODO-static-xlarge-v2-instruction-file-61GiB",
+    "xlarge_v3_instruction_file": "TODO-static-xlarge-v3-instruction-file-61GiB",
 }
 
 
@@ -155,3 +159,87 @@ def test_decrypt_v2_instruction_file_custom_suffix(delayed_auth):
 
     assert output == "static-v2-instruction-file-from-java-v4"
     print("Success! V2 custom suffix instruction file decryption completed.")
+
+
+LARGE_FILE_SIZE = 52428800  # 50 MB
+
+
+def test_decrypt_large_v2_instruction_file_delayed_auth():
+    """Test streaming decryption of a 50 MB V2 object with delayed authentication."""
+    key = TEST_OBJECTS["large_v2_instruction_file"]
+
+    kms_client = boto3.client("kms", region_name=region)
+    keyring = KmsKeyring(kms_client, kms_key_id)
+    wrapped_client = boto3.client("s3")
+    config = S3EncryptionClientConfig(keyring, enable_delayed_authentication=True)
+    s3ec = S3EncryptionClient(wrapped_client, config)
+
+    response = s3ec.get_object(Bucket=bucket, Key=key)
+    total = 0
+    while chunk := response["Body"].read(65536):
+        total += len(chunk)
+
+    assert total == LARGE_FILE_SIZE
+
+
+# TODO(v3): enable once V3 decryption is implemented
+@pytest.mark.skip(reason="V3 decryption not yet implemented")
+def test_decrypt_large_v3_instruction_file_delayed_auth():
+    """Test streaming decryption of a 50 MB V3 object with delayed authentication."""
+    key = TEST_OBJECTS["large_v3_instruction_file"]
+
+    kms_client = boto3.client("kms", region_name=region)
+    keyring = KmsKeyring(kms_client, kms_key_id)
+    wrapped_client = boto3.client("s3")
+    config = S3EncryptionClientConfig(keyring, enable_delayed_authentication=True)
+    s3ec = S3EncryptionClient(wrapped_client, config)
+
+    response = s3ec.get_object(Bucket=bucket, Key=key)
+    total = 0
+    while chunk := response["Body"].read(65536):
+        total += len(chunk)
+
+    assert total == LARGE_FILE_SIZE
+
+
+XLARGE_FILE_SIZE = 61 * 1024 * 1024 * 1024  # 61 GiB
+
+
+@pytest.mark.large
+@pytest.mark.skip(reason="61 GiB static test object not yet created")
+def test_decrypt_xlarge_v2_instruction_file_delayed_auth():
+    """Test streaming decryption of a 61 GiB V2 object with delayed authentication."""
+    key = TEST_OBJECTS["xlarge_v2_instruction_file"]
+
+    kms_client = boto3.client("kms", region_name=region)
+    keyring = KmsKeyring(kms_client, kms_key_id)
+    wrapped_client = boto3.client("s3")
+    config = S3EncryptionClientConfig(keyring, enable_delayed_authentication=True)
+    s3ec = S3EncryptionClient(wrapped_client, config)
+
+    response = s3ec.get_object(Bucket=bucket, Key=key)
+    total = 0
+    while chunk := response["Body"].read(65536):
+        total += len(chunk)
+
+    assert total == XLARGE_FILE_SIZE
+
+
+@pytest.mark.large
+@pytest.mark.skip(reason="61 GiB static test object not yet created")
+def test_decrypt_xlarge_v3_instruction_file_delayed_auth():
+    """Test streaming decryption of a 61 GiB V3 object with delayed authentication."""
+    key = TEST_OBJECTS["xlarge_v3_instruction_file"]
+
+    kms_client = boto3.client("kms", region_name=region)
+    keyring = KmsKeyring(kms_client, kms_key_id)
+    wrapped_client = boto3.client("s3")
+    config = S3EncryptionClientConfig(keyring, enable_delayed_authentication=True)
+    s3ec = S3EncryptionClient(wrapped_client, config)
+
+    response = s3ec.get_object(Bucket=bucket, Key=key)
+    total = 0
+    while chunk := response["Body"].read(65536):
+        total += len(chunk)
+
+    assert total == XLARGE_FILE_SIZE
