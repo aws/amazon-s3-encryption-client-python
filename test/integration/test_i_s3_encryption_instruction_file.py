@@ -49,7 +49,8 @@ def test_decrypt_v1_instruction_file():
     print("Success! V1 instruction file decryption completed.")
 
 
-def test_decrypt_v2_instruction_file():
+@pytest.mark.parametrize("delayed_auth", [False, True], ids=["buffered", "delayed-auth"])
+def test_decrypt_v2_instruction_file(delayed_auth):
     """Test decrypting V2 object with instruction file.
 
     V2 format uses ALG_AES_256_GCM_IV12_TAG16_NO_KDF (no key commitment).
@@ -60,7 +61,7 @@ def test_decrypt_v2_instruction_file():
     kms_client = boto3.client("kms", region_name=region)
     keyring = KmsKeyring(kms_client, kms_key_id)
     wrapped_client = boto3.client("s3")
-    config = S3EncryptionClientConfig(keyring)
+    config = S3EncryptionClientConfig(keyring, enable_delayed_authentication=delayed_auth)
     s3ec = S3EncryptionClient(wrapped_client, config)
 
     response = s3ec.get_object(Bucket=bucket, Key=key)
@@ -134,14 +135,19 @@ def test_decrypt_v3_instruction_file_custom_suffix():
     print("Success! V3 custom suffix instruction file decryption completed.")
 
 
-def test_decrypt_v2_instruction_file_custom_suffix():
+@pytest.mark.parametrize("delayed_auth", [False, True], ids=["buffered", "delayed-auth"])
+def test_decrypt_v2_instruction_file_custom_suffix(delayed_auth):
     """Test decrypting V2 object with a custom instruction file suffix."""
     key = TEST_OBJECTS["v2_instruction_file"]
 
     kms_client = boto3.client("kms", region_name=region)
     keyring = KmsKeyring(kms_client, kms_key_id)
     wrapped_client = boto3.client("s3")
-    config = S3EncryptionClientConfig(keyring, instruction_file_suffix=".custom-suffix-instruction")
+    config = S3EncryptionClientConfig(
+        keyring,
+        instruction_file_suffix=".custom-suffix-instruction",
+        enable_delayed_authentication=delayed_auth,
+    )
     s3ec = S3EncryptionClient(wrapped_client, config)
 
     response = s3ec.get_object(Bucket=bucket, Key=key)
