@@ -154,6 +154,7 @@ class S3EncryptionClientPlugin:
             bucket=getattr(self._context, "bucket", None),
             key=getattr(self._context, "key", None),
             instruction_suffix=self.config.instruction_file_suffix,
+            enable_delayed_authentication=self.config.enable_delayed_authentication,
         )
 
         # Replace body with decrypting stream

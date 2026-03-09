@@ -18,7 +18,7 @@ from .materials.crypto_materials_manager import AbstractCryptoMaterialsManager
 from .materials.encrypted_data_key import EncryptedDataKey
 from .materials.materials import DecryptionMaterials, EncryptionMaterials
 from .metadata import ObjectMetadata
-from .stream import BufferedDecryptingStream
+from .stream import BufferedDecryptingStream, DelayedAuthDecryptingStream
 
 
 @define
@@ -101,7 +101,8 @@ class GetEncryptedObjectPipeline:
         encryption_context=None,
         bucket=None,
         key=None,
-        instruction_suffix=".instruction",
+        instruction_suffix=None,
+        enable_delayed_authentication=None,
     ):
         """Decrypt the data after it is retrieved from S3.
 
@@ -111,6 +112,7 @@ class GetEncryptedObjectPipeline:
             bucket (str, optional): S3 bucket name (required for instruction file)
             key (str, optional): S3 object key (required for instruction file)
             instruction_suffix(str, optional): suffix for instruction file; defaults to ".instruction".
+            enable_delayed_authentication (bool): If True, release plaintext before GCM tag verification.
 
         Returns:
             BufferedDecryptingStream: A stream that decrypts data lazily on first read.
@@ -173,6 +175,15 @@ class GetEncryptedObjectPipeline:
 
         # Return a buffered decrypting stream — no plaintext is released
         # until the entire ciphertext is read and the GCM tag is verified.
+        ##= specification/s3-encryption/client.md#enable-delayed-authentication
+        ##= type=implementation
+        ##% When disabled the S3EC MUST NOT release plaintext from a stream which has not been authenticated.
+        if enable_delayed_authentication is None:
+            raise S3EncryptionClientError("enable_delayed_authentication must be explicitly set")
+        if enable_delayed_authentication:
+            return DelayedAuthDecryptingStream(
+                streaming_body, dec_materials.plaintext_data_key, dec_materials.iv
+            )
         return BufferedDecryptingStream(
             streaming_body, dec_materials.plaintext_data_key, dec_materials.iv
         )

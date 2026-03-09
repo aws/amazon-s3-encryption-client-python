@@ -60,7 +60,7 @@ class TestGetEncryptedObjectPipelineInstructionFile:
 
         # Should fail when trying to decrypt (proving instruction file was fetched)
         with pytest.raises(Exception, match="Keyring called"):
-            pipeline.decrypt(mock_response, bucket="test-bucket", key="test-key")
+            pipeline.decrypt(mock_response, bucket="test-bucket", key="test-key", instruction_suffix=".instruction")
 
         # Verify instruction file was fetched
         mock_s3_client.get_object.assert_called_once_with(
@@ -115,7 +115,7 @@ class TestGetEncryptedObjectPipelineInstructionFile:
 
         # Should fail when trying to decrypt (proving instruction file was fetched)
         with pytest.raises(Exception, match="Keyring called"):
-            pipeline.decrypt(mock_response, bucket="test-bucket", key="test-key")
+            pipeline.decrypt(mock_response, bucket="test-bucket", key="test-key", instruction_suffix=".instruction")
 
         # Verify instruction file was fetched
         mock_s3_client.get_object.assert_called_once_with(
@@ -184,7 +184,7 @@ class TestGetEncryptedObjectPipelineInstructionFile:
 
         # This should fail with NotImplementedError since V3 decryption isn't implemented yet
         with pytest.raises(NotImplementedError, match="V3 decryption not yet implemented"):
-            pipeline.decrypt(mock_response, bucket="test-bucket", key="test-key")
+            pipeline.decrypt(mock_response, bucket="test-bucket", key="test-key", instruction_suffix=".instruction")
 
         # Verify instruction file was fetched
         mock_s3_client.get_object.assert_called_once_with(
