@@ -37,6 +37,15 @@ class S3EncryptionClientConfig:
     ##% as its associated object suffixed with ".instruction".
     instruction_file_suffix: str = field(default=".instruction")
 
+    ##= specification/s3-encryption/client.md#enable-delayed-authentication
+    ##= type=implementation
+    ##% The S3EC MUST support the option to enable or disable Delayed Authentication mode.
+
+    ##= specification/s3-encryption/client.md#enable-delayed-authentication
+    ##= type=implication
+    ##% Delayed Authentication mode MUST be set to false by default.
+    enable_delayed_authentication: bool = field(default=False)
+
     @cmm.default
     def _default_cmm_for_keyring(self):
         return DefaultCryptoMaterialsManager(self.keyring)
