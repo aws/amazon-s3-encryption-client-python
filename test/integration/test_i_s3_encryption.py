@@ -472,14 +472,25 @@ def test_encryption_context_missing_on_decrypt():
         raise
 
 
+##= specification/s3-encryption/client.md#enable-delayed-authentication
+##= type=test
+##% The S3EC MUST support the option to enable or disable Delayed Authentication mode.
 @pytest.mark.parametrize("delayed_auth", [False, True], ids=["buffered", "delayed-auth"])
 @pytest.mark.parametrize(
     "key_prefix, data, encoding",
     [
         ("simple-rt", "test input for simple v3 round trip", "utf-8"),
         ("empty-string-rt", "", "utf-8"),
-        ("unicode-rt", "Unicode test: 你好, こんにちは, 안녕하세요, Привет, مرحبا, ¡Hola!, ½⅓¼⅕⅙⅐⅛⅑⅒⅔⅖⅗⅘⅙⅚⅜⅝⅞", "utf-8"),
-        ("utf8-rt", "UTF-8 encoding test: 你好, こんにちは, 안녕하세요, Привет, مرحبا, ¡Hola!", "utf-8"),
+        (
+            "unicode-rt",
+            "Unicode test: 你好, こんにちは, 안녕하세요, Привет, مرحبا, ¡Hola!, ½⅓¼⅕⅙⅐⅛⅑⅒⅔⅖⅗⅘⅙⅚⅜⅝⅞",
+            "utf-8",
+        ),
+        (
+            "utf8-rt",
+            "UTF-8 encoding test: 你好, こんにちは, 안녕하세요, Привет, مرحبا, ¡Hola!",
+            "utf-8",
+        ),
         ("latin1-rt", "Latin-1 encoding test: éèêë àâäãåá çñ ¿¡ øæå ØÆÅÉÈÊËÀÂÄÃÅÁ", "latin-1"),
         ("binary-rt", bytes(range(256)), None),
     ],
