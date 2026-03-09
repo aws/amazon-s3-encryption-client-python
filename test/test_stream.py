@@ -53,6 +53,10 @@ class TestDelayedAuthReleasesBeforeVerification:
         # Ciphertext remains unread in the underlying stream
         assert body._stream.tell() < len(ciphertext_with_tag)
 
+        # Finish reading the stream and verify full plaintext matches
+        remaining = stream.read()
+        assert chunk + remaining == plaintext
+
 
 class TestBufferedWithholdsUntilVerification:
     """Buffered mode does not release plaintext until the GCM tag is verified."""

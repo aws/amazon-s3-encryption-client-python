@@ -115,7 +115,7 @@ class GetEncryptedObjectPipeline:
             enable_delayed_authentication (bool): If True, release plaintext before GCM tag verification.
 
         Returns:
-            BufferedDecryptingStream: A stream that decrypts data lazily on first read.
+            A decrypting stream (BufferedDecryptingStream or DelayedAuthDecryptingStream).
         """
         # Convert the metadata dictionary to an ObjectMetadata instance
         streaming_body = response.get("Body")
