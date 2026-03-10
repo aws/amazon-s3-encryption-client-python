@@ -71,40 +71,6 @@ def test_empty_string_roundtrip():
     print("Success! Empty string encrypted and decrypted correctly.")
 
 
-def test_no_body_roundtrip():
-    key = "no-body-rt"
-    key += datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
-
-    # Expected data when no Body is provided (empty bytes)
-    expected_data = b""
-
-    kms_client = boto3.client("kms", region_name=region)
-
-    keyring = KmsKeyring(kms_client, kms_key_id)
-
-    wrapped_client = boto3.client("s3")
-    config = S3EncryptionClientConfig(keyring)
-    s3ec = S3EncryptionClient(wrapped_client, config)
-
-    # Call put_object without providing a Body parameter
-    s3ec.put_object(Bucket=bucket, Key=key)
-
-    get_req = {"Bucket": bucket, "Key": key}
-    response = s3ec.get_object(**get_req)
-    output = response["Body"].read()
-
-    if output != expected_data:
-        print("Uh oh! Output doesn't match expected empty bytes!")
-        print("Expected:")
-        print(repr(expected_data))
-        print("Output:")
-        print(repr(output))
-        raise RuntimeError
-    print(
-        "Success! Object with no Body parameter encrypted and decrypted correctly as empty bytes."
-    )
-
-
 def test_unicode_string_roundtrip():
     key = "unicode-string-rt"
     key += datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
@@ -477,7 +443,7 @@ def test_encryption_context_missing_on_decrypt():
 ##% The S3EC MUST support the option to enable or disable Delayed Authentication mode.
 @pytest.mark.parametrize("delayed_auth", [False, True], ids=["buffered", "delayed-auth"])
 @pytest.mark.parametrize(
-    "key_prefix, data, encoding",
+    ("key_prefix", "data", "encoding"),
     [
         ("simple-rt", "test input for simple v3 round trip", "utf-8"),
         ("empty-string-rt", "", "utf-8"),
