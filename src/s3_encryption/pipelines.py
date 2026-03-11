@@ -17,13 +17,7 @@ from cryptography.hazmat.primitives.padding import PKCS7
 
 from .exceptions import S3EncryptionClientError, S3EncryptionClientSecurityError
 from .instruction_file import fetch_instruction_file
-from .key_derivation import (
-    KC_GCM_IV,
-    MESSAGE_ID_LENGTH,
-    SUITE_ID_BYTES,
-    derive_keys,
-    verify_commitment,
-)
+from .key_derivation import derive_keys, verify_commitment
 from .materials.crypto_materials_manager import AbstractCryptoMaterialsManager
 from .materials.encrypted_data_key import EncryptedDataKey
 from .materials.materials import (
@@ -103,7 +97,7 @@ class PutEncryptedObjectPipeline:
         ##= type=implementation
         ##% The generated IV or Message ID MUST be set or returned from the encryption
         ##% process such that it can be included in the content metadata.
-        iv = os.urandom(12)
+        iv = os.urandom(enc_mats.algorithm_suite.cipher_iv_length_bytes)
         aesgcm = AESGCM(enc_mats.plaintext_data_key)
         encrypted_data = aesgcm.encrypt(nonce=iv, data=plaintext, associated_data=None)
 
@@ -130,7 +124,8 @@ class PutEncryptedObjectPipeline:
         ##= type=implementation
         ##% The generated IV or Message ID MUST be set or returned from the encryption
         ##% process such that it can be included in the content metadata.
-        message_id = os.urandom(MESSAGE_ID_LENGTH)
+        algorithm_suite = enc_mats.algorithm_suite
+        message_id = os.urandom(algorithm_suite.commitment_nonce_length_bytes)
 
         ##= specification/s3-encryption/encryption.md#alg-aes-256-gcm-hkdf-sha512-commit-key
         ##= type=implementation
@@ -140,7 +135,9 @@ class PutEncryptedObjectPipeline:
         ##= type=implementation
         ##% The derived key commitment value MUST be set or returned from the encryption
         ##% process such that it can be included in the content metadata.
-        derived_encryption_key, commit_key = derive_keys(enc_mats.plaintext_data_key, message_id)
+        derived_encryption_key, commit_key = derive_keys(
+            enc_mats.plaintext_data_key, message_id, algorithm_suite
+        )
 
         ##= specification/s3-encryption/key-derivation.md#hkdf-operation
         ##= type=implementation
@@ -158,7 +155,7 @@ class PutEncryptedObjectPipeline:
         ##% The client MUST set the AAD to the Algorithm Suite ID represented as bytes.
         aesgcm = AESGCM(derived_encryption_key)
         encrypted_data = aesgcm.encrypt(
-            nonce=KC_GCM_IV, data=plaintext, associated_data=SUITE_ID_BYTES
+            nonce=algorithm_suite.kc_gcm_iv, data=plaintext, associated_data=algorithm_suite.suite_id_bytes
         )
 
         b64_edk = base64.b64encode(edk_bytes).decode("utf-8")
@@ -166,14 +163,14 @@ class PutEncryptedObjectPipeline:
         b64_commit_key = base64.b64encode(commit_key).decode("utf-8")
 
         # V3 metadata format
-        # x-amz-c: content cipher identifier (compressed algorithm suite)
+        # x-amz-c: content cipher identifier (compressed algorithm suite ID)
         # x-amz-w: wrapping algorithm identifier (12 = kms+context)
         # x-amz-3: encrypted data key
         # x-amz-i: message ID
         # x-amz-d: key commitment
         # x-amz-t: encryption context (for kms+context wrapping)
         metadata = ObjectMetadata(
-            content_cipher_v3="115",
+            content_cipher_v3=str(algorithm_suite.suite_id),
             encrypted_data_key_algorithm_v3="12",
             encrypted_data_key_v3=b64_edk,
             message_id_v3=b64_message_id,
@@ -347,7 +344,7 @@ class GetEncryptedObjectPipeline:
         ##% [legacy unauthenticated algorithm suites](#legacy-decryption) is NOT enabled,
         ##% the S3EC MUST throw an error which details that client was
         ##% not configured to decrypt objects with ALG_AES_256_CBC_IV16_NO_KDF.
-        if algorithm_suite == AlgorithmSuite.ALG_AES_256_CBC_IV16_NO_KDF:
+        if algorithm_suite.is_legacy:
             ##= specification/s3-encryption/decryption.md#legacy-decryption
             ##= type=implementation
             ##% The S3EC MUST NOT decrypt objects encrypted using legacy unauthenticated algorithm suites
@@ -380,8 +377,7 @@ class GetEncryptedObjectPipeline:
         ##% When the commitment policy is REQUIRE_ENCRYPT_REQUIRE_DECRYPT, the S3EC MUST NOT allow decryption using algorithm suites which do not support key commitment.
         if (
             self.commitment_policy == CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT
-            and dec_materials.algorithm_suite
-            != AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+            and not dec_materials.algorithm_suite.supports_key_commitment
         ):
             raise S3EncryptionClientError(
                 "Configuration conflict: cannot decrypt non-key-committing object "
@@ -561,7 +557,7 @@ class GetEncryptedObjectPipeline:
         ##= type=implementation
         ##% The client MUST use HKDF to derive the key commitment value and the derived encrypting key as described in [Key Derivation](key-derivation.md).
         derived_encryption_key, derived_commitment = derive_keys(
-            dec_materials.plaintext_data_key, message_id
+            dec_materials.plaintext_data_key, message_id, dec_materials.algorithm_suite
         )
 
         ##= specification/s3-encryption/decryption.md#decrypting-with-commitment
@@ -590,4 +586,8 @@ class GetEncryptedObjectPipeline:
         ##= type=implementation
         ##% The client MUST set the AAD to the Algorithm Suite ID represented as bytes.
         aesgcm = AESGCM(derived_encryption_key)
-        return aesgcm.decrypt(nonce=KC_GCM_IV, data=encrypted_data, associated_data=SUITE_ID_BYTES)
+        return aesgcm.decrypt(
+            nonce=dec_materials.algorithm_suite.kc_gcm_iv,
+            data=encrypted_data,
+            associated_data=dec_materials.algorithm_suite.suite_id_bytes,
+        )

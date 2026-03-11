@@ -213,7 +213,7 @@ class TestDecryptingWithCommitment:
         """The derived commitment MUST match the stored commitment from metadata."""
         key = os.urandom(32)
         message_id = os.urandom(28)
-        _, correct_commitment = derive_keys(key, message_id)
+        _, correct_commitment = derive_keys(key, message_id, AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY)
 
         # Should not raise
         verify_commitment(correct_commitment, correct_commitment)
@@ -257,7 +257,7 @@ class TestDecryptingWithCommitment:
         """Commitment verification MUST happen before content decryption is attempted."""
         key = os.urandom(32)
         message_id = os.urandom(28)
-        _, real_commitment = derive_keys(key, message_id)
+        _, real_commitment = derive_keys(key, message_id, AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY)
 
         # Build V3 metadata with a wrong commitment
         wrong_commitment = os.urandom(28)

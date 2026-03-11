@@ -11,65 +11,86 @@ For ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY:
   - Expand (Commit Key): info = suite_id_bytes + b"COMMITKEY", output = 28 bytes
 """
 
+from __future__ import annotations
+
 import hmac
+from typing import TYPE_CHECKING
 
 from cryptography.hazmat.primitives.hashes import SHA512
 from cryptography.hazmat.primitives.kdf.hkdf import HKDFExpand
 
-from .exceptions import S3EncryptionClientSecurityError
+from .exceptions import S3EncryptionClientError, S3EncryptionClientSecurityError
 
-# Algorithm suite ID for S3EC.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
-SUITE_ID_BYTES = b"\x00\x73"
+if TYPE_CHECKING:
+    from .materials.materials import AlgorithmSuite
 
-# Output lengths
-ENCRYPTION_KEY_LENGTH = 32  # 256 bits
-COMMIT_KEY_LENGTH = 28  # 224 bits
-MESSAGE_ID_LENGTH = 28  # 224 bits (used as HKDF salt)
-
-# Fixed IV for KC GCM: 12 bytes of 0x01
-KC_GCM_IV = b"\x01" * 12
+# Map of supported KDF hash algorithm names to cryptography hash classes.
+_HASH_ALGORITHMS = {
+    "sha512": SHA512,
+}
 
 
-def _hkdf_extract(salt: bytes, ikm: bytes) -> bytes:
-    """HKDF extract step using HMAC-SHA512.
+def _hkdf_extract(salt: bytes, ikm: bytes, hash_algorithm: str) -> bytes:
+    """HKDF extract step using HMAC.
 
     Args:
         salt: The salt value (Message ID).
         ikm: Input keying material (plaintext data key).
+        hash_algorithm: Hash algorithm name (e.g. "sha512").
 
     Returns:
         The pseudorandom key (PRK).
     """
-    return hmac.new(salt, ikm, "sha512").digest()
+    return hmac.new(salt, ikm, hash_algorithm).digest()
 
 
-def _hkdf_expand(prk: bytes, info: bytes, length: int) -> bytes:
-    """HKDF expand step using SHA-512.
+def _hkdf_expand(prk: bytes, info: bytes, length: int, hash_algorithm: str) -> bytes:
+    """HKDF expand step.
 
     Args:
         prk: Pseudorandom key from extract step.
         info: Context/application-specific info string.
         length: Desired output length in bytes.
+        hash_algorithm: Hash algorithm name (e.g. "sha512").
 
     Returns:
         Output keying material of the requested length.
+
+    Raises:
+        S3EncryptionClientError: If the hash algorithm is not supported.
     """
-    hkdf = HKDFExpand(algorithm=SHA512(), length=length, info=info)
+    hash_cls = _HASH_ALGORITHMS.get(hash_algorithm)
+    if hash_cls is None:
+        raise S3EncryptionClientError(
+            f"Unsupported KDF hash algorithm: {hash_algorithm}"
+        )
+    hkdf = HKDFExpand(algorithm=hash_cls(), length=length, info=info)
     return hkdf.derive(prk)
 
 
-def derive_keys(plaintext_data_key: bytes, message_id: bytes) -> tuple[bytes, bytes]:
+def derive_keys(
+    plaintext_data_key: bytes,
+    message_id: bytes,
+    algorithm_suite: AlgorithmSuite,
+) -> tuple[bytes, bytes]:
     """Derive the encryption key and commitment key from a plaintext data key.
 
     Uses HKDF with SHA-512 as specified in the S3EC key derivation spec.
 
     Args:
-        plaintext_data_key: The plaintext data key from the keyring (32 bytes).
-        message_id: The generated Message ID used as the HKDF salt (28 bytes).
+        plaintext_data_key: The plaintext data key from the keyring.
+        message_id: The generated Message ID used as the HKDF salt.
+        algorithm_suite: The algorithm suite whose parameters drive key lengths
+            and info strings.
 
     Returns:
         A tuple of (derived_encryption_key, commit_key).
     """
+    suite_id = algorithm_suite.suite_id_bytes
+    enc_key_len = algorithm_suite.data_key_length_bytes
+    commit_key_len = algorithm_suite.commitment_length_bytes
+    hash_alg = algorithm_suite.kdf_hash_algorithm
+
     ##= specification/s3-encryption/key-derivation.md#hkdf-operation
     ##= type=implementation
     ##% - The hash function MUST be specified by the algorithm suite commitment settings.
@@ -82,7 +103,7 @@ def derive_keys(plaintext_data_key: bytes, message_id: bytes) -> tuple[bytes, by
     ##= specification/s3-encryption/key-derivation.md#hkdf-operation
     ##= type=implementation
     ##% - The salt MUST be the Message ID with the length defined in the algorithm suite.
-    prk = _hkdf_extract(salt=message_id, ikm=plaintext_data_key)
+    prk = _hkdf_extract(salt=message_id, ikm=plaintext_data_key, hash_algorithm=hash_alg)
 
     ##= specification/s3-encryption/key-derivation.md#hkdf-operation
     ##= type=implementation
@@ -95,7 +116,7 @@ def derive_keys(plaintext_data_key: bytes, message_id: bytes) -> tuple[bytes, by
     ##% - The input info MUST be a concatenation of the algorithm suite ID as bytes
     ##% followed by the string DERIVEKEY as UTF8 encoded bytes.
     derived_encryption_key = _hkdf_expand(
-        prk, info=SUITE_ID_BYTES + b"DERIVEKEY", length=ENCRYPTION_KEY_LENGTH
+        prk, info=suite_id + b"DERIVEKEY", length=enc_key_len, hash_algorithm=hash_alg
     )
 
     ##= specification/s3-encryption/key-derivation.md#hkdf-operation
@@ -108,7 +129,7 @@ def derive_keys(plaintext_data_key: bytes, message_id: bytes) -> tuple[bytes, by
     ##= type=implementation
     ##% - The input info MUST be a concatenation of the algorithm suite ID as bytes
     ##% followed by the string COMMITKEY as UTF8 encoded bytes.
-    commit_key = _hkdf_expand(prk, info=SUITE_ID_BYTES + b"COMMITKEY", length=COMMIT_KEY_LENGTH)
+    commit_key = _hkdf_expand(prk, info=suite_id + b"COMMITKEY", length=commit_key_len, hash_algorithm=hash_alg)
 
     return derived_encryption_key, commit_key
 

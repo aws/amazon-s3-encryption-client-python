@@ -84,9 +84,11 @@ class KmsKeyring(S3Keyring):
                 enc_materials.algorithm_suite
                 == AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
             ):
-                encryption_context["aws:x-amz-cek-alg"] = "115"
+                encryption_context["aws:x-amz-cek-alg"] = str(
+                    enc_materials.algorithm_suite.suite_id
+                )
             else:
-                encryption_context["aws:x-amz-cek-alg"] = "AES/GCM/NoPadding"
+                encryption_context["aws:x-amz-cek-alg"] = enc_materials.algorithm_suite.cipher_name
 
             # Python implementation uses KMS GenerateDataKey instead of the spec's
             # EncryptDataKey pattern

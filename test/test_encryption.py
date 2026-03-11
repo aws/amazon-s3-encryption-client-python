@@ -14,15 +14,15 @@ from unittest.mock import MagicMock
 import pytest
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-from s3_encryption.key_derivation import (
-    KC_GCM_IV,
-    MESSAGE_ID_LENGTH,
-    SUITE_ID_BYTES,
-    derive_keys,
-)
+from s3_encryption.key_derivation import derive_keys
 from s3_encryption.materials.crypto_materials_manager import DefaultCryptoMaterialsManager
 from s3_encryption.materials.encrypted_data_key import EncryptedDataKey
 from s3_encryption.materials.materials import AlgorithmSuite, EncryptionMaterials
+
+_KC_SUITE = AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+KC_GCM_IV = _KC_SUITE.kc_gcm_iv
+MESSAGE_ID_LENGTH = _KC_SUITE.commitment_nonce_length_bytes
+SUITE_ID_BYTES = _KC_SUITE.suite_id_bytes
 from s3_encryption.pipelines import PutEncryptedObjectPipeline
 
 
@@ -211,7 +211,7 @@ class TestKcGcm:
         )
 
         message_id = base64.b64decode(meta["x-amz-i"])
-        derived_key, _ = derive_keys(raw_key, message_id)
+        derived_key, _ = derive_keys(raw_key, message_id, AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY)
 
         # Decrypt with the HKDF-derived key, fixed IV, and suite ID as AAD
         aesgcm = AESGCM(derived_key)
@@ -246,5 +246,5 @@ class TestKcGcm:
 
         # Verify the commitment matches what HKDF would produce
         message_id = base64.b64decode(meta["x-amz-i"])
-        _, expected_commitment = derive_keys(raw_key, message_id)
+        _, expected_commitment = derive_keys(raw_key, message_id, AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY)
         assert commitment_bytes == expected_commitment

@@ -15,13 +15,16 @@ from cryptography.hazmat.primitives.hashes import SHA512
 from cryptography.hazmat.primitives.kdf.hkdf import HKDFExpand
 
 from s3_encryption.key_derivation import (
-    COMMIT_KEY_LENGTH,
-    ENCRYPTION_KEY_LENGTH,
-    KC_GCM_IV,
-    MESSAGE_ID_LENGTH,
-    SUITE_ID_BYTES,
     derive_keys,
 )
+from s3_encryption.materials.materials import AlgorithmSuite
+
+_KC_SUITE = AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+SUITE_ID_BYTES = _KC_SUITE.suite_id_bytes
+ENCRYPTION_KEY_LENGTH = _KC_SUITE.data_key_length_bytes
+COMMIT_KEY_LENGTH = _KC_SUITE.commitment_length_bytes
+MESSAGE_ID_LENGTH = _KC_SUITE.commitment_nonce_length_bytes
+KC_GCM_IV = _KC_SUITE.kc_gcm_iv
 
 
 # ---------------------------------------------------------------------------
@@ -45,8 +48,8 @@ class TestHkdfOperation:
         assert len(prk) == 64  # SHA-512 output
 
         # derive_keys should produce deterministic output consistent with SHA-512
-        key1, ck1 = derive_keys(pdk, msg_id)
-        key2, ck2 = derive_keys(pdk, msg_id)
+        key1, ck1 = derive_keys(pdk, msg_id, _KC_SUITE)
+        key2, ck2 = derive_keys(pdk, msg_id, _KC_SUITE)
         assert key1 == key2
         assert ck1 == ck2
 
@@ -60,8 +63,8 @@ class TestHkdfOperation:
         pdk_a = os.urandom(32)
         pdk_b = os.urandom(32)
 
-        key_a, _ = derive_keys(pdk_a, msg_id)
-        key_b, _ = derive_keys(pdk_b, msg_id)
+        key_a, _ = derive_keys(pdk_a, msg_id, _KC_SUITE)
+        key_b, _ = derive_keys(pdk_b, msg_id, _KC_SUITE)
         assert key_a != key_b
 
     ##= specification/s3-encryption/key-derivation.md#hkdf-operation
@@ -74,7 +77,7 @@ class TestHkdfOperation:
         msg_id = os.urandom(MESSAGE_ID_LENGTH)
         assert len(pdk) == 32
         # Should succeed with 32-byte key
-        key, ck = derive_keys(pdk, msg_id)
+        key, ck = derive_keys(pdk, msg_id, _KC_SUITE)
         assert len(key) == ENCRYPTION_KEY_LENGTH
         assert len(ck) == COMMIT_KEY_LENGTH
 
@@ -88,8 +91,8 @@ class TestHkdfOperation:
         msg_id_a = os.urandom(MESSAGE_ID_LENGTH)
         msg_id_b = os.urandom(MESSAGE_ID_LENGTH)
 
-        key_a, _ = derive_keys(pdk, msg_id_a)
-        key_b, _ = derive_keys(pdk, msg_id_b)
+        key_a, _ = derive_keys(pdk, msg_id_a, _KC_SUITE)
+        key_b, _ = derive_keys(pdk, msg_id_b, _KC_SUITE)
         assert key_a != key_b
 
     ##= specification/s3-encryption/key-derivation.md#hkdf-operation
@@ -109,7 +112,7 @@ class TestHkdfOperation:
             info=SUITE_ID_BYTES + b"DERIVEKEY",
         ).derive(prk)
 
-        actual_dek, _ = derive_keys(pdk, msg_id)
+        actual_dek, _ = derive_keys(pdk, msg_id, _KC_SUITE)
         assert actual_dek == expected_dek
 
     ##= specification/s3-encryption/key-derivation.md#hkdf-operation
@@ -118,7 +121,7 @@ class TestHkdfOperation:
     def test_dek_output_length(self):
         """The derived encryption key MUST be 32 bytes (256 bits)."""
         import os
-        key, _ = derive_keys(os.urandom(32), os.urandom(MESSAGE_ID_LENGTH))
+        key, _ = derive_keys(os.urandom(32), os.urandom(MESSAGE_ID_LENGTH), _KC_SUITE)
         assert len(key) == ENCRYPTION_KEY_LENGTH
         assert ENCRYPTION_KEY_LENGTH == 32
 
@@ -145,7 +148,7 @@ class TestHkdfOperation:
             info=SUITE_ID_BYTES + b"WRONGKEY",
         ).derive(prk)
 
-        actual_dek, _ = derive_keys(pdk, msg_id)
+        actual_dek, _ = derive_keys(pdk, msg_id, _KC_SUITE)
         assert actual_dek == correct_dek
         assert actual_dek != wrong_dek
 
@@ -164,7 +167,7 @@ class TestHkdfOperation:
             info=SUITE_ID_BYTES + b"COMMITKEY",
         ).derive(prk)
 
-        _, actual_ck = derive_keys(pdk, msg_id)
+        _, actual_ck = derive_keys(pdk, msg_id, _KC_SUITE)
         assert actual_ck == expected_ck
 
     ##= specification/s3-encryption/key-derivation.md#hkdf-operation
@@ -173,7 +176,7 @@ class TestHkdfOperation:
     def test_ck_output_length(self):
         """The commit key MUST be 28 bytes (224 bits)."""
         import os
-        _, ck = derive_keys(os.urandom(32), os.urandom(MESSAGE_ID_LENGTH))
+        _, ck = derive_keys(os.urandom(32), os.urandom(MESSAGE_ID_LENGTH), _KC_SUITE)
         assert len(ck) == COMMIT_KEY_LENGTH
         assert COMMIT_KEY_LENGTH == 28
 
@@ -198,7 +201,7 @@ class TestHkdfOperation:
             info=SUITE_ID_BYTES + b"WRONGKEY",
         ).derive(prk)
 
-        _, actual_ck = derive_keys(pdk, msg_id)
+        _, actual_ck = derive_keys(pdk, msg_id, _KC_SUITE)
         assert actual_ck == correct_ck
         assert actual_ck != wrong_ck
 
@@ -239,7 +242,7 @@ class TestKcGcmCipherParams:
         msg_id = os.urandom(MESSAGE_ID_LENGTH)
         plaintext = b"key derivation roundtrip test"
 
-        derived_key, _ = derive_keys(pdk, msg_id)
+        derived_key, _ = derive_keys(pdk, msg_id, _KC_SUITE)
 
         # Encrypt with derived key, KC_GCM_IV, and SUITE_ID_BYTES as AAD
         aesgcm = AESGCM(derived_key)

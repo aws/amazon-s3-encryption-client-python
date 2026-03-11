@@ -16,7 +16,7 @@ import pytest
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from s3_encryption.exceptions import S3EncryptionClientError
-from s3_encryption.key_derivation import KC_GCM_IV, SUITE_ID_BYTES, derive_keys
+from s3_encryption.key_derivation import derive_keys
 from s3_encryption.materials.crypto_materials_manager import DefaultCryptoMaterialsManager
 from s3_encryption.materials.keyring import S3Keyring
 from s3_encryption.materials.materials import (
@@ -25,6 +25,10 @@ from s3_encryption.materials.materials import (
     DecryptionMaterials,
 )
 from s3_encryption.pipelines import GetEncryptedObjectPipeline
+
+_KC_SUITE = AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+KC_GCM_IV = _KC_SUITE.kc_gcm_iv
+SUITE_ID_BYTES = _KC_SUITE.suite_id_bytes
 
 
 # ---------------------------------------------------------------------------
@@ -67,7 +71,7 @@ def _v2_gcm_response(key, plaintext=b"test data"):
 def _v3_kc_gcm_response(key, plaintext=b"test data"):
     """Create a V3 KC-GCM-encrypted response with real ciphertext."""
     message_id = os.urandom(28)
-    derived_key, commitment = derive_keys(key, message_id)
+    derived_key, commitment = derive_keys(key, message_id, AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY)
     ciphertext = AESGCM(derived_key).encrypt(KC_GCM_IV, plaintext, SUITE_ID_BYTES)
     metadata = {
         "x-amz-c": "115",
