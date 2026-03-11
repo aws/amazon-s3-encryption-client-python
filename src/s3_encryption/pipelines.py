@@ -348,7 +348,9 @@ class GetEncryptedObjectPipeline:
         ##% [legacy unauthenticated algorithm suites](#legacy-decryption) is NOT enabled,
         ##% the S3EC MUST throw an error which details that client was
         ##% not configured to decrypt objects with ALG_AES_256_CBC_IV16_NO_KDF.
-        if algorithm_suite.is_legacy:
+        if (
+            algorithm_suite.is_legacy and not self.enable_legacy_unauthenticated_modes
+        ):  # noqa: SIM102
             ##= specification/s3-encryption/decryption.md#legacy-decryption
             ##= type=implementation
             ##% The S3EC MUST NOT decrypt objects encrypted using legacy unauthenticated algorithm suites
@@ -358,14 +360,13 @@ class GetEncryptedObjectPipeline:
             ##% If the S3EC is not configured to enable legacy unauthenticated content decryption,
             ##% the client MUST throw an exception when attempting to decrypt an object encrypted
             ##% with a legacy unauthenticated algorithm suite.
-            if not self.enable_legacy_unauthenticated_modes:
-                raise S3EncryptionClientError(
-                    "Cannot decrypt object encrypted with ALG_AES_256_CBC_IV16_NO_KDF. "
-                    "The S3 Encryption Client is not configured to decrypt objects using "
-                    "legacy unauthenticated algorithm suites. "
-                    "Set enable_legacy_unauthenticated_modes=True to allow decryption "
-                    "of objects encrypted with CBC."
-                )
+            raise S3EncryptionClientError(
+                "Cannot decrypt object encrypted with ALG_AES_256_CBC_IV16_NO_KDF. "
+                "The S3 Encryption Client is not configured to decrypt objects using "
+                "legacy unauthenticated algorithm suites. "
+                "Set enable_legacy_unauthenticated_modes=True to allow decryption "
+                "of objects encrypted with CBC."
+            )
 
         ##= specification/s3-encryption/decryption.md#key-commitment
         ##= type=implementation

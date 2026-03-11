@@ -77,7 +77,7 @@ class AlgorithmSuite(Enum):
 
     def __init__(
         self,
-        id: int,
+        suite_id: int,
         is_legacy: bool,
         data_key_algorithm: str,
         data_key_length_bits: int,
@@ -91,7 +91,8 @@ class AlgorithmSuite(Enum):
         kdf_hash_algorithm: str | None,
         suite_id_bytes: bytes,
     ):
-        self._id = id
+        """Initialize algorithm suite parameters from the enum tuple."""
+        self._id = suite_id
         self._is_legacy = is_legacy
         self._data_key_algorithm = data_key_algorithm
         self._data_key_length_bits = data_key_length_bits
@@ -109,6 +110,7 @@ class AlgorithmSuite(Enum):
 
     @property
     def suite_id(self) -> int:
+        """Numeric identifier for this algorithm suite."""
         return self._id
 
     @property
@@ -123,18 +125,22 @@ class AlgorithmSuite(Enum):
 
     @property
     def data_key_length_bytes(self) -> int:
+        """Data key length in bytes."""
         return self._data_key_length_bits // 8
 
     @property
     def cipher_name(self) -> str:
+        """Cipher transformation string (e.g. 'AES/GCM/NoPadding')."""
         return self._cipher_name
 
     @property
     def cipher_iv_length_bytes(self) -> int:
+        """Initialization vector length in bytes."""
         return self._cipher_iv_length_bits // 8
 
     @property
     def commitment_length_bytes(self) -> int:
+        """Key commitment value length in bytes."""
         return self._commitment_length_bits // 8
 
     @property
@@ -144,6 +150,7 @@ class AlgorithmSuite(Enum):
 
     @property
     def suite_id_bytes(self) -> bytes:
+        """Algorithm suite ID as raw bytes for use in HKDF info strings."""
         return self._suite_id_bytes
 
     @property

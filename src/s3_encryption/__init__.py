@@ -73,6 +73,7 @@ class S3EncryptionClientConfig:
     ##= specification/s3-encryption/client.md#key-commitment
     ##% If the configured Encryption Algorithm is incompatible with the key commitment policy, then it MUST throw an exception.
     def __attrs_post_init__(self):
+        """Validate algorithm suite and commitment policy configuration."""
         if self.encryption_algorithm.is_legacy:
             raise S3EncryptionClientError(
                 f"Cannot configure S3 Encryption Client with legacy algorithm suite "
