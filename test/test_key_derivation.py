@@ -31,6 +31,7 @@ KC_GCM_IV = _KC_SUITE.kc_gcm_iv
 # HKDF Extract / Expand
 # ---------------------------------------------------------------------------
 
+
 class TestHkdfOperation:
     """Tests for specification/s3-encryption/key-derivation.md#hkdf-operation."""
 
@@ -40,6 +41,7 @@ class TestHkdfOperation:
     def test_hash_function_is_sha512(self):
         """HKDF extract MUST use the hash function specified by the algorithm suite."""
         import os
+
         pdk = os.urandom(_KC_SUITE.data_key_length_bytes)
         msg_id = os.urandom(MESSAGE_ID_LENGTH)
 
@@ -49,7 +51,8 @@ class TestHkdfOperation:
 
         # Expand with the same hash to get expected DEK
         expected_dek = HKDFExpand(
-            algorithm=SHA512(), length=_KC_SUITE.data_key_length_bytes,
+            algorithm=SHA512(),
+            length=_KC_SUITE.data_key_length_bytes,
             info=SUITE_ID_BYTES + b"DERIVEKEY",
         ).derive(prk)
 
@@ -63,6 +66,7 @@ class TestHkdfOperation:
     def test_ikm_is_plaintext_data_key(self):
         """Different plaintext data keys MUST produce different derived keys."""
         import os
+
         msg_id = os.urandom(MESSAGE_ID_LENGTH)
         pdk_a = os.urandom(_KC_SUITE.data_key_length_bytes)
         pdk_b = os.urandom(_KC_SUITE.data_key_length_bytes)
@@ -77,6 +81,7 @@ class TestHkdfOperation:
     def test_ikm_length_is_32_bytes(self):
         """The plaintext data key (IKM) length MUST equal the algorithm suite's data key length."""
         import os
+
         pdk = os.urandom(_KC_SUITE.data_key_length_bytes)
         msg_id = os.urandom(MESSAGE_ID_LENGTH)
         assert len(pdk) == _KC_SUITE.data_key_length_bytes
@@ -91,6 +96,7 @@ class TestHkdfOperation:
     def test_ikm_wrong_length_raises(self):
         """derive_keys MUST raise when the plaintext data key length doesn't match the suite."""
         import os
+
         from s3_encryption.exceptions import S3EncryptionClientError
 
         msg_id = os.urandom(MESSAGE_ID_LENGTH)
@@ -107,6 +113,7 @@ class TestHkdfOperation:
     def test_salt_is_message_id(self):
         """Different Message IDs (salts) MUST produce different derived keys."""
         import os
+
         pdk = os.urandom(_KC_SUITE.data_key_length_bytes)
         msg_id_a = os.urandom(MESSAGE_ID_LENGTH)
         msg_id_b = os.urandom(MESSAGE_ID_LENGTH)
@@ -121,6 +128,7 @@ class TestHkdfOperation:
     def test_dek_uses_prk_from_extract(self):
         """The DEK expand step MUST use the PRK from the extract step."""
         import os
+
         pdk = os.urandom(_KC_SUITE.data_key_length_bytes)
         msg_id = os.urandom(MESSAGE_ID_LENGTH)
 
@@ -128,7 +136,8 @@ class TestHkdfOperation:
         prk = hmac.new(msg_id, pdk, _KC_SUITE.kdf_hash_algorithm).digest()
         # Manual expand for DEK
         expected_dek = HKDFExpand(
-            algorithm=SHA512(), length=ENCRYPTION_KEY_LENGTH,
+            algorithm=SHA512(),
+            length=ENCRYPTION_KEY_LENGTH,
             info=SUITE_ID_BYTES + b"DERIVEKEY",
         ).derive(prk)
 
@@ -141,7 +150,10 @@ class TestHkdfOperation:
     def test_dek_output_length(self):
         """The derived encryption key MUST match the encryption key length from the algorithm suite."""
         import os
-        key, _ = derive_keys(os.urandom(_KC_SUITE.data_key_length_bytes), os.urandom(MESSAGE_ID_LENGTH), _KC_SUITE)
+
+        key, _ = derive_keys(
+            os.urandom(_KC_SUITE.data_key_length_bytes), os.urandom(MESSAGE_ID_LENGTH), _KC_SUITE
+        )
         assert len(key) == _KC_SUITE.data_key_length_bytes
 
     ##= specification/s3-encryption/key-derivation.md#hkdf-operation
@@ -150,6 +162,7 @@ class TestHkdfOperation:
     def test_dek_info_is_suite_id_plus_derivekey(self):
         """DEK expand info MUST be suite_id_bytes + b'DERIVEKEY'."""
         import os
+
         pdk = os.urandom(_KC_SUITE.data_key_length_bytes)
         msg_id = os.urandom(MESSAGE_ID_LENGTH)
 
@@ -157,13 +170,15 @@ class TestHkdfOperation:
 
         # Correct info
         correct_dek = HKDFExpand(
-            algorithm=SHA512(), length=ENCRYPTION_KEY_LENGTH,
+            algorithm=SHA512(),
+            length=ENCRYPTION_KEY_LENGTH,
             info=SUITE_ID_BYTES + b"DERIVEKEY",
         ).derive(prk)
 
         # Wrong info should produce different output
         wrong_dek = HKDFExpand(
-            algorithm=SHA512(), length=ENCRYPTION_KEY_LENGTH,
+            algorithm=SHA512(),
+            length=ENCRYPTION_KEY_LENGTH,
             info=SUITE_ID_BYTES + b"WRONGKEY",
         ).derive(prk)
 
@@ -177,12 +192,14 @@ class TestHkdfOperation:
     def test_ck_uses_prk_from_extract(self):
         """The CK expand step MUST use the PRK from the extract step."""
         import os
+
         pdk = os.urandom(_KC_SUITE.data_key_length_bytes)
         msg_id = os.urandom(MESSAGE_ID_LENGTH)
 
         prk = hmac.new(msg_id, pdk, _KC_SUITE.kdf_hash_algorithm).digest()
         expected_ck = HKDFExpand(
-            algorithm=SHA512(), length=COMMIT_KEY_LENGTH,
+            algorithm=SHA512(),
+            length=COMMIT_KEY_LENGTH,
             info=SUITE_ID_BYTES + b"COMMITKEY",
         ).derive(prk)
 
@@ -195,7 +212,10 @@ class TestHkdfOperation:
     def test_ck_output_length(self):
         """The commit key length MUST match the algorithm suite's commitment length."""
         import os
-        _, ck = derive_keys(os.urandom(_KC_SUITE.data_key_length_bytes), os.urandom(MESSAGE_ID_LENGTH), _KC_SUITE)
+
+        _, ck = derive_keys(
+            os.urandom(_KC_SUITE.data_key_length_bytes), os.urandom(MESSAGE_ID_LENGTH), _KC_SUITE
+        )
         assert len(ck) == _KC_SUITE.commitment_length_bytes
 
     ##= specification/s3-encryption/key-derivation.md#hkdf-operation
@@ -204,18 +224,21 @@ class TestHkdfOperation:
     def test_ck_info_is_suite_id_plus_commitkey(self):
         """CK expand info MUST be suite_id_bytes + b'COMMITKEY'."""
         import os
+
         pdk = os.urandom(_KC_SUITE.data_key_length_bytes)
         msg_id = os.urandom(MESSAGE_ID_LENGTH)
 
         prk = hmac.new(msg_id, pdk, _KC_SUITE.kdf_hash_algorithm).digest()
 
         correct_ck = HKDFExpand(
-            algorithm=SHA512(), length=COMMIT_KEY_LENGTH,
+            algorithm=SHA512(),
+            length=COMMIT_KEY_LENGTH,
             info=SUITE_ID_BYTES + b"COMMITKEY",
         ).derive(prk)
 
         wrong_ck = HKDFExpand(
-            algorithm=SHA512(), length=COMMIT_KEY_LENGTH,
+            algorithm=SHA512(),
+            length=COMMIT_KEY_LENGTH,
             info=SUITE_ID_BYTES + b"WRONGKEY",
         ).derive(prk)
 
@@ -227,6 +250,7 @@ class TestHkdfOperation:
 # ---------------------------------------------------------------------------
 # IV and AAD for KC-GCM
 # ---------------------------------------------------------------------------
+
 
 class TestKcGcmCipherParams:
     """Tests for KC-GCM cipher initialization parameters."""
@@ -256,6 +280,7 @@ class TestKcGcmCipherParams:
     def test_kc_gcm_roundtrip_with_derived_key_iv_aad(self):
         """KC-GCM MUST encrypt/decrypt with derived key, 0x01 IV, and suite ID as AAD."""
         import os
+
         pdk = os.urandom(_KC_SUITE.data_key_length_bytes)
         msg_id = os.urandom(MESSAGE_ID_LENGTH)
         plaintext = b"key derivation roundtrip test"

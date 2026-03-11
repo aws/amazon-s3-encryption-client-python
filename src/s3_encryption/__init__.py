@@ -84,10 +84,14 @@ class S3EncryptionClientConfig:
         ##% When the commitment policy is REQUIRE_ENCRYPT_ALLOW_DECRYPT, the S3EC MUST only encrypt using an algorithm suite which supports key commitment.
         ##= specification/s3-encryption/key-commitment.md#commitment-policy
         ##% When the commitment policy is REQUIRE_ENCRYPT_REQUIRE_DECRYPT, the S3EC MUST only encrypt using an algorithm suite which supports key commitment.
-        if self.commitment_policy in (
-            CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT,
-            CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
-        ) and not self.encryption_algorithm.supports_key_commitment:
+        if (
+            self.commitment_policy
+            in (
+                CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT,
+                CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+            )
+            and not self.encryption_algorithm.supports_key_commitment
+        ):
             raise S3EncryptionClientError(
                 f"Commitment policy {self.commitment_policy.name} requires a key-committing "
                 f"algorithm suite, but {self.encryption_algorithm.name} does not support key commitment."

@@ -35,6 +35,7 @@ SUITE_ID_BYTES = _KC_SUITE.suite_id_bytes
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_pipeline(commitment_policy, keyring_return=None):
     """Create a GetEncryptedObjectPipeline with a mocked CMM/keyring."""
     mock_keyring = Mock(spec=S3Keyring)
@@ -71,7 +72,9 @@ def _v2_gcm_response(key, plaintext=b"test data"):
 def _v3_kc_gcm_response(key, plaintext=b"test data"):
     """Create a V3 KC-GCM-encrypted response with real ciphertext."""
     message_id = os.urandom(28)
-    derived_key, commitment = derive_keys(key, message_id, AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY)
+    derived_key, commitment = derive_keys(
+        key, message_id, AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+    )
     ciphertext = AESGCM(derived_key).encrypt(KC_GCM_IV, plaintext, SUITE_ID_BYTES)
     metadata = {
         "x-amz-c": "115",
@@ -91,6 +94,7 @@ def _v3_kc_gcm_response(key, plaintext=b"test data"):
 # ---------------------------------------------------------------------------
 # Commitment Policy Tests
 # ---------------------------------------------------------------------------
+
 
 class TestCommitmentPolicy:
     """Tests for specification/s3-encryption/key-commitment.md#commitment-policy."""

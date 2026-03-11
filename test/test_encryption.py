@@ -17,7 +17,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from s3_encryption.key_derivation import derive_keys
 from s3_encryption.materials.crypto_materials_manager import DefaultCryptoMaterialsManager
 from s3_encryption.materials.encrypted_data_key import EncryptedDataKey
-from s3_encryption.materials.materials import AlgorithmSuite, EncryptionMaterials
+from s3_encryption.materials.materials import AlgorithmSuite
 
 _KC_SUITE = AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
 KC_GCM_IV = _KC_SUITE.kc_gcm_iv
@@ -25,10 +25,10 @@ MESSAGE_ID_LENGTH = _KC_SUITE.commitment_nonce_length_bytes
 SUITE_ID_BYTES = _KC_SUITE.suite_id_bytes
 from s3_encryption.pipelines import PutEncryptedObjectPipeline
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _mock_cmm(plaintext_key=None, encrypted_key=b"encrypted-key"):
     """Return a CMM backed by a mock keyring that returns the given keys."""
@@ -55,6 +55,7 @@ def _fill_materials(mats, plaintext_key, encrypted_key):
 # ---------------------------------------------------------------------------
 # Content Encryption — General
 # ---------------------------------------------------------------------------
+
 
 class TestContentEncryption:
     """Tests for specification/s3-encryption/encryption.md#content-encryption."""
@@ -144,6 +145,7 @@ class TestContentEncryption:
 # ALG_AES_256_GCM_IV12_TAG16_NO_KDF
 # ---------------------------------------------------------------------------
 
+
 class TestGcmNoKdf:
     """Tests for specification/s3-encryption/encryption.md#alg-aes-256-gcm-iv12-tag16-no-kdf."""
 
@@ -192,6 +194,7 @@ class TestGcmNoKdf:
 # ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
 # ---------------------------------------------------------------------------
 
+
 class TestKcGcm:
     """Tests for specification/s3-encryption/encryption.md#alg-aes-256-gcm-hkdf-sha512-commit-key."""
 
@@ -211,21 +214,19 @@ class TestKcGcm:
         )
 
         message_id = base64.b64decode(meta["x-amz-i"])
-        derived_key, _ = derive_keys(raw_key, message_id, AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY)
+        derived_key, _ = derive_keys(
+            raw_key, message_id, AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+        )
 
         # Decrypt with the HKDF-derived key, fixed IV, and suite ID as AAD
         aesgcm = AESGCM(derived_key)
-        decrypted = aesgcm.decrypt(
-            nonce=KC_GCM_IV, data=ciphertext, associated_data=SUITE_ID_BYTES
-        )
+        decrypted = aesgcm.decrypt(nonce=KC_GCM_IV, data=ciphertext, associated_data=SUITE_ID_BYTES)
         assert decrypted == plaintext
 
         # Decrypting with the raw key must fail
         aesgcm_raw = AESGCM(raw_key)
         with pytest.raises(Exception):
-            aesgcm_raw.decrypt(
-                nonce=KC_GCM_IV, data=ciphertext, associated_data=SUITE_ID_BYTES
-            )
+            aesgcm_raw.decrypt(nonce=KC_GCM_IV, data=ciphertext, associated_data=SUITE_ID_BYTES)
 
     ##= specification/s3-encryption/encryption.md#alg-aes-256-gcm-hkdf-sha512-commit-key
     ##= type=test
@@ -246,5 +247,7 @@ class TestKcGcm:
 
         # Verify the commitment matches what HKDF would produce
         message_id = base64.b64decode(meta["x-amz-i"])
-        _, expected_commitment = derive_keys(raw_key, message_id, AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY)
+        _, expected_commitment = derive_keys(
+            raw_key, message_id, AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+        )
         assert commitment_bytes == expected_commitment

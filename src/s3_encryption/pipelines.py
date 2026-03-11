@@ -155,7 +155,9 @@ class PutEncryptedObjectPipeline:
         ##% The client MUST set the AAD to the Algorithm Suite ID represented as bytes.
         aesgcm = AESGCM(derived_encryption_key)
         encrypted_data = aesgcm.encrypt(
-            nonce=algorithm_suite.kc_gcm_iv, data=plaintext, associated_data=algorithm_suite.suite_id_bytes
+            nonce=algorithm_suite.kc_gcm_iv,
+            data=plaintext,
+            associated_data=algorithm_suite.suite_id_bytes,
         )
 
         b64_edk = base64.b64encode(edk_bytes).decode("utf-8")
@@ -294,7 +296,9 @@ class GetEncryptedObjectPipeline:
                 ObjectMetadata.KEY_COMMITMENT_V3,
                 ObjectMetadata.MESSAGE_ID_V3,
             }
-            forbidden_keys_in_instruction = set(instruction_metadata.keys()) & v3_object_metadata_exclusive_keys
+            forbidden_keys_in_instruction = (
+                set(instruction_metadata.keys()) & v3_object_metadata_exclusive_keys
+            )
             if forbidden_keys_in_instruction:
                 raise S3EncryptionClientError(
                     "Instruction file is tampered, instruction file contains object metadata "

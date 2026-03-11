@@ -242,6 +242,7 @@ class TestGetEncryptedObjectPipelineInstructionFile:
         mock_s3_client.get_object.assert_called_once_with(
             Bucket="test-bucket", Key="test-key.custom-suffix"
         )
+
     def test_decrypt_v3_unsupported_wrap_alg(self):
         """Test that V3 decryption with unsupported wrapping algorithm is rejected by the keyring."""
         # V3 metadata with AES/GCM wrapping (02) — not supported by the KMS keyring

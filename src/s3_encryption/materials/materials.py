@@ -28,50 +28,50 @@ class AlgorithmSuite(Enum):
     """
 
     ALG_AES_256_CBC_IV16_NO_KDF = (
-        0x0070,       # id
-        True,         # is_legacy
-        "AES",        # data_key_algorithm
-        256,          # data_key_length_bits
+        0x0070,  # id
+        True,  # is_legacy
+        "AES",  # data_key_algorithm
+        256,  # data_key_length_bits
         "AES/CBC/PKCS5Padding",  # cipher_name
-        128,          # cipher_block_size_bits
-        128,          # cipher_iv_length_bits (16 bytes)
-        0,            # cipher_tag_length_bits (CBC has no auth tag)
-        False,        # is_committing
-        0,            # commitment_length_bits
-        0,            # commitment_nonce_length_bits
-        None,         # kdf_hash_algorithm
-        b"",          # suite_id_bytes
+        128,  # cipher_block_size_bits
+        128,  # cipher_iv_length_bits (16 bytes)
+        0,  # cipher_tag_length_bits (CBC has no auth tag)
+        False,  # is_committing
+        0,  # commitment_length_bits
+        0,  # commitment_nonce_length_bits
+        None,  # kdf_hash_algorithm
+        b"",  # suite_id_bytes
     )
 
     ALG_AES_256_GCM_IV12_TAG16_NO_KDF = (
-        0x0072,       # id
-        False,        # is_legacy
-        "AES",        # data_key_algorithm
-        256,          # data_key_length_bits
+        0x0072,  # id
+        False,  # is_legacy
+        "AES",  # data_key_algorithm
+        256,  # data_key_length_bits
         "AES/GCM/NoPadding",  # cipher_name
-        128,          # cipher_block_size_bits
-        96,           # cipher_iv_length_bits (12 bytes)
-        128,          # cipher_tag_length_bits (16 bytes)
-        False,        # is_committing
-        0,            # commitment_length_bits
-        0,            # commitment_nonce_length_bits
-        None,         # kdf_hash_algorithm
-        b"",          # suite_id_bytes
+        128,  # cipher_block_size_bits
+        96,  # cipher_iv_length_bits (12 bytes)
+        128,  # cipher_tag_length_bits (16 bytes)
+        False,  # is_committing
+        0,  # commitment_length_bits
+        0,  # commitment_nonce_length_bits
+        None,  # kdf_hash_algorithm
+        b"",  # suite_id_bytes
     )
 
     ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY = (
-        0x0073,       # id
-        False,        # is_legacy
-        "AES",        # data_key_algorithm
-        256,          # data_key_length_bits
+        0x0073,  # id
+        False,  # is_legacy
+        "AES",  # data_key_algorithm
+        256,  # data_key_length_bits
         "AES/GCM/HKDF/CommitKey",  # cipher_name
-        128,          # cipher_block_size_bits
-        96,           # cipher_iv_length_bits (12 bytes)
-        128,          # cipher_tag_length_bits (16 bytes)
-        True,         # is_committing
-        224,          # commitment_length_bits (28 bytes)
-        224,          # commitment_nonce_length_bits (28 bytes = message_id)
-        "sha512",     # kdf_hash_algorithm
+        128,  # cipher_block_size_bits
+        96,  # cipher_iv_length_bits (12 bytes)
+        128,  # cipher_tag_length_bits (16 bytes)
+        True,  # is_committing
+        224,  # commitment_length_bits (28 bytes)
+        224,  # commitment_nonce_length_bits (28 bytes = message_id)
+        "sha512",  # kdf_hash_algorithm
         b"\x00\x73",  # suite_id_bytes
     )
 

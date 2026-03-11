@@ -8,17 +8,15 @@ that mirrors the type=implementation annotation in the source code.
 """
 
 import base64
-import hmac
 import os
 from io import BytesIO
-from unittest.mock import MagicMock, Mock
+from unittest.mock import Mock
 
 import pytest
 
 from s3_encryption.exceptions import S3EncryptionClientError, S3EncryptionClientSecurityError
 from s3_encryption.key_derivation import derive_keys, verify_commitment
 from s3_encryption.materials.crypto_materials_manager import DefaultCryptoMaterialsManager
-from s3_encryption.materials.encrypted_data_key import EncryptedDataKey
 from s3_encryption.materials.keyring import S3Keyring
 from s3_encryption.materials.materials import (
     AlgorithmSuite,
@@ -27,10 +25,10 @@ from s3_encryption.materials.materials import (
 )
 from s3_encryption.pipelines import GetEncryptedObjectPipeline
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_pipeline(
     commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
@@ -69,7 +67,7 @@ def _v2_gcm_metadata():
         "x-amz-iv": base64.b64encode(os.urandom(12)).decode(),
         "x-amz-key-v2": base64.b64encode(b"encrypted-key").decode(),
         "x-amz-wrap-alg": "kms+context",
-        "x-amz-matdesc": '{}',
+        "x-amz-matdesc": "{}",
         "x-amz-cek-alg": "AES/GCM/NoPadding",
         "x-amz-tag-len": "128",
     }
@@ -82,6 +80,7 @@ def _response(metadata, body=b"ciphertext"):
 # ---------------------------------------------------------------------------
 # CBC Decryption
 # ---------------------------------------------------------------------------
+
 
 class TestCBCDecryption:
     """Tests for specification/s3-encryption/decryption.md#cbc-decryption."""
@@ -201,6 +200,7 @@ class TestCBCDecryption:
 # Decrypting with Commitment
 # ---------------------------------------------------------------------------
 
+
 class TestDecryptingWithCommitment:
     """Tests for specification/s3-encryption/decryption.md#decrypting-with-commitment."""
 
@@ -213,7 +213,9 @@ class TestDecryptingWithCommitment:
         """The derived commitment MUST match the stored commitment from metadata."""
         key = os.urandom(32)
         message_id = os.urandom(28)
-        _, correct_commitment = derive_keys(key, message_id, AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY)
+        _, correct_commitment = derive_keys(
+            key, message_id, AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+        )
 
         # Should not raise
         verify_commitment(correct_commitment, correct_commitment)
@@ -246,7 +248,9 @@ class TestDecryptingWithCommitment:
         stored = os.urandom(28)
         derived = os.urandom(28)
 
-        with pytest.raises(S3EncryptionClientSecurityError, match="Key commitment verification failed"):
+        with pytest.raises(
+            S3EncryptionClientSecurityError, match="Key commitment verification failed"
+        ):
             verify_commitment(stored, derived)
 
     ##= specification/s3-encryption/decryption.md#decrypting-with-commitment
@@ -257,7 +261,9 @@ class TestDecryptingWithCommitment:
         """Commitment verification MUST happen before content decryption is attempted."""
         key = os.urandom(32)
         message_id = os.urandom(28)
-        _, real_commitment = derive_keys(key, message_id, AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY)
+        _, real_commitment = derive_keys(
+            key, message_id, AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+        )
 
         # Build V3 metadata with a wrong commitment
         wrong_commitment = os.urandom(28)
@@ -280,13 +286,16 @@ class TestDecryptingWithCommitment:
         )
 
         # Must fail at commitment check, not at AES-GCM decryption
-        with pytest.raises(S3EncryptionClientSecurityError, match="Key commitment verification failed"):
+        with pytest.raises(
+            S3EncryptionClientSecurityError, match="Key commitment verification failed"
+        ):
             pipeline.decrypt(_response(metadata, b"fake-ciphertext"))
 
 
 # ---------------------------------------------------------------------------
 # Key Commitment Policy
 # ---------------------------------------------------------------------------
+
 
 class TestKeyCommitmentPolicy:
     """Tests for specification/s3-encryption/decryption.md#key-commitment."""
@@ -350,6 +359,7 @@ class TestKeyCommitmentPolicy:
 # ---------------------------------------------------------------------------
 # Legacy Decryption
 # ---------------------------------------------------------------------------
+
 
 class TestLegacyDecryption:
     """Tests for specification/s3-encryption/decryption.md#legacy-decryption."""

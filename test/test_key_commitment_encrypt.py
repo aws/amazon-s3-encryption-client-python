@@ -28,15 +28,13 @@ import pytest
 
 from s3_encryption import S3EncryptionClientConfig
 from s3_encryption.exceptions import S3EncryptionClientError
-from s3_encryption.materials.crypto_materials_manager import DefaultCryptoMaterialsManager
 from s3_encryption.materials.encrypted_data_key import EncryptedDataKey
 from s3_encryption.materials.materials import AlgorithmSuite, CommitmentPolicy
-from s3_encryption.pipelines import PutEncryptedObjectPipeline
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _mock_keyring():
     """Return a mock keyring that populates encryption materials."""
@@ -59,6 +57,7 @@ def _mock_keyring():
 # ---------------------------------------------------------------------------
 # REQUIRE_ENCRYPT_* with non-committing algorithm → MUST fail
 # ---------------------------------------------------------------------------
+
 
 class TestRequireEncryptRejectsNonCommitting:
     """Configuring REQUIRE_ENCRYPT_* with a non-committing algorithm MUST fail."""
@@ -91,6 +90,7 @@ class TestRequireEncryptRejectsNonCommitting:
 # ---------------------------------------------------------------------------
 # FORBID_ENCRYPT_ALLOW_DECRYPT with committing algorithm → MUST fail
 # ---------------------------------------------------------------------------
+
 
 class TestForbidEncryptRejectsCommitting:
     """Configuring FORBID_ENCRYPT_ALLOW_DECRYPT with a committing algorithm MUST fail."""

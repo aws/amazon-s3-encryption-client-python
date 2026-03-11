@@ -61,9 +61,7 @@ def _hkdf_expand(prk: bytes, info: bytes, length: int, hash_algorithm: str) -> b
     """
     hash_cls = _HASH_ALGORITHMS.get(hash_algorithm)
     if hash_cls is None:
-        raise S3EncryptionClientError(
-            f"Unsupported KDF hash algorithm: {hash_algorithm}"
-        )
+        raise S3EncryptionClientError(f"Unsupported KDF hash algorithm: {hash_algorithm}")
     hkdf = HKDFExpand(algorithm=hash_cls(), length=length, info=info)
     return hkdf.derive(prk)
 
@@ -135,7 +133,9 @@ def derive_keys(
     ##= type=implementation
     ##% - The input info MUST be a concatenation of the algorithm suite ID as bytes
     ##% followed by the string COMMITKEY as UTF8 encoded bytes.
-    commit_key = _hkdf_expand(prk, info=suite_id + b"COMMITKEY", length=commit_key_len, hash_algorithm=hash_alg)
+    commit_key = _hkdf_expand(
+        prk, info=suite_id + b"COMMITKEY", length=commit_key_len, hash_algorithm=hash_alg
+    )
 
     return derived_encryption_key, commit_key
 
