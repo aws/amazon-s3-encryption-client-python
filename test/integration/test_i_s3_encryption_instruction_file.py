@@ -40,7 +40,7 @@ def test_decrypt_v1_instruction_file():
     wrapped_client = boto3.client("s3")
     config = S3EncryptionClientConfig(
         keyring,
-        algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+        encryption_algorithm=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
         enable_legacy_unauthenticated_modes=True,
         commitment_policy=CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
     )
@@ -66,7 +66,7 @@ def test_decrypt_v2_instruction_file():
     wrapped_client = boto3.client("s3")
     config = S3EncryptionClientConfig(
         keyring,
-        algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+        encryption_algorithm=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
         commitment_policy=CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
     )
     s3ec = S3EncryptionClient(wrapped_client, config)
@@ -154,7 +154,7 @@ def test_decrypt_v2_instruction_file_custom_suffix():
     wrapped_client = boto3.client("s3")
     config = S3EncryptionClientConfig(
         keyring,
-        algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+        encryption_algorithm=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
         instruction_file_suffix=".custom-suffix-instruction",
         commitment_policy=CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
     )

@@ -211,7 +211,7 @@ async def client_endpoint(request: Request):
         if encryption_algorithm is not None:
             if encryption_algorithm not in _ALGORITHM_SUITE_MAP:
                 raise ValueError(f"Unknown encryption algorithm: {encryption_algorithm}")
-            config_kwargs["algorithm_suite"] = _ALGORITHM_SUITE_MAP[encryption_algorithm]
+            config_kwargs["encryption_algorithm"] = _ALGORITHM_SUITE_MAP[encryption_algorithm]
 
         commitment_policy = config_data.get("commitmentPolicy")
         if commitment_policy is not None:

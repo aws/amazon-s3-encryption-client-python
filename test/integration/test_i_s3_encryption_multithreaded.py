@@ -41,7 +41,7 @@ def test_multithreaded_encryption_context_isolation():
     wrapped_client = boto3.client("s3")
     config = S3EncryptionClientConfig(
         keyring,
-        algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+        encryption_algorithm=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
         commitment_policy=CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
     )
     s3ec = S3EncryptionClient(wrapped_client, config)
@@ -157,7 +157,7 @@ def test_multithreaded_rapid_context_switching():
     wrapped_client = boto3.client("s3")
     config = S3EncryptionClientConfig(
         keyring,
-        algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+        encryption_algorithm=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
         commitment_policy=CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
     )
     s3ec = S3EncryptionClient(wrapped_client, config)
@@ -239,7 +239,7 @@ def test_multithreaded_mixed_with_and_without_context():
     wrapped_client = boto3.client("s3")
     config = S3EncryptionClientConfig(
         keyring,
-        algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+        encryption_algorithm=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
         commitment_policy=CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
     )
     s3ec = S3EncryptionClient(wrapped_client, config)

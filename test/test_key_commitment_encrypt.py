@@ -71,7 +71,7 @@ class TestRequireEncryptRejectsNonCommitting:
         with pytest.raises(S3EncryptionClientError):
             S3EncryptionClientConfig(
                 keyring=keyring,
-                algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+                encryption_algorithm=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
                 commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT,
             )
 
@@ -83,7 +83,7 @@ class TestRequireEncryptRejectsNonCommitting:
         with pytest.raises(S3EncryptionClientError):
             S3EncryptionClientConfig(
                 keyring=keyring,
-                algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+                encryption_algorithm=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
                 commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
             )
 
@@ -103,6 +103,6 @@ class TestForbidEncryptRejectsCommitting:
         with pytest.raises(S3EncryptionClientError):
             S3EncryptionClientConfig(
                 keyring=keyring,
-                algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+                encryption_algorithm=AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
                 commitment_policy=CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
             )

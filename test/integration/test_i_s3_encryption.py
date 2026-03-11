@@ -41,7 +41,7 @@ def _make_client(algorithm_suite, commitment_policy):
     wrapped_client = boto3.client("s3")
     config = S3EncryptionClientConfig(
         keyring,
-        algorithm_suite=algorithm_suite,
+        encryption_algorithm=algorithm_suite,
         commitment_policy=commitment_policy,
     )
     return S3EncryptionClient(wrapped_client, config)

@@ -37,7 +37,7 @@ class S3EncryptionClientConfig:
     """Configuration object for the S3 Encryption Client."""
 
     keyring: AbstractKeyring
-    algorithm_suite: AlgorithmSuite = field(
+    encryption_algorithm: AlgorithmSuite = field(
         default=AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
     )
     commitment_policy: CommitmentPolicy = field(
@@ -73,10 +73,10 @@ class S3EncryptionClientConfig:
     ##= specification/s3-encryption/client.md#key-commitment
     ##% If the configured Encryption Algorithm is incompatible with the key commitment policy, then it MUST throw an exception.
     def __attrs_post_init__(self):
-        if self.algorithm_suite.is_legacy:
+        if self.encryption_algorithm.is_legacy:
             raise S3EncryptionClientError(
                 f"Cannot configure S3 Encryption Client with legacy algorithm suite "
-                f"{self.algorithm_suite.name}. Legacy algorithm suites are only "
+                f"{self.encryption_algorithm.name}. Legacy algorithm suites are only "
                 f"supported for decryption (and enable_legacy_unauthenticated_modes is True)."
             )
 
@@ -87,21 +87,21 @@ class S3EncryptionClientConfig:
         if self.commitment_policy in (
             CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT,
             CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
-        ) and not self.algorithm_suite.supports_key_commitment:
+        ) and not self.encryption_algorithm.supports_key_commitment:
             raise S3EncryptionClientError(
                 f"Commitment policy {self.commitment_policy.name} requires a key-committing "
-                f"algorithm suite, but {self.algorithm_suite.name} does not support key commitment."
+                f"algorithm suite, but {self.encryption_algorithm.name} does not support key commitment."
             )
 
         ##= specification/s3-encryption/key-commitment.md#commitment-policy
         ##% When the commitment policy is FORBID_ENCRYPT_ALLOW_DECRYPT, the S3EC MUST NOT encrypt using an algorithm suite which supports key commitment.
         if (
             self.commitment_policy == CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT
-            and self.algorithm_suite.supports_key_commitment
+            and self.encryption_algorithm.supports_key_commitment
         ):
             raise S3EncryptionClientError(
                 f"Commitment policy {self.commitment_policy.name} forbids key-committing "
-                f"algorithm suites, but {self.algorithm_suite.name} supports key commitment."
+                f"algorithm suites, but {self.encryption_algorithm.name} supports key commitment."
             )
 
 
@@ -157,7 +157,7 @@ class S3EncryptionClientPlugin:
         encrypted_data, encryption_metadata = pipeline.encrypt(
             body_bytes,
             encryption_context=encryption_context,
-            algorithm_suite=self.config.algorithm_suite,
+            algorithm_suite=self.config.encryption_algorithm,
         )
 
         params["body"] = encrypted_data
