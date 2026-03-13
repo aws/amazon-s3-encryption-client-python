@@ -73,7 +73,7 @@ class TestContentEncryption:
         # V2 (GCM no KDF)
         _, meta_v2 = pipeline.encrypt(
             plaintext,
-            algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+            encryption_algorithm=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
         )
         assert "x-amz-cek-alg" in meta_v2
         assert meta_v2["x-amz-cek-alg"] == "AES/GCM/NoPadding"
@@ -81,7 +81,7 @@ class TestContentEncryption:
         # V3 (KC GCM)
         _, meta_v3 = pipeline.encrypt(
             plaintext,
-            algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+            encryption_algorithm=AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
         )
         assert "x-amz-c" in meta_v3
         assert meta_v3["x-amz-c"] == "115"
@@ -97,7 +97,7 @@ class TestContentEncryption:
 
         _, meta = pipeline.encrypt(
             b"test",
-            algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+            encryption_algorithm=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
         )
         iv_bytes = base64.b64decode(meta["x-amz-iv"])
         assert len(iv_bytes) == 12
@@ -109,7 +109,7 @@ class TestContentEncryption:
 
         _, meta = pipeline.encrypt(
             b"test",
-            algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+            encryption_algorithm=AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
         )
         message_id_bytes = base64.b64decode(meta["x-amz-i"])
         assert len(message_id_bytes) == MESSAGE_ID_LENGTH
@@ -125,7 +125,7 @@ class TestContentEncryption:
 
         _, meta = pipeline.encrypt(
             b"test",
-            algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+            encryption_algorithm=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
         )
         assert "x-amz-iv" in meta
 
@@ -136,7 +136,7 @@ class TestContentEncryption:
 
         _, meta = pipeline.encrypt(
             b"test",
-            algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+            encryption_algorithm=AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
         )
         assert "x-amz-i" in meta
 
@@ -165,7 +165,7 @@ class TestGcmNoKdf:
 
         ciphertext, meta = pipeline.encrypt(
             plaintext,
-            algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+            encryption_algorithm=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
         )
 
         # Decrypt with the same key, IV, and no AAD
@@ -181,7 +181,7 @@ class TestGcmNoKdf:
 
         ciphertext, meta = pipeline.encrypt(
             b"test",
-            algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+            encryption_algorithm=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
         )
 
         iv = base64.b64decode(meta["x-amz-iv"])
@@ -210,7 +210,7 @@ class TestKcGcm:
 
         ciphertext, meta = pipeline.encrypt(
             plaintext,
-            algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+            encryption_algorithm=AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
         )
 
         message_id = base64.b64decode(meta["x-amz-i"])
@@ -239,7 +239,7 @@ class TestKcGcm:
 
         _, meta = pipeline.encrypt(
             b"test",
-            algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+            encryption_algorithm=AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
         )
 
         assert "x-amz-d" in meta

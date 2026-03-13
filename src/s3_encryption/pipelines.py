@@ -39,20 +39,24 @@ class PutEncryptedObjectPipeline:
 
     cmm: AbstractCryptoMaterialsManager = field()
 
-    def encrypt(self, plaintext, encryption_context=None, algorithm_suite=None):
+    def encrypt(self, plaintext, encryption_context=None, encryption_algorithm=None):
         """Encrypt the data before it is stored in S3.
 
         Args:
             plaintext (bytes or str): The data to be encrypted
             encryption_context (dict, optional): Additional context for encryption
-            algorithm_suite (AlgorithmSuite, optional): Algorithm suite to use
+            encryption_algorithm (AlgorithmSuite): Algorithm suite to use
 
         Returns:
             bytes: The encrypted data
             dict: Metadata about the encryption to be stored with the object
         """
-        if algorithm_suite is None:
-            algorithm_suite = AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF
+        if encryption_algorithm is None:
+            raise S3EncryptionClientError(
+                "encryption_algorithm is required for encryption."
+            )
+
+        algorithm_suite = encryption_algorithm
 
         ##= specification/s3-encryption/encryption.md#content-encryption
         ##= type=implementation

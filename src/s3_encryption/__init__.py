@@ -162,7 +162,7 @@ class S3EncryptionClientPlugin:
         encrypted_data, encryption_metadata = pipeline.encrypt(
             body_bytes,
             encryption_context=encryption_context,
-            algorithm_suite=self.config.encryption_algorithm,
+            encryption_algorithm=self.config.encryption_algorithm,
         )
 
         params["body"] = encrypted_data
