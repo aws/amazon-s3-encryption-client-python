@@ -65,7 +65,7 @@ class PutEncryptedObjectPipeline:
 
         # Create encryption materials request with encryption context copy
         enc_mats_request = EncryptionMaterials(
-            algorithm_suite=algorithm_suite,
+            encryption_algorithm=algorithm_suite,
             encryption_context={} if encryption_context is None else encryption_context.copy(),
         )
 
@@ -85,29 +85,28 @@ class PutEncryptedObjectPipeline:
 
     def _encrypt_gcm(self, plaintext, enc_mats, edk_bytes):
         """Encrypt using ALG_AES_256_GCM_IV12_TAG16_NO_KDF (V2 format)."""
+        ##= specification/s3-encryption/encryption.md#content-encryption
+        ##= type=implementation
+        ##% The client MUST generate an IV or Message ID using the length of the IV
+        ##% or Message ID defined in the algorithm suite.
+        iv = os.urandom(enc_mats.encryption_algorithm.cipher_iv_length_bytes)
         ##= specification/s3-encryption/encryption.md#alg-aes-256-gcm-iv12-tag16-no-kdf
         ##= type=implementation
         ##% The client MUST initialize the cipher, or call an AES-GCM encryption API,
         ##% with the plaintext data key, the generated IV, and the tag length defined
         ##% in the Algorithm Suite when encrypting with ALG_AES_256_GCM_IV12_TAG16_NO_KDF.
+        aesgcm = AESGCM(enc_mats.plaintext_data_key)
         ##= specification/s3-encryption/encryption.md#alg-aes-256-gcm-iv12-tag16-no-kdf
         ##= type=implementation
         ##% The client MUST NOT provide any AAD when encrypting with ALG_AES_256_GCM_IV12_TAG16_NO_KDF.
-        ##= specification/s3-encryption/encryption.md#content-encryption
-        ##= type=implementation
-        ##% The client MUST generate an IV or Message ID using the length of the IV
-        ##% or Message ID defined in the algorithm suite.
-        ##= specification/s3-encryption/encryption.md#content-encryption
-        ##= type=implementation
-        ##% The generated IV or Message ID MUST be set or returned from the encryption
-        ##% process such that it can be included in the content metadata.
-        iv = os.urandom(enc_mats.algorithm_suite.cipher_iv_length_bytes)
-        aesgcm = AESGCM(enc_mats.plaintext_data_key)
         encrypted_data = aesgcm.encrypt(nonce=iv, data=plaintext, associated_data=None)
 
         b64_iv = base64.b64encode(iv).decode("utf-8")
         b64_edk = base64.b64encode(edk_bytes).decode("utf-8")
 
+        ##= specification/s3-encryption/encryption.md#content-encryption
+        ##= type=implementation
+        ##% The generated IV or Message ID MUST be set or returned from the encryption
         metadata = ObjectMetadata(
             encrypted_data_key_v2=b64_edk,
             encrypted_data_key_algorithm="kms+context",
@@ -124,32 +123,17 @@ class PutEncryptedObjectPipeline:
         ##= type=implementation
         ##% The client MUST generate an IV or Message ID using the length of the IV
         ##% or Message ID defined in the algorithm suite.
-        ##= specification/s3-encryption/encryption.md#content-encryption
-        ##= type=implementation
-        ##% The generated IV or Message ID MUST be set or returned from the encryption
-        ##% process such that it can be included in the content metadata.
-        algorithm_suite = enc_mats.algorithm_suite
+        algorithm_suite = enc_mats.encryption_algorithm
         message_id = os.urandom(algorithm_suite.commitment_nonce_length_bytes)
 
         ##= specification/s3-encryption/encryption.md#alg-aes-256-gcm-hkdf-sha512-commit-key
         ##= type=implementation
         ##% The client MUST use HKDF to derive the key commitment value and the derived
         ##% encrypting key as described in [Key Derivation](key-derivation.md).
-        ##= specification/s3-encryption/encryption.md#alg-aes-256-gcm-hkdf-sha512-commit-key
-        ##= type=implementation
-        ##% The derived key commitment value MUST be set or returned from the encryption
-        ##% process such that it can be included in the content metadata.
         derived_encryption_key, commit_key = derive_keys(
             enc_mats.plaintext_data_key, message_id, algorithm_suite
         )
 
-        ##= specification/s3-encryption/key-derivation.md#hkdf-operation
-        ##= type=implementation
-        ##% When encrypting or decrypting with ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
-        ##% the IV used in the AES-GCM content encryption/decryption MUST consist entirely of bytes with the value 0x01.
-        ##= specification/s3-encryption/key-derivation.md#hkdf-operation
-        ##= type=implementation
-        ##% The IV's total length MUST match the IV length defined by the algorithm suite.
         ##= specification/s3-encryption/key-derivation.md#hkdf-operation
         ##= type=implementation
         ##% The client MUST initialize the cipher, or call an AES-GCM encryption API, with the derived encryption key, an IV containing only bytes with the value 0x01,
@@ -168,13 +152,14 @@ class PutEncryptedObjectPipeline:
         b64_message_id = base64.b64encode(message_id).decode("utf-8")
         b64_commit_key = base64.b64encode(commit_key).decode("utf-8")
 
-        # V3 metadata format
-        # x-amz-c: content cipher identifier (compressed algorithm suite ID)
-        # x-amz-w: wrapping algorithm identifier (12 = kms+context)
-        # x-amz-3: encrypted data key
-        # x-amz-i: message ID
-        # x-amz-d: key commitment
-        # x-amz-t: encryption context (for kms+context wrapping)
+        ##= specification/s3-encryption/encryption.md#content-encryption
+        ##= type=implementation
+        ##% The generated IV or Message ID MUST be set or returned from the encryption
+        ##% process such that it can be included in the content metadata.
+        ##= specification/s3-encryption/encryption.md#alg-aes-256-gcm-hkdf-sha512-commit-key
+        ##= type=implementation
+        ##% The derived key commitment value MUST be set or returned from the encryption
+        ##% process such that it can be included in the content metadata.
         metadata = ObjectMetadata(
             content_cipher_v3=str(algorithm_suite.suite_id),
             encrypted_data_key_algorithm_v3="12",
@@ -467,6 +452,7 @@ class GetEncryptedObjectPipeline:
     def _decrypt_cbc_content(self, dec_materials, encrypted_data):
         """Decrypt content encrypted with ALG_AES_256_CBC_IV16_NO_KDF.
 
+        """
         ##= specification/s3-encryption/decryption.md#cbc-decryption
         ##= type=implementation
         ##% If an object is encrypted with ALG_AES_256_CBC_IV16_NO_KDF and
@@ -474,7 +460,6 @@ class GetEncryptedObjectPipeline:
         ##% then the S3EC MUST create a cipher with AES in CBC Mode with PKCS5Padding or
         ##% PKCS7Padding compatible padding for a 16-byte block cipher
         ##% (example: for the Java JCE, this is "AES/CBC/PKCS5Padding").
-        """
         ##= specification/s3-encryption/decryption.md#cbc-decryption
         ##= type=implementation
         ##% If the cipher object cannot be created as described above,

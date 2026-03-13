@@ -163,6 +163,13 @@ class AlgorithmSuite(Enum):
         """Fixed IV for key-committing GCM: all 0x01 bytes of cipher_iv_length."""
         if not self._is_committing:
             raise ValueError(f"{self.name} does not support key commitment")
+        ##= specification/s3-encryption/key-derivation.md#hkdf-operation
+        ##= type=implementation
+        ##% The IV's total length MUST match the IV length defined by the algorithm suite.
+        ##= specification/s3-encryption/key-derivation.md#hkdf-operation
+        ##= type=implementation
+        ##% When encrypting or decrypting with ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+        ##% the IV used in the AES-GCM content encryption/decryption MUST consist entirely of bytes with the value 0x01.
         return b"\x01" * self.cipher_iv_length_bytes
 
 
@@ -187,8 +194,8 @@ class EncryptionMaterials:
         plaintext_data_key (Optional[bytes]): The plaintext data key
     """
 
-    algorithm_suite: AlgorithmSuite = field(
-        default=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF
+    encryption_algorithm: AlgorithmSuite = field(
+        default=AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
     )
     encryption_context: dict[str, str] = field(factory=dict)
     encrypted_data_key: EncryptedDataKey | None = field(default=None)

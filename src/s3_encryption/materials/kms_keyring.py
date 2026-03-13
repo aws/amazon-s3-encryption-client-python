@@ -81,14 +81,14 @@ class KmsKeyring(S3Keyring):
             # value is the algorithm suite ID as a string ("115"), not the cipher name.
             # For non-committing suites (V2), use the cipher name ("AES/GCM/NoPadding").
             if (
-                enc_materials.algorithm_suite
+                enc_materials.encryption_algorithm
                 == AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
             ):
                 encryption_context["aws:x-amz-cek-alg"] = str(
-                    enc_materials.algorithm_suite.suite_id
+                    enc_materials.encryption_algorithm.suite_id
                 )
             else:
-                encryption_context["aws:x-amz-cek-alg"] = enc_materials.algorithm_suite.cipher_name
+                encryption_context["aws:x-amz-cek-alg"] = enc_materials.encryption_algorithm.cipher_name
 
             # Python implementation uses KMS GenerateDataKey instead of the spec's
             # EncryptDataKey pattern

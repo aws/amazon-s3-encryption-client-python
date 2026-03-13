@@ -58,6 +58,14 @@ class TestDefaultAlgorithmUsesKeyCommitment:
         config = S3EncryptionClientConfig(keyring=keyring)
         assert config.encryption_algorithm == AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
 
+    def test_encryption_materials_defaults_to_committing_algorithm(self):
+        """EncryptionMaterials with no explicit algorithm MUST default to a
+        key-committing suite."""
+        from s3_encryption.materials.materials import EncryptionMaterials
+
+        mats = EncryptionMaterials()
+        assert mats.encryption_algorithm == AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+
     def test_default_encryption_decryptable_with_require_decrypt(self):
         """Ciphertext produced with the default algorithm MUST be decryptable
         when the commitment policy is REQUIRE_ENCRYPT_REQUIRE_DECRYPT."""
