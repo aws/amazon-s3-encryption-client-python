@@ -52,9 +52,7 @@ class PutEncryptedObjectPipeline:
             dict: Metadata about the encryption to be stored with the object
         """
         if encryption_algorithm is None:
-            raise S3EncryptionClientError(
-                "encryption_algorithm is required for encryption."
-            )
+            raise S3EncryptionClientError("encryption_algorithm is required for encryption.")
 
         algorithm_suite = encryption_algorithm
 
@@ -450,9 +448,7 @@ class GetEncryptedObjectPipeline:
         return self.cmm.decrypt_materials(dec_materials)
 
     def _decrypt_cbc_content(self, dec_materials, encrypted_data):
-        """Decrypt content encrypted with ALG_AES_256_CBC_IV16_NO_KDF.
-
-        """
+        """Decrypt content encrypted with ALG_AES_256_CBC_IV16_NO_KDF."""
         ##= specification/s3-encryption/decryption.md#cbc-decryption
         ##= type=implementation
         ##% If an object is encrypted with ALG_AES_256_CBC_IV16_NO_KDF and

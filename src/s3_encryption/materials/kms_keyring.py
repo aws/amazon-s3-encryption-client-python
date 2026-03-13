@@ -88,7 +88,9 @@ class KmsKeyring(S3Keyring):
                     enc_materials.encryption_algorithm.suite_id
                 )
             else:
-                encryption_context["aws:x-amz-cek-alg"] = enc_materials.encryption_algorithm.cipher_name
+                encryption_context["aws:x-amz-cek-alg"] = (
+                    enc_materials.encryption_algorithm.cipher_name
+                )
 
             # Python implementation uses KMS GenerateDataKey instead of the spec's
             # EncryptDataKey pattern

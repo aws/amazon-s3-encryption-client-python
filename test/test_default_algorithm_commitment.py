@@ -7,10 +7,9 @@ the default (ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY) MUST produce ciphertext
 that is decryptable under REQUIRE_ENCRYPT_REQUIRE_DECRYPT commitment policy.
 """
 
-import base64
 import os
 from io import BytesIO
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock
 
 from s3_encryption import S3EncryptionClientConfig
 from s3_encryption.materials.crypto_materials_manager import DefaultCryptoMaterialsManager
@@ -19,7 +18,6 @@ from s3_encryption.materials.keyring import S3Keyring
 from s3_encryption.materials.materials import (
     AlgorithmSuite,
     CommitmentPolicy,
-    DecryptionMaterials,
 )
 from s3_encryption.pipelines import GetEncryptedObjectPipeline, PutEncryptedObjectPipeline
 
@@ -53,14 +51,16 @@ class TestDefaultAlgorithmUsesKeyCommitment:
 
     def test_default_config_encrypts_with_committing_algorithm(self):
         """S3EncryptionClientConfig with no explicit algorithm MUST default to a
-        key-committing suite."""
+        key-committing suite.
+        """
         keyring, _ = _mock_keyring()
         config = S3EncryptionClientConfig(keyring=keyring)
         assert config.encryption_algorithm == AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
 
     def test_encryption_materials_defaults_to_committing_algorithm(self):
         """EncryptionMaterials with no explicit algorithm MUST default to a
-        key-committing suite."""
+        key-committing suite.
+        """
         from s3_encryption.materials.materials import EncryptionMaterials
 
         mats = EncryptionMaterials()
@@ -68,7 +68,8 @@ class TestDefaultAlgorithmUsesKeyCommitment:
 
     def test_default_encryption_decryptable_with_require_decrypt(self):
         """Ciphertext produced with the default algorithm MUST be decryptable
-        when the commitment policy is REQUIRE_ENCRYPT_REQUIRE_DECRYPT."""
+        when the commitment policy is REQUIRE_ENCRYPT_REQUIRE_DECRYPT.
+        """
         keyring, key = _mock_keyring()
         config = S3EncryptionClientConfig(keyring=keyring)
         cmm = DefaultCryptoMaterialsManager(keyring)
