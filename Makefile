@@ -20,16 +20,16 @@ format:
 	uv run black src/ test/
 	uv run ruff check --fix src/ test/
 
-# Run all tests
+# Run all tests with combined coverage
 test: test-unit test-integration
 
-# Run unit tests
+# Run unit tests (creates .coverage report)
 test-unit:
-	uv run pytest test/ --ignore=test/integration/ --verbose
+	uv run pytest test/ --ignore=test/integration/ --verbose --cov=src/s3_encryption --cov-report=term-missing
 
-# Run integration tests
+# Run integration tests (appends to .coverage report from test-unit)
 test-integration:
-	uv run pytest test/integration/ --verbose
+	uv run pytest test/integration/ --verbose --cov=src/s3_encryption --cov-append --cov-report=term-missing
 
 # Clean up cache files
 clean:
