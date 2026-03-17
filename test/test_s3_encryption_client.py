@@ -30,7 +30,9 @@ class TestGetObjectNonExistentObject:
         }
         mock_s3.get_object.side_effect = ClientError(error_response, "GetObject")
 
-        with pytest.raises(S3EncryptionClientError, match="Unable to retrieve object") as exc_info:
+        with pytest.raises(
+            S3EncryptionClientError, match="Failed to retrieve and/or decrypt object"
+        ) as exc_info:
             client.get_object(Bucket="test-bucket", Key="nonexistent-key")
 
         assert isinstance(exc_info.value.__cause__, ClientError)
@@ -41,7 +43,9 @@ class TestGetObjectNonExistentObject:
         error_response = {"Error": {"Code": "AccessDenied", "Message": "Access Denied"}}
         mock_s3.get_object.side_effect = ClientError(error_response, "GetObject")
 
-        with pytest.raises(S3EncryptionClientError, match="Unable to retrieve object") as exc_info:
+        with pytest.raises(
+            S3EncryptionClientError, match="Failed to retrieve and/or decrypt object"
+        ) as exc_info:
             client.get_object(Bucket="test-bucket", Key="forbidden-key")
 
         assert isinstance(exc_info.value.__cause__, ClientError)

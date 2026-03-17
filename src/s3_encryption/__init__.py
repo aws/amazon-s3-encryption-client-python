@@ -118,7 +118,7 @@ class S3EncryptionClientPlugin:
             parsed: Dictionary containing the parsed response
             **kwargs: Additional event arguments (includes 'params' with request parameters)
         """
-        # Check if plaintext mode is enabled via thread-local flag
+        # Check if instruction_file_mode is enabled via thread-local flag
         if getattr(self._context, "instruction_file_mode", False):
             self.process_instruction_file(parsed)
             return
@@ -128,7 +128,7 @@ class S3EncryptionClientPlugin:
 
         # If Body is None, the S3 request failed (e.g., NoSuchKey).
         # Return early and let boto3 raise the original error.
-        if parsed.get("Body") is None:
+        if parsed.get("Body", None) is None:
             return
 
         # The parsed response already has the Body as a StreamingBody
@@ -171,15 +171,14 @@ class S3EncryptionClientPlugin:
         """
         instruction_key = getattr(self._context, "key", None)
 
-        body = parsed.get("Body")
+        body = parsed.get("Body", None)
         if body is None:
             raise S3EncryptionClientError(
-                "Exception encountered while fetching Instruction File."
-                " Ensure the object you are attempting to decrypt has been encrypted"
-                " using the S3 Encryption Client and instruction files are enabled."
+                f"Instruction file body is empty for key: {instruction_key}"
             )
 
         # In plaintext mode, parse instruction file and append to metadata
+        # Metadata may be present but None, so `or {}` handles that case
         existing_metadata = parsed.get("Metadata", {}) or {}
         instruction_data = body.read()
         instruction_metadata = parse_instruction_file(instruction_data, instruction_key)
@@ -294,10 +293,14 @@ class S3EncryptionClient:
             raise
         except ClientError as e:
             # Wrap S3 service errors (e.g., NoSuchKey) with context
-            raise S3EncryptionClientError(f"Unable to retrieve object: {str(e)}") from e
+            raise S3EncryptionClientError(
+                f"Failed to retrieve and/or decrypt object: {str(e)}"
+            ) from e
         except Exception as e:
             # Wrap any unexpected errors during decryption
-            raise S3EncryptionClientError(f"Failed to decrypt object: {str(e)}") from e
+            raise S3EncryptionClientError(
+                f"Failed to retrieve and/or decrypt object: {str(e)}"
+            ) from e
         finally:
             # Clean up thread-local storage;
             # do not clean up the client as it is not thread local only

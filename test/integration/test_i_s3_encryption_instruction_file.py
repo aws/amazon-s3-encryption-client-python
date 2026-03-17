@@ -1,6 +1,7 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 import os
+import uuid
 
 import boto3
 import pytest
@@ -167,7 +168,9 @@ def test_get_nonexistent_object_raises_s3_encryption_client_error():
     config = S3EncryptionClientConfig(keyring)
     s3ec = S3EncryptionClient(wrapped_client, config)
 
-    with pytest.raises(S3EncryptionClientError, match="Unable to retrieve object") as exc_info:
+    with pytest.raises(
+        S3EncryptionClientError, match="Failed to retrieve and/or decrypt object"
+    ) as exc_info:
         s3ec.get_object(Bucket=bucket, Key="this-object-does-not-exist")
 
     assert isinstance(exc_info.value.__cause__, ClientError)
@@ -189,10 +192,11 @@ def test_get_object_with_missing_instruction_file_raises_s3_encryption_client_er
 
     # Use a separate plain S3 client to put an unencrypted object
     plain_s3 = boto3.client("s3")
-    plain_s3.put_object(Bucket=bucket, Key="plain-object-no-instruction-file", Body=b"hello")
+    test_key = f"plain-object-no-instruction-file-{uuid.uuid4()}"
+    plain_s3.put_object(Bucket=bucket, Key=test_key, Body=b"hello")
 
     try:
-        with pytest.raises(S3EncryptionClientError, match="fetching Instruction File"):
-            s3ec.get_object(Bucket=bucket, Key="plain-object-no-instruction-file")
+        with pytest.raises(S3EncryptionClientError, match="Instruction file body is empty"):
+            s3ec.get_object(Bucket=bucket, Key=test_key)
     finally:
-        plain_s3.delete_object(Bucket=bucket, Key="plain-object-no-instruction-file")
+        plain_s3.delete_object(Bucket=bucket, Key=test_key)
