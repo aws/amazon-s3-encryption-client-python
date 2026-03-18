@@ -4,35 +4,34 @@
 
 import io
 
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-
 from .exceptions import S3EncryptionClientError
 
 GCM_TAG_LENGTH = 16
 
 
 class BufferedDecryptingStream:
-    """A stream that buffers all ciphertext, verifies the GCM auth tag, then releases plaintext.
+    """A stream that buffers all ciphertext, decrypts, then releases plaintext.
 
-    This matches the Java S3EC's BufferedCipherSubscriber behavior: no plaintext
-    is released until the entire ciphertext has been read and authenticated.
+    For authenticated ciphers (GCM), no plaintext is released until the entire
+    ciphertext has been read and the auth tag verified. For unauthenticated
+    ciphers (CBC), all ciphertext is still buffered before decryption.
 
     Implements the same read interface as botocore's StreamingBody so it can be
     used as a drop-in replacement for parsed["Body"].
     """
 
-    def __init__(self, streaming_body, key, nonce):
+    def __init__(self, streaming_body, decryptor, tag_length=0):
         """Initialize the buffered decrypting stream.
 
         Args:
             streaming_body: The original StreamingBody containing ciphertext.
-            key: The plaintext data key (bytes).
-            nonce: The IV/nonce for AES-GCM decryption (bytes).
+            decryptor: A cipher decryptor object supporting update()/finalize()
+                       (or finalize_with_tag() when tag_length > 0).
+            tag_length: Length of the auth tag appended to ciphertext (0 for CBC).
         """
         self._body = streaming_body
-        self._key = key
-        self._nonce = nonce
+        self._decryptor = decryptor
+        self._tag_length = tag_length
         self._plaintext = None
 
     def _decrypt(self):
@@ -40,12 +39,17 @@ class BufferedDecryptingStream:
         if self._plaintext is not None:
             return
         try:
-            ciphertext = self._body.read()
-            aesgcm = AESGCM(self._key)
-            decrypted = aesgcm.decrypt(nonce=self._nonce, data=ciphertext, associated_data=None)
+            data = self._body.read()
+            if self._tag_length > 0:
+                ciphertext, tag = data[: -self._tag_length], data[-self._tag_length :]
+                plaintext = self._decryptor.update(ciphertext) + self._decryptor.finalize_with_tag(
+                    tag
+                )
+            else:
+                plaintext = self._decryptor.update(data) + self._decryptor.finalize()
         except Exception as e:
             raise S3EncryptionClientError(f"Failed to decrypt object: {e}") from e
-        self._plaintext = io.BytesIO(decrypted)
+        self._plaintext = io.BytesIO(plaintext)
 
     def read(self, amt=None):
         """Read decrypted data.
@@ -87,31 +91,35 @@ class BufferedDecryptingStream:
 ##= type=implementation
 ##% When enabled, the S3EC MAY release plaintext from a stream which has not been authenticated.
 class DelayedAuthDecryptingStream:
-    """A stream that releases plaintext before GCM tag verification.
+    """A stream that releases plaintext before full verification.
 
-    Matches the Java S3EC's CipherSubscriber: plaintext is released incrementally
-    via cipher.update(), and the GCM tag is only verified when the stream is fully
-    consumed. Data read before finalization is unauthenticated.
+    Plaintext is released incrementally via cipher.update(). For authenticated
+    ciphers (GCM), the auth tag is only verified when the stream is fully
+    consumed. For unauthenticated ciphers (CBC), this behaves identically
+    to streaming decryption with no tag holdback.
     """
 
-    def __init__(self, streaming_body, key, nonce):
+    def __init__(self, streaming_body, decryptor, tag_length=0):
         """Initialize the delayed-auth decrypting stream.
 
         Args:
             streaming_body: The original StreamingBody containing ciphertext.
-            key: The plaintext data key (bytes).
-            nonce: The IV/nonce for AES-GCM decryption (bytes).
+            decryptor: A cipher decryptor object supporting update()/finalize()
+                       (or finalize_with_tag() when tag_length > 0).
+            tag_length: Length of the auth tag appended to ciphertext (0 for CBC).
         """
         self._body = streaming_body
-        self._decryptor = Cipher(algorithms.AES(key), modes.GCM(nonce)).decryptor()
+        self._decryptor = decryptor
+        self._tag_length = tag_length
         self._tag_buffer = b""
         self._finalized = False
 
     def read(self, amt=None):
         """Read and decrypt data, releasing plaintext before authentication.
 
-        The last 16 bytes of ciphertext are the GCM tag. We hold back a
-        rolling buffer of 16 bytes so the tag is never passed to update().
+        When tag_length > 0, the last tag_length bytes of ciphertext are the
+        auth tag. We hold back a rolling buffer so the tag is never passed
+        to update().
         """
         if self._finalized:
             return b""
@@ -120,24 +128,30 @@ class DelayedAuthDecryptingStream:
         if not raw and not self._tag_buffer:
             return b""
 
+        if self._tag_length == 0:
+            # No tag to hold back (e.g. CBC)
+            if not raw:
+                return self._finalize(tag=b"")
+            return self._decryptor.update(raw)
+
         data = self._tag_buffer + raw
-        if len(data) <= GCM_TAG_LENGTH:
+        if len(data) <= self._tag_length:
             if raw:
                 self._tag_buffer = data
                 return b""
             return self._finalize(tag=data)
 
-        self._tag_buffer = data[-GCM_TAG_LENGTH:]
-        ciphertext = data[:-GCM_TAG_LENGTH]
+        self._tag_buffer = data[-self._tag_length :]
+        ciphertext = data[: -self._tag_length]
         plaintext = self._decryptor.update(ciphertext)
 
         # Check if underlying stream is exhausted
         peek = self._body.read(1)
         if peek:
             self._tag_buffer = self._tag_buffer + peek
-            if len(self._tag_buffer) > GCM_TAG_LENGTH:
-                extra_ct = self._tag_buffer[:-GCM_TAG_LENGTH]
-                self._tag_buffer = self._tag_buffer[-GCM_TAG_LENGTH:]
+            if len(self._tag_buffer) > self._tag_length:
+                extra_ct = self._tag_buffer[: -self._tag_length]
+                self._tag_buffer = self._tag_buffer[-self._tag_length :]
                 plaintext += self._decryptor.update(extra_ct)
         else:
             plaintext += self._finalize(tag=self._tag_buffer)
@@ -145,13 +159,15 @@ class DelayedAuthDecryptingStream:
         return plaintext
 
     def _finalize(self, tag):
-        """Verify the GCM tag and finalize decryption."""
+        """Finalize decryption, verifying the auth tag if present."""
         self._finalized = True
         self._tag_buffer = b""
         try:
-            return self._decryptor.finalize_with_tag(tag)
+            if tag:
+                return self._decryptor.finalize_with_tag(tag)
+            return self._decryptor.finalize()
         except Exception as e:
-            raise S3EncryptionClientError(f"GCM tag verification failed: {e}") from e
+            raise S3EncryptionClientError(f"Decryption finalization failed: {e}") from e
 
     def close(self):
         """Close the underlying stream."""

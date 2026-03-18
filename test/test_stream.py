@@ -6,17 +6,27 @@ import os
 from io import BytesIO
 from unittest.mock import Mock
 
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-from s3_encryption.stream import BufferedDecryptingStream, DelayedAuthDecryptingStream
+from s3_encryption.stream import (
+    GCM_TAG_LENGTH,
+    BufferedDecryptingStream,
+    DelayedAuthDecryptingStream,
+)
 
 
-def _encrypt(plaintext: bytes):
+def _encrypt_gcm(plaintext: bytes):
     """Encrypt plaintext with AES-GCM, return (ciphertext_with_tag, key, nonce)."""
     key = os.urandom(32)
     nonce = os.urandom(12)
     ciphertext_with_tag = AESGCM(key).encrypt(nonce, plaintext, None)
     return ciphertext_with_tag, key, nonce
+
+
+def _make_gcm_decryptor(key, nonce):
+    """Create a GCM decryptor object."""
+    return Cipher(algorithms.AES(key), modes.GCM(nonce)).decryptor()
 
 
 def _make_streaming_body(data: bytes):
@@ -37,10 +47,11 @@ class TestDelayedAuthReleasesBeforeVerification:
     ##% When enabled, the S3EC MAY release plaintext from a stream which has not been authenticated.
     def test_delayed_auth_releases_plaintext_before_tag_verification(self):
         plaintext = os.urandom(4096)
-        ciphertext_with_tag, key, nonce = _encrypt(plaintext)
+        ciphertext_with_tag, key, nonce = _encrypt_gcm(plaintext)
         body = _make_streaming_body(ciphertext_with_tag)
 
-        stream = DelayedAuthDecryptingStream(body, key, nonce)
+        decryptor = _make_gcm_decryptor(key, nonce)
+        stream = DelayedAuthDecryptingStream(body, decryptor, tag_length=GCM_TAG_LENGTH)
         # read(256) decrypts a partial chunk via cipher.update(), releasing
         # plaintext without consuming the full ciphertext stream. The GCM tag
         # at the end of the stream has not been reached yet.
@@ -66,10 +77,11 @@ class TestBufferedWithholdsUntilVerification:
     ##% When disabled the S3EC MUST NOT release plaintext from a stream which has not been authenticated.
     def test_buffered_verifies_tag_before_releasing_any_plaintext(self):
         plaintext = os.urandom(4096)
-        ciphertext_with_tag, key, nonce = _encrypt(plaintext)
+        ciphertext_with_tag, key, nonce = _encrypt_gcm(plaintext)
         body = _make_streaming_body(ciphertext_with_tag)
 
-        stream = BufferedDecryptingStream(body, key, nonce)
+        decryptor = _make_gcm_decryptor(key, nonce)
+        stream = BufferedDecryptingStream(body, decryptor, tag_length=GCM_TAG_LENGTH)
         # read(1) triggers _decrypt(), which calls self._body.read() with no amt,
         # consuming the entire ciphertext and verifying the GCM tag before
         # returning even 1 byte of plaintext.

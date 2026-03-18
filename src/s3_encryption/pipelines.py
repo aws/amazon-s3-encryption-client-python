@@ -10,6 +10,7 @@ import base64
 import os
 
 from attrs import define, field
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from .exceptions import S3EncryptionClientError
@@ -18,7 +19,7 @@ from .materials.crypto_materials_manager import AbstractCryptoMaterialsManager
 from .materials.encrypted_data_key import EncryptedDataKey
 from .materials.materials import DecryptionMaterials, EncryptionMaterials
 from .metadata import ObjectMetadata
-from .stream import BufferedDecryptingStream, DelayedAuthDecryptingStream
+from .stream import GCM_TAG_LENGTH, BufferedDecryptingStream, DelayedAuthDecryptingStream
 
 
 @define
@@ -180,13 +181,15 @@ class GetEncryptedObjectPipeline:
         ##% When disabled the S3EC MUST NOT release plaintext from a stream which has not been authenticated.
         if enable_delayed_authentication is None:
             raise S3EncryptionClientError("enable_delayed_authentication must be explicitly set")
+
+        decryptor = Cipher(
+            algorithms.AES(dec_materials.plaintext_data_key),
+            modes.GCM(dec_materials.iv),
+        ).decryptor()
+
         if enable_delayed_authentication:
-            return DelayedAuthDecryptingStream(
-                streaming_body, dec_materials.plaintext_data_key, dec_materials.iv
-            )
-        return BufferedDecryptingStream(
-            streaming_body, dec_materials.plaintext_data_key, dec_materials.iv
-        )
+            return DelayedAuthDecryptingStream(streaming_body, decryptor, tag_length=GCM_TAG_LENGTH)
+        return BufferedDecryptingStream(streaming_body, decryptor, tag_length=GCM_TAG_LENGTH)
 
     def _decrypt_v2(self, metadata, encryption_context) -> DecryptionMaterials:
         """Prepare V2 decryption materials."""
