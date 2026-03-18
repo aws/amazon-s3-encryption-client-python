@@ -221,3 +221,34 @@ def test_encryption_context_missing_on_decrypt(algorithm_suite, commitment_polic
 
     with pytest.raises(S3EncryptionClientError):
         s3ec.get_object(Bucket=bucket, Key=key)
+
+
+# Expected metadata key that identifies the content encryption algorithm,
+# keyed by algorithm suite.
+_EXPECTED_ALGORITHM_METADATA = {
+    AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF: ("x-amz-cek-alg", "AES/GCM/NoPadding"),
+    AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY: ("x-amz-c", "115"),
+}
+
+
+##= specification/s3-encryption/encryption.md#content-encryption
+##= type=test
+##% The S3EC MUST use the encryption algorithm configured during
+##% [client](./client.md) initialization.
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_put_object_uses_configured_algorithm(algorithm_suite, commitment_policy):
+    """PutObject MUST encrypt using the algorithm suite configured at client init."""
+    key = _unique_key("configured-alg-")
+    data = b"test configured algorithm"
+
+    s3ec = _make_client(algorithm_suite, commitment_policy)
+    s3ec.put_object(Bucket=bucket, Key=key, Body=data)
+
+    # Read back with a plain S3 client to inspect the raw metadata
+    plain_s3 = boto3.client("s3")
+    response = plain_s3.head_object(Bucket=bucket, Key=key)
+    metadata = response.get("Metadata", {})
+
+    meta_key, expected_value = _EXPECTED_ALGORITHM_METADATA[algorithm_suite]
+    assert meta_key in metadata, f"Expected metadata key '{meta_key}' not found in {metadata}"
+    assert metadata[meta_key] == expected_value

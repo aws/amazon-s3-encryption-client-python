@@ -75,12 +75,9 @@ class TestDefaultAlgorithmUsesKeyCommitment:
         cmm = DefaultCryptoMaterialsManager(keyring)
 
         # Encrypt using the default algorithm (no override)
-        pipeline = PutEncryptedObjectPipeline(cmm)
+        pipeline = PutEncryptedObjectPipeline(cmm, config.encryption_algorithm)
         plaintext = b"integration test: default algorithm uses key commitment"
-        ciphertext, metadata = pipeline.encrypt(
-            plaintext,
-            config.encryption_algorithm,
-        )
+        ciphertext, metadata = pipeline.encrypt(plaintext)
 
         # Build a response dict as if we fetched this object from S3
         response = {

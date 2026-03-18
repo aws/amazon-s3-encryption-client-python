@@ -38,29 +38,26 @@ class PutEncryptedObjectPipeline:
     """
 
     cmm: AbstractCryptoMaterialsManager = field()
+    encryption_algorithm: AlgorithmSuite = field()
 
-    def encrypt(self, plaintext, encryption_algorithm, encryption_context=None):
+    def encrypt(self, plaintext, encryption_context=None):
         """Encrypt the data before it is stored in S3.
 
         Args:
             plaintext (bytes or str): The data to be encrypted
             encryption_context (dict, optional): Additional context for encryption
-            encryption_algorithm (AlgorithmSuite): Algorithm suite to use (required)
 
         Returns:
             bytes: The encrypted data
             dict: Metadata about the encryption to be stored with the object
         """
-        algorithm_suite = encryption_algorithm
 
         ##= specification/s3-encryption/encryption.md#content-encryption
         ##= type=implementation
         ##% The S3EC MUST use the encryption algorithm configured during
         ##% [client](./client.md) initialization.
-
-        # Create encryption materials request with encryption context copy
         enc_mats_request = EncryptionMaterials(
-            encryption_algorithm=algorithm_suite,
+            encryption_algorithm=self.encryption_algorithm,
             encryption_context={} if encryption_context is None else encryption_context.copy(),
         )
 
@@ -74,7 +71,7 @@ class PutEncryptedObjectPipeline:
 
         edk_bytes = enc_mats.encrypted_data_key.encrypted_data_key
 
-        if algorithm_suite == AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY:
+        if self.encryption_algorithm == AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY:
             return self._encrypt_kc_gcm(plaintext, enc_mats, edk_bytes)
         return self._encrypt_gcm(plaintext, enc_mats, edk_bytes)
 

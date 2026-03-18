@@ -158,10 +158,9 @@ class S3EncryptionClientPlugin:
 
         encryption_context = getattr(self._context, _CTX_ENCRYPTION_CONTEXT, None)
 
-        pipeline = PutEncryptedObjectPipeline(self.config.cmm)
+        pipeline = PutEncryptedObjectPipeline(self.config.cmm, self.config.encryption_algorithm)
         encrypted_data, encryption_metadata = pipeline.encrypt(
             body_bytes,
-            self.config.encryption_algorithm,
             encryption_context=encryption_context,
         )
 

@@ -17,12 +17,13 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from s3_encryption.key_derivation import derive_keys
 from s3_encryption.materials.crypto_materials_manager import DefaultCryptoMaterialsManager
 from s3_encryption.materials.encrypted_data_key import EncryptedDataKey
-from s3_encryption.materials.materials import AlgorithmSuite
+from s3_encryption.materials.materials import AlgorithmSuite, CommitmentPolicy
 
 _KC_SUITE = AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
 KC_GCM_IV = _KC_SUITE.kc_gcm_iv
 MESSAGE_ID_LENGTH = _KC_SUITE.commitment_nonce_length_bytes
 SUITE_ID_BYTES = _KC_SUITE.suite_id_bytes
+from s3_encryption import S3EncryptionClientConfig
 from s3_encryption.pipelines import PutEncryptedObjectPipeline
 
 # ---------------------------------------------------------------------------
@@ -60,29 +61,31 @@ def _fill_materials(mats, plaintext_key, encrypted_key):
 class TestContentEncryption:
     """Tests for specification/s3-encryption/encryption.md#content-encryption."""
 
-    ##= specification/s3-encryption/encryption.md#content-encryption
-    ##= type=test
-    ##% The S3EC MUST use the encryption algorithm configured during
-    ##% [client](./client.md) initialization.
     def test_uses_configured_algorithm_suite(self):
-        """The pipeline MUST encrypt using the algorithm suite passed to encrypt()."""
+        """The pipeline MUST encrypt using the algorithm suite configured in the client."""
         cmm, key = _mock_cmm()
-        pipeline = PutEncryptedObjectPipeline(cmm)
         plaintext = b"test data"
 
         # V2 (GCM no KDF)
-        _, meta_v2 = pipeline.encrypt(
-            plaintext,
-            AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+        config_v2 = S3EncryptionClientConfig(
+            keyring=MagicMock(),
+            encryption_algorithm=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+            commitment_policy=CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
+            cmm=cmm,
         )
+        pipeline_v2 = PutEncryptedObjectPipeline(config_v2.cmm, config_v2.encryption_algorithm)
+        _, meta_v2 = pipeline_v2.encrypt(plaintext)
         assert "x-amz-cek-alg" in meta_v2
         assert meta_v2["x-amz-cek-alg"] == "AES/GCM/NoPadding"
 
         # V3 (KC GCM)
-        _, meta_v3 = pipeline.encrypt(
-            plaintext,
-            AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+        config_v3 = S3EncryptionClientConfig(
+            keyring=MagicMock(),
+            encryption_algorithm=AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+            cmm=cmm,
         )
+        pipeline_v3 = PutEncryptedObjectPipeline(config_v3.cmm, config_v3.encryption_algorithm)
+        _, meta_v3 = pipeline_v3.encrypt(plaintext)
         assert "x-amz-c" in meta_v3
         assert meta_v3["x-amz-c"] == "115"
 
@@ -93,24 +96,18 @@ class TestContentEncryption:
     def test_iv_generated_with_correct_length_gcm(self):
         """GCM encryption MUST produce a 12-byte IV."""
         cmm, _ = _mock_cmm()
-        pipeline = PutEncryptedObjectPipeline(cmm)
+        pipeline = PutEncryptedObjectPipeline(cmm, AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
 
-        _, meta = pipeline.encrypt(
-            b"test",
-            AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
-        )
+        _, meta = pipeline.encrypt(b"test")
         iv_bytes = base64.b64decode(meta["x-amz-iv"])
         assert len(iv_bytes) == 12
 
     def test_message_id_generated_with_correct_length_kc(self):
         """KC-GCM encryption MUST produce a 28-byte Message ID."""
         cmm, _ = _mock_cmm()
-        pipeline = PutEncryptedObjectPipeline(cmm)
+        pipeline = PutEncryptedObjectPipeline(cmm, AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY)
 
-        _, meta = pipeline.encrypt(
-            b"test",
-            AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
-        )
+        _, meta = pipeline.encrypt(b"test")
         message_id_bytes = base64.b64decode(meta["x-amz-i"])
         assert len(message_id_bytes) == MESSAGE_ID_LENGTH
 
@@ -121,23 +118,17 @@ class TestContentEncryption:
     def test_iv_included_in_metadata_gcm(self):
         """GCM encryption MUST include the IV in the returned metadata."""
         cmm, _ = _mock_cmm()
-        pipeline = PutEncryptedObjectPipeline(cmm)
+        pipeline = PutEncryptedObjectPipeline(cmm, AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
 
-        _, meta = pipeline.encrypt(
-            b"test",
-            AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
-        )
+        _, meta = pipeline.encrypt(b"test")
         assert "x-amz-iv" in meta
 
     def test_message_id_included_in_metadata_kc(self):
         """KC-GCM encryption MUST include the Message ID in the returned metadata."""
         cmm, _ = _mock_cmm()
-        pipeline = PutEncryptedObjectPipeline(cmm)
+        pipeline = PutEncryptedObjectPipeline(cmm, AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY)
 
-        _, meta = pipeline.encrypt(
-            b"test",
-            AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
-        )
+        _, meta = pipeline.encrypt(b"test")
         assert "x-amz-i" in meta
 
 
@@ -160,13 +151,10 @@ class TestGcmNoKdf:
     def test_gcm_encrypt_decrypt_roundtrip_no_aad(self):
         """GCM encryption MUST use the data key, generated IV, and no AAD."""
         cmm, key = _mock_cmm()
-        pipeline = PutEncryptedObjectPipeline(cmm)
+        pipeline = PutEncryptedObjectPipeline(cmm, AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
         plaintext = b"roundtrip test for GCM no KDF"
 
-        ciphertext, meta = pipeline.encrypt(
-            plaintext,
-            AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
-        )
+        ciphertext, meta = pipeline.encrypt(plaintext)
 
         # Decrypt with the same key, IV, and no AAD
         iv = base64.b64decode(meta["x-amz-iv"])
@@ -177,12 +165,9 @@ class TestGcmNoKdf:
     def test_gcm_decrypt_fails_with_aad(self):
         """Ciphertext produced with no AAD MUST NOT decrypt with AAD."""
         cmm, key = _mock_cmm()
-        pipeline = PutEncryptedObjectPipeline(cmm)
+        pipeline = PutEncryptedObjectPipeline(cmm, AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
 
-        ciphertext, meta = pipeline.encrypt(
-            b"test",
-            AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
-        )
+        ciphertext, meta = pipeline.encrypt(b"test")
 
         iv = base64.b64decode(meta["x-amz-iv"])
         aesgcm = AESGCM(key)
@@ -205,13 +190,10 @@ class TestKcGcm:
     def test_kc_gcm_uses_hkdf_derived_key(self):
         """KC-GCM encryption MUST use HKDF-derived keys, not the raw data key."""
         cmm, raw_key = _mock_cmm()
-        pipeline = PutEncryptedObjectPipeline(cmm)
+        pipeline = PutEncryptedObjectPipeline(cmm, AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY)
         plaintext = b"roundtrip test for KC GCM"
 
-        ciphertext, meta = pipeline.encrypt(
-            plaintext,
-            AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
-        )
+        ciphertext, meta = pipeline.encrypt(plaintext)
 
         message_id = base64.b64decode(meta["x-amz-i"])
         derived_key, _ = derive_keys(
@@ -235,12 +217,9 @@ class TestKcGcm:
     def test_kc_gcm_commitment_in_metadata(self):
         """KC-GCM encryption MUST include the key commitment in metadata."""
         cmm, raw_key = _mock_cmm()
-        pipeline = PutEncryptedObjectPipeline(cmm)
+        pipeline = PutEncryptedObjectPipeline(cmm, AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY)
 
-        _, meta = pipeline.encrypt(
-            b"test",
-            AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
-        )
+        _, meta = pipeline.encrypt(b"test")
 
         assert "x-amz-d" in meta
         commitment_bytes = base64.b64decode(meta["x-amz-d"])
