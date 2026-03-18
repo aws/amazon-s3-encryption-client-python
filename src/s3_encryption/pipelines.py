@@ -51,7 +51,6 @@ class PutEncryptedObjectPipeline:
             bytes: The encrypted data
             dict: Metadata about the encryption to be stored with the object
         """
-
         ##= specification/s3-encryption/encryption.md#content-encryption
         ##= type=implementation
         ##% The S3EC MUST use the encryption algorithm configured during
@@ -255,7 +254,7 @@ class GetEncryptedObjectPipeline:
 
             if self.s3_client is None:
                 raise S3EncryptionClientError("s3_client required to fetch instruction file")
-            # TODO: we should validate that these parameters must be None 
+            # TODO: we should validate that these parameters must be None
             # when not in instruction file mode.
             if bucket is None or key is None:
                 raise S3EncryptionClientError("Bucket and key required to fetch instruction file")

@@ -105,7 +105,9 @@ class TestContentEncryption:
     def test_message_id_generated_with_correct_length_kc(self):
         """KC-GCM encryption MUST produce a 28-byte Message ID."""
         cmm, _ = _mock_cmm()
-        pipeline = PutEncryptedObjectPipeline(cmm, AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY)
+        pipeline = PutEncryptedObjectPipeline(
+            cmm, AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+        )
 
         _, meta = pipeline.encrypt(b"test")
         message_id_bytes = base64.b64decode(meta["x-amz-i"])
@@ -126,7 +128,9 @@ class TestContentEncryption:
     def test_message_id_included_in_metadata_kc(self):
         """KC-GCM encryption MUST include the Message ID in the returned metadata."""
         cmm, _ = _mock_cmm()
-        pipeline = PutEncryptedObjectPipeline(cmm, AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY)
+        pipeline = PutEncryptedObjectPipeline(
+            cmm, AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+        )
 
         _, meta = pipeline.encrypt(b"test")
         assert "x-amz-i" in meta
@@ -190,7 +194,9 @@ class TestKcGcm:
     def test_kc_gcm_uses_hkdf_derived_key(self):
         """KC-GCM encryption MUST use HKDF-derived keys, not the raw data key."""
         cmm, raw_key = _mock_cmm()
-        pipeline = PutEncryptedObjectPipeline(cmm, AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY)
+        pipeline = PutEncryptedObjectPipeline(
+            cmm, AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+        )
         plaintext = b"roundtrip test for KC GCM"
 
         ciphertext, meta = pipeline.encrypt(plaintext)
@@ -217,7 +223,9 @@ class TestKcGcm:
     def test_kc_gcm_commitment_in_metadata(self):
         """KC-GCM encryption MUST include the key commitment in metadata."""
         cmm, raw_key = _mock_cmm()
-        pipeline = PutEncryptedObjectPipeline(cmm, AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY)
+        pipeline = PutEncryptedObjectPipeline(
+            cmm, AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+        )
 
         _, meta = pipeline.encrypt(b"test")
 
