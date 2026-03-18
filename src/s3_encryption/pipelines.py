@@ -39,21 +39,18 @@ class PutEncryptedObjectPipeline:
 
     cmm: AbstractCryptoMaterialsManager = field()
 
-    def encrypt(self, plaintext, encryption_context=None, encryption_algorithm=None):
+    def encrypt(self, plaintext, encryption_algorithm, encryption_context=None):
         """Encrypt the data before it is stored in S3.
 
         Args:
             plaintext (bytes or str): The data to be encrypted
             encryption_context (dict, optional): Additional context for encryption
-            encryption_algorithm (AlgorithmSuite): Algorithm suite to use
+            encryption_algorithm (AlgorithmSuite): Algorithm suite to use (required)
 
         Returns:
             bytes: The encrypted data
             dict: Metadata about the encryption to be stored with the object
         """
-        if encryption_algorithm is None:
-            raise S3EncryptionClientError("encryption_algorithm is required for encryption.")
-
         algorithm_suite = encryption_algorithm
 
         ##= specification/s3-encryption/encryption.md#content-encryption
@@ -263,6 +260,8 @@ class GetEncryptedObjectPipeline:
 
             if self.s3_client is None:
                 raise S3EncryptionClientError("s3_client required to fetch instruction file")
+            # TODO: we should validate that these parameters must be None 
+            # when not in instruction file mode.
             if bucket is None or key is None:
                 raise S3EncryptionClientError("Bucket and key required to fetch instruction file")
 

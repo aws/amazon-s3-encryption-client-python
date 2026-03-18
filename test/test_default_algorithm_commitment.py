@@ -79,7 +79,7 @@ class TestDefaultAlgorithmUsesKeyCommitment:
         plaintext = b"integration test: default algorithm uses key commitment"
         ciphertext, metadata = pipeline.encrypt(
             plaintext,
-            encryption_algorithm=config.encryption_algorithm,
+            config.encryption_algorithm,
         )
 
         # Build a response dict as if we fetched this object from S3
