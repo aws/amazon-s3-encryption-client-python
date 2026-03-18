@@ -178,10 +178,8 @@ class GetEncryptedObjectPipeline:
     """
 
     cmm: AbstractCryptoMaterialsManager = field()
+    commitment_policy: CommitmentPolicy = field()
     s3_client: object = field(default=None)
-    commitment_policy: CommitmentPolicy = field(
-        default=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT
-    )
     enable_legacy_unauthenticated_modes: bool = field(default=False)
 
     # Map content cipher metadata values to AlgorithmSuite

@@ -207,8 +207,8 @@ class S3EncryptionClientPlugin:
         # Create a pipeline and decrypt the data
         pipeline = GetEncryptedObjectPipeline(
             self.config.cmm,
-            s3_client=getattr(self._context, _CTX_S3_CLIENT, None),
             commitment_policy=self.config.commitment_policy,
+            s3_client=getattr(self._context, _CTX_S3_CLIENT, None),
             enable_legacy_unauthenticated_modes=self.config.enable_legacy_unauthenticated_modes,
         )
         decrypted_data = pipeline.decrypt(

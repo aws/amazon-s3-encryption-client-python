@@ -11,7 +11,7 @@ import pytest
 from s3_encryption.exceptions import S3EncryptionClientError, S3EncryptionClientSecurityError
 from s3_encryption.materials.crypto_materials_manager import DefaultCryptoMaterialsManager
 from s3_encryption.materials.keyring import S3Keyring
-from s3_encryption.materials.materials import DecryptionMaterials
+from s3_encryption.materials.materials import CommitmentPolicy, DecryptionMaterials
 from s3_encryption.pipelines import GetEncryptedObjectPipeline
 
 
@@ -47,7 +47,11 @@ class TestGetEncryptedObjectPipelineInstructionFile:
         cmm = DefaultCryptoMaterialsManager(mock_keyring)
 
         # Create pipeline with mocked S3 client
-        pipeline = GetEncryptedObjectPipeline(cmm, mock_s3_client)
+        pipeline = GetEncryptedObjectPipeline(
+            cmm,
+            commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+            s3_client=mock_s3_client,
+        )
 
         # Create mock response
         mock_response = {
@@ -102,7 +106,11 @@ class TestGetEncryptedObjectPipelineInstructionFile:
         cmm = DefaultCryptoMaterialsManager(mock_keyring)
 
         # Create pipeline with mocked S3 client
-        pipeline = GetEncryptedObjectPipeline(cmm, mock_s3_client)
+        pipeline = GetEncryptedObjectPipeline(
+            cmm,
+            commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+            s3_client=mock_s3_client,
+        )
 
         # Create mock response
         mock_response = {
@@ -158,7 +166,11 @@ class TestGetEncryptedObjectPipelineInstructionFile:
         cmm = DefaultCryptoMaterialsManager(mock_keyring)
 
         # Create pipeline with mocked S3 client
-        pipeline = GetEncryptedObjectPipeline(cmm, mock_s3_client)
+        pipeline = GetEncryptedObjectPipeline(
+            cmm,
+            commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+            s3_client=mock_s3_client,
+        )
 
         # Create mock response with encrypted data
         iv = os.urandom(12)
@@ -220,7 +232,11 @@ class TestGetEncryptedObjectPipelineInstructionFile:
 
         mock_keyring = Mock(spec=S3Keyring)
         cmm = DefaultCryptoMaterialsManager(mock_keyring)
-        pipeline = GetEncryptedObjectPipeline(cmm, mock_s3_client)
+        pipeline = GetEncryptedObjectPipeline(
+            cmm,
+            commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+            s3_client=mock_s3_client,
+        )
 
         mock_response = {
             "Body": BytesIO(b"encrypted-test-data"),
@@ -261,7 +277,10 @@ class TestGetEncryptedObjectPipelineInstructionFile:
             "AES/GCM is not a valid key wrapping algorithm!"
         )
         cmm = DefaultCryptoMaterialsManager(mock_keyring)
-        pipeline = GetEncryptedObjectPipeline(cmm)
+        pipeline = GetEncryptedObjectPipeline(
+            cmm,
+            commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+        )
 
         mock_response = {
             "Body": BytesIO(b"encrypted-test-data"),
