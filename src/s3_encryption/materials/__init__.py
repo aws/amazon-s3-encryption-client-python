@@ -10,7 +10,7 @@ from .crypto_materials_manager import AbstractCryptoMaterialsManager, DefaultCry
 from .encrypted_data_key import EncryptedDataKey
 from .keyring import AbstractKeyring
 from .kms_keyring import KmsKeyring
-from .materials import EncryptionMaterials
+from .materials import AlgorithmSuite, CommitmentPolicy, EncryptionMaterials
 
 __all__ = [
     "AbstractKeyring",
@@ -18,5 +18,7 @@ __all__ = [
     "AbstractCryptoMaterialsManager",
     "DefaultCryptoMaterialsManager",
     "EncryptedDataKey",
+    "AlgorithmSuite",
+    "CommitmentPolicy",
     "EncryptionMaterials",
 ]

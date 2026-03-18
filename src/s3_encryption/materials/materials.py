@@ -7,11 +7,178 @@ which contain the cryptographic materials needed for S3 object encryption
 and decryption operations.
 """
 
+from enum import Enum
 from typing import Any
 
 from attrs import define, field
 
 from .encrypted_data_key import EncryptedDataKey
+
+
+class AlgorithmSuite(Enum):
+    """Algorithm suites supported by the S3 Encryption Client.
+
+    Each member consolidates all cryptographic parameters for a given suite,
+    modeled after the Java reference implementation. The tuple values are:
+
+        (id, is_legacy, data_key_algorithm, data_key_length_bits,
+         cipher_name, cipher_block_size_bits, cipher_iv_length_bits,
+         cipher_tag_length_bits, is_committing, commitment_length_bits,
+         commitment_nonce_length_bits, kdf_hash_algorithm, suite_id_bytes)
+    """
+
+    ALG_AES_256_CBC_IV16_NO_KDF = (
+        0x0070,  # id
+        True,  # is_legacy
+        "AES",  # data_key_algorithm
+        256,  # data_key_length_bits
+        "AES/CBC/PKCS5Padding",  # cipher_name
+        128,  # cipher_block_size_bits
+        128,  # cipher_iv_length_bits (16 bytes)
+        0,  # cipher_tag_length_bits (CBC has no auth tag)
+        False,  # is_committing
+        0,  # commitment_length_bits
+        0,  # commitment_nonce_length_bits
+        None,  # kdf_hash_algorithm
+        b"",  # suite_id_bytes
+    )
+
+    ALG_AES_256_GCM_IV12_TAG16_NO_KDF = (
+        0x0072,  # id
+        False,  # is_legacy
+        "AES",  # data_key_algorithm
+        256,  # data_key_length_bits
+        "AES/GCM/NoPadding",  # cipher_name
+        128,  # cipher_block_size_bits
+        96,  # cipher_iv_length_bits (12 bytes)
+        128,  # cipher_tag_length_bits (16 bytes)
+        False,  # is_committing
+        0,  # commitment_length_bits
+        0,  # commitment_nonce_length_bits
+        None,  # kdf_hash_algorithm
+        b"",  # suite_id_bytes
+    )
+
+    ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY = (
+        0x0073,  # id
+        False,  # is_legacy
+        "AES",  # data_key_algorithm
+        256,  # data_key_length_bits
+        "AES/GCM/HKDF/CommitKey",  # cipher_name
+        128,  # cipher_block_size_bits
+        96,  # cipher_iv_length_bits (12 bytes)
+        128,  # cipher_tag_length_bits (16 bytes)
+        True,  # is_committing
+        224,  # commitment_length_bits (28 bytes)
+        224,  # commitment_nonce_length_bits (28 bytes = message_id)
+        "sha512",  # kdf_hash_algorithm
+        b"\x00\x73",  # suite_id_bytes
+    )
+
+    def __init__(
+        self,
+        suite_id: int,
+        is_legacy: bool,
+        data_key_algorithm: str,
+        data_key_length_bits: int,
+        cipher_name: str,
+        cipher_block_size_bits: int,
+        cipher_iv_length_bits: int,
+        cipher_tag_length_bits: int,
+        is_committing: bool,
+        commitment_length_bits: int,
+        commitment_nonce_length_bits: int,
+        kdf_hash_algorithm: str | None,
+        suite_id_bytes: bytes,
+    ):
+        """Initialize algorithm suite parameters from the enum tuple."""
+        self._id = suite_id
+        self._is_legacy = is_legacy
+        self._data_key_algorithm = data_key_algorithm
+        self._data_key_length_bits = data_key_length_bits
+        self._cipher_name = cipher_name
+        self._cipher_block_size_bits = cipher_block_size_bits
+        self._cipher_iv_length_bits = cipher_iv_length_bits
+        self._cipher_tag_length_bits = cipher_tag_length_bits
+        self._is_committing = is_committing
+        self._commitment_length_bits = commitment_length_bits
+        self._commitment_nonce_length_bits = commitment_nonce_length_bits
+        self._kdf_hash_algorithm = kdf_hash_algorithm
+        self._suite_id_bytes = suite_id_bytes
+
+    # --- Convenience properties ---
+
+    @property
+    def suite_id(self) -> int:
+        """Numeric identifier for this algorithm suite."""
+        return self._id
+
+    @property
+    def is_legacy(self) -> bool:
+        """Return True if this algorithm suite is a legacy unauthenticated mode."""
+        return self._is_legacy
+
+    @property
+    def supports_key_commitment(self) -> bool:
+        """Return True if this algorithm suite supports key commitment."""
+        return self._is_committing
+
+    @property
+    def data_key_length_bytes(self) -> int:
+        """Data key length in bytes."""
+        return self._data_key_length_bits // 8
+
+    @property
+    def cipher_name(self) -> str:
+        """Cipher transformation string (e.g. 'AES/GCM/NoPadding')."""
+        return self._cipher_name
+
+    @property
+    def cipher_iv_length_bytes(self) -> int:
+        """Initialization vector length in bytes."""
+        return self._cipher_iv_length_bits // 8
+
+    @property
+    def commitment_length_bytes(self) -> int:
+        """Key commitment value length in bytes."""
+        return self._commitment_length_bits // 8
+
+    @property
+    def commitment_nonce_length_bytes(self) -> int:
+        """Length of the message ID / HKDF salt in bytes."""
+        return self._commitment_nonce_length_bits // 8
+
+    @property
+    def suite_id_bytes(self) -> bytes:
+        """Algorithm suite ID as raw bytes for use in HKDF info strings."""
+        return self._suite_id_bytes
+
+    @property
+    def kdf_hash_algorithm(self) -> str | None:
+        """Hash algorithm name for HKDF, usable with hmac (e.g. 'sha512')."""
+        return self._kdf_hash_algorithm
+
+    @property
+    def kc_gcm_iv(self) -> bytes:
+        """Fixed IV for key-committing GCM: all 0x01 bytes of cipher_iv_length."""
+        if not self._is_committing:
+            raise ValueError(f"{self.name} does not support key commitment")
+        ##= specification/s3-encryption/key-derivation.md#hkdf-operation
+        ##= type=implementation
+        ##% The IV's total length MUST match the IV length defined by the algorithm suite.
+        ##= specification/s3-encryption/key-derivation.md#hkdf-operation
+        ##= type=implementation
+        ##% When encrypting or decrypting with ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+        ##% the IV used in the AES-GCM content encryption/decryption MUST consist entirely of bytes with the value 0x01.
+        return b"\x01" * self.cipher_iv_length_bytes
+
+
+class CommitmentPolicy(Enum):
+    """Commitment policies controlling key-commitment behavior."""
+
+    FORBID_ENCRYPT_ALLOW_DECRYPT = "ForbidEncryptAllowDecrypt"
+    REQUIRE_ENCRYPT_ALLOW_DECRYPT = "RequireEncryptAllowDecrypt"
+    REQUIRE_ENCRYPT_REQUIRE_DECRYPT = "RequireEncryptRequireDecrypt"
 
 
 @define
@@ -27,6 +194,9 @@ class EncryptionMaterials:
         plaintext_data_key (Optional[bytes]): The plaintext data key
     """
 
+    encryption_algorithm: AlgorithmSuite = field(
+        default=AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+    )
     encryption_context: dict[str, str] = field(factory=dict)
     encrypted_data_key: EncryptedDataKey | None = field(default=None)
     plaintext_data_key: bytes | None = field(default=None)
@@ -87,6 +257,7 @@ class DecryptionMaterials:
     encryption_context_stored: dict[str, str] = field(factory=dict)
     encryption_context_from_request: dict[str, str] = field(factory=dict)
     plaintext_data_key: bytes | None = field(default=None)
+    algorithm_suite: AlgorithmSuite | None = field(default=None)
 
     @classmethod
     def from_dict(cls, materials_dict: dict[str, Any]) -> "DecryptionMaterials":
