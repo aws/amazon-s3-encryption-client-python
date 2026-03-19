@@ -68,3 +68,8 @@ source = ["src/s3_encryption"]
 
 [tool.coverage.report]
 show_missing = true
+
+[tool.pytest.ini_options]
+markers = [
+    "examples: S3 Encryption Client example tests",
+]

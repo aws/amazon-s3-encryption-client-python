@@ -56,6 +56,9 @@ jobs:
           CI_S3_BUCKET: ${{ vars.CI_S3_BUCKET }}
           CI_KMS_KEY_ALIAS: ${{ vars.CI_KMS_KEY_ALIAS }}
 
+      - name: Run examples
+        run: uv run pytest examples/ -v -m examples          
+
       - name: Generate coverage HTML report
         if: always()
         run: uv run coverage html -d coverage-report
