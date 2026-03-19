@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from s3_encryption import S3EncryptionClient, S3EncryptionClientConfig
 from s3_encryption.exceptions import S3EncryptionClientError
 from s3_encryption.materials.kms_keyring import KmsKeyring
+from s3_encryption.materials.materials import AlgorithmSuite, CommitmentPolicy
 import boto3
 import uvicorn
 import json
@@ -65,6 +66,19 @@ def create_s3_encryption_client_error(
             "message": message,
         },
     )
+
+
+# Maps from Smithy model enum strings to Python AlgorithmSuite/CommitmentPolicy enums
+_ALGORITHM_SUITE_MAP = {
+    "ALG_AES_256_GCM_IV12_TAG16_NO_KDF": AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+    "ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY": AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+}
+
+_COMMITMENT_POLICY_MAP = {
+    "FORBID_ENCRYPT_ALLOW_DECRYPT": CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
+    "REQUIRE_ENCRYPT_ALLOW_DECRYPT": CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT,
+    "REQUIRE_ENCRYPT_REQUIRE_DECRYPT": CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+}
 
 
 @app.put("/object/{bucket}/{key}")
@@ -175,6 +189,7 @@ async def client_endpoint(request: Request):
         key_material = config_data.get("keyMaterial", {})
 
         enable_legacy_wrapping_algorithms = config_data.get("enableLegacyWrappingAlgorithms", False)
+        enable_legacy_unauthenticated_modes = config_data.get("enableLegacyUnauthenticatedModes", False)
 
         # TODO pull region from ARN
         kms_client = boto3.client("kms", region_name="us-west-2")
@@ -185,7 +200,26 @@ async def client_endpoint(request: Request):
             enable_legacy_wrapping_algorithms=enable_legacy_wrapping_algorithms,
         )
         wrapped_client = boto3.client("s3")
-        client_config = S3EncryptionClientConfig(keyring)
+
+        # Build config kwargs, only including algorithm_suite and commitment_policy if provided
+        config_kwargs = {
+            "keyring": keyring,
+            "enable_legacy_unauthenticated_modes": enable_legacy_unauthenticated_modes,
+        }
+
+        encryption_algorithm = config_data.get("encryptionAlgorithm")
+        if encryption_algorithm is not None:
+            if encryption_algorithm not in _ALGORITHM_SUITE_MAP:
+                raise ValueError(f"Unknown encryption algorithm: {encryption_algorithm}")
+            config_kwargs["encryption_algorithm"] = _ALGORITHM_SUITE_MAP[encryption_algorithm]
+
+        commitment_policy = config_data.get("commitmentPolicy")
+        if commitment_policy is not None:
+            if commitment_policy not in _COMMITMENT_POLICY_MAP:
+                raise ValueError(f"Unknown commitment policy: {commitment_policy}")
+            config_kwargs["commitment_policy"] = _COMMITMENT_POLICY_MAP[commitment_policy]
+
+        client_config = S3EncryptionClientConfig(**config_kwargs)
 
         # Create S3EncryptionClient
         client = S3EncryptionClient(wrapped_client, client_config)

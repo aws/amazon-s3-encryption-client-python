@@ -9,6 +9,7 @@ import pytest
 from s3_encryption import S3EncryptionClient, S3EncryptionClientConfig
 from s3_encryption.exceptions import S3EncryptionClientError
 from s3_encryption.materials.kms_keyring import KmsKeyring
+from s3_encryption.materials.materials import AlgorithmSuite, CommitmentPolicy
 
 bucket = os.environ.get("CI_S3_BUCKET", "s3ec-python-github-test-bucket")
 region = os.environ.get("CI_AWS_REGION", "us-west-2")
@@ -16,483 +17,238 @@ kms_key_id = os.environ.get(
     "CI_KMS_KEY_ALIAS", "arn:aws:kms:us-west-2:370957321024:alias/S3EC-Python-Github-KMS-Key"
 )
 
+# Parameterized algorithm suite configurations.
+# Each entry is (algorithm_suite, commitment_policy, id_label).
+# "default" uses the client defaults (KC GCM + Require/Require).
+ALGORITHM_CONFIGS = [
+    pytest.param(
+        AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+        CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
+        id="AES_GCM",
+    ),
+    pytest.param(
+        AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+        CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+        id="KC_GCM",
+    ),
+]
 
-def test_simple_roundtrip_ascii_string():
-    key = "simple-rt"
-    key += datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
 
+def _make_client(algorithm_suite, commitment_policy):
+    """Create an S3EncryptionClient with the given algorithm config."""
+    kms_client = boto3.client("kms", region_name=region)
+    keyring = KmsKeyring(kms_client, kms_key_id)
+    wrapped_client = boto3.client("s3")
+    config = S3EncryptionClientConfig(
+        keyring,
+        encryption_algorithm=algorithm_suite,
+        commitment_policy=commitment_policy,
+    )
+    return S3EncryptionClient(wrapped_client, config)
+
+
+def _unique_key(prefix):
+    """Generate a unique S3 key with a timestamp suffix."""
+    return prefix + datetime.now().strftime("%Y-%m-%d-%H:%M:%S-%f")
+
+
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_simple_roundtrip_ascii_string(algorithm_suite, commitment_policy):
+    key = _unique_key("simple-rt-")
     data = "test input for simple v3 round trip"
 
-    kms_client = boto3.client("kms", region_name=region)
-
-    keyring = KmsKeyring(kms_client, kms_key_id)
-
-    wrapped_client = boto3.client("s3")
-    config = S3EncryptionClientConfig(keyring)
-    s3ec = S3EncryptionClient(wrapped_client, config)
+    s3ec = _make_client(algorithm_suite, commitment_policy)
     s3ec.put_object(Bucket=bucket, Key=key, Body=data)
-    get_req = {"Bucket": bucket, "Key": key}
-    response = s3ec.get_object(**get_req)
+    response = s3ec.get_object(Bucket=bucket, Key=key)
     output = response["Body"].read().decode("utf-8")
-    if output != data:
-        print("Uh oh! Input and output don't match!")
-        print("Input:")
-        print(input)
-        print("Output:")
-        print(output)
-        raise RuntimeError
-    print("Success!")
+    assert output == data
 
 
-def test_empty_string_roundtrip():
-    key = "empty-string-rt"
-    key += datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_empty_string_roundtrip(algorithm_suite, commitment_policy):
+    key = _unique_key("empty-string-rt-")
+    data = ""
 
-    data = ""  # Empty string as test data
-
-    kms_client = boto3.client("kms", region_name=region)
-
-    keyring = KmsKeyring(kms_client, kms_key_id)
-
-    wrapped_client = boto3.client("s3")
-    config = S3EncryptionClientConfig(keyring)
-    s3ec = S3EncryptionClient(wrapped_client, config)
+    s3ec = _make_client(algorithm_suite, commitment_policy)
     s3ec.put_object(Bucket=bucket, Key=key, Body=data)
-    get_req = {"Bucket": bucket, "Key": key}
-    response = s3ec.get_object(**get_req)
+    response = s3ec.get_object(Bucket=bucket, Key=key)
     output = response["Body"].read().decode("utf-8")
-    if output != data:
-        print("Uh oh! Input and output don't match!")
-        print("Input:")
-        print(repr(data))  # Using repr to clearly show it's an empty string
-        print("Output:")
-        print(repr(output))
-        raise RuntimeError
-    print("Success! Empty string encrypted and decrypted correctly.")
+    assert output == data
 
 
-def test_unicode_string_roundtrip():
-    key = "unicode-string-rt"
-    key += datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_no_body_roundtrip(algorithm_suite, commitment_policy):
+    key = _unique_key("no-body-rt-")
+    expected_data = b""
 
-    # String with unusual Unicode characters
+    s3ec = _make_client(algorithm_suite, commitment_policy)
+    s3ec.put_object(Bucket=bucket, Key=key)
+    response = s3ec.get_object(Bucket=bucket, Key=key)
+    output = response["Body"].read()
+    assert output == expected_data
+
+
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_unicode_string_roundtrip(algorithm_suite, commitment_policy):
+    key = _unique_key("unicode-string-rt-")
     data = "Unicode test: 你好, こんにちは, 안녕하세요, Привет, مرحبا, ¡Hola!, ½⅓¼⅕⅙⅐⅛⅑⅒⅔⅖⅗⅘⅙⅚⅜⅝⅞"
 
-    kms_client = boto3.client("kms", region_name=region)
-
-    keyring = KmsKeyring(kms_client, kms_key_id)
-
-    wrapped_client = boto3.client("s3")
-    config = S3EncryptionClientConfig(keyring)
-    s3ec = S3EncryptionClient(wrapped_client, config)
+    s3ec = _make_client(algorithm_suite, commitment_policy)
     s3ec.put_object(Bucket=bucket, Key=key, Body=data)
-    get_req = {"Bucket": bucket, "Key": key}
-    response = s3ec.get_object(**get_req)
-
-    # Boto3 encodes to utf-8 in put_object but does not
-    # decode in get_object; do so manually to complete the
-    # round trip
+    response = s3ec.get_object(Bucket=bucket, Key=key)
     output = response["Body"].read().decode("utf-8")
-    if output != data:
-        print("Uh oh! Input and output don't match!")
-        print("Input:")
-        print(repr(data))
-        print("Output:")
-        print(repr(output))
-        raise RuntimeError
-    print("Success! Unicode string encrypted and decrypted correctly.")
+    assert output == data
 
 
-def test_specific_encoding_utf8_roundtrip():
-    key = "utf8-encoding-rt"
-    key += datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
-
-    # String with mixed characters
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_specific_encoding_utf8_roundtrip(algorithm_suite, commitment_policy):
+    key = _unique_key("utf8-encoding-rt-")
     data = "UTF-8 encoding test: 你好, こんにちは, 안녕하세요, Привет, مرحبا, ¡Hola!"
-
-    # Explicitly encode as UTF-8 before sending
     encoded_data = data.encode("utf-8")
 
-    kms_client = boto3.client("kms", region_name=region)
-
-    keyring = KmsKeyring(kms_client, kms_key_id)
-
-    wrapped_client = boto3.client("s3")
-    config = S3EncryptionClientConfig(keyring)
-    s3ec = S3EncryptionClient(wrapped_client, config)
-
-    # Pass the pre-encoded bytes to put_object
+    s3ec = _make_client(algorithm_suite, commitment_policy)
     s3ec.put_object(Bucket=bucket, Key=key, Body=encoded_data)
-
-    get_req = {"Bucket": bucket, "Key": key}
-    response = s3ec.get_object(**get_req)
-
-    # Read raw bytes and decode with the same encoding
+    response = s3ec.get_object(Bucket=bucket, Key=key)
     output = response["Body"].read().decode("utf-8")
-
-    if output != data:
-        print("Uh oh! Input and output don't match!")
-        print("Input:")
-        print(repr(data))
-        print("Output:")
-        print(repr(output))
-        raise RuntimeError
-    print("Success! UTF-8 encoded string encrypted and decrypted correctly.")
+    assert output == data
 
 
-def test_specific_encoding_latin1_roundtrip():
-    key = "latin1-encoding-rt"
-    key += datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
-
-    # String with Latin-1 compatible characters
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_specific_encoding_latin1_roundtrip(algorithm_suite, commitment_policy):
+    key = _unique_key("latin1-encoding-rt-")
     data = "Latin-1 encoding test: éèêë àâäãåá çñ ¿¡ øæå ØÆÅÉÈÊËÀÂÄÃÅÁ"
-
-    # Explicitly encode as Latin-1 before sending
     encoded_data = data.encode("latin-1")
 
-    kms_client = boto3.client("kms", region_name=region)
-
-    keyring = KmsKeyring(kms_client, kms_key_id)
-
-    wrapped_client = boto3.client("s3")
-    config = S3EncryptionClientConfig(keyring)
-    s3ec = S3EncryptionClient(wrapped_client, config)
-
-    # Pass the pre-encoded bytes to put_object
+    s3ec = _make_client(algorithm_suite, commitment_policy)
     s3ec.put_object(Bucket=bucket, Key=key, Body=encoded_data)
-
-    get_req = {"Bucket": bucket, "Key": key}
-    response = s3ec.get_object(**get_req)
-
-    # Read raw bytes and decode with the same encoding
+    response = s3ec.get_object(Bucket=bucket, Key=key)
     output = response["Body"].read().decode("latin-1")
-
-    if output != data:
-        print("Uh oh! Input and output don't match!")
-        print("Input:")
-        print(repr(data))
-        print("Output:")
-        print(repr(output))
-        raise RuntimeError
-    print("Success! Latin-1 encoded string encrypted and decrypted correctly.")
+    assert output == data
 
 
-def test_binary_data_roundtrip():
-    key = "binary-data-rt"
-    key += datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
-
-    # Create some binary data (not valid in any particular encoding)
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_binary_data_roundtrip(algorithm_suite, commitment_policy):
+    key = _unique_key("binary-data-rt-")
     data = bytes(range(256))
 
-    kms_client = boto3.client("kms", region_name=region)
-
-    keyring = KmsKeyring(kms_client, kms_key_id)
-
-    wrapped_client = boto3.client("s3")
-    config = S3EncryptionClientConfig(keyring)
-    s3ec = S3EncryptionClient(wrapped_client, config)
-
-    # Pass the binary data directly
+    s3ec = _make_client(algorithm_suite, commitment_policy)
     s3ec.put_object(Bucket=bucket, Key=key, Body=data)
-
-    get_req = {"Bucket": bucket, "Key": key}
-    response = s3ec.get_object(**get_req)
-
-    # Read raw bytes without decoding
+    response = s3ec.get_object(Bucket=bucket, Key=key)
     output = response["Body"].read()
-
-    if output != data:
-        print("Uh oh! Input and output don't match!")
-        print("Input:")
-        print(repr(data))
-        print("Output:")
-        print(repr(output))
-        raise RuntimeError
-    print("Success! Binary data encrypted and decrypted correctly.")
+    assert output == data
 
 
-def test_invalid_body_types():
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_invalid_body_types(algorithm_suite, commitment_policy):
     """Test that put_object raises an exception when given invalid body types."""
-    key = "invalid-body-type"
-    key += datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
+    key = _unique_key("invalid-body-type-")
 
-    kms_client = boto3.client("kms", region_name=region)
-    keyring = KmsKeyring(kms_client, kms_key_id)
-    wrapped_client = boto3.client("s3")
-    config = S3EncryptionClientConfig(keyring)
-    s3ec = S3EncryptionClient(wrapped_client, config)
+    s3ec = _make_client(algorithm_suite, commitment_policy)
 
-    # Test with integer
-    with pytest.raises(S3EncryptionClientError) as excinfo:
-        s3ec.put_object(Bucket=bucket, Key=key, Body=42)
-    assert "Invalid type for parameter Body" in str(excinfo.value)
-
-    # Test with float
-    with pytest.raises(S3EncryptionClientError) as excinfo:
-        s3ec.put_object(Bucket=bucket, Key=key, Body=3.14)
-    assert "Invalid type for parameter Body" in str(excinfo.value)
-
-    # Test with list
-    with pytest.raises(S3EncryptionClientError) as excinfo:
-        s3ec.put_object(Bucket=bucket, Key=key, Body=[1, 2, 3])
-    assert "Invalid type for parameter Body" in str(excinfo.value)
-
-    # Test with dictionary
-    with pytest.raises(S3EncryptionClientError) as excinfo:
-        s3ec.put_object(Bucket=bucket, Key=key, Body={"key": "value"})
-    assert "Invalid type for parameter Body" in str(excinfo.value)
-
-    # Test with boolean
-    with pytest.raises(S3EncryptionClientError) as excinfo:
-        s3ec.put_object(Bucket=bucket, Key=key, Body=True)
-    assert "Invalid type for parameter Body" in str(excinfo.value)
-
-    # Test with None (also raises an exception)
-    with pytest.raises(S3EncryptionClientError) as excinfo:
-        s3ec.put_object(Bucket=bucket, Key=key, Body=None)
-    assert "Invalid type for parameter Body" in str(excinfo.value)
-
-    print("Success! All invalid body types correctly raised exceptions.")
+    for body in [42, 3.14, [1, 2, 3], {"key": "value"}, True, None]:
+        with pytest.raises(S3EncryptionClientError) as excinfo:
+            s3ec.put_object(Bucket=bucket, Key=key, Body=body)
+        assert "Invalid type for parameter Body" in str(excinfo.value)
 
 
-def test_user_metadata_preservation():
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_user_metadata_preservation(algorithm_suite, commitment_policy):
     """Test that user-provided metadata is preserved during encryption."""
-    key = "metadata-preservation-rt"
-    key += datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
-
+    key = _unique_key("metadata-preservation-rt-")
     data = "Test data with user metadata"
-
-    # User metadata to include
     user_metadata = {
         "author": "test-user",
         "version": "1.0",
         "description": "Test object with custom metadata",
     }
 
-    kms_client = boto3.client("kms", region_name=region)
-    keyring = KmsKeyring(kms_client, kms_key_id)
-    wrapped_client = boto3.client("s3")
-    config = S3EncryptionClientConfig(keyring)
-    s3ec = S3EncryptionClient(wrapped_client, config)
-
-    # Put object with user metadata
+    s3ec = _make_client(algorithm_suite, commitment_policy)
     s3ec.put_object(Bucket=bucket, Key=key, Body=data, Metadata=user_metadata)
+    response = s3ec.get_object(Bucket=bucket, Key=key)
 
-    # Get the object back
-    get_req = {"Bucket": bucket, "Key": key}
-    response = s3ec.get_object(**get_req)
-
-    # Verify the data decrypts correctly
     output = response["Body"].read().decode("utf-8")
-    if output != data:
-        print("Uh oh! Input and output don't match!")
-        print("Input:")
-        print(repr(data))
-        print("Output:")
-        print(repr(output))
-        raise RuntimeError
+    assert output == data
 
-    # Verify user metadata is preserved
     returned_metadata = response.get("Metadata", {})
-
     for key_name, expected_value in user_metadata.items():
-        if key_name not in returned_metadata:
-            print(f"Uh oh! User metadata key '{key_name}' is missing!")
-            print("Expected metadata:")
-            print(user_metadata)
-            print("Returned metadata:")
-            print(returned_metadata)
-            raise RuntimeError
-
-        if returned_metadata[key_name] != expected_value:
-            print(f"Uh oh! User metadata value for '{key_name}' doesn't match!")
-            print(f"Expected: {expected_value}")
-            print(f"Got: {returned_metadata[key_name]}")
-            raise RuntimeError
-
-    print("Success! User metadata preserved correctly during encryption/decryption.")
-    print(f"User metadata: {user_metadata}")
-    print(f"Returned metadata keys: {list(returned_metadata.keys())}")
+        assert key_name in returned_metadata, f"User metadata key '{key_name}' is missing"
+        assert returned_metadata[key_name] == expected_value
 
 
-def test_encryption_context_roundtrip():
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_encryption_context_roundtrip(algorithm_suite, commitment_policy):
     """Test that EncryptionContext is properly used during encryption and required for decryption."""
-    key = "encryption-context-rt"
-    key += datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
-
+    key = _unique_key("encryption-context-rt-")
     data = "Test data with encryption context"
-
-    # Encryption context to use for additional authenticated data
     encryption_context = {
         "department": "engineering",
         "project": "s3-encryption",
         "environment": "test",
     }
 
-    kms_client = boto3.client("kms", region_name=region)
-    keyring = KmsKeyring(kms_client, kms_key_id)
-    wrapped_client = boto3.client("s3")
-    config = S3EncryptionClientConfig(keyring)
-    s3ec = S3EncryptionClient(wrapped_client, config)
-
-    # Put object with encryption context
+    s3ec = _make_client(algorithm_suite, commitment_policy)
     s3ec.put_object(Bucket=bucket, Key=key, Body=data, EncryptionContext=encryption_context)
+    response = s3ec.get_object(Bucket=bucket, Key=key, EncryptionContext=encryption_context)
 
-    # Get the object back WITH the same encryption context
-    get_req = {"Bucket": bucket, "Key": key, "EncryptionContext": encryption_context}
-    response = s3ec.get_object(**get_req)
-
-    # Verify the data decrypts correctly
     output = response["Body"].read().decode("utf-8")
-    if output != data:
-        print("Uh oh! Input and output don't match!")
-        print("Input:")
-        print(repr(data))
-        print("Output:")
-        print(repr(output))
-        raise RuntimeError
-
-    print("Success! Encryption context used correctly during encryption/decryption.")
-    print(f"Encryption context: {encryption_context}")
+    assert output == data
 
 
-def test_encryption_context_mismatch():
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_encryption_context_mismatch(algorithm_suite, commitment_policy):
     """Test that decryption fails when EncryptionContext doesn't match."""
-    key = "encryption-context-mismatch"
-    key += datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
-
+    key = _unique_key("encryption-context-mismatch-")
     data = "Test data with encryption context"
-
-    # Original encryption context
     encryption_context = {"department": "engineering", "project": "s3-encryption"}
-
-    # Wrong encryption context for decryption
     wrong_encryption_context = {"department": "marketing", "project": "s3-encryption"}
 
-    kms_client = boto3.client("kms", region_name=region)
-    keyring = KmsKeyring(kms_client, kms_key_id)
-    wrapped_client = boto3.client("s3")
-    config = S3EncryptionClientConfig(keyring)
-    s3ec = S3EncryptionClient(wrapped_client, config)
-
-    # Put object with encryption context
+    s3ec = _make_client(algorithm_suite, commitment_policy)
     s3ec.put_object(Bucket=bucket, Key=key, Body=data, EncryptionContext=encryption_context)
 
-    # Try to get the object back with WRONG encryption context - should fail
-    get_req = {"Bucket": bucket, "Key": key, "EncryptionContext": wrong_encryption_context}
-
-    try:
-        s3ec.get_object(**get_req)
-        # If we get here, the test failed - decryption should have failed
-        print("Uh oh! Decryption succeeded with wrong encryption context!")
-        print(f"Original context: {encryption_context}")
-        print(f"Wrong context used: {wrong_encryption_context}")
-        raise RuntimeError("Expected decryption to fail with mismatched encryption context")
-    except S3EncryptionClientError as e:
-        # This is expected - decryption should fail
-        print("Success! Decryption correctly failed with mismatched encryption context.")
-        print(f"Error message: {str(e)}")
-    except Exception as e:
-        # Some other error occurred
-        print(f"Unexpected error type: {type(e).__name__}")
-        print(f"Error message: {str(e)}")
-        raise
+    with pytest.raises(S3EncryptionClientError):
+        s3ec.get_object(Bucket=bucket, Key=key, EncryptionContext=wrong_encryption_context)
 
 
-def test_encryption_context_missing_on_decrypt():
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_encryption_context_missing_on_decrypt(algorithm_suite, commitment_policy):
     """Test that decryption fails when encryption context is not provided for an object encrypted with context."""
-    key = "encryption-context-missing"
-    key += datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
-
+    key = _unique_key("encryption-context-missing-")
     data = "Test data with encryption context"
-
-    # Encryption context used during encryption
     encryption_context = {"department": "engineering", "project": "s3-encryption"}
 
-    kms_client = boto3.client("kms", region_name=region)
-    keyring = KmsKeyring(kms_client, kms_key_id)
-    wrapped_client = boto3.client("s3")
-    config = S3EncryptionClientConfig(keyring)
-    s3ec = S3EncryptionClient(wrapped_client, config)
-
-    # Put object with encryption context
+    s3ec = _make_client(algorithm_suite, commitment_policy)
     s3ec.put_object(Bucket=bucket, Key=key, Body=data, EncryptionContext=encryption_context)
 
-    # Try to get the object back WITHOUT encryption context - should fail
-    get_req = {"Bucket": bucket, "Key": key}
-
-    try:
-        s3ec.get_object(**get_req)
-        # If we get here, the test failed - decryption should have failed
-        print("Uh oh! Decryption succeeded without providing required encryption context!")
-        print(f"Original context: {encryption_context}")
-        raise RuntimeError("Expected decryption to fail when encryption context not provided")
-    except S3EncryptionClientError as e:
-        # This is expected - decryption should fail
-        print("Success! Decryption correctly failed when encryption context was not provided.")
-        print(f"Error message: {str(e)}")
-    except Exception as e:
-        # Some other error occurred
-        print(f"Unexpected error type: {type(e).__name__}")
-        print(f"Error message: {str(e)}")
-        raise
+    with pytest.raises(S3EncryptionClientError):
+        s3ec.get_object(Bucket=bucket, Key=key)
 
 
-##= specification/s3-encryption/client.md#enable-delayed-authentication
+# Expected metadata key that identifies the content encryption algorithm,
+# keyed by algorithm suite.
+_EXPECTED_ALGORITHM_METADATA = {
+    AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF: ("x-amz-cek-alg", "AES/GCM/NoPadding"),
+    AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY: ("x-amz-c", "115"),
+}
+
+
+##= specification/s3-encryption/encryption.md#content-encryption
 ##= type=test
-##% The S3EC MUST support the option to enable or disable Delayed Authentication mode.
-@pytest.mark.parametrize("delayed_auth", [False, True], ids=["buffered", "delayed-auth"])
-@pytest.mark.parametrize(
-    ("key_prefix", "data", "encoding"),
-    [
-        ("simple-rt", "test input for simple v3 round trip", "utf-8"),
-        ("empty-string-rt", "", "utf-8"),
-        (
-            "unicode-rt",
-            "Unicode test: 你好, こんにちは, 안녕하세요, Привет, مرحبا, ¡Hola!, ½⅓¼⅕⅙⅐⅛⅑⅒⅔⅖⅗⅘⅙⅚⅜⅝⅞",
-            "utf-8",
-        ),
-        (
-            "utf8-rt",
-            "UTF-8 encoding test: 你好, こんにちは, 안녕하세요, Привет, مرحبا, ¡Hola!",
-            "utf-8",
-        ),
-        ("latin1-rt", "Latin-1 encoding test: éèêë àâäãåá çñ ¿¡ øæå ØÆÅÉÈÊËÀÂÄÃÅÁ", "latin-1"),
-        ("binary-rt", bytes(range(256)), None),
-    ],
-    ids=["ascii", "empty", "unicode", "utf8", "latin1", "binary"],
-)
-def test_roundtrip(delayed_auth, key_prefix, data, encoding):
-    key = f"{key_prefix}-{'da' if delayed_auth else 'buf'}-"
-    key += datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
+##% The S3EC MUST use the encryption algorithm configured during
+##% [client](./client.md) initialization.
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_put_object_uses_configured_algorithm(algorithm_suite, commitment_policy):
+    """PutObject MUST encrypt using the algorithm suite configured at client init."""
+    key = _unique_key("configured-alg-")
+    data = b"test configured algorithm"
 
-    body = data.encode(encoding) if encoding and isinstance(data, str) else data
+    s3ec = _make_client(algorithm_suite, commitment_policy)
+    s3ec.put_object(Bucket=bucket, Key=key, Body=data)
 
-    kms_client = boto3.client("kms", region_name=region)
-    keyring = KmsKeyring(kms_client, kms_key_id)
-    wrapped_client = boto3.client("s3")
-    config = S3EncryptionClientConfig(keyring, enable_delayed_authentication=delayed_auth)
-    s3ec = S3EncryptionClient(wrapped_client, config)
-    s3ec.put_object(Bucket=bucket, Key=key, Body=body)
-    response = s3ec.get_object(Bucket=bucket, Key=key)
-    output = response["Body"].read()
+    # Read back with a plain S3 client to inspect the raw metadata
+    plain_s3 = boto3.client("s3")
+    response = plain_s3.head_object(Bucket=bucket, Key=key)
+    metadata = response.get("Metadata", {})
 
-    if encoding:
-        assert output.decode(encoding) == data
-    else:
-        assert output == data
-
-
-@pytest.mark.parametrize("delayed_auth", [False, True], ids=["buffered", "delayed-auth"])
-def test_no_body_roundtrip(delayed_auth):
-    key = f"no-body-rt-{'da' if delayed_auth else 'buf'}-"
-    key += datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
-
-    kms_client = boto3.client("kms", region_name=region)
-    keyring = KmsKeyring(kms_client, kms_key_id)
-    wrapped_client = boto3.client("s3")
-    config = S3EncryptionClientConfig(keyring, enable_delayed_authentication=delayed_auth)
-    s3ec = S3EncryptionClient(wrapped_client, config)
-    s3ec.put_object(Bucket=bucket, Key=key)
-    response = s3ec.get_object(Bucket=bucket, Key=key)
-    assert response["Body"].read() == b""
+    meta_key, expected_value = _EXPECTED_ALGORITHM_METADATA[algorithm_suite]
+    assert meta_key in metadata, f"Expected metadata key '{meta_key}' not found in {metadata}"
+    assert metadata[meta_key] == expected_value

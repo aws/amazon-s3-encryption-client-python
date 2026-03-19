@@ -15,9 +15,21 @@ from .materials.crypto_materials_manager import (
     DefaultCryptoMaterialsManager,
 )
 from .materials.keyring import AbstractKeyring
+from .materials.materials import AlgorithmSuite, CommitmentPolicy
 from .pipelines import GetEncryptedObjectPipeline, PutEncryptedObjectPipeline
 
 S3_METADATA_PREFIX = "x-amz-meta-"
+
+# Thread-local context attribute names
+_CTX_ENCRYPTION_CONTEXT = "encryption_context"
+_CTX_BUCKET = "bucket"
+_CTX_KEY = "key"
+_CTX_S3_CLIENT = "s3_client"
+_CTX_INSTRUCTION_FILE_MODE = "instruction_file_mode"
+
+# Attributes to clean up after get_object completes
+# (s3_client is intentionally excluded — it is not request-scoped)
+_GET_OBJECT_CLEANUP_ATTRS = (_CTX_ENCRYPTION_CONTEXT, _CTX_BUCKET, _CTX_KEY)
 
 
 @define
@@ -25,6 +37,17 @@ class S3EncryptionClientConfig:
     """Configuration object for the S3 Encryption Client."""
 
     keyring: AbstractKeyring
+    encryption_algorithm: AlgorithmSuite = field(
+        default=AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+    )
+    commitment_policy: CommitmentPolicy = field(
+        default=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT
+    )
+    ##= specification/s3-encryption/client.md#enable-legacy-unauthenticated-modes
+    ##% The S3EC MUST support the option to enable or disable legacy unauthenticated modes (content encryption algorithms).
+    ##= specification/s3-encryption/client.md#enable-legacy-unauthenticated-modes
+    ##% The option to enable legacy unauthenticated modes MUST be set to false by default.
+    enable_legacy_unauthenticated_modes: bool = field(default=False)
     cmm: AbstractCryptoMaterialsManager = field()
     ##= specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
     ##= type=implementation
@@ -49,6 +72,51 @@ class S3EncryptionClientConfig:
     @cmm.default
     def _default_cmm_for_keyring(self):
         return DefaultCryptoMaterialsManager(self.keyring)
+
+    ##= specification/s3-encryption/client.md#encryption-algorithm
+    ##% The S3EC MUST validate that the configured encryption algorithm is not legacy.
+    ##= specification/s3-encryption/client.md#encryption-algorithm
+    ##% If the configured encryption algorithm is legacy, then the S3EC MUST throw an exception.
+    ##= specification/s3-encryption/client.md#key-commitment
+    ##% The S3EC MUST validate the configured Encryption Algorithm against the provided key commitment policy.
+    ##= specification/s3-encryption/client.md#key-commitment
+    ##% If the configured Encryption Algorithm is incompatible with the key commitment policy, then it MUST throw an exception.
+    def __attrs_post_init__(self):
+        """Validate algorithm suite and commitment policy configuration."""
+        if self.encryption_algorithm.is_legacy:
+            raise S3EncryptionClientError(
+                f"Cannot configure S3 Encryption Client with legacy algorithm suite "
+                f"{self.encryption_algorithm.name}. Legacy algorithm suites are only "
+                f"supported for decryption (and enable_legacy_unauthenticated_modes is True)."
+            )
+
+        ##= specification/s3-encryption/key-commitment.md#commitment-policy
+        ##% When the commitment policy is REQUIRE_ENCRYPT_ALLOW_DECRYPT, the S3EC MUST only encrypt using an algorithm suite which supports key commitment.
+        ##= specification/s3-encryption/key-commitment.md#commitment-policy
+        ##% When the commitment policy is REQUIRE_ENCRYPT_REQUIRE_DECRYPT, the S3EC MUST only encrypt using an algorithm suite which supports key commitment.
+        if (
+            self.commitment_policy
+            in (
+                CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT,
+                CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+            )
+            and not self.encryption_algorithm.supports_key_commitment
+        ):
+            raise S3EncryptionClientError(
+                f"Commitment policy {self.commitment_policy.name} requires a key-committing "
+                f"algorithm suite, but {self.encryption_algorithm.name} does not support key commitment."
+            )
+
+        ##= specification/s3-encryption/key-commitment.md#commitment-policy
+        ##% When the commitment policy is FORBID_ENCRYPT_ALLOW_DECRYPT, the S3EC MUST NOT encrypt using an algorithm suite which supports key commitment.
+        if (
+            self.commitment_policy == CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT
+            and self.encryption_algorithm.supports_key_commitment
+        ):
+            raise S3EncryptionClientError(
+                f"Commitment policy {self.commitment_policy.name} forbids key-committing "
+                f"algorithm suites, but {self.encryption_algorithm.name} supports key commitment."
+            )
 
 
 class S3EncryptionClientPlugin:
@@ -76,7 +144,7 @@ class S3EncryptionClientPlugin:
             params: Dictionary of parameters for the PutObject call (after serialization)
             **kwargs: Additional event arguments
         """
-        if getattr(self._context, "instruction_file_mode", False):
+        if getattr(self._context, _CTX_INSTRUCTION_FILE_MODE, False):
             raise S3EncryptionClientError(
                 "Instruction file mode is exclusively for reading instruction files "
                 "and not supported in put_object!"
@@ -97,11 +165,12 @@ class S3EncryptionClientPlugin:
             # Unexpected body type - should not happen as boto3 validates before this point
             raise S3EncryptionClientError("Unexpected type of body parameter!")
 
-        encryption_context = getattr(self._context, "encryption_context", None)
+        encryption_context = getattr(self._context, _CTX_ENCRYPTION_CONTEXT, None)
 
-        pipeline = PutEncryptedObjectPipeline(self.config.cmm)
+        pipeline = PutEncryptedObjectPipeline(self.config.cmm, self.config.encryption_algorithm)
         encrypted_data, encryption_metadata = pipeline.encrypt(
-            body_bytes, encryption_context=encryption_context
+            body_bytes,
+            encryption_context=encryption_context,
         )
 
         params["body"] = encrypted_data
@@ -127,12 +196,12 @@ class S3EncryptionClientPlugin:
             **kwargs: Additional event arguments (includes 'params' with request parameters)
         """
         # Check if plaintext mode is enabled via thread-local flag
-        if getattr(self._context, "instruction_file_mode", False):
+        if getattr(self._context, _CTX_INSTRUCTION_FILE_MODE, False):
             self.process_instruction_file(parsed)
             return
 
         # Get encryption context from thread-local storage (set by get_object wrapper)
-        encryption_context = getattr(self._context, "encryption_context", None)
+        encryption_context = getattr(self._context, _CTX_ENCRYPTION_CONTEXT, None)
 
         # The parsed response already has the Body as a StreamingBody
         # We need to read it, decrypt it, and replace it
@@ -146,13 +215,15 @@ class S3EncryptionClientPlugin:
         # Create a pipeline and decrypt the data
         pipeline = GetEncryptedObjectPipeline(
             self.config.cmm,
-            s3_client=getattr(self._context, "s3_client", None),
+            commitment_policy=self.config.commitment_policy,
+            s3_client=getattr(self._context, _CTX_S3_CLIENT, None),
+            enable_legacy_unauthenticated_modes=self.config.enable_legacy_unauthenticated_modes,
         )
         decrypted_data = pipeline.decrypt(
             response,
             encryption_context,
-            bucket=getattr(self._context, "bucket", None),
-            key=getattr(self._context, "key", None),
+            bucket=getattr(self._context, _CTX_BUCKET, None),
+            key=getattr(self._context, _CTX_KEY, None),
             instruction_suffix=self.config.instruction_file_suffix,
             enable_delayed_authentication=self.config.enable_delayed_authentication,
         )
@@ -169,7 +240,7 @@ class S3EncryptionClientPlugin:
         Args:
             parsed: Dictionary containing the parsed response
         """
-        instruction_key = getattr(self._context, "key", None)
+        instruction_key = getattr(self._context, _CTX_KEY, None)
 
         # In plaintext mode, parse instruction file and append to metadata
         existing_metadata = parsed.get("Metadata", {})
@@ -248,8 +319,8 @@ class S3EncryptionClient:
             raise S3EncryptionClientError(f"Failed to encrypt object: {str(e)}") from e
         finally:
             # Clean up thread-local storage
-            if hasattr(self._plugin._context, "encryption_context"):
-                delattr(self._plugin._context, "encryption_context")
+            if hasattr(self._plugin._context, _CTX_ENCRYPTION_CONTEXT):
+                delattr(self._plugin._context, _CTX_ENCRYPTION_CONTEXT)
 
     def get_object(self, **kwargs):
         """Download and decrypt an object from S3.
@@ -272,12 +343,12 @@ class S3EncryptionClient:
         encryption_context = kwargs.pop("EncryptionContext", None)
 
         # Store encryption context in thread-local storage for the event handler
-        self._plugin._context.encryption_context = encryption_context
+        setattr(self._plugin._context, _CTX_ENCRYPTION_CONTEXT, encryption_context)
         # Store wrapped client in thread-local storage for
         # the event handler to fetch instruction files
-        self._plugin._context.s3_client = self.wrapped_s3_client
-        self._plugin._context.bucket = kwargs.get("Bucket")
-        self._plugin._context.key = kwargs.get("Key")
+        setattr(self._plugin._context, _CTX_S3_CLIENT, self.wrapped_s3_client)
+        setattr(self._plugin._context, _CTX_BUCKET, kwargs.get("Bucket"))
+        setattr(self._plugin._context, _CTX_KEY, kwargs.get("Key"))
 
         try:
             return self.wrapped_s3_client.get_object(**kwargs)
@@ -290,7 +361,6 @@ class S3EncryptionClient:
         finally:
             # Clean up thread-local storage;
             # do not clean up the client as it is not thread local only
-            attrs = ["encryption_context", "Bucket", "Key"]
-            for attr in attrs:
+            for attr in _GET_OBJECT_CLEANUP_ATTRS:
                 if hasattr(self._plugin._context, attr):
                     delattr(self._plugin._context, attr)

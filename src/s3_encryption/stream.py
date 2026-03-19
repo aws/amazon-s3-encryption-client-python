@@ -9,6 +9,13 @@ from .exceptions import S3EncryptionClientError
 GCM_TAG_LENGTH = 16
 
 
+def _unpad(plaintext, unpadder):
+    """Apply unpadder if provided, otherwise return plaintext as-is."""
+    if unpadder is None:
+        return plaintext
+    return unpadder.update(plaintext) + unpadder.finalize()
+
+
 class BufferedDecryptingStream:
     """A stream that buffers all ciphertext, decrypts, then releases plaintext.
 
@@ -20,7 +27,7 @@ class BufferedDecryptingStream:
     used as a drop-in replacement for parsed["Body"].
     """
 
-    def __init__(self, streaming_body, decryptor, tag_length=0):
+    def __init__(self, streaming_body, decryptor, tag_length=0, unpadder=None):
         """Initialize the buffered decrypting stream.
 
         Args:
@@ -28,10 +35,12 @@ class BufferedDecryptingStream:
             decryptor: A cipher decryptor object supporting update()/finalize()
                        (or finalize_with_tag() when tag_length > 0).
             tag_length: Length of the auth tag appended to ciphertext (0 for CBC).
+            unpadder: Optional PKCS7 unpadder for CBC mode.
         """
         self._body = streaming_body
         self._decryptor = decryptor
         self._tag_length = tag_length
+        self._unpadder = unpadder
         self._plaintext = None
 
     def _decrypt(self):
@@ -47,6 +56,7 @@ class BufferedDecryptingStream:
                 )
             else:
                 plaintext = self._decryptor.update(data) + self._decryptor.finalize()
+            plaintext = _unpad(plaintext, self._unpadder)
         except Exception as e:
             raise S3EncryptionClientError(f"Failed to decrypt object: {e}") from e
         self._plaintext = io.BytesIO(plaintext)
@@ -99,7 +109,7 @@ class DelayedAuthDecryptingStream:
     to streaming decryption with no tag holdback.
     """
 
-    def __init__(self, streaming_body, decryptor, tag_length=0):
+    def __init__(self, streaming_body, decryptor, tag_length=0, unpadder=None):
         """Initialize the delayed-auth decrypting stream.
 
         Args:
@@ -107,10 +117,12 @@ class DelayedAuthDecryptingStream:
             decryptor: A cipher decryptor object supporting update()/finalize()
                        (or finalize_with_tag() when tag_length > 0).
             tag_length: Length of the auth tag appended to ciphertext (0 for CBC).
+            unpadder: Optional PKCS7 unpadder for CBC mode.
         """
         self._body = streaming_body
         self._decryptor = decryptor
         self._tag_length = tag_length
+        self._unpadder = unpadder
         self._tag_buffer = b""
         self._finalized = False
 
@@ -164,8 +176,10 @@ class DelayedAuthDecryptingStream:
         self._tag_buffer = b""
         try:
             if tag:
-                return self._decryptor.finalize_with_tag(tag)
-            return self._decryptor.finalize()
+                plaintext = self._decryptor.finalize_with_tag(tag)
+            else:
+                plaintext = self._decryptor.finalize()
+            return _unpad(plaintext, self._unpadder)
         except Exception as e:
             raise S3EncryptionClientError(f"Decryption finalization failed: {e}") from e
 

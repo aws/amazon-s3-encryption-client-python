@@ -8,8 +8,10 @@ from unittest.mock import Mock
 
 import pytest
 
+from s3_encryption.exceptions import S3EncryptionClientError, S3EncryptionClientSecurityError
 from s3_encryption.materials.crypto_materials_manager import DefaultCryptoMaterialsManager
 from s3_encryption.materials.keyring import S3Keyring
+from s3_encryption.materials.materials import CommitmentPolicy, DecryptionMaterials
 from s3_encryption.pipelines import GetEncryptedObjectPipeline
 
 
@@ -45,7 +47,11 @@ class TestGetEncryptedObjectPipelineInstructionFile:
         cmm = DefaultCryptoMaterialsManager(mock_keyring)
 
         # Create pipeline with mocked S3 client
-        pipeline = GetEncryptedObjectPipeline(cmm, mock_s3_client)
+        pipeline = GetEncryptedObjectPipeline(
+            cmm,
+            commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+            s3_client=mock_s3_client,
+        )
 
         # Create mock response
         mock_response = {
@@ -65,6 +71,7 @@ class TestGetEncryptedObjectPipelineInstructionFile:
                 bucket="test-bucket",
                 key="test-key",
                 instruction_suffix=".instruction",
+                enable_delayed_authentication=False,
             )
 
         # Verify instruction file was fetched
@@ -105,7 +112,11 @@ class TestGetEncryptedObjectPipelineInstructionFile:
         cmm = DefaultCryptoMaterialsManager(mock_keyring)
 
         # Create pipeline with mocked S3 client
-        pipeline = GetEncryptedObjectPipeline(cmm, mock_s3_client)
+        pipeline = GetEncryptedObjectPipeline(
+            cmm,
+            commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+            s3_client=mock_s3_client,
+        )
 
         # Create mock response
         mock_response = {
@@ -125,6 +136,7 @@ class TestGetEncryptedObjectPipelineInstructionFile:
                 bucket="test-bucket",
                 key="test-key",
                 instruction_suffix=".instruction",
+                enable_delayed_authentication=False,
             )
 
         # Verify instruction file was fetched
@@ -137,7 +149,7 @@ class TestGetEncryptedObjectPipelineInstructionFile:
     ##% In the V3 message format, only the content metadata related to
     ##% the encrypted data is stored in the Instruction File.
     def test_decrypt_v3_from_instruction_file(self):
-        """Test decrypting V3 format with instruction file."""
+        """Test decrypting V3 format with instruction file (kms+context wrapping)."""
         # Object metadata contains V3 content keys only
         object_metadata = {
             "x-amz-c": "115",  # Compressed algorithm suite
@@ -146,11 +158,11 @@ class TestGetEncryptedObjectPipelineInstructionFile:
         }
 
         # Instruction file contains encrypted data key and wrapping algorithm
+        # Uses "12" (kms+context) with "x-amz-t" for encryption context
         instruction_file_metadata = {
             "x-amz-3": base64.b64encode(b"encrypted-key-data").decode("utf-8"),
-            "x-amz-w": "02",  # AES/GCM
-            "x-amz-m": json.dumps({"test-instruction": "material-desc-instruction"}),
-            "x-amz-crypto-instr-file": "",
+            "x-amz-w": "12",  # kms+context
+            "x-amz-t": json.dumps({"aws:x-amz-cek-alg": "AES/GCM/NoPadding"}),
         }
 
         # Create mock S3 client
@@ -166,7 +178,11 @@ class TestGetEncryptedObjectPipelineInstructionFile:
         cmm = DefaultCryptoMaterialsManager(mock_keyring)
 
         # Create pipeline with mocked S3 client
-        pipeline = GetEncryptedObjectPipeline(cmm, mock_s3_client)
+        pipeline = GetEncryptedObjectPipeline(
+            cmm,
+            commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+            s3_client=mock_s3_client,
+        )
 
         # Create mock response with encrypted data
         iv = os.urandom(12)
@@ -178,8 +194,6 @@ class TestGetEncryptedObjectPipelineInstructionFile:
         }
 
         # Mock the keyring to return decryption materials
-        from s3_encryption.materials.materials import DecryptionMaterials
-
         plaintext_data_key = os.urandom(32)
 
         mock_dec_materials = DecryptionMaterials(
@@ -192,13 +206,17 @@ class TestGetEncryptedObjectPipelineInstructionFile:
 
         mock_keyring.on_decrypt.return_value = mock_dec_materials
 
-        # This should fail with NotImplementedError since V3 decryption isn't implemented yet
-        with pytest.raises(NotImplementedError, match="V3 decryption not yet implemented"):
+        # V3 decryption is now implemented; with fake commitment data,
+        # key commitment verification will fail.
+        with pytest.raises(
+            S3EncryptionClientSecurityError, match="Key commitment verification failed"
+        ):
             pipeline.decrypt(
                 mock_response,
                 bucket="test-bucket",
                 key="test-key",
                 instruction_suffix=".instruction",
+                enable_delayed_authentication=False,
             )
 
         # Verify instruction file was fetched
@@ -232,7 +250,11 @@ class TestGetEncryptedObjectPipelineInstructionFile:
 
         mock_keyring = Mock(spec=S3Keyring)
         cmm = DefaultCryptoMaterialsManager(mock_keyring)
-        pipeline = GetEncryptedObjectPipeline(cmm, mock_s3_client)
+        pipeline = GetEncryptedObjectPipeline(
+            cmm,
+            commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+            s3_client=mock_s3_client,
+        )
 
         mock_response = {
             "Body": BytesIO(b"encrypted-test-data"),
@@ -249,8 +271,42 @@ class TestGetEncryptedObjectPipelineInstructionFile:
                 bucket="test-bucket",
                 key="test-key",
                 instruction_suffix=".custom-suffix",
+                enable_delayed_authentication=False,
             )
 
         mock_s3_client.get_object.assert_called_once_with(
             Bucket="test-bucket", Key="test-key.custom-suffix"
         )
+
+    def test_decrypt_v3_unsupported_wrap_alg(self):
+        """Test that V3 decryption with unsupported wrapping algorithm is rejected by the keyring."""
+        # V3 metadata with AES/GCM wrapping (02) — not supported by the KMS keyring
+        metadata = {
+            "x-amz-c": "115",
+            "x-amz-3": base64.b64encode(b"encrypted-key-data").decode("utf-8"),
+            "x-amz-w": "02",  # AES/GCM — unsupported by KMS keyring
+            "x-amz-m": json.dumps({"some": "material-desc"}),
+            "x-amz-d": base64.b64encode(b"key-commitment-data").decode("utf-8"),
+            "x-amz-i": base64.b64encode(b"test-message-id").decode("utf-8"),
+        }
+
+        mock_keyring = Mock(spec=S3Keyring)
+        # The keyring rejects wrapping algorithms it doesn't support
+        mock_keyring.on_decrypt.side_effect = S3EncryptionClientError(
+            "AES/GCM is not a valid key wrapping algorithm!"
+        )
+        cmm = DefaultCryptoMaterialsManager(mock_keyring)
+        pipeline = GetEncryptedObjectPipeline(
+            cmm,
+            commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+        )
+
+        mock_response = {
+            "Body": BytesIO(b"encrypted-test-data"),
+            "Metadata": metadata,
+        }
+
+        with pytest.raises(
+            S3EncryptionClientError, match="AES/GCM is not a valid key wrapping algorithm"
+        ):
+            pipeline.decrypt(mock_response, enable_delayed_authentication=False)
