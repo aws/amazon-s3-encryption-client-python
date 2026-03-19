@@ -68,4 +68,11 @@ jobs:
           path: coverage-report/
 
       - name: Check coverage threshold
-        run: uv run coverage report --fail-under=93
+        run: |
+          THRESHOLD=93
+          ACTUAL=$(uv run coverage report --format=total)
+          echo "Coverage: ${ACTUAL}% (threshold: ${THRESHOLD}%)"
+          if [ "$ACTUAL" -gt "$THRESHOLD" ]; then
+            echo "::warning::Coverage is ${ACTUAL}%, consider updating --fail-under to ${ACTUAL} in python-integ.yml"
+          fi
+          uv run coverage report --fail-under=$THRESHOLD
