@@ -6,8 +6,6 @@ import io
 
 from .exceptions import S3EncryptionClientError
 
-GCM_TAG_LENGTH = 16
-
 
 def _unpad(plaintext, unpadder):
     """Apply unpadder if provided, otherwise return plaintext as-is."""
@@ -18,10 +16,6 @@ def _unpad(plaintext, unpadder):
 
 class BufferedDecryptingStream:
     """A stream that buffers all ciphertext, decrypts, then releases plaintext.
-
-    For authenticated ciphers (GCM), no plaintext is released until the entire
-    ciphertext has been read and the auth tag verified. For unauthenticated
-    ciphers (CBC), all ciphertext is still buffered before decryption.
 
     Implements the same read interface as botocore's StreamingBody so it can be
     used as a drop-in replacement for parsed["Body"].
@@ -109,7 +103,7 @@ class DelayedAuthDecryptingStream:
     to streaming decryption with no tag holdback.
     """
 
-    def __init__(self, streaming_body, decryptor, tag_length=0, unpadder=None):
+    def __init__(self, streaming_body, decryptor, tag_length, unpadder=None):
         """Initialize the delayed-auth decrypting stream.
 
         Args:

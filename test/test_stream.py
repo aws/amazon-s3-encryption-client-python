@@ -9,8 +9,8 @@ from unittest.mock import Mock
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+from s3_encryption.materials import AlgorithmSuite
 from s3_encryption.stream import (
-    GCM_TAG_LENGTH,
     BufferedDecryptingStream,
     DelayedAuthDecryptingStream,
 )
@@ -51,7 +51,11 @@ class TestDelayedAuthReleasesBeforeVerification:
         body = _make_streaming_body(ciphertext_with_tag)
 
         decryptor = _make_gcm_decryptor(key, nonce)
-        stream = DelayedAuthDecryptingStream(body, decryptor, tag_length=GCM_TAG_LENGTH)
+        stream = DelayedAuthDecryptingStream(
+            body,
+            decryptor,
+            tag_length=AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY.cipher_tag_length_bytes,
+        )
         # read(256) decrypts a partial chunk via cipher.update(), releasing
         # plaintext without consuming the full ciphertext stream. The GCM tag
         # at the end of the stream has not been reached yet.
@@ -81,7 +85,11 @@ class TestBufferedWithholdsUntilVerification:
         body = _make_streaming_body(ciphertext_with_tag)
 
         decryptor = _make_gcm_decryptor(key, nonce)
-        stream = BufferedDecryptingStream(body, decryptor, tag_length=GCM_TAG_LENGTH)
+        stream = BufferedDecryptingStream(
+            body,
+            decryptor,
+            tag_length=AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY.cipher_tag_length_bytes,
+        )
         # read(1) triggers _decrypt(), which calls self._body.read() with no amt,
         # consuming the entire ciphertext and verifying the GCM tag before
         # returning even 1 byte of plaintext.
