@@ -19,14 +19,14 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: false
           token: ${{ secrets.PAT_FOR_SPEC }}
 
       # There are a lot of submodules here
       # This initializes the checkouts in parallel (--jobs)
-      # rather than in series the way actions/checkout@v5 does it.
+      # rather than in series the way actions/checkout@v6 does it.
 
       - name: Get CPU count
         id: cpu-count
@@ -89,7 +89,7 @@ jobs:
 
       # Cache Gradle dependencies and build outputs
       - name: Cache Gradle packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.gradle/caches
@@ -100,7 +100,7 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: arn:aws:iam::370957321024:role/S3EC-Python-Github-test-role
           aws-region: us-west-2
@@ -133,7 +133,7 @@ jobs:
 
       - name: Upload server logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: server-logs
           path: |
@@ -144,7 +144,7 @@ jobs:
 
       - name: Upload results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: results
           path: test-server/java-tests/build/reports/tests/integ
