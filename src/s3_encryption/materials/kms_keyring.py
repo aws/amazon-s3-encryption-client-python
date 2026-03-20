@@ -10,6 +10,7 @@ from attrs import define, field
 from botocore import client
 
 from ..exceptions import S3EncryptionClientError
+from ..materials.materials import AlgorithmSuite
 from .encrypted_data_key import EncryptedDataKey
 from .keyring import S3Keyring
 
@@ -76,7 +77,20 @@ class KmsKeyring(S3Keyring):
             ##= specification/s3-encryption/materials/s3-kms-keyring.md#supported-wrapping-algorithm-modes
             ##= type=implication
             ##% The KmsKeyring MUST NOT support encryption using KmsV1 mode.
-            encryption_context["aws:x-amz-cek-alg"] = "AES/GCM/NoPadding"
+            # For committing algorithm suites (V3), the encryption context algorithm
+            # value is the algorithm suite ID as a string ("115"), not the cipher name.
+            # For non-committing suites (V2), use the cipher name ("AES/GCM/NoPadding").
+            if (
+                enc_materials.encryption_algorithm
+                == AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+            ):
+                encryption_context["aws:x-amz-cek-alg"] = str(
+                    enc_materials.encryption_algorithm.suite_id
+                )
+            else:
+                encryption_context["aws:x-amz-cek-alg"] = (
+                    enc_materials.encryption_algorithm.cipher_name
+                )
 
             # Python implementation uses KMS GenerateDataKey instead of the spec's
             # EncryptDataKey pattern

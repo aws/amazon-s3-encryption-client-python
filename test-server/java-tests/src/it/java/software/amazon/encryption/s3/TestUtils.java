@@ -35,12 +35,15 @@ import org.joda.time.format.DateTimeFormat;
 import org.junit.jupiter.params.provider.Arguments;
 import com.amazonaws.regions.Region;
 import com.amazonaws.regions.Regions;
+import software.amazon.encryption.s3.model.CreateClientInput;
+import software.amazon.encryption.s3.model.CreateClientOutput;
 import software.amazon.encryption.s3.model.EncryptionAlgorithm;
 import software.amazon.encryption.s3.model.GetObjectInput;
 import software.amazon.encryption.s3.model.GetObjectOutput;
 import software.amazon.encryption.s3.model.KeyMaterial;
 import software.amazon.encryption.s3.model.PutObjectInput;
 import software.amazon.encryption.s3.model.PutObjectOutput;
+import software.amazon.encryption.s3.model.S3ECConfig;
 import software.amazon.encryption.s3.model.S3EncryptionClientError;
 import software.amazon.smithy.java.aws.client.restjson.RestJsonClientProtocol;
 import software.amazon.smithy.java.client.core.ClientConfig;
@@ -155,7 +158,7 @@ public class TestUtils {
     public static final Set<String> IMPROVED_VERSIONS =
         Set.of(
             JAVA_V4,
-            // PYTHON_V3,
+            PYTHON_V3,
             GO_V4,
             NET_V4,
             CPP_V3,
@@ -355,6 +358,17 @@ public class TestUtils {
     public static Stream<Arguments> improvedClientsForTest() {
         return serverMap.values().stream()
             .filter(target -> IMPROVED_VERSIONS.contains(target.getLanguageName()))
+            .map(Arguments::of);
+    }
+
+    /**
+     * Get stream of arguments for the Python V3 client only.
+     * Other languages can be added to this set as their commitment policy
+     * validation is confirmed.
+     */
+    public static Stream<Arguments> pythonV3ClientForTest() {
+        return serverMap.values().stream()
+            .filter(target -> PYTHON_V3.equals(target.getLanguageName()))
             .map(Arguments::of);
     }
 
@@ -663,6 +677,40 @@ public class TestUtils {
                 failures.size(), crossLanguageObjects.size(), 
                 String.join("\n", failures)
             ));
+        }
+    }
+
+    /**
+     * Attempts to encrypt an object and expects the operation to fail with an S3EncryptionClientError.
+     * This is used for negative tests where the client configuration should prevent encryption
+     * (e.g., commitment policy violations).
+     *
+     * The failure may occur during client creation (CreateClient) or during the PutObject call,
+     * depending on when the server-side S3EC validates the configuration.
+     */
+    public static void Encrypt_fails(
+        S3ECTestServerClient client,
+        S3ECConfig config,
+        String objectKey
+    ) {
+        try {
+            CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
+                .config(config)
+                .build());
+            String S3ECId = clientOutput.getClientId();
+
+            client.putObject(PutObjectInput.builder()
+                .clientID(S3ECId)
+                .key(objectKey)
+                .bucket(TestUtils.BUCKET)
+                .body(ByteBuffer.wrap(objectKey.getBytes(StandardCharsets.UTF_8)))
+                .build());
+
+            fail("Encryption should have failed for object: " + objectKey
+                + " with config commitmentPolicy=" + config.getCommitmentPolicy()
+                + " encryptionAlgorithm=" + config.getEncryptionAlgorithm());
+        } catch (S3EncryptionClientError e) {
+            // Expected - the S3EC should reject this configuration
         }
     }
 

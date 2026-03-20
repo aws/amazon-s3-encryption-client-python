@@ -35,7 +35,7 @@ class TestEncryptionMaterialsIntegration:
         assert isinstance(result, EncryptionMaterials)
         assert result.encryption_context == {
             "key1": "value1",
-            "aws:x-amz-cek-alg": "AES/GCM/NoPadding",
+            "aws:x-amz-cek-alg": "115",
         }
 
     def test_cmm_get_encryption_materials_with_dict(self):

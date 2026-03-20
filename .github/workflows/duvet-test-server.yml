@@ -14,11 +14,11 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       # There are a lot of submodules here
       # This initializes the checkouts in parallel (--jobs)
-      # rather than in series the way actions/checkout@v5 does it.
+      # rather than in series the way actions/checkout@v6 does it.
 
       - name: Get CPU count
         id: cpu-count
@@ -42,7 +42,7 @@ jobs:
         
       
       - name: Checkout CPP code cpp-v3
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: recursive
           repository: aws/aws-sdk-cpp
@@ -64,7 +64,7 @@ jobs:
 
       - name: Upload duvet reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-server-reports
           include-hidden-files: true
@@ -95,7 +95,7 @@ jobs:
 
       - name: Upload compliance dashboard
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: compliance-dashboard
           include-hidden-files: true

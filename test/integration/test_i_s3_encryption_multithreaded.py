@@ -16,6 +16,7 @@ import boto3
 from s3_encryption import S3EncryptionClient, S3EncryptionClientConfig
 from s3_encryption.exceptions import S3EncryptionClientError
 from s3_encryption.materials.kms_keyring import KmsKeyring
+from s3_encryption.materials.materials import AlgorithmSuite, CommitmentPolicy
 
 bucket = os.environ.get("CI_S3_BUCKET", "s3ec-python-github-test-bucket")
 region = os.environ.get("CI_AWS_REGION", "us-west-2")
@@ -38,7 +39,11 @@ def test_multithreaded_encryption_context_isolation():
     kms_client = boto3.client("kms", region_name=region)
     keyring = KmsKeyring(kms_client, kms_key_id)
     wrapped_client = boto3.client("s3")
-    config = S3EncryptionClientConfig(keyring)
+    config = S3EncryptionClientConfig(
+        keyring,
+        encryption_algorithm=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+        commitment_policy=CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
+    )
     s3ec = S3EncryptionClient(wrapped_client, config)
 
     # Number of threads to test with
@@ -150,7 +155,11 @@ def test_multithreaded_rapid_context_switching():
     kms_client = boto3.client("kms", region_name=region)
     keyring = KmsKeyring(kms_client, kms_key_id)
     wrapped_client = boto3.client("s3")
-    config = S3EncryptionClientConfig(keyring)
+    config = S3EncryptionClientConfig(
+        keyring,
+        encryption_algorithm=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+        commitment_policy=CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
+    )
     s3ec = S3EncryptionClient(wrapped_client, config)
 
     num_iterations = 20
@@ -228,7 +237,11 @@ def test_multithreaded_mixed_with_and_without_context():
     kms_client = boto3.client("kms", region_name=region)
     keyring = KmsKeyring(kms_client, kms_key_id)
     wrapped_client = boto3.client("s3")
-    config = S3EncryptionClientConfig(keyring)
+    config = S3EncryptionClientConfig(
+        keyring,
+        encryption_algorithm=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+        commitment_policy=CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
+    )
     s3ec = S3EncryptionClient(wrapped_client, config)
 
     errors = []

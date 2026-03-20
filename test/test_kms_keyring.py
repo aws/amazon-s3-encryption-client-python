@@ -128,7 +128,7 @@ class TestKmsKeyringOnEncrypt:
         result = keyring.on_encrypt(enc_materials)
 
         call_args = mock_kms_client.generate_data_key.call_args
-        assert call_args.kwargs["EncryptionContext"]["aws:x-amz-cek-alg"] == "AES/GCM/NoPadding"
+        assert call_args.kwargs["EncryptionContext"]["aws:x-amz-cek-alg"] == "115"
 
     def test_on_encrypt_sets_encrypted_data_key(self):
         """Test that on_encrypt sets the encrypted data key from KMS response."""

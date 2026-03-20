@@ -56,7 +56,7 @@ class TestObjectMetadata:
         # Verify that fields that are None are not included in the dictionary
         assert "x-amz-key" not in metadata_dict
         assert "x-amz-matdesc" not in metadata_dict
-        # Note: content_cipher_tag_length has a default value of "128"
+        # content_cipher_tag_length defaults to "128" for V1/V2
         assert metadata_dict.get("x-amz-tag-len") == "128"
         assert "x-amz-crypto-instr-file" not in metadata_dict
 
@@ -123,6 +123,9 @@ class TestObjectMetadata:
         assert metadata_dict["x-amz-i"] == "message-id"
         assert metadata_dict["x-amz-m"] == "mat-desc"
         assert metadata_dict["x-amz-t"] == "encryption-context"
+
+        # V3 metadata must NOT include V1/V2-only keys like x-amz-tag-len
+        assert "x-amz-tag-len" not in metadata_dict
 
     def test_is_v1_format(self):
         metadata = ObjectMetadata(
