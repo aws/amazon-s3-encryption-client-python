@@ -106,7 +106,9 @@ class TestCBCDecryption:
         )
 
         with pytest.raises(S3EncryptionClientError, match="ALG_AES_256_CBC_IV16_NO_KDF"):
-            pipeline.decrypt(_response(_v1_cbc_metadata()), enable_delayed_authentication=False)
+            pipeline.decrypt(
+                _response(_v1_cbc_metadata()), ".instruction", enable_delayed_authentication=False
+            )
 
     ##= specification/s3-encryption/decryption.md#cbc-decryption
     ##= type=test
@@ -149,7 +151,7 @@ class TestCBCDecryption:
         )
 
         result = pipeline.decrypt(
-            _response(metadata, ciphertext), enable_delayed_authentication=False
+            _response(metadata, ciphertext), ".instruction", enable_delayed_authentication=False
         )
         assert result.read() == plaintext
 
@@ -194,9 +196,9 @@ class TestCBCDecryption:
             keyring_return=dec_mats,
         )
 
-        with pytest.raises(S3EncryptionClientError, match="Failed to decrypt object"):
+        with pytest.raises(S3EncryptionClientError, match="Decryption finalization failed"):
             pipeline.decrypt(
-                _response(metadata, ciphertext), enable_delayed_authentication=False
+                _response(metadata, ciphertext), ".instruction", enable_delayed_authentication=False
             ).read()
 
 
@@ -294,7 +296,9 @@ class TestDecryptingWithCommitment:
             S3EncryptionClientSecurityError, match="Key commitment verification failed"
         ):
             pipeline.decrypt(
-                _response(metadata, b"fake-ciphertext"), enable_delayed_authentication=False
+                _response(metadata, b"fake-ciphertext"),
+                ".instruction",
+                enable_delayed_authentication=False,
             )
 
 
@@ -328,7 +332,9 @@ class TestKeyCommitmentPolicy:
         )
 
         with pytest.raises(S3EncryptionClientError, match="cannot decrypt non-key-committing"):
-            pipeline.decrypt(_response(_v2_gcm_metadata()), enable_delayed_authentication=False)
+            pipeline.decrypt(
+                _response(_v2_gcm_metadata()), ".instruction", enable_delayed_authentication=False
+            )
 
     def test_allow_decrypt_accepts_non_committing_suite(self):
         """REQUIRE_ENCRYPT_ALLOW_DECRYPT MUST allow non-committing algorithm suites."""
@@ -359,7 +365,7 @@ class TestKeyCommitmentPolicy:
         )
 
         result = pipeline.decrypt(
-            _response(metadata, ciphertext), enable_delayed_authentication=False
+            _response(metadata, ciphertext), ".instruction", enable_delayed_authentication=False
         )
         assert result.read() == plaintext
 
@@ -395,4 +401,6 @@ class TestLegacyDecryption:
         )
 
         with pytest.raises(S3EncryptionClientError, match="not configured to decrypt"):
-            pipeline.decrypt(_response(_v1_cbc_metadata()), enable_delayed_authentication=False)
+            pipeline.decrypt(
+                _response(_v1_cbc_metadata()), ".instruction", enable_delayed_authentication=False
+            )

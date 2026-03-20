@@ -91,5 +91,7 @@ class TestDefaultAlgorithmUsesKeyCommitment:
             cmm,
             commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
         )
-        result = decrypt_pipeline.decrypt(response, enable_delayed_authentication=False)
+        result = decrypt_pipeline.decrypt(
+            response, ".instruction", enable_delayed_authentication=False
+        )
         assert result.read() == plaintext

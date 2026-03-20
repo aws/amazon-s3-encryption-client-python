@@ -221,11 +221,11 @@ class S3EncryptionClientPlugin:
         )
         decrypted_data = pipeline.decrypt(
             response,
-            encryption_context,
-            bucket=getattr(self._context, _CTX_BUCKET, None),
-            key=getattr(self._context, _CTX_KEY, None),
             instruction_suffix=self.config.instruction_file_suffix,
             enable_delayed_authentication=self.config.enable_delayed_authentication,
+            encryption_context=encryption_context,
+            bucket=getattr(self._context, _CTX_BUCKET, None),
+            key=getattr(self._context, _CTX_KEY, None),
         )
 
         # Replace body with decrypting stream

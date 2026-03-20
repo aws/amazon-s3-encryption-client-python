@@ -98,3 +98,97 @@ class TestBufferedWithholdsUntilVerification:
         assert chunk == plaintext[:1]
         # _plaintext being set confirms full decrypt+verify already happened
         assert stream._plaintext is not None
+
+
+def _encrypt_cbc(plaintext: bytes):
+    """Encrypt plaintext with AES-CBC + PKCS7 padding, return (ciphertext, key, iv, unpadder)."""
+    from cryptography.hazmat.primitives.padding import PKCS7
+
+    key = os.urandom(32)
+    iv = os.urandom(16)
+    padder = PKCS7(128).padder()
+    padded = padder.update(plaintext) + padder.finalize()
+    encryptor = Cipher(algorithms.AES(key), modes.CBC(iv)).encryptor()
+    ciphertext = encryptor.update(padded) + encryptor.finalize()
+    unpadder = PKCS7(128).unpadder()
+    return ciphertext, key, iv, unpadder
+
+
+def _make_cbc_decryptor(key, iv):
+    return Cipher(algorithms.AES(key), modes.CBC(iv)).decryptor()
+
+
+class TestBufferedCBCDecryption:
+
+    def test_roundtrip(self):
+        plaintext = b"hello world, this is a CBC test!!"
+        ciphertext, key, iv, unpadder = _encrypt_cbc(plaintext)
+        stream = BufferedDecryptingStream(
+            _make_streaming_body(ciphertext),
+            _make_cbc_decryptor(key, iv),
+            tag_length=0,
+            unpadder=unpadder,
+        )
+        assert stream.read() == plaintext
+
+    def test_no_trailing_padding_bytes(self):
+        plaintext = b"short"
+        ciphertext, key, iv, unpadder = _encrypt_cbc(plaintext)
+        stream = BufferedDecryptingStream(
+            _make_streaming_body(ciphertext),
+            _make_cbc_decryptor(key, iv),
+            tag_length=0,
+            unpadder=unpadder,
+        )
+        assert stream.read() == plaintext
+
+
+class TestDelayedAuthCBCDecryption:
+
+    def test_roundtrip(self):
+        plaintext = b"hello world, this is a CBC test!!"
+        ciphertext, key, iv, unpadder = _encrypt_cbc(plaintext)
+        stream = DelayedAuthDecryptingStream(
+            _make_streaming_body(ciphertext),
+            _make_cbc_decryptor(key, iv),
+            tag_length=0,
+            unpadder=unpadder,
+        )
+        assert stream.read() == plaintext
+
+    def test_chunked_read(self):
+        plaintext = b"A" * 256
+        ciphertext, key, iv, unpadder = _encrypt_cbc(plaintext)
+        stream = DelayedAuthDecryptingStream(
+            _make_streaming_body(ciphertext),
+            _make_cbc_decryptor(key, iv),
+            tag_length=0,
+            unpadder=unpadder,
+        )
+        result = b""
+        while chunk := stream.read(64):
+            result += chunk
+        assert result == plaintext
+
+    def test_finalize_called(self):
+        plaintext = b"finalize me"
+        ciphertext, key, iv, unpadder = _encrypt_cbc(plaintext)
+        stream = DelayedAuthDecryptingStream(
+            _make_streaming_body(ciphertext),
+            _make_cbc_decryptor(key, iv),
+            tag_length=0,
+            unpadder=unpadder,
+        )
+        stream.read()
+        assert stream._finalized
+
+    def test_no_trailing_padding_bytes(self):
+        plaintext = b"short"
+        ciphertext, key, iv, unpadder = _encrypt_cbc(plaintext)
+        stream = DelayedAuthDecryptingStream(
+            _make_streaming_body(ciphertext),
+            _make_cbc_decryptor(key, iv),
+            tag_length=0,
+            unpadder=unpadder,
+        )
+        assert stream.read() == plaintext

@@ -6,6 +6,19 @@ import io
 
 from .exceptions import S3EncryptionClientError
 
+##= specification/s3-encryption/client.md#set-buffer-size
+##= type=exception
+##= reason=Optional Feature that is a two-way door to implement later
+##% The S3EC SHOULD accept a configurable buffer size which refers to the maximum ciphertext length in bytes to store in memory when Delayed Authentication mode is disabled.
+##= specification/s3-encryption/client.md#set-buffer-size
+##= type=exception
+##= reason=Optional Feature that is a two-way door to implement later
+##% If Delayed Authentication mode is enabled, and the buffer size has been set to a value other than its default, the S3EC MUST throw an exception.
+##= specification/s3-encryption/client.md#set-buffer-size
+##= type=exception
+##= reason=Optional Feature that is a two-way door to implement later
+##% If Delayed Authentication mode is disabled, and no buffer size is provided, the S3EC MUST set the buffer size to a reasonable default.
+
 
 def _unpad(plaintext, unpadder):
     """Apply unpadder if provided, otherwise return plaintext as-is."""
@@ -21,7 +34,7 @@ class BufferedDecryptingStream:
     used as a drop-in replacement for parsed["Body"].
     """
 
-    def __init__(self, streaming_body, decryptor, tag_length=0, unpadder=None):
+    def __init__(self, streaming_body, decryptor, tag_length, unpadder=None):
         """Initialize the buffered decrypting stream.
 
         Args:
@@ -56,7 +69,7 @@ class BufferedDecryptingStream:
         self._plaintext = io.BytesIO(plaintext)
 
     def read(self, amt=None):
-        """Read decrypted data.
+        """Reads the entire ciphertext stream and then returns decrypted data.
 
         Args:
             amt: Number of bytes to read. If None, reads all remaining data.
@@ -70,7 +83,7 @@ class BufferedDecryptingStream:
         return self._plaintext.read(amt)
 
     def iter_chunks(self, chunk_size=1024):
-        """Iterate over decrypted data in chunks.
+        """Reads the entire ciphertext stream and then iterates over decrypted data in chunks.
 
         Args:
             chunk_size: Size of each chunk in bytes.
@@ -136,9 +149,19 @@ class DelayedAuthDecryptingStream:
 
         if self._tag_length == 0:
             # No tag to hold back (e.g. CBC)
-            if not raw:
+            data = self._tag_buffer + raw
+            self._tag_buffer = b""
+            if not data:
                 return self._finalize(tag=b"")
-            return self._decryptor.update(raw)
+            plaintext = self._decryptor.update(data)
+            if self._unpadder:
+                plaintext = self._unpadder.update(plaintext)
+            peek = self._body.read(1)
+            if peek:
+                self._tag_buffer = peek
+            else:
+                plaintext += self._finalize(tag=b"")
+            return plaintext
 
         data = self._tag_buffer + raw
         if len(data) <= self._tag_length:
@@ -173,7 +196,9 @@ class DelayedAuthDecryptingStream:
                 plaintext = self._decryptor.finalize_with_tag(tag)
             else:
                 plaintext = self._decryptor.finalize()
-            return _unpad(plaintext, self._unpadder)
+            if self._unpadder:
+                plaintext = self._unpadder.update(plaintext) + self._unpadder.finalize()
+            return plaintext
         except Exception as e:
             raise S3EncryptionClientError(f"Decryption finalization failed: {e}") from e
 

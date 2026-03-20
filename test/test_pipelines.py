@@ -68,10 +68,10 @@ class TestGetEncryptedObjectPipelineInstructionFile:
         with pytest.raises(Exception, match="Keyring called"):
             pipeline.decrypt(
                 mock_response,
-                bucket="test-bucket",
-                key="test-key",
                 instruction_suffix=".instruction",
                 enable_delayed_authentication=False,
+                bucket="test-bucket",
+                key="test-key",
             )
 
         # Verify instruction file was fetched
@@ -133,10 +133,10 @@ class TestGetEncryptedObjectPipelineInstructionFile:
         with pytest.raises(Exception, match="Keyring called"):
             pipeline.decrypt(
                 mock_response,
-                bucket="test-bucket",
-                key="test-key",
                 instruction_suffix=".instruction",
                 enable_delayed_authentication=False,
+                bucket="test-bucket",
+                key="test-key",
             )
 
         # Verify instruction file was fetched
@@ -213,10 +213,10 @@ class TestGetEncryptedObjectPipelineInstructionFile:
         ):
             pipeline.decrypt(
                 mock_response,
-                bucket="test-bucket",
-                key="test-key",
                 instruction_suffix=".instruction",
                 enable_delayed_authentication=False,
+                bucket="test-bucket",
+                key="test-key",
             )
 
         # Verify instruction file was fetched
@@ -268,10 +268,10 @@ class TestGetEncryptedObjectPipelineInstructionFile:
         with pytest.raises(Exception, match="Keyring called"):
             pipeline.decrypt(
                 mock_response,
-                bucket="test-bucket",
-                key="test-key",
                 instruction_suffix=".custom-suffix",
                 enable_delayed_authentication=False,
+                bucket="test-bucket",
+                key="test-key",
             )
 
         mock_s3_client.get_object.assert_called_once_with(
@@ -309,4 +309,4 @@ class TestGetEncryptedObjectPipelineInstructionFile:
         with pytest.raises(
             S3EncryptionClientError, match="AES/GCM is not a valid key wrapping algorithm"
         ):
-            pipeline.decrypt(mock_response, enable_delayed_authentication=False)
+            pipeline.decrypt(mock_response, ".instruction", enable_delayed_authentication=False)

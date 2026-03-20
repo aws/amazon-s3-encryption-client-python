@@ -111,7 +111,7 @@ class TestCommitmentPolicy:
             commitment_policy=CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
             keyring_return=dec_mats,
         )
-        result = pipeline.decrypt(response, enable_delayed_authentication=False)
+        result = pipeline.decrypt(response, ".instruction", enable_delayed_authentication=False)
         assert result.read() == plaintext
 
     ##= specification/s3-encryption/key-commitment.md#commitment-policy
@@ -126,7 +126,7 @@ class TestCommitmentPolicy:
             commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT,
             keyring_return=dec_mats,
         )
-        result = pipeline.decrypt(response, enable_delayed_authentication=False)
+        result = pipeline.decrypt(response, ".instruction", enable_delayed_authentication=False)
         assert result.read() == plaintext
 
     ##= specification/s3-encryption/key-commitment.md#commitment-policy
@@ -142,7 +142,7 @@ class TestCommitmentPolicy:
             keyring_return=dec_mats,
         )
         with pytest.raises(S3EncryptionClientError, match="cannot decrypt non-key-committing"):
-            pipeline.decrypt(response, enable_delayed_authentication=False)
+            pipeline.decrypt(response, ".instruction", enable_delayed_authentication=False)
 
     def test_require_require_allows_committing_decrypt(self):
         """REQUIRE_ENCRYPT_REQUIRE_DECRYPT MUST allow decryption with committing suites."""
@@ -153,5 +153,5 @@ class TestCommitmentPolicy:
             commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
             keyring_return=dec_mats,
         )
-        result = pipeline.decrypt(response, enable_delayed_authentication=False)
+        result = pipeline.decrypt(response, ".instruction", enable_delayed_authentication=False)
         assert result.read() == plaintext
