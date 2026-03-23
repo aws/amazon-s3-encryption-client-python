@@ -27,7 +27,11 @@ from .materials.materials import (
     EncryptionMaterials,
 )
 from .metadata import ObjectMetadata
-from .stream import BufferedDecryptingStream, DelayedAuthDecryptingStream
+from .stream import (
+    BufferedDecryptingStream,
+    DelayedAuthCBCDecryptingStream,
+    DelayedAuthGCMDecryptingStream,
+)
 
 
 @define
@@ -449,11 +453,16 @@ class GetEncryptedObjectPipeline:
     def _make_decrypting_stream(
         streaming_body, decryptor, tag_length, enable_delayed_authentication, unpadder=None
     ):
-        """Return a BufferedDecryptingStream or DelayedAuthDecryptingStream."""
+        """Return the appropriate decrypting stream.
+
+        When delayed auth is disabled, BufferedDecryptingStream buffers all
+        ciphertext and verifies before releasing any plaintext.
+        When delayed auth is enabled, the CBC or GCM specific stream is used.
+        """
         if enable_delayed_authentication:
-            return DelayedAuthDecryptingStream(
-                streaming_body, decryptor, tag_length=tag_length, unpadder=unpadder
-            )
+            if tag_length == 0:
+                return DelayedAuthCBCDecryptingStream(streaming_body, decryptor, unpadder=unpadder)
+            return DelayedAuthGCMDecryptingStream(streaming_body, decryptor, tag_length=tag_length)
         ##= specification/s3-encryption/client.md#enable-delayed-authentication
         ##= type=implementation
         ##% When disabled the S3EC MUST NOT release plaintext from a stream which has not been authenticated.

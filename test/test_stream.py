@@ -12,7 +12,8 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from s3_encryption.materials import AlgorithmSuite
 from s3_encryption.stream import (
     BufferedDecryptingStream,
-    DelayedAuthDecryptingStream,
+    DelayedAuthCBCDecryptingStream,
+    DelayedAuthGCMDecryptingStream,
 )
 
 
@@ -51,7 +52,7 @@ class TestDelayedAuthReleasesBeforeVerification:
         body = _make_streaming_body(ciphertext_with_tag)
 
         decryptor = _make_gcm_decryptor(key, nonce)
-        stream = DelayedAuthDecryptingStream(
+        stream = DelayedAuthGCMDecryptingStream(
             body,
             decryptor,
             tag_length=AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY.cipher_tag_length_bytes,
@@ -148,10 +149,9 @@ class TestDelayedAuthCBCDecryption:
     def test_roundtrip(self):
         plaintext = b"hello world, this is a CBC test!!"
         ciphertext, key, iv, unpadder = _encrypt_cbc(plaintext)
-        stream = DelayedAuthDecryptingStream(
+        stream = DelayedAuthCBCDecryptingStream(
             _make_streaming_body(ciphertext),
             _make_cbc_decryptor(key, iv),
-            tag_length=0,
             unpadder=unpadder,
         )
         assert stream.read() == plaintext
@@ -159,10 +159,9 @@ class TestDelayedAuthCBCDecryption:
     def test_chunked_read(self):
         plaintext = b"A" * 256
         ciphertext, key, iv, unpadder = _encrypt_cbc(plaintext)
-        stream = DelayedAuthDecryptingStream(
+        stream = DelayedAuthCBCDecryptingStream(
             _make_streaming_body(ciphertext),
             _make_cbc_decryptor(key, iv),
-            tag_length=0,
             unpadder=unpadder,
         )
         result = b""
@@ -173,10 +172,9 @@ class TestDelayedAuthCBCDecryption:
     def test_finalize_called(self):
         plaintext = b"finalize me"
         ciphertext, key, iv, unpadder = _encrypt_cbc(plaintext)
-        stream = DelayedAuthDecryptingStream(
+        stream = DelayedAuthCBCDecryptingStream(
             _make_streaming_body(ciphertext),
             _make_cbc_decryptor(key, iv),
-            tag_length=0,
             unpadder=unpadder,
         )
         stream.read()
@@ -185,10 +183,9 @@ class TestDelayedAuthCBCDecryption:
     def test_no_trailing_padding_bytes(self):
         plaintext = b"short"
         ciphertext, key, iv, unpadder = _encrypt_cbc(plaintext)
-        stream = DelayedAuthDecryptingStream(
+        stream = DelayedAuthCBCDecryptingStream(
             _make_streaming_body(ciphertext),
             _make_cbc_decryptor(key, iv),
-            tag_length=0,
             unpadder=unpadder,
         )
         assert stream.read() == plaintext

@@ -4,6 +4,9 @@
 
 import io
 
+from attrs import define, field
+from botocore.response import StreamingBody
+
 from .exceptions import S3EncryptionClientError
 
 ##= specification/s3-encryption/client.md#set-buffer-size
@@ -27,28 +30,25 @@ def _unpad(plaintext, unpadder):
     return unpadder.update(plaintext) + unpadder.finalize()
 
 
-class BufferedDecryptingStream:
+# slots=False because StreamingBody extends IOBase which already has __weakref__.
+@define(slots=False)
+class BufferedDecryptingStream(StreamingBody):
     """A stream that buffers all ciphertext, decrypts, then releases plaintext.
 
-    Implements the same read interface as botocore's StreamingBody so it can be
-    used as a drop-in replacement for parsed["Body"].
+    Extends botocore's StreamingBody so it can be used as a drop-in replacement
+    for parsed["Body"], inheriting iter_chunks, iter_lines, __iter__, etc.
     """
 
-    def __init__(self, streaming_body, decryptor, tag_length, unpadder=None):
-        """Initialize the buffered decrypting stream.
+    _body: object = field()
+    _decryptor: object = field()
+    _tag_length: int = field()
+    _unpadder: object = field(default=None)
+    _plaintext: object = field(init=False, default=None)
 
-        Args:
-            streaming_body: The original StreamingBody containing ciphertext.
-            decryptor: A cipher decryptor object supporting update()/finalize()
-                       (or finalize_with_tag() when tag_length > 0).
-            tag_length: Length of the auth tag appended to ciphertext (0 for CBC).
-            unpadder: Optional PKCS7 unpadder for CBC mode.
-        """
-        self._body = streaming_body
-        self._decryptor = decryptor
-        self._tag_length = tag_length
-        self._unpadder = unpadder
-        self._plaintext = None
+    def __attrs_post_init__(self):  # noqa: D105
+        # Initialize StreamingBody with a placeholder; _raw_stream is replaced
+        # on first read after decryption.
+        super().__init__(io.BytesIO(), content_length=None)
 
     def _decrypt(self):
         """Read all ciphertext, decrypt and verify, cache plaintext."""
@@ -67,6 +67,14 @@ class BufferedDecryptingStream:
         except Exception as e:
             raise S3EncryptionClientError(f"Failed to decrypt object: {e}") from e
         self._plaintext = io.BytesIO(plaintext)
+        self._raw_stream = self._plaintext
+
+    # Inherited iter_chunks, iter_lines, __iter__, and __next__ all delegate
+    # to self.read(), which calls _decrypt(). No override needed.
+
+    def readable(self):  # noqa: D102
+        self._decrypt()
+        return self._raw_stream.readable()
 
     def read(self, amt=None):
         """Reads the entire ciphertext stream and then returns decrypted data.
@@ -82,21 +90,17 @@ class BufferedDecryptingStream:
             return self._plaintext.read()
         return self._plaintext.read(amt)
 
-    def iter_chunks(self, chunk_size=1024):
-        """Reads the entire ciphertext stream and then iterates over decrypted data in chunks.
-
-        Args:
-            chunk_size: Size of each chunk in bytes.
-
-        Yields:
-            bytes: Chunks of decrypted plaintext.
-        """
+    def readinto(self, b):  # noqa: D102
         self._decrypt()
-        while True:
-            chunk = self._plaintext.read(chunk_size)
-            if not chunk:
-                break
-            yield chunk
+        return self._raw_stream.readinto(b)
+
+    def tell(self):  # noqa: D102
+        self._decrypt()
+        return self._raw_stream.tell()
+
+    def __enter__(self):  # noqa: D105
+        self._decrypt()
+        return self._raw_stream
 
     def close(self):
         """Close the underlying stream."""
@@ -107,100 +111,184 @@ class BufferedDecryptingStream:
 ##= specification/s3-encryption/client.md#enable-delayed-authentication
 ##= type=implementation
 ##% When enabled, the S3EC MAY release plaintext from a stream which has not been authenticated.
-class DelayedAuthDecryptingStream:
-    """A stream that releases plaintext before full verification.
+# slots=False because StreamingBody extends IOBase which already has __weakref__.
+@define(slots=False)
+class DelayedAuthCBCDecryptingStream(StreamingBody):
+    """A delayed-auth stream for AES-CBC decryption.
 
-    Plaintext is released incrementally via cipher.update(). For authenticated
-    ciphers (GCM), the auth tag is only verified when the stream is fully
-    consumed. For unauthenticated ciphers (CBC), this behaves identically
-    to streaming decryption with no tag holdback.
+    Extends botocore's StreamingBody so it can be used as a drop-in replacement
+    for parsed["Body"], inheriting iter_chunks, iter_lines, __iter__, etc.
+
+    CBC has no auth tag, so plaintext is released incrementally via
+    cipher.update(). A 1-byte peek-ahead detects stream exhaustion so the
+    PKCS7 unpadder can be finalized.
     """
 
-    def __init__(self, streaming_body, decryptor, tag_length, unpadder=None):
-        """Initialize the delayed-auth decrypting stream.
+    _body: object = field()
+    _decryptor: object = field()
+    _unpadder: object = field()
+    _peek_buffer: bytes = field(init=False, default=b"")
+    _finalized: bool = field(init=False, default=False)
 
-        Args:
-            streaming_body: The original StreamingBody containing ciphertext.
-            decryptor: A cipher decryptor object supporting update()/finalize()
-                       (or finalize_with_tag() when tag_length > 0).
-            tag_length: Length of the auth tag appended to ciphertext (0 for CBC).
-            unpadder: Optional PKCS7 unpadder for CBC mode.
-        """
-        self._body = streaming_body
-        self._decryptor = decryptor
-        self._tag_length = tag_length
-        self._unpadder = unpadder
-        self._tag_buffer = b""
-        self._finalized = False
+    def __attrs_post_init__(self):  # noqa: D105
+        # Initialize StreamingBody; _raw_stream is unused since plaintext is
+        # produced incrementally via read().
+        super().__init__(io.BytesIO(), content_length=None)
+
+    # Inherited iter_chunks, iter_lines, __iter__, and __next__ all delegate
+    # to self.read(). No override needed.
+
+    def readable(self):  # noqa: D102
+        return not self._finalized
 
     def read(self, amt=None):
-        """Read and decrypt data, releasing plaintext before authentication.
-
-        When tag_length > 0, the last tag_length bytes of ciphertext are the
-        auth tag. We hold back a rolling buffer so the tag is never passed
-        to update().
-        """
+        """Read and decrypt CBC ciphertext, releasing plaintext incrementally."""
+        # Stream already fully consumed and finalized; nothing left to return.
         if self._finalized:
             return b""
 
+        # Read the next chunk of raw ciphertext from the underlying stream.
         raw = self._body.read(amt)
+
+        # Prepend any previously held-back peek byte to the new data.
+        data = self._peek_buffer + raw
+        self._peek_buffer = b""
+
+        # No data at all; the stream is empty.
+        if not data:
+            return self._finalize()
+
+        # Decrypt incrementally; plaintext is released immediately.
+        plaintext = self._decryptor.update(data)
+        plaintext = self._unpadder.update(plaintext)
+
+        # Peek 1 byte ahead to detect stream exhaustion. If the stream
+        # is exhausted we must finalize now to flush the unpadder.
+        peek = self._body.read(1)
+        if peek:
+            # Stream continues; stash the peeked byte for the next read.
+            self._peek_buffer = peek
+        else:
+            # Stream exhausted; finalize to flush any remaining padding.
+            plaintext += self._finalize()
+
+        return plaintext
+
+    def _finalize(self):
+        """Finalize CBC decryption and flush the unpadder."""
+        self._finalized = True
+        try:
+            plaintext = self._decryptor.finalize()
+            plaintext = self._unpadder.update(plaintext) + self._unpadder.finalize()
+            return plaintext
+        except Exception as e:
+            raise S3EncryptionClientError(f"Decryption finalization failed: {e}") from e
+
+    def __enter__(self):  # noqa: D105
+        return self
+
+    def close(self):
+        """Close the underlying stream."""
+        if hasattr(self._body, "close"):
+            self._body.close()
+
+
+##= specification/s3-encryption/client.md#enable-delayed-authentication
+##= type=implementation
+##% When enabled, the S3EC MAY release plaintext from a stream which has not been authenticated.
+# slots=False because StreamingBody extends IOBase which already has __weakref__.
+@define(slots=False)
+class DelayedAuthGCMDecryptingStream(StreamingBody):
+    """A delayed-auth stream for AES-GCM decryption.
+
+    Extends botocore's StreamingBody so it can be used as a drop-in replacement
+    for parsed["Body"], inheriting iter_chunks, iter_lines, __iter__, etc.
+
+    Plaintext is released incrementally via cipher.update(). The last
+    tag_length bytes of ciphertext are the GCM auth tag, held back in a
+    rolling buffer. The tag is only verified via finalize_with_tag() when
+    the stream is fully consumed.
+    """
+
+    _body: object = field()
+    _decryptor: object = field()
+    _tag_length: int = field()
+    _tag_buffer: bytes = field(init=False, default=b"")
+    _finalized: bool = field(init=False, default=False)
+
+    def __attrs_post_init__(self):  # noqa: D105
+        # Initialize StreamingBody; _raw_stream is unused since plaintext is
+        # produced incrementally via read().
+        super().__init__(io.BytesIO(), content_length=None)
+
+    # Inherited iter_chunks, iter_lines, __iter__, and __next__ all delegate
+    # to self.read(). No override needed.
+
+    def readable(self):  # noqa: D102
+        return not self._finalized
+
+    def read(self, amt=None):
+        """Read and decrypt GCM ciphertext, holding back the trailing auth tag."""
+        # Stream already fully consumed and finalized; nothing left to return.
+        if self._finalized:
+            return b""
+
+        # Read the next chunk of raw ciphertext from the underlying stream.
+        raw = self._body.read(amt)
+
+        # No new data and no held-back bytes; the stream is empty.
         if not raw and not self._tag_buffer:
             return b""
 
-        if self._tag_length == 0:
-            # No tag to hold back (e.g. CBC)
-            data = self._tag_buffer + raw
-            self._tag_buffer = b""
-            if not data:
-                return self._finalize(tag=b"")
-            plaintext = self._decryptor.update(data)
-            if self._unpadder:
-                plaintext = self._unpadder.update(plaintext)
-            peek = self._body.read(1)
-            if peek:
-                self._tag_buffer = peek
-            else:
-                plaintext += self._finalize(tag=b"")
-            return plaintext
-
+        # Combine any previously held-back bytes with the new data.
         data = self._tag_buffer + raw
+
+        # Not enough data to separate ciphertext from tag yet.
         if len(data) <= self._tag_length:
             if raw:
+                # More data may arrive; buffer everything and wait.
                 self._tag_buffer = data
                 return b""
+            # No more data coming; everything buffered is the tag.
             return self._finalize(tag=data)
 
+        # Split: the last tag_length bytes are the candidate tag;
+        # everything before is ciphertext safe to decrypt now.
         self._tag_buffer = data[-self._tag_length :]
         ciphertext = data[: -self._tag_length]
         plaintext = self._decryptor.update(ciphertext)
 
-        # Check if underlying stream is exhausted
+        # Peek 1 byte ahead to detect whether the underlying stream is
+        # exhausted. This determines if the current tag_buffer is truly
+        # the final GCM tag or just more ciphertext.
         peek = self._body.read(1)
         if peek:
+            # Stream continues; the peeked byte may shift what we thought
+            # was the tag back into ciphertext territory.
             self._tag_buffer = self._tag_buffer + peek
             if len(self._tag_buffer) > self._tag_length:
+                # Extra bytes beyond tag_length are ciphertext; decrypt them.
                 extra_ct = self._tag_buffer[: -self._tag_length]
                 self._tag_buffer = self._tag_buffer[-self._tag_length :]
                 plaintext += self._decryptor.update(extra_ct)
         else:
+            # Stream exhausted; tag_buffer holds the final GCM auth tag.
             plaintext += self._finalize(tag=self._tag_buffer)
 
         return plaintext
 
     def _finalize(self, tag):
-        """Finalize decryption, verifying the auth tag if present."""
+        """Finalize GCM decryption, verifying the auth tag."""
         self._finalized = True
         self._tag_buffer = b""
         try:
-            if tag:
-                plaintext = self._decryptor.finalize_with_tag(tag)
-            else:
-                plaintext = self._decryptor.finalize()
-            if self._unpadder:
-                plaintext = self._unpadder.update(plaintext) + self._unpadder.finalize()
+            plaintext = self._decryptor.finalize_with_tag(tag)
             return plaintext
         except Exception as e:
             raise S3EncryptionClientError(f"Decryption finalization failed: {e}") from e
+
+    def __enter__(self):  # noqa: D105
+        return self
 
     def close(self):
         """Close the underlying stream."""
