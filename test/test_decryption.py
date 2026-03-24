@@ -196,7 +196,7 @@ class TestCBCDecryption:
             keyring_return=dec_mats,
         )
 
-        with pytest.raises(S3EncryptionClientError, match="Decryption finalization failed"):
+        with pytest.raises(S3EncryptionClientError, match="Failed to decrypt CBC content"):
             pipeline.decrypt(
                 _response(metadata, ciphertext), ".instruction", enable_delayed_authentication=False
             ).read()
