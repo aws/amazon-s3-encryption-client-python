@@ -28,7 +28,7 @@ from .materials.materials import (
 )
 from .metadata import ObjectMetadata
 from .stream import (
-    BufferedDecryptingStream,
+    BufferedDecryptingGCMStream,
     DelayedAuthCBCDecryptingStream,
     DelayedAuthGCMDecryptingStream,
 )
@@ -416,14 +416,7 @@ class GetEncryptedObjectPipeline:
                 decryptor = cipher.decryptor()
                 # Remove PKCS7 padding (compatible with PKCS5Padding for 16-byte block ciphers)
                 unpadder = PKCS7(dec_materials.algorithm_suite.cipher_block_size_bits).unpadder()
-                return self._make_decrypting_stream(
-                    streaming_body,
-                    decryptor,
-                    tag_length=dec_materials.algorithm_suite.cipher_tag_length_bytes,
-                    # AES-CBC does not have an Auth tag, and thus should always be streamed.
-                    enable_delayed_authentication=True,
-                    unpadder=unpadder,
-                )
+                return DelayedAuthCBCDecryptingStream(streaming_body, decryptor, unpadder=unpadder)
             case AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF:
                 ##= specification/s3-encryption/encryption.md#alg-aes-256-gcm-iv12-tag16-no-kdf
                 ##= type=implementation
@@ -433,7 +426,7 @@ class GetEncryptedObjectPipeline:
                     algorithms.AES(dec_materials.plaintext_data_key), modes.GCM(dec_materials.iv)
                 )
                 decryptor = cipher.decryptor()
-                return self._make_decrypting_stream(
+                return self._make_decrypting_gcm_stream(
                     streaming_body,
                     decryptor,
                     tag_length=dec_materials.algorithm_suite.cipher_tag_length_bytes,
@@ -450,8 +443,8 @@ class GetEncryptedObjectPipeline:
                 raise S3EncryptionClientError("Unknown algorithm suite!")
 
     @staticmethod
-    def _make_decrypting_stream(
-        streaming_body, decryptor, tag_length, enable_delayed_authentication, unpadder=None
+    def _make_decrypting_gcm_stream(
+        streaming_body, decryptor, tag_length, enable_delayed_authentication
     ):
         """Return the appropriate decrypting stream.
 
@@ -460,14 +453,12 @@ class GetEncryptedObjectPipeline:
         When delayed auth is enabled, the CBC or GCM specific stream is used.
         """
         if enable_delayed_authentication:
-            if tag_length == 0:
-                return DelayedAuthCBCDecryptingStream(streaming_body, decryptor, unpadder=unpadder)
             return DelayedAuthGCMDecryptingStream(streaming_body, decryptor, tag_length=tag_length)
         ##= specification/s3-encryption/client.md#enable-delayed-authentication
         ##= type=implementation
         ##% When disabled the S3EC MUST NOT release plaintext from a stream which has not been authenticated.
-        return BufferedDecryptingStream(
-            streaming_body, decryptor, tag_length=tag_length, unpadder=unpadder
+        return BufferedDecryptingGCMStream(
+            streaming_body, decryptor, tag_length=tag_length
         )
 
     def _decrypt_kc_gcm_streaming(
@@ -518,7 +509,7 @@ class GetEncryptedObjectPipeline:
         )
         decryptor = cipher.decryptor()
         decryptor.authenticate_additional_data(dec_materials.algorithm_suite.suite_id_bytes)
-        return self._make_decrypting_stream(
+        return self._make_decrypting_gcm_stream(
             streaming_body,
             decryptor,
             tag_length=dec_materials.algorithm_suite.cipher_tag_length_bytes,

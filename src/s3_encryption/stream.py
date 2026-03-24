@@ -23,16 +23,9 @@ from .exceptions import S3EncryptionClientError
 ##% If Delayed Authentication mode is disabled, and no buffer size is provided, the S3EC MUST set the buffer size to a reasonable default.
 
 
-def _unpad(plaintext, unpadder):
-    """Apply unpadder if provided, otherwise return plaintext as-is."""
-    if unpadder is None:
-        return plaintext
-    return unpadder.update(plaintext) + unpadder.finalize()
-
-
 # slots=False because StreamingBody extends IOBase which already has __weakref__.
 @define(slots=False)
-class BufferedDecryptingStream(StreamingBody):
+class BufferedDecryptingGCMStream(StreamingBody):
     """A stream that buffers all ciphertext, decrypts, then releases plaintext.
 
     Extends botocore's StreamingBody so it can be used as a drop-in replacement
@@ -42,7 +35,6 @@ class BufferedDecryptingStream(StreamingBody):
     _body: object = field()
     _decryptor: object = field()
     _tag_length: int = field()
-    _unpadder: object = field(default=None)
     _plaintext: object = field(init=False, default=None)
 
     def __attrs_post_init__(self):  # noqa: D105
@@ -63,7 +55,6 @@ class BufferedDecryptingStream(StreamingBody):
                 )
             else:
                 plaintext = self._decryptor.update(data) + self._decryptor.finalize()
-            plaintext = _unpad(plaintext, self._unpadder)
         except Exception as e:
             raise S3EncryptionClientError(f"Failed to decrypt object: {e}") from e
         self._plaintext = io.BytesIO(plaintext)
@@ -182,7 +173,7 @@ class DelayedAuthCBCDecryptingStream(StreamingBody):
             plaintext = self._unpadder.update(plaintext) + self._unpadder.finalize()
             return plaintext
         except Exception as e:
-            raise S3EncryptionClientError(f"Decryption finalization failed: {e}") from e
+            raise S3EncryptionClientError(f"Failed to decrypt CBC content: {e}") from e
 
     def __enter__(self):  # noqa: D105
         return self
@@ -285,7 +276,7 @@ class DelayedAuthGCMDecryptingStream(StreamingBody):
             plaintext = self._decryptor.finalize_with_tag(tag)
             return plaintext
         except Exception as e:
-            raise S3EncryptionClientError(f"Decryption finalization failed: {e}") from e
+            raise S3EncryptionClientError(f"Failed to decrypt GCM content: {e}") from e
 
     def __enter__(self):  # noqa: D105
         return self
