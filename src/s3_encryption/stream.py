@@ -220,6 +220,12 @@ class DelayedAuthGCMDecryptingStream(StreamingBody):
 
     def read(self, amt=None):
         """Read and decrypt GCM ciphertext, holding back the trailing auth tag."""
+        if amt is not None and 0 < amt < self._tag_length + 1:
+            raise S3EncryptionClientError(
+                f"read size {amt} is too small; must be at least {self._tag_length + 1} "
+                f"to distinguish ciphertext from the GCM auth tag"
+            )
+
         # Stream already fully consumed and finalized; nothing left to return.
         if self._finalized:
             return b""

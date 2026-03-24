@@ -463,6 +463,15 @@ class TestDelayedAuthGCMDecryption:
             result += chunk
         assert result == plaintext
 
+    def test_read_too_small_raises_error(self):
+        plaintext = b"small read"
+        ct, key, nonce = _encrypt_gcm(plaintext)
+        stream = DelayedAuthGCMDecryptingStream(
+            _make_streaming_body(ct), _make_gcm_decryptor(key, nonce), tag_length=16
+        )
+        with pytest.raises(S3EncryptionClientError, match="read size 7 is too small"):
+            stream.read(7)
+
 
 # ---------------------------------------------------------------------------
 # Parameterized edge-case plaintext lengths
@@ -492,8 +501,8 @@ class TestEdgeCasePlaintextLengths:
         )
         result = b""
         while stream.readable():
-            # odd read size to stress tag-splitting
-            chunk = stream.read(7)
+            # minimum valid read size for tag_length=16
+            chunk = stream.read(17)
             result += chunk
         assert result == plaintext
 
