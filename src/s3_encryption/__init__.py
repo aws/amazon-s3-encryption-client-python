@@ -34,7 +34,27 @@ _GET_OBJECT_CLEANUP_ATTRS = (_CTX_ENCRYPTION_CONTEXT, _CTX_BUCKET, _CTX_KEY)
 
 @define
 class S3EncryptionClientConfig:
-    """Configuration object for the S3 Encryption Client."""
+    """Configuration for the S3 Encryption Client.
+
+    Attributes:
+        keyring: Keyring used for encrypting/decrypting data keys.
+        encryption_algorithm: Algorithm suite for encryption. Defaults to
+            ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY (V3 key-committing).
+        commitment_policy: Key commitment policy for encryption and decryption.
+            Defaults to REQUIRE_ENCRYPT_REQUIRE_DECRYPT.
+        enable_legacy_unauthenticated_modes: If True, allow decryption of objects
+            encrypted with legacy CBC algorithm suites. Defaults to False.
+        cmm: Crypto materials manager. Defaults to a DefaultCryptoMaterialsManager
+            wrapping the provided keyring.
+        instruction_file_suffix: Suffix appended to the S3 object key when
+            fetching instruction files. Defaults to ".instruction".
+        enable_delayed_authentication: If True, release plaintext from streams
+            before GCM tag verification. Defaults to False.
+
+    Raises:
+        S3EncryptionClientError: If the encryption algorithm is legacy, or if
+            the algorithm suite is incompatible with the commitment policy.
+    """
 
     keyring: AbstractKeyring
     encryption_algorithm: AlgorithmSuite = field(
