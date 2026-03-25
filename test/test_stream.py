@@ -129,7 +129,7 @@ class TestDelayedAuthCBCDecryption:
         stream = DelayedAuthCBCDecryptingStream(
             _make_streaming_body(ciphertext),
             _make_cbc_decryptor(key, iv),
-unpadder=unpadder,
+            unpadder=unpadder,
         )
         assert stream.read() == plaintext
 
@@ -154,8 +154,9 @@ unpadder=unpadder,
             _make_cbc_decryptor(key, iv),
             unpadder=unpadder,
         )
-        stream.read()
+        actual = stream.read()
         assert stream._finalized
+        assert actual == plaintext
 
     def test_no_trailing_padding_bytes(self):
         plaintext = b"short"
@@ -187,8 +188,9 @@ unpadder=unpadder,
             unpadder=unpadder,
         )
         assert stream.readable()
-        stream.read()
+        actual = stream.read()
         assert not stream.readable()
+        assert actual == plaintext
 
     def test_close_delegates_to_body(self):
         plaintext = b"close me"
@@ -506,7 +508,7 @@ class TestEdgeCasePlaintextLengths:
             result += chunk
         assert result == plaintext
 
-    @pytest.mark.parametrize("length", [l for l in EDGE_CASE_LENGTHS if l > 0])
+    @pytest.mark.parametrize("length", EDGE_CASE_LENGTHS)
     def test_delayed_auth_cbc(self, length):
         plaintext = os.urandom(length)
         ciphertext, key, iv, unpadder = _encrypt_cbc(plaintext)
