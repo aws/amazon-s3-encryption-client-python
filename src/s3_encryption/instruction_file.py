@@ -99,7 +99,9 @@ def fetch_instruction_file(s3_client, bucket: str, key: str) -> dict[str, Any]:
         response = s3_client.get_object(Bucket=bucket, Key=key)
     except ClientError as e:
         raise S3EncryptionClientError(
-            "Exception encountered while fetching Instruction File."
+            f"Exception encountered while fetching Instruction File. "
+            f"Ensure the object you are attempting to decrypt has been encrypted using the S3 Encryption Client. "
+            f"Instruction key: {key}"
         ) from e
     finally:
         # Clear the flags after the call
