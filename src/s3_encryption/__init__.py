@@ -49,7 +49,9 @@ class S3EncryptionClientConfig:
         instruction_file_suffix: Suffix appended to the S3 object key when
             fetching instruction files. Defaults to ".instruction".
         enable_delayed_authentication: If True, release plaintext from streams
-            before GCM tag verification. Defaults to False.
+            before GCM tag verification. Defaults to False. Has no effect for
+            CBC encrypted ciphertext, which is always streamed as there is no
+            authentication tag.
 
     Raises:
         S3EncryptionClientError: If the encryption algorithm is legacy, or if
