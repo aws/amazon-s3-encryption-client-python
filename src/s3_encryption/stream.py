@@ -170,8 +170,7 @@ class DelayedAuthCBCDecryptingStream(StreamingBody):
         self._finalized = True
         try:
             plaintext = self._decryptor.finalize()
-            plaintext = self._unpadder.update(plaintext) + self._unpadder.finalize()
-            return plaintext
+            return self._unpadder.update(plaintext) + self._unpadder.finalize()
         except Exception as e:
             raise S3EncryptionClientError(f"Failed to decrypt CBC content: {e}") from e
 
@@ -279,8 +278,7 @@ class DelayedAuthGCMDecryptingStream(StreamingBody):
         self._finalized = True
         self._tag_buffer = b""
         try:
-            plaintext = self._decryptor.finalize_with_tag(tag)
-            return plaintext
+            return self._decryptor.finalize_with_tag(tag)
         except Exception as e:
             raise S3EncryptionClientError(f"Failed to decrypt GCM content: {e}") from e
 
