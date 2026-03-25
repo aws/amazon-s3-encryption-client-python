@@ -237,11 +237,11 @@ class GetEncryptedObjectPipeline:
 
         Args:
             response (dict): The response from S3 containing the encrypted data and metadata
-            instruction_suffix(str): suffix for instruction file
+            instruction_suffix (str): suffix for instruction file
+            enable_delayed_authentication (bool): If True, release plaintext before GCM tag verification.
             encryption_context (dict, optional): Additional context for decryption
             bucket (str, optional): S3 bucket name (required for instruction file)
             key (str, optional): S3 object key (required for instruction file)
-            enable_delayed_authentication (bool): If True, release plaintext before GCM tag verification.
 
         Returns:
             A decrypting stream (BufferedDecryptingStream or DelayedAuthDecryptingStream).
@@ -457,9 +457,7 @@ class GetEncryptedObjectPipeline:
         ##= specification/s3-encryption/client.md#enable-delayed-authentication
         ##= type=implementation
         ##% When disabled the S3EC MUST NOT release plaintext from a stream which has not been authenticated.
-        return BufferedDecryptingGCMStream(
-            streaming_body, decryptor, tag_length=tag_length
-        )
+        return BufferedDecryptingGCMStream(streaming_body, decryptor, tag_length=tag_length)
 
     def _decrypt_kc_gcm_streaming(
         self, dec_materials, metadata, streaming_body, enable_delayed_authentication
@@ -469,9 +467,6 @@ class GetEncryptedObjectPipeline:
         Performs HKDF key derivation, key commitment verification, then returns
         a streaming decryptor.
         """
-        ##= specification/s3-encryption/encryption.md#alg-aes-256-gcm-hkdf-sha512-commit-key
-        ##= type=implementation
-        ##% The client MUST use HKDF to derive the key commitment value and the derived encrypting key as described in [Key Derivation](key-derivation.md).
         message_id = base64.b64decode(metadata.message_id_v3)
         stored_commitment = base64.b64decode(metadata.key_commitment_v3)
 
