@@ -25,7 +25,7 @@ from .exceptions import S3EncryptionClientError
 
 # slots=False because StreamingBody extends IOBase which already has __weakref__.
 @define(slots=False)
-class BufferedDecryptingGCMStream(StreamingBody):
+class GCMBufferedDecryptingStream(StreamingBody):
     """A stream that buffers all ciphertext, decrypts, then releases plaintext.
 
     Extends botocore's StreamingBody so it can be used as a drop-in replacement
@@ -35,12 +35,15 @@ class BufferedDecryptingGCMStream(StreamingBody):
     _body: object = field()
     _decryptor: object = field()
     _tag_length: int = field()
+    # _content_length intentionally collides with super's _content_length
+    _content_length: int = field()
     _plaintext: object = field(init=False, default=None)
 
     def __attrs_post_init__(self):  # noqa: D105
-        # Initialize StreamingBody with a placeholder; _raw_stream is replaced
-        # on first read after decryption.
-        super().__init__(io.BytesIO(), content_length=None)
+        # By passing in content_length, and updating _amount_read in read(),
+        # we support the super's normal progression.
+        # However, we do not support the super's _verify_content_length.
+        super().__init__(io.BytesIO(), content_length=self._content_length)
 
     def _decrypt(self):
         """Read all ciphertext, decrypt and verify, cache plaintext."""
@@ -77,9 +80,11 @@ class BufferedDecryptingGCMStream(StreamingBody):
             bytes: Decrypted plaintext bytes.
         """
         self._decrypt()
-        if amt is None:
-            return self._plaintext.read()
-        return self._plaintext.read(amt)
+        chunk = self._plaintext.read() if amt is None else self._plaintext.read(amt)
+        # super._amount_read can be used for progress tracking
+        # noinspection PyUnresolvedReferences
+        self._amount_read += len(chunk)
+        return chunk
 
     def readinto(self, b):  # noqa: D102
         self._decrypt()
@@ -104,7 +109,7 @@ class BufferedDecryptingGCMStream(StreamingBody):
 ##% When enabled, the S3EC MAY release plaintext from a stream which has not been authenticated.
 # slots=False because StreamingBody extends IOBase which already has __weakref__.
 @define(slots=False)
-class DelayedAuthCBCDecryptingStream(StreamingBody):
+class CBCDecryptingStream(StreamingBody):
     """A delayed-auth stream for AES-CBC decryption.
 
     Extends botocore's StreamingBody so it can be used as a drop-in replacement
@@ -118,13 +123,16 @@ class DelayedAuthCBCDecryptingStream(StreamingBody):
     _body: object = field()
     _decryptor: object = field()
     _unpadder: object = field()
+    # _content_length intentionally collides with super's _content_length
+    _content_length: int = field()
     _peek_buffer: bytes = field(init=False, default=b"")
     _finalized: bool = field(init=False, default=False)
 
     def __attrs_post_init__(self):  # noqa: D105
-        # Initialize StreamingBody; _raw_stream is unused since plaintext is
-        # produced incrementally via read().
-        super().__init__(io.BytesIO(), content_length=None)
+        # By passing in content_length, and updating _amount_read in read(),
+        # we support the super's normal progression.
+        # However, we do not support the super's _verify_content_length.
+        super().__init__(io.BytesIO(), content_length=self._content_length)
 
     # Inherited iter_chunks, iter_lines, __iter__, and __next__ all delegate
     # to self.read(). No override needed.
@@ -163,6 +171,9 @@ class DelayedAuthCBCDecryptingStream(StreamingBody):
             # Stream exhausted; finalize to flush any remaining padding.
             plaintext += self._finalize()
 
+        # super._amount_read can be used for progress tracking
+        # noinspection PyUnresolvedReferences
+        self._amount_read += len(plaintext)
         return plaintext
 
     def _finalize(self):
@@ -188,28 +199,32 @@ class DelayedAuthCBCDecryptingStream(StreamingBody):
 ##% When enabled, the S3EC MAY release plaintext from a stream which has not been authenticated.
 # slots=False because StreamingBody extends IOBase which already has __weakref__.
 @define(slots=False)
-class DelayedAuthGCMDecryptingStream(StreamingBody):
+class GCMDelayedAuthDecryptingStream(StreamingBody):
     """A delayed-auth stream for AES-GCM decryption.
 
     Extends botocore's StreamingBody so it can be used as a drop-in replacement
     for parsed["Body"], inheriting iter_chunks, iter_lines, __iter__, etc.
 
-    Plaintext is released incrementally via cipher.update(). The last
-    tag_length bytes of ciphertext are the GCM auth tag, held back in a
-    rolling buffer. The tag is only verified via finalize_with_tag() when
-    the stream is fully consumed.
+    Plaintext is released incrementally via cipher.update(). The content_length
+    from the S3 GetObject response tells us exactly how many bytes are ciphertext
+    vs. the trailing GCM auth tag. The tag is only verified via finalize_with_tag() when the ciphertext is
+    fully consumed.
     """
 
     _body: object = field()
     _decryptor: object = field()
     _tag_length: int = field()
-    _tag_buffer: bytes = field(init=False, default=b"")
+    # _content_length intentionally collides with super's _content_length
+    _content_length: int = field()
+    _ciphertext_remaining: int = field(init=False)
     _finalized: bool = field(init=False, default=False)
 
     def __attrs_post_init__(self):  # noqa: D105
-        # Initialize StreamingBody; _raw_stream is unused since plaintext is
-        # produced incrementally via read().
-        super().__init__(io.BytesIO(), content_length=None)
+        # By passing in content_length, and updating _amount_read in read(),
+        # we support the super's normal progression.
+        # However, we do not support the super's _verify_content_length.
+        super().__init__(io.BytesIO(), content_length=self._content_length)
+        self._ciphertext_remaining = self._content_length - self._tag_length
 
     # Inherited iter_chunks, iter_lines, __iter__, and __next__ all delegate
     # to self.read(). No override needed.
@@ -219,65 +234,42 @@ class DelayedAuthGCMDecryptingStream(StreamingBody):
 
     def read(self, amt=None):
         """Read and decrypt GCM ciphertext, holding back the trailing auth tag."""
-        if amt is not None and 0 < amt < self._tag_length + 1:
-            raise S3EncryptionClientError(
-                f"read size {amt} is too small; must be at least {self._tag_length + 1} "
-                f"to distinguish ciphertext from the GCM auth tag"
-            )
-
         # Stream already fully consumed and finalized; nothing left to return.
         if self._finalized:
             return b""
 
-        # Read the next chunk of raw ciphertext from the underlying stream.
-        raw = self._body.read(amt)
+        # No ciphertext left — read the tag and finalize.
+        if self._ciphertext_remaining <= 0:
+            return self._finalize()
 
-        # No new data and no held-back bytes; the stream is empty.
-        if not raw and not self._tag_buffer:
-            return b""
+        # Read at most ciphertext_remaining bytes (never into the tag).
+        to_read = (
+            self._ciphertext_remaining if amt is None else min(amt, self._ciphertext_remaining)
+        )
+        raw = self._body.read(to_read)
 
-        # Combine any previously held-back bytes with the new data.
-        data = self._tag_buffer + raw
+        if not raw:
+            return self._finalize()
 
-        # Not enough data to separate ciphertext from tag yet.
-        if len(data) <= self._tag_length:
-            if raw:
-                # More data may arrive; buffer everything and wait.
-                self._tag_buffer = data
-                return b""
-            # No more data coming; everything buffered is the tag.
-            return self._finalize(tag=data)
+        self._ciphertext_remaining -= len(raw)
+        plaintext = self._decryptor.update(raw)
 
-        # Split: the last tag_length bytes are the candidate tag;
-        # everything before is ciphertext safe to decrypt now.
-        self._tag_buffer = data[-self._tag_length :]
-        ciphertext = data[: -self._tag_length]
-        plaintext = self._decryptor.update(ciphertext)
+        # If we've consumed all ciphertext, finalize now.
+        if self._ciphertext_remaining <= 0:
+            plaintext += self._finalize()
 
-        # Peek 1 byte ahead to detect whether the underlying stream is
-        # exhausted. This determines if the current tag_buffer is truly
-        # the final GCM tag or just more ciphertext.
-        peek = self._body.read(1)
-        if peek:
-            # Stream continues; the peeked byte may shift what we thought
-            # was the tag back into ciphertext territory.
-            self._tag_buffer = self._tag_buffer + peek
-            if len(self._tag_buffer) > self._tag_length:
-                # Extra bytes beyond tag_length are ciphertext; decrypt them.
-                extra_ct = self._tag_buffer[: -self._tag_length]
-                self._tag_buffer = self._tag_buffer[-self._tag_length :]
-                plaintext += self._decryptor.update(extra_ct)
-        else:
-            # Stream exhausted; tag_buffer holds the final GCM auth tag.
-            plaintext += self._finalize(tag=self._tag_buffer)
-
+        # super._amount_read can be used for progress tracking
+        # noinspection PyUnresolvedReferences
+        self._amount_read += len(plaintext)
         return plaintext
 
-    def _finalize(self, tag):
-        """Finalize GCM decryption, verifying the auth tag."""
+    def _finalize(self):
+        """Read the GCM tag from the stream and verify it."""
+        if self._finalized:
+            return b""
         self._finalized = True
-        self._tag_buffer = b""
         try:
+            tag = self._body.read(self._tag_length)
             return self._decryptor.finalize_with_tag(tag)
         except Exception as e:
             raise S3EncryptionClientError(f"Failed to decrypt GCM content: {e}") from e

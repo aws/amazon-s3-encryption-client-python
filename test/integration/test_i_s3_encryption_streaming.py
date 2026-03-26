@@ -16,8 +16,8 @@ from s3_encryption import S3EncryptionClient, S3EncryptionClientConfig
 from s3_encryption.materials.kms_keyring import KmsKeyring
 from s3_encryption.materials.materials import AlgorithmSuite, CommitmentPolicy
 from s3_encryption.stream import (
-    BufferedDecryptingGCMStream,
-    DelayedAuthGCMDecryptingStream,
+    GCMBufferedDecryptingStream,
+    GCMDelayedAuthDecryptingStream,
 )
 
 bucket = os.environ.get("CI_S3_BUCKET", "s3ec-python-github-test-bucket")
@@ -73,7 +73,7 @@ def test_buffered_roundtrip(algorithm_suite, commitment_policy):
     response = s3ec.get_object(Bucket=bucket, Key=key)
 
     body = response["Body"]
-    assert isinstance(body, BufferedDecryptingGCMStream)
+    assert isinstance(body, GCMBufferedDecryptingStream)
     assert body.read() == data
 
 
@@ -109,7 +109,7 @@ def test_delayed_auth_roundtrip(algorithm_suite, commitment_policy):
     response = s3ec.get_object(Bucket=bucket, Key=key)
 
     body = response["Body"]
-    assert isinstance(body, DelayedAuthGCMDecryptingStream)
+    assert isinstance(body, GCMDelayedAuthDecryptingStream)
     assert body.read() == data
 
 

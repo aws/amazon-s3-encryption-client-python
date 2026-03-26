@@ -28,9 +28,9 @@ from .materials.materials import (
 )
 from .metadata import ObjectMetadata
 from .stream import (
-    BufferedDecryptingGCMStream,
-    DelayedAuthCBCDecryptingStream,
-    DelayedAuthGCMDecryptingStream,
+    CBCDecryptingStream,
+    GCMBufferedDecryptingStream,
+    GCMDelayedAuthDecryptingStream,
 )
 
 
@@ -248,6 +248,7 @@ class GetEncryptedObjectPipeline:
         """
         # Convert the metadata dictionary to an ObjectMetadata instance
         streaming_body = response.get("Body")
+        content_length = response.get("ContentLength")
         encryption_metadata = response.get("Metadata", {})
         metadata = ObjectMetadata.from_dict(encryption_metadata)
 
@@ -416,7 +417,9 @@ class GetEncryptedObjectPipeline:
                 decryptor = cipher.decryptor()
                 # Remove PKCS7 padding (compatible with PKCS5Padding for 16-byte block ciphers)
                 unpadder = PKCS7(dec_materials.algorithm_suite.cipher_block_size_bits).unpadder()
-                return DelayedAuthCBCDecryptingStream(streaming_body, decryptor, unpadder=unpadder)
+                return CBCDecryptingStream(
+                    streaming_body, decryptor, unpadder=unpadder, content_length=content_length
+                )
             case AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF:
                 ##= specification/s3-encryption/encryption.md#alg-aes-256-gcm-iv12-tag16-no-kdf
                 ##= type=implementation
@@ -431,6 +434,7 @@ class GetEncryptedObjectPipeline:
                     decryptor,
                     tag_length=dec_materials.algorithm_suite.cipher_tag_length_bytes,
                     enable_delayed_authentication=enable_delayed_authentication,
+                    content_length=content_length,
                 )
             case AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY:
                 return self._decrypt_kc_gcm_streaming(
@@ -438,13 +442,14 @@ class GetEncryptedObjectPipeline:
                     metadata,
                     streaming_body,
                     enable_delayed_authentication=enable_delayed_authentication,
+                    content_length=content_length,
                 )
             case _:
                 raise S3EncryptionClientError("Unknown algorithm suite!")
 
     @staticmethod
     def _make_decrypting_gcm_stream(
-        streaming_body, decryptor, tag_length, enable_delayed_authentication
+        streaming_body, decryptor, tag_length, enable_delayed_authentication, content_length
     ):
         """Return the appropriate decrypting stream.
 
@@ -453,14 +458,21 @@ class GetEncryptedObjectPipeline:
         When delayed auth is enabled, the CBC or GCM specific stream is used.
         """
         if enable_delayed_authentication:
-            return DelayedAuthGCMDecryptingStream(streaming_body, decryptor, tag_length=tag_length)
+            return GCMDelayedAuthDecryptingStream(
+                streaming_body,
+                decryptor,
+                tag_length=tag_length,
+                content_length=content_length,
+            )
         ##= specification/s3-encryption/client.md#enable-delayed-authentication
         ##= type=implementation
         ##% When disabled the S3EC MUST NOT release plaintext from a stream which has not been authenticated.
-        return BufferedDecryptingGCMStream(streaming_body, decryptor, tag_length=tag_length)
+        return GCMBufferedDecryptingStream(
+            streaming_body, decryptor, tag_length=tag_length, content_length=content_length
+        )
 
     def _decrypt_kc_gcm_streaming(
-        self, dec_materials, metadata, streaming_body, enable_delayed_authentication
+        self, dec_materials, metadata, streaming_body, enable_delayed_authentication, content_length
     ):
         """Decrypt content encrypted with ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY.
 
@@ -509,6 +521,7 @@ class GetEncryptedObjectPipeline:
             decryptor,
             tag_length=dec_materials.algorithm_suite.cipher_tag_length_bytes,
             enable_delayed_authentication=enable_delayed_authentication,
+            content_length=content_length,
         )
 
     def _decrypt_v2(self, metadata, encryption_context) -> DecryptionMaterials:

@@ -139,3 +139,18 @@ class TestS3EncryptionClientPlugin:
         # Should raise error
         with pytest.raises(S3EncryptionClientError, match="Instruction file contains invalid keys"):
             plugin.on_get_object_after_call(parsed)
+
+    def test_missing_content_length_raises_error(self):
+        """Test that a missing ContentLength in the S3 response raises an error."""
+        mock_keyring = Mock(spec=S3Keyring)
+        config = S3EncryptionClientConfig(keyring=mock_keyring)
+        plugin = S3EncryptionClientPlugin(config)
+        plugin._context.key = "my-object"
+
+        parsed = {
+            "Body": StreamingBody(io.BytesIO(b"data"), 4),
+            "Metadata": {},
+        }
+
+        with pytest.raises(S3EncryptionClientError, match="missing ContentLength.*Key: my-object"):
+            plugin.on_get_object_after_call(parsed)
