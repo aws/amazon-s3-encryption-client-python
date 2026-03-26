@@ -330,7 +330,7 @@ class TestGCMBufferedDecryptingStream:
         assert n == 64
         assert bytes(buf) == plaintext
 
-    def test_enter_returns_raw_stream(self):
+    def test_enter_returns_self(self):
         plaintext = b"enter"
         ct, key, nonce = _encrypt_gcm(plaintext)
         stream = GCMBufferedDecryptingStream(
@@ -339,8 +339,7 @@ class TestGCMBufferedDecryptingStream:
             tag_length=16,
             content_length=len(ct),
         )
-        inner = stream.__enter__()
-        assert inner.read() == plaintext
+        assert stream.__enter__() is stream
 
     def test_close_delegates(self):
         """Asserts that close is implemented by botocore's StreamingBody"""
@@ -589,3 +588,13 @@ class TestEdgeCasePlaintextLengths:
             # odd read size to stress tag-splitting/padding
             result += stream.read(7)
         assert result == plaintext
+
+
+class TestGCMDelayedAuthContentLengthValidation:
+
+    def test_content_length_less_than_tag_length_raises(self):
+        """ContentLength smaller than the GCM tag must raise immediately."""
+        stream_body = _make_streaming_body(b"\x00" * 8)
+        decryptor = _make_gcm_decryptor(os.urandom(32), os.urandom(12))
+        with pytest.raises(S3EncryptionClientError, match="less than GCM tag length"):
+            GCMDelayedAuthDecryptingStream(stream_body, decryptor, tag_length=16, content_length=8)

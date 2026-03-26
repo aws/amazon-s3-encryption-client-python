@@ -96,7 +96,7 @@ class GCMBufferedDecryptingStream(StreamingBody):
 
     def __enter__(self):  # noqa: D105
         self._decrypt()
-        return self._raw_stream
+        return self
 
     def close(self):
         """Close the underlying stream."""
@@ -225,6 +225,10 @@ class GCMDelayedAuthDecryptingStream(StreamingBody):
         # However, we do not support the super's _verify_content_length.
         super().__init__(io.BytesIO(), content_length=self._content_length)
         self._ciphertext_remaining = self._content_length - self._tag_length
+        if self._ciphertext_remaining < 0:
+            raise S3EncryptionClientError(
+                f"Malformed Input: Content Length ({self._content_length}) is less than GCM tag length ({self._tag_length})"
+            )
 
     # Inherited iter_chunks, iter_lines, __iter__, and __next__ all delegate
     # to self.read(). No override needed.

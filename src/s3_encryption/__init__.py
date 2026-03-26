@@ -228,14 +228,14 @@ class S3EncryptionClientPlugin:
         # The parsed response already has the Body as a StreamingBody
         # We need to read it, decrypt it, and replace it
 
-        # Create a response dict that matches what the pipeline expects
+        # content_length is going to the cipher-text's content length
         content_length = parsed.get("ContentLength")
         if content_length is None:
             obj_key = getattr(self._context, _CTX_KEY, None)
             raise S3EncryptionClientError(
                 f"S3 response is missing ContentLength and is invalid. Key: {obj_key}"
             )
-
+        # Create a response dict that matches what the pipeline expects
         response = {
             "Body": parsed.get("Body"),
             "Metadata": parsed.get("Metadata", {}),
