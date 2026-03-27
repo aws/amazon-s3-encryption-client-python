@@ -33,19 +33,18 @@ jobs:
       python-version: ${{ inputs.python-version || '3.11' }}
     secrets: inherit
 
-#  TODO(#161): Slack CI Webhook
-#  notify:
-#    needs:
-#      [
-#        run-test-server,
-#        python-integ
-#      ]
-#    permissions:
-#      id-token: write
-#      contents: read
-#    if: ${{ failure() }}
-#    uses: ./.github/workflows/slack-notification.yml
-#    with:
-#      message: "Daily CI failed on `${{ github.repository }}`. View run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-#    secrets:
-#      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_CI }}
+  notify:
+    needs:
+      [
+        run-test-server,
+        python-integ
+      ]
+    permissions:
+      id-token: write
+      contents: read
+    if: ${{ failure() }}
+    uses: ./.github/workflows/slack-notification.yml
+    with:
+      message: "Daily CI failed on `${{ github.repository }}`. View run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+    secrets:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_CI }}
