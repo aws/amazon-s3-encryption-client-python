@@ -1,0 +1,51 @@
+name: Daily CI
+
+on:
+  schedule:
+    # 5 AM PST = 1 PM UTC, Monday–Friday
+    - cron: "0 13 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      python-version:
+        description: 'Python version to use'
+        default: '3.11'
+        required: false
+        type: string
+
+jobs:
+  run-test-server:
+    permissions:
+      id-token: write
+      contents: read
+    name: Run TestServer Tests
+    uses: ./.github/workflows/test-server.yml
+    with:
+      python-version: ${{ inputs.python-version || '3.11' }}
+    secrets: inherit
+
+  python-integ:
+    permissions:
+      id-token: write
+      contents: read
+    name: Python Integration Tests
+    uses: ./.github/workflows/python-integ.yml
+    with:
+      python-version: ${{ inputs.python-version || '3.11' }}
+    secrets: inherit
+
+#  TODO(#161): Slack CI Webhook
+#  notify:
+#    needs:
+#      [
+#        run-test-server,
+#        python-integ
+#      ]
+#    permissions:
+#      id-token: write
+#      contents: read
+#    if: ${{ failure() }}
+#    uses: ./.github/workflows/slack-notification.yml
+#    with:
+#      message: "Daily CI failed on `${{ github.repository }}`. View run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+#    secrets:
+#      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_CI }}
