@@ -47,12 +47,10 @@ def instruction_file_get(
 
     # 2. Decrypt using a custom instruction file suffix.
     # The client will fetch "<key>.custom-suffix-instruction" for the encryption metadata.
-    custom_config = S3EncryptionClientConfig(
-        keyring=keyring,
-        instruction_file_suffix=".custom-suffix-instruction",
+    # InstructionFileSuffix is a per-request keyword argument on get_object,
+    # so the same client can use different suffixes per request.
+    response = s3ec.get_object(
+        Bucket=bucket, Key=key, InstructionFileSuffix=".custom-suffix-instruction"
     )
-    custom_s3ec = S3EncryptionClient(wrapped_s3_client=s3_client, config=custom_config)
-
-    response = custom_s3ec.get_object(Bucket=bucket, Key=key)
     plaintext = response["Body"].read()
     assert plaintext == expected_plaintext, "Custom suffix: decrypted plaintext does not match"
