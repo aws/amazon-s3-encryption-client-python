@@ -43,7 +43,7 @@ jobs:
       id-token: write
       contents: read
     if: ${{ failure() }}
-    uses: ./.github/workflows/slack-notification.yml
+    uses: aws/aws-cryptographic-material-providers-library/.github/workflows/slack-notification.yml@main
     with:
       message: "Daily CI failed on `${{ github.repository }}`. View run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
     secrets:
