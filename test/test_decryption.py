@@ -74,7 +74,7 @@ def _v2_gcm_metadata():
 
 
 def _response(metadata, body=b"ciphertext"):
-    return {"Body": BytesIO(body), "Metadata": metadata}
+    return {"Body": BytesIO(body), "Metadata": metadata, "ContentLength": len(body)}
 
 
 # ---------------------------------------------------------------------------

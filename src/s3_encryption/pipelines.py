@@ -15,6 +15,7 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.padding import PKCS7
 
+from .decryptor import AesCbcDecryptor, AesGcmDecryptor
 from .exceptions import S3EncryptionClientError
 from .instruction_file import fetch_instruction_file
 from .key_derivation import derive_keys, verify_commitment
@@ -28,9 +29,8 @@ from .materials.materials import (
 )
 from .metadata import ObjectMetadata
 from .stream import (
-    CBCDecryptingStream,
-    GCMBufferedDecryptingStream,
-    GCMDelayedAuthDecryptingStream,
+    BufferedDecryptingStream,
+    DecryptingStream,
 )
 
 
@@ -392,84 +392,84 @@ class GetEncryptedObjectPipeline:
         if enable_delayed_authentication is None:
             raise S3EncryptionClientError("enable_delayed_authentication must be explicitly set")
 
-        # Build cipher decryptor and return streaming wrapper based on algorithm suite
+        # Build decryptor and return streaming wrapper based on algorithm suite
         match dec_materials.algorithm_suite:
             case AlgorithmSuite.ALG_AES_256_CBC_IV16_NO_KDF:
-                ##= specification/s3-encryption/decryption.md#cbc-decryption
-                ##= type=implementation
-                ##% If an object is encrypted with ALG_AES_256_CBC_IV16_NO_KDF and
-                ##% [legacy unauthenticated algorithm suites](#legacy-decryption) is enabled,
-                ##% then the S3EC MUST create a cipher with AES in CBC Mode with PKCS5Padding or
-                ##% PKCS7Padding compatible padding for a 16-byte block cipher
-                ##% (example: for the Java JCE, this is "AES/CBC/PKCS5Padding").
-                ##= specification/s3-encryption/decryption.md#cbc-decryption
-                ##= type=implementation
-                ##% If the cipher object cannot be created as described above,
-                ##% Decryption MUST fail.
-                ##= specification/s3-encryption/decryption.md#cbc-decryption
-                ##= type=implementation
-                ##% The error SHOULD detail why the cipher could not be initialized
-                ##% (such as CBC or PKCS5Padding is not supported by the underlying crypto provider).
-                cipher = Cipher(
-                    algorithms.AES(dec_materials.plaintext_data_key),
-                    modes.CBC(dec_materials.iv),
-                )
-                decryptor = cipher.decryptor()
-                # Remove PKCS7 padding (compatible with PKCS5Padding for 16-byte block ciphers)
-                unpadder = PKCS7(dec_materials.algorithm_suite.cipher_block_size_bits).unpadder()
-                return CBCDecryptingStream(
-                    streaming_body, decryptor, unpadder=unpadder, content_length=content_length
-                )
+                return self._decrypt_cbc_streaming(dec_materials, streaming_body, content_length)
             case AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF:
-                ##= specification/s3-encryption/encryption.md#alg-aes-256-gcm-iv12-tag16-no-kdf
-                ##= type=implementation
-                ##% The client MUST NOT provide any AAD when encrypting with
-                ##% ALG_AES_256_GCM_IV12_TAG16_NO_KDF.
-                cipher = Cipher(
-                    algorithms.AES(dec_materials.plaintext_data_key), modes.GCM(dec_materials.iv)
-                )
-                decryptor = cipher.decryptor()
-                return self._make_decrypting_gcm_stream(
+                return self._decrypt_gcm_streaming(
+                    dec_materials,
                     streaming_body,
-                    decryptor,
-                    tag_length=dec_materials.algorithm_suite.cipher_tag_length_bytes,
-                    enable_delayed_authentication=enable_delayed_authentication,
-                    content_length=content_length,
+                    enable_delayed_authentication,
+                    content_length,
                 )
             case AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY:
                 return self._decrypt_kc_gcm_streaming(
                     dec_materials,
                     metadata,
                     streaming_body,
-                    enable_delayed_authentication=enable_delayed_authentication,
-                    content_length=content_length,
+                    enable_delayed_authentication,
+                    content_length,
                 )
             case _:
                 raise S3EncryptionClientError("Unknown algorithm suite!")
 
     @staticmethod
-    def _make_decrypting_gcm_stream(
-        streaming_body, decryptor, tag_length, enable_delayed_authentication, content_length
-    ):
-        """Return the appropriate decrypting stream.
+    def _decrypt_cbc_streaming(dec_materials, streaming_body, content_length):
+        """Decrypt content encrypted with ALG_AES_256_CBC_IV16_NO_KDF.
 
-        When delayed auth is disabled, BufferedDecryptingStream buffers all
-        ciphertext and verifies before releasing any plaintext.
-        When delayed auth is enabled, the CBC or GCM specific stream is used.
+        CBC is always streamed (no buffered mode) since it has no auth tag.
         """
+        ##= specification/s3-encryption/decryption.md#cbc-decryption
+        ##= type=implementation
+        ##% If an object is encrypted with ALG_AES_256_CBC_IV16_NO_KDF and
+        ##% [legacy unauthenticated algorithm suites](#legacy-decryption) is enabled,
+        ##% then the S3EC MUST create a cipher with AES in CBC Mode with PKCS5Padding or
+        ##% PKCS7Padding compatible padding for a 16-byte block cipher
+        ##% (example: for the Java JCE, this is "AES/CBC/PKCS5Padding").
+        ##= specification/s3-encryption/decryption.md#cbc-decryption
+        ##= type=implementation
+        ##% If the cipher object cannot be created as described above,
+        ##% Decryption MUST fail.
+        ##= specification/s3-encryption/decryption.md#cbc-decryption
+        ##= type=implementation
+        ##% The error SHOULD detail why the cipher could not be initialized
+        ##% (such as CBC or PKCS5Padding is not supported by the underlying crypto provider).
+        cipher = Cipher(
+            algorithms.AES(dec_materials.plaintext_data_key),
+            modes.CBC(dec_materials.iv),
+        )
+        # Remove PKCS7 padding (compatible with PKCS5Padding for 16-byte block ciphers)
+        unpadder = PKCS7(dec_materials.algorithm_suite.cipher_block_size_bits).unpadder()
+        decryptor = AesCbcDecryptor(cipher.decryptor(), unpadder, content_length=content_length)
+        return DecryptingStream(streaming_body, decryptor, content_length=content_length)
+
+    @staticmethod
+    def _decrypt_gcm_streaming(
+        dec_materials, streaming_body, enable_delayed_authentication, content_length
+    ):
+        """Decrypt content encrypted with ALG_AES_256_GCM_IV12_TAG16_NO_KDF."""
+        ##= specification/s3-encryption/encryption.md#alg-aes-256-gcm-iv12-tag16-no-kdf
+        ##= type=implementation
+        ##% The client MUST NOT provide any AAD when encrypting with
+        ##% ALG_AES_256_GCM_IV12_TAG16_NO_KDF.
+        cipher = Cipher(
+            algorithms.AES(dec_materials.plaintext_data_key), modes.GCM(dec_materials.iv)
+        )
+        decryptor = AesGcmDecryptor(
+            cipher.decryptor(),
+            tag_length=dec_materials.algorithm_suite.cipher_tag_length_bytes,
+            content_length=content_length,
+        )
         if enable_delayed_authentication:
-            return GCMDelayedAuthDecryptingStream(
-                streaming_body,
-                decryptor,
-                tag_length=tag_length,
-                content_length=content_length,
-            )
+            ##= specification/s3-encryption/client.md#enable-delayed-authentication
+            ##= type=implementation
+            ##% When enabled, the S3EC MAY release plaintext from a stream which has not been authenticated.
+            return DecryptingStream(streaming_body, decryptor, content_length=content_length)
         ##= specification/s3-encryption/client.md#enable-delayed-authentication
         ##= type=implementation
         ##% When disabled the S3EC MUST NOT release plaintext from a stream which has not been authenticated.
-        return GCMBufferedDecryptingStream(
-            streaming_body, decryptor, tag_length=tag_length, content_length=content_length
-        )
+        return BufferedDecryptingStream(streaming_body, decryptor, content_length=content_length)
 
     def _decrypt_kc_gcm_streaming(
         self, dec_materials, metadata, streaming_body, enable_delayed_authentication, content_length
@@ -514,15 +514,16 @@ class GetEncryptedObjectPipeline:
             algorithms.AES(derived_encryption_key),
             modes.GCM(dec_materials.algorithm_suite.kc_gcm_iv),
         )
-        decryptor = cipher.decryptor()
-        decryptor.authenticate_additional_data(dec_materials.algorithm_suite.suite_id_bytes)
-        return self._make_decrypting_gcm_stream(
-            streaming_body,
-            decryptor,
+        cipher_decryptor = cipher.decryptor()
+        cipher_decryptor.authenticate_additional_data(dec_materials.algorithm_suite.suite_id_bytes)
+        decryptor = AesGcmDecryptor(
+            cipher_decryptor,
             tag_length=dec_materials.algorithm_suite.cipher_tag_length_bytes,
-            enable_delayed_authentication=enable_delayed_authentication,
             content_length=content_length,
         )
+        if enable_delayed_authentication:
+            return DecryptingStream(streaming_body, decryptor, content_length=content_length)
+        return BufferedDecryptingStream(streaming_body, decryptor, content_length=content_length)
 
     def _decrypt_v2(self, metadata, encryption_context) -> DecryptionMaterials:
         """Prepare V2 decryption materials."""

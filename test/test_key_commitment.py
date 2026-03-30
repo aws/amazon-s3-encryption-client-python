@@ -66,7 +66,11 @@ def _v2_gcm_response(key, plaintext=b"test data"):
         plaintext_data_key=key,
         algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
     )
-    return {"Body": BytesIO(ciphertext), "Metadata": metadata}, dec_mats, plaintext
+    return (
+        {"Body": BytesIO(ciphertext), "Metadata": metadata, "ContentLength": len(ciphertext)},
+        dec_mats,
+        plaintext,
+    )
 
 
 def _v3_kc_gcm_response(key, plaintext=b"test data"):
@@ -88,7 +92,11 @@ def _v3_kc_gcm_response(key, plaintext=b"test data"):
         plaintext_data_key=key,
         algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
     )
-    return {"Body": BytesIO(ciphertext), "Metadata": metadata}, dec_mats, plaintext
+    return (
+        {"Body": BytesIO(ciphertext), "Metadata": metadata, "ContentLength": len(ciphertext)},
+        dec_mats,
+        plaintext,
+    )
 
 
 # ---------------------------------------------------------------------------

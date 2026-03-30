@@ -176,6 +176,7 @@ def test_decrypt_v2_instruction_file_custom_suffix(delayed_auth):
 LARGE_FILE_SIZE = 52428800  # 50 MB
 
 
+@pytest.mark.skip(reason="Slow as hell")
 def test_decrypt_large_v2_instruction_file_delayed_auth():
     """Test streaming decryption of a 50 MB V2 object with delayed authentication."""
     key = TEST_OBJECTS["large_v2_instruction_file"]

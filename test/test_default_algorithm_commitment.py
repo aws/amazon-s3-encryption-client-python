@@ -83,6 +83,7 @@ class TestDefaultAlgorithmUsesKeyCommitment:
         response = {
             "Body": BytesIO(ciphertext),
             "Metadata": metadata,
+            "ContentLength": len(ciphertext),
         }
 
         # Decrypt with REQUIRE_ENCRYPT_REQUIRE_DECRYPT — this will reject

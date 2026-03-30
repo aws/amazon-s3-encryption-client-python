@@ -9,13 +9,13 @@ from unittest.mock import Mock
 import pytest
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.padding import PKCS7
 
+from s3_encryption.decryptor import AesCbcDecryptor, AesGcmDecryptor
 from s3_encryption.exceptions import S3EncryptionClientError
-from s3_encryption.materials import AlgorithmSuite
 from s3_encryption.stream import (
-    CBCDecryptingStream,
-    GCMBufferedDecryptingStream,
-    GCMDelayedAuthDecryptingStream,
+    BufferedDecryptingStream,
+    DecryptingStream,
 )
 
 
@@ -27,9 +27,28 @@ def _encrypt_gcm(plaintext: bytes):
     return ciphertext_with_tag, key, nonce
 
 
-def _make_gcm_decryptor(key, nonce):
-    """Create a GCM decryptor object."""
-    return Cipher(algorithms.AES(key), modes.GCM(nonce)).decryptor()
+def _make_gcm_decryptor(key, nonce, content_length):
+    """Create an AesGcmDecryptor."""
+    cipher_decryptor = Cipher(algorithms.AES(key), modes.GCM(nonce)).decryptor()
+    return AesGcmDecryptor(cipher_decryptor, tag_length=16, content_length=content_length)
+
+
+def _encrypt_cbc(plaintext: bytes):
+    """Encrypt plaintext with AES-CBC + PKCS7 padding, return (ciphertext, key, iv)."""
+    key = os.urandom(32)
+    iv = os.urandom(16)
+    padder = PKCS7(128).padder()
+    padded = padder.update(plaintext) + padder.finalize()
+    encryptor = Cipher(algorithms.AES(key), modes.CBC(iv)).encryptor()
+    ciphertext = encryptor.update(padded) + encryptor.finalize()
+    return ciphertext, key, iv
+
+
+def _make_cbc_decryptor(key, iv, content_length):
+    """Create an AesCbcDecryptor."""
+    cipher_decryptor = Cipher(algorithms.AES(key), modes.CBC(iv)).decryptor()
+    unpadder = PKCS7(128).unpadder()
+    return AesCbcDecryptor(cipher_decryptor, unpadder, content_length=content_length)
 
 
 def _make_streaming_body(data: bytes):
@@ -50,15 +69,13 @@ class TestDelayedAuthReleasesBeforeVerification:
     ##% When enabled, the S3EC MAY release plaintext from a stream which has not been authenticated.
     def test_delayed_auth_releases_plaintext_before_tag_verification(self):
         plaintext = os.urandom(4096)
-        ciphertext_with_tag, key, nonce = _encrypt_gcm(plaintext)
-        body = _make_streaming_body(ciphertext_with_tag)
+        ct, key, nonce = _encrypt_gcm(plaintext)
+        body = _make_streaming_body(ct)
 
-        decryptor = _make_gcm_decryptor(key, nonce)
-        stream = GCMDelayedAuthDecryptingStream(
+        stream = DecryptingStream(
             body,
-            decryptor,
-            tag_length=AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY.cipher_tag_length_bytes,
-            content_length=len(ciphertext_with_tag),
+            _make_gcm_decryptor(key, nonce, len(ct)),
+            content_length=len(ct),
         )
         # read(256) decrypts a partial chunk via cipher.update(), releasing
         # plaintext without consuming the full ciphertext stream. The GCM tag
@@ -70,7 +87,7 @@ class TestDelayedAuthReleasesBeforeVerification:
         # _finalized is False: the GCM tag has NOT been verified yet
         assert not stream._finalized
         # Ciphertext remains unread in the underlying stream
-        assert body._stream.tell() < len(ciphertext_with_tag)
+        assert body._stream.tell() < len(ct)
 
         # Finish reading the stream and verify full plaintext matches
         remaining = stream.read()
@@ -85,15 +102,13 @@ class TestBufferedWithholdsUntilVerification:
     ##% When disabled the S3EC MUST NOT release plaintext from a stream which has not been authenticated.
     def test_buffered_verifies_tag_before_releasing_any_plaintext(self):
         plaintext = os.urandom(4096)
-        ciphertext_with_tag, key, nonce = _encrypt_gcm(plaintext)
-        body = _make_streaming_body(ciphertext_with_tag)
+        ct, key, nonce = _encrypt_gcm(plaintext)
+        body = _make_streaming_body(ct)
 
-        decryptor = _make_gcm_decryptor(key, nonce)
-        stream = GCMBufferedDecryptingStream(
+        stream = BufferedDecryptingStream(
             body,
-            decryptor,
-            tag_length=AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY.cipher_tag_length_bytes,
-            content_length=len(ciphertext_with_tag),
+            _make_gcm_decryptor(key, nonce, len(ct)),
+            content_length=len(ct),
         )
         # read(1) triggers _decrypt(), which calls self._body.read() with no amt,
         # consuming the entire ciphertext and verifying the GCM tag before
@@ -105,44 +120,24 @@ class TestBufferedWithholdsUntilVerification:
         assert stream._plaintext is not None
 
 
-def _encrypt_cbc(plaintext: bytes):
-    """Encrypt plaintext with AES-CBC + PKCS7 padding, return (ciphertext, key, iv, unpadder)."""
-    from cryptography.hazmat.primitives.padding import PKCS7
-
-    key = os.urandom(32)
-    iv = os.urandom(16)
-    padder = PKCS7(128).padder()
-    padded = padder.update(plaintext) + padder.finalize()
-    encryptor = Cipher(algorithms.AES(key), modes.CBC(iv)).encryptor()
-    ciphertext = encryptor.update(padded) + encryptor.finalize()
-    unpadder = PKCS7(128).unpadder()
-    return ciphertext, key, iv, unpadder
-
-
-def _make_cbc_decryptor(key, iv):
-    return Cipher(algorithms.AES(key), modes.CBC(iv)).decryptor()
-
-
 class TestDelayedAuthCBCDecryption:
 
     def test_roundtrip(self):
         plaintext = b"hello world, this is a CBC test!!"
-        ciphertext, key, iv, unpadder = _encrypt_cbc(plaintext)
-        stream = CBCDecryptingStream(
+        ciphertext, key, iv = _encrypt_cbc(plaintext)
+        stream = DecryptingStream(
             _make_streaming_body(ciphertext),
-            _make_cbc_decryptor(key, iv),
-            unpadder=unpadder,
+            _make_cbc_decryptor(key, iv, len(ciphertext)),
             content_length=len(ciphertext),
         )
         assert stream.read() == plaintext
 
     def test_chunked_read(self):
         plaintext = b"A" * 256
-        ciphertext, key, iv, unpadder = _encrypt_cbc(plaintext)
-        stream = CBCDecryptingStream(
+        ciphertext, key, iv = _encrypt_cbc(plaintext)
+        stream = DecryptingStream(
             _make_streaming_body(ciphertext),
-            _make_cbc_decryptor(key, iv),
-            unpadder=unpadder,
+            _make_cbc_decryptor(key, iv, len(ciphertext)),
             content_length=len(ciphertext),
         )
         result = b""
@@ -152,11 +147,10 @@ class TestDelayedAuthCBCDecryption:
 
     def test_finalize_called(self):
         plaintext = b"finalize me"
-        ciphertext, key, iv, unpadder = _encrypt_cbc(plaintext)
-        stream = CBCDecryptingStream(
+        ciphertext, key, iv = _encrypt_cbc(plaintext)
+        stream = DecryptingStream(
             _make_streaming_body(ciphertext),
-            _make_cbc_decryptor(key, iv),
-            unpadder=unpadder,
+            _make_cbc_decryptor(key, iv, len(ciphertext)),
             content_length=len(ciphertext),
         )
         actual = stream.read()
@@ -165,22 +159,20 @@ class TestDelayedAuthCBCDecryption:
 
     def test_no_trailing_padding_bytes(self):
         plaintext = b"short"
-        ciphertext, key, iv, unpadder = _encrypt_cbc(plaintext)
-        stream = CBCDecryptingStream(
+        ciphertext, key, iv = _encrypt_cbc(plaintext)
+        stream = DecryptingStream(
             _make_streaming_body(ciphertext),
-            _make_cbc_decryptor(key, iv),
-            unpadder=unpadder,
+            _make_cbc_decryptor(key, iv, len(ciphertext)),
             content_length=len(ciphertext),
         )
         assert stream.read() == plaintext
 
     def test_read_after_finalized_returns_empty(self):
         plaintext = b"done"
-        ciphertext, key, iv, unpadder = _encrypt_cbc(plaintext)
-        stream = CBCDecryptingStream(
+        ciphertext, key, iv = _encrypt_cbc(plaintext)
+        stream = DecryptingStream(
             _make_streaming_body(ciphertext),
-            _make_cbc_decryptor(key, iv),
-            unpadder=unpadder,
+            _make_cbc_decryptor(key, iv, len(ciphertext)),
             content_length=len(ciphertext),
         )
         stream.read()
@@ -188,11 +180,10 @@ class TestDelayedAuthCBCDecryption:
 
     def test_readable_false_after_finalized(self):
         plaintext = b"readable"
-        ciphertext, key, iv, unpadder = _encrypt_cbc(plaintext)
-        stream = CBCDecryptingStream(
+        ciphertext, key, iv = _encrypt_cbc(plaintext)
+        stream = DecryptingStream(
             _make_streaming_body(ciphertext),
-            _make_cbc_decryptor(key, iv),
-            unpadder=unpadder,
+            _make_cbc_decryptor(key, iv, len(ciphertext)),
             content_length=len(ciphertext),
         )
         assert stream.readable()
@@ -202,49 +193,44 @@ class TestDelayedAuthCBCDecryption:
 
     def test_close_delegates_to_body(self):
         plaintext = b"close me"
-        ciphertext, key, iv, unpadder = _encrypt_cbc(plaintext)
+        ciphertext, key, iv = _encrypt_cbc(plaintext)
         body = _make_streaming_body(ciphertext)
-        stream = CBCDecryptingStream(
-            body, _make_cbc_decryptor(key, iv), unpadder=unpadder, content_length=len(ciphertext)
+        stream = DecryptingStream(
+            body,
+            _make_cbc_decryptor(key, iv, len(ciphertext)),
+            content_length=len(ciphertext),
         )
         stream.close()
         body.close.assert_called_once()
 
     def test_enter_returns_self(self):
         plaintext = b"ctx"
-        ciphertext, key, iv, unpadder = _encrypt_cbc(plaintext)
-        stream = CBCDecryptingStream(
+        ciphertext, key, iv = _encrypt_cbc(plaintext)
+        stream = DecryptingStream(
             _make_streaming_body(ciphertext),
-            _make_cbc_decryptor(key, iv),
-            unpadder=unpadder,
+            _make_cbc_decryptor(key, iv, len(ciphertext)),
             content_length=len(ciphertext),
         )
         assert stream.__enter__() is stream
 
     def test_wrong_key_raises_error(self):
-        from cryptography.hazmat.primitives.padding import PKCS7
-
         plaintext = b"wrong key test!!"
-        ciphertext, _key, iv, _ = _encrypt_cbc(plaintext)
+        ciphertext, _key, iv = _encrypt_cbc(plaintext)
         wrong_key = os.urandom(32)
-        stream = CBCDecryptingStream(
+        stream = DecryptingStream(
             _make_streaming_body(ciphertext),
-            _make_cbc_decryptor(wrong_key, iv),
-            unpadder=PKCS7(128).unpadder(),
+            _make_cbc_decryptor(wrong_key, iv, len(ciphertext)),
             content_length=len(ciphertext),
         )
         with pytest.raises(S3EncryptionClientError, match="Failed to decrypt CBC content"):
             stream.read()
 
     def test_empty_ciphertext(self):
-        from cryptography.hazmat.primitives.padding import PKCS7
-
         key = os.urandom(32)
         iv = os.urandom(16)
-        stream = CBCDecryptingStream(
+        stream = DecryptingStream(
             _make_streaming_body(b""),
-            _make_cbc_decryptor(key, iv),
-            unpadder=PKCS7(128).unpadder(),
+            _make_cbc_decryptor(key, iv, 0),
             content_length=0,
         )
         # Empty stream finalize will fail because CBC expects at least one block
@@ -252,15 +238,14 @@ class TestDelayedAuthCBCDecryption:
             stream.read()
 
 
-class TestGCMBufferedDecryptingStream:
+class TestBufferedDecryptingStream:
 
     def test_full_read(self):
         plaintext = os.urandom(1024)
         ct, key, nonce = _encrypt_gcm(plaintext)
-        stream = GCMBufferedDecryptingStream(
+        stream = BufferedDecryptingStream(
             _make_streaming_body(ct),
-            _make_gcm_decryptor(key, nonce),
-            tag_length=16,
+            _make_gcm_decryptor(key, nonce, len(ct)),
             content_length=len(ct),
         )
         assert stream.read() == plaintext
@@ -268,10 +253,9 @@ class TestGCMBufferedDecryptingStream:
     def test_partial_reads(self):
         plaintext = os.urandom(512)
         ct, key, nonce = _encrypt_gcm(plaintext)
-        stream = GCMBufferedDecryptingStream(
+        stream = BufferedDecryptingStream(
             _make_streaming_body(ct),
-            _make_gcm_decryptor(key, nonce),
-            tag_length=16,
+            _make_gcm_decryptor(key, nonce, len(ct)),
             content_length=len(ct),
         )
         result = b""
@@ -283,8 +267,10 @@ class TestGCMBufferedDecryptingStream:
         plaintext = os.urandom(256)
         ct, key, nonce = _encrypt_gcm(plaintext)
         body = _make_streaming_body(ct)
-        stream = GCMBufferedDecryptingStream(
-            body, _make_gcm_decryptor(key, nonce), tag_length=16, content_length=len(ct)
+        stream = BufferedDecryptingStream(
+            body,
+            _make_gcm_decryptor(key, nonce, len(ct)),
+            content_length=len(ct),
         )
         assert stream._plaintext is None
         stream.read(1)
@@ -295,10 +281,9 @@ class TestGCMBufferedDecryptingStream:
     def test_tell(self):
         plaintext = os.urandom(200)
         ct, key, nonce = _encrypt_gcm(plaintext)
-        stream = GCMBufferedDecryptingStream(
+        stream = BufferedDecryptingStream(
             _make_streaming_body(ct),
-            _make_gcm_decryptor(key, nonce),
-            tag_length=16,
+            _make_gcm_decryptor(key, nonce, len(ct)),
             content_length=len(ct),
         )
         stream.read(50)
@@ -307,22 +292,20 @@ class TestGCMBufferedDecryptingStream:
     def test_readable(self):
         plaintext = b"readable test"
         ct, key, nonce = _encrypt_gcm(plaintext)
-        stream = GCMBufferedDecryptingStream(
+        stream = BufferedDecryptingStream(
             _make_streaming_body(ct),
-            _make_gcm_decryptor(key, nonce),
-            tag_length=16,
+            _make_gcm_decryptor(key, nonce, len(ct)),
             content_length=len(ct),
         )
         assert stream.readable()
 
     def test_readinto(self):
-        """Asserts that readinto is implemented by botocore's StreamingBody"""
+        """Asserts that readinto is implemented."""
         plaintext = os.urandom(64)
         ct, key, nonce = _encrypt_gcm(plaintext)
-        stream = GCMBufferedDecryptingStream(
+        stream = BufferedDecryptingStream(
             _make_streaming_body(ct),
-            _make_gcm_decryptor(key, nonce),
-            tag_length=16,
+            _make_gcm_decryptor(key, nonce, len(ct)),
             content_length=len(ct),
         )
         buf = bytearray(64)
@@ -333,34 +316,37 @@ class TestGCMBufferedDecryptingStream:
     def test_enter_returns_self(self):
         plaintext = b"enter"
         ct, key, nonce = _encrypt_gcm(plaintext)
-        stream = GCMBufferedDecryptingStream(
+        stream = BufferedDecryptingStream(
             _make_streaming_body(ct),
-            _make_gcm_decryptor(key, nonce),
-            tag_length=16,
+            _make_gcm_decryptor(key, nonce, len(ct)),
             content_length=len(ct),
         )
         assert stream.__enter__() is stream
 
     def test_close_delegates(self):
-        """Asserts that close is implemented by botocore's StreamingBody"""
+        """Asserts that close delegates to the body."""
         plaintext = b"close"
         ct, key, nonce = _encrypt_gcm(plaintext)
         body = _make_streaming_body(ct)
-        stream = GCMBufferedDecryptingStream(
-            body, _make_gcm_decryptor(key, nonce), tag_length=16, content_length=len(ct)
+        stream = BufferedDecryptingStream(
+            body,
+            _make_gcm_decryptor(key, nonce, len(ct)),
+            content_length=len(ct),
         )
         stream.close()
         body.close.assert_called_once()
 
     def test_close_without_close_attr(self):
-        """Asserts that close is implemented by botocore's StreamingBody"""
+        """Asserts that close handles bodies without close."""
         plaintext = b"no close"
         ct, key, nonce = _encrypt_gcm(plaintext)
         body = Mock()
         del body.close
         body.read = BytesIO(ct).read
-        stream = GCMBufferedDecryptingStream(
-            body, _make_gcm_decryptor(key, nonce), tag_length=16, content_length=len(ct)
+        stream = BufferedDecryptingStream(
+            body,
+            _make_gcm_decryptor(key, nonce, len(ct)),
+            content_length=len(ct),
         )
         stream.close()  # should not raise
 
@@ -368,13 +354,12 @@ class TestGCMBufferedDecryptingStream:
         plaintext = b"wrong key"
         ct, _key, nonce = _encrypt_gcm(plaintext)
         wrong_key = os.urandom(32)
-        stream = GCMBufferedDecryptingStream(
+        stream = BufferedDecryptingStream(
             _make_streaming_body(ct),
-            _make_gcm_decryptor(wrong_key, nonce),
-            tag_length=16,
+            _make_gcm_decryptor(wrong_key, nonce, len(ct)),
             content_length=len(ct),
         )
-        with pytest.raises(S3EncryptionClientError, match="Failed to decrypt object"):
+        with pytest.raises(S3EncryptionClientError, match="Failed to decrypt"):
             stream.read()
 
     def test_tampered_ciphertext_raises_error(self):
@@ -382,22 +367,20 @@ class TestGCMBufferedDecryptingStream:
         ct, key, nonce = _encrypt_gcm(plaintext)
         tampered = bytearray(ct)
         tampered[0] ^= 0xFF
-        stream = GCMBufferedDecryptingStream(
+        stream = BufferedDecryptingStream(
             _make_streaming_body(bytes(tampered)),
-            _make_gcm_decryptor(key, nonce),
-            tag_length=16,
+            _make_gcm_decryptor(key, nonce, len(ct)),
             content_length=len(ct),
         )
-        with pytest.raises(S3EncryptionClientError, match="Failed to decrypt object"):
+        with pytest.raises(S3EncryptionClientError, match="Failed to decrypt"):
             stream.read()
 
     def test_idempotent_decrypt(self):
         plaintext = os.urandom(128)
         ct, key, nonce = _encrypt_gcm(plaintext)
-        stream = GCMBufferedDecryptingStream(
+        stream = BufferedDecryptingStream(
             _make_streaming_body(ct),
-            _make_gcm_decryptor(key, nonce),
-            tag_length=16,
+            _make_gcm_decryptor(key, nonce, len(ct)),
             content_length=len(ct),
         )
         first = stream.read(63)
@@ -410,10 +393,9 @@ class TestDelayedAuthGCMDecryption:
     def test_full_read(self):
         plaintext = os.urandom(1024)
         ct, key, nonce = _encrypt_gcm(plaintext)
-        stream = GCMDelayedAuthDecryptingStream(
+        stream = DecryptingStream(
             _make_streaming_body(ct),
-            _make_gcm_decryptor(key, nonce),
-            tag_length=16,
+            _make_gcm_decryptor(key, nonce, len(ct)),
             content_length=len(ct),
         )
         assert stream.read() == plaintext
@@ -421,10 +403,9 @@ class TestDelayedAuthGCMDecryption:
     def test_chunked_read(self):
         plaintext = os.urandom(512)
         ct, key, nonce = _encrypt_gcm(plaintext)
-        stream = GCMDelayedAuthDecryptingStream(
+        stream = DecryptingStream(
             _make_streaming_body(ct),
-            _make_gcm_decryptor(key, nonce),
-            tag_length=16,
+            _make_gcm_decryptor(key, nonce, len(ct)),
             content_length=len(ct),
         )
         result = b""
@@ -435,10 +416,9 @@ class TestDelayedAuthGCMDecryption:
     def test_read_after_finalized_returns_empty(self):
         plaintext = os.urandom(128)
         ct, key, nonce = _encrypt_gcm(plaintext)
-        stream = GCMDelayedAuthDecryptingStream(
+        stream = DecryptingStream(
             _make_streaming_body(ct),
-            _make_gcm_decryptor(key, nonce),
-            tag_length=16,
+            _make_gcm_decryptor(key, nonce, len(ct)),
             content_length=len(ct),
         )
         actual = stream.read()
@@ -449,10 +429,9 @@ class TestDelayedAuthGCMDecryption:
     def test_readable_false_after_finalized(self):
         plaintext = b"readable"
         ct, key, nonce = _encrypt_gcm(plaintext)
-        stream = GCMDelayedAuthDecryptingStream(
+        stream = DecryptingStream(
             _make_streaming_body(ct),
-            _make_gcm_decryptor(key, nonce),
-            tag_length=16,
+            _make_gcm_decryptor(key, nonce, len(ct)),
             content_length=len(ct),
         )
         assert stream.readable()
@@ -463,8 +442,10 @@ class TestDelayedAuthGCMDecryption:
         plaintext = b"close"
         ct, key, nonce = _encrypt_gcm(plaintext)
         body = _make_streaming_body(ct)
-        stream = GCMDelayedAuthDecryptingStream(
-            body, _make_gcm_decryptor(key, nonce), tag_length=16, content_length=len(ct)
+        stream = DecryptingStream(
+            body,
+            _make_gcm_decryptor(key, nonce, len(ct)),
+            content_length=len(ct),
         )
         stream.close()
         body.close.assert_called_once()
@@ -472,10 +453,9 @@ class TestDelayedAuthGCMDecryption:
     def test_enter_returns_self(self):
         plaintext = b"ctx"
         ct, key, nonce = _encrypt_gcm(plaintext)
-        stream = GCMDelayedAuthDecryptingStream(
+        stream = DecryptingStream(
             _make_streaming_body(ct),
-            _make_gcm_decryptor(key, nonce),
-            tag_length=16,
+            _make_gcm_decryptor(key, nonce, len(ct)),
             content_length=len(ct),
         )
         assert stream.__enter__() is stream
@@ -484,13 +464,12 @@ class TestDelayedAuthGCMDecryption:
         plaintext = b"wrong key"
         ct, _key, nonce = _encrypt_gcm(plaintext)
         wrong_key = os.urandom(32)
-        stream = GCMDelayedAuthDecryptingStream(
+        stream = DecryptingStream(
             _make_streaming_body(ct),
-            _make_gcm_decryptor(wrong_key, nonce),
-            tag_length=16,
+            _make_gcm_decryptor(wrong_key, nonce, len(ct)),
             content_length=len(ct),
         )
-        with pytest.raises(S3EncryptionClientError, match="Failed to decrypt GCM content"):
+        with pytest.raises(S3EncryptionClientError, match="Failed to decrypt"):
             stream.read()
 
     def test_tampered_tag_raises_error(self):
@@ -498,13 +477,12 @@ class TestDelayedAuthGCMDecryption:
         ct, key, nonce = _encrypt_gcm(plaintext)
         tampered = bytearray(ct)
         tampered[-1] ^= 0xFF  # flip last byte (part of tag)
-        stream = GCMDelayedAuthDecryptingStream(
+        stream = DecryptingStream(
             _make_streaming_body(bytes(tampered)),
-            _make_gcm_decryptor(key, nonce),
-            tag_length=16,
+            _make_gcm_decryptor(key, nonce, len(ct)),
             content_length=len(ct),
         )
-        with pytest.raises(S3EncryptionClientError, match="Failed to decrypt GCM content"):
+        with pytest.raises(S3EncryptionClientError, match="Failed to decrypt"):
             stream.read()
 
     def test_small_data_less_than_tag_length(self):
@@ -513,10 +491,9 @@ class TestDelayedAuthGCMDecryption:
         ct, key, nonce = _encrypt_gcm(plaintext)
         # For empty plaintext, ct is just the 16-byte tag
         assert len(ct) == 16
-        stream = GCMDelayedAuthDecryptingStream(
+        stream = DecryptingStream(
             _make_streaming_body(ct),
-            _make_gcm_decryptor(key, nonce),
-            tag_length=16,
+            _make_gcm_decryptor(key, nonce, len(ct)),
             content_length=len(ct),
         )
         assert stream.read() == b""
@@ -524,10 +501,9 @@ class TestDelayedAuthGCMDecryption:
     def test_large_data(self):
         plaintext = os.urandom(1024 * 1024)  # 1 MB
         ct, key, nonce = _encrypt_gcm(plaintext)
-        stream = GCMDelayedAuthDecryptingStream(
+        stream = DecryptingStream(
             _make_streaming_body(ct),
-            _make_gcm_decryptor(key, nonce),
-            tag_length=16,
+            _make_gcm_decryptor(key, nonce, len(ct)),
             content_length=len(ct),
         )
         result = b""
@@ -550,10 +526,9 @@ class TestEdgeCasePlaintextLengths:
     def test_buffered_gcm(self, length):
         plaintext = os.urandom(length)
         ct, key, nonce = _encrypt_gcm(plaintext)
-        stream = GCMBufferedDecryptingStream(
+        stream = BufferedDecryptingStream(
             _make_streaming_body(ct),
-            _make_gcm_decryptor(key, nonce),
-            tag_length=16,
+            _make_gcm_decryptor(key, nonce, len(ct)),
             content_length=len(ct),
         )
         assert stream.read() == plaintext
@@ -562,10 +537,9 @@ class TestEdgeCasePlaintextLengths:
     def test_delayed_auth_gcm(self, length):
         plaintext = os.urandom(length)
         ct, key, nonce = _encrypt_gcm(plaintext)
-        stream = GCMDelayedAuthDecryptingStream(
+        stream = DecryptingStream(
             _make_streaming_body(ct),
-            _make_gcm_decryptor(key, nonce),
-            tag_length=16,
+            _make_gcm_decryptor(key, nonce, len(ct)),
             content_length=len(ct),
         )
         result = b""
@@ -576,25 +550,13 @@ class TestEdgeCasePlaintextLengths:
     @pytest.mark.parametrize("length", EDGE_CASE_LENGTHS)
     def test_delayed_auth_cbc(self, length):
         plaintext = os.urandom(length)
-        ciphertext, key, iv, unpadder = _encrypt_cbc(plaintext)
-        stream = CBCDecryptingStream(
+        ciphertext, key, iv = _encrypt_cbc(plaintext)
+        stream = DecryptingStream(
             _make_streaming_body(ciphertext),
-            _make_cbc_decryptor(key, iv),
-            unpadder=unpadder,
+            _make_cbc_decryptor(key, iv, len(ciphertext)),
             content_length=len(ciphertext),
         )
         result = b""
         while stream.readable():
-            # odd read size to stress tag-splitting/padding
             result += stream.read(7)
         assert result == plaintext
-
-
-class TestGCMDelayedAuthContentLengthValidation:
-
-    def test_content_length_less_than_tag_length_raises(self):
-        """ContentLength smaller than the GCM tag must raise immediately."""
-        stream_body = _make_streaming_body(b"\x00" * 8)
-        decryptor = _make_gcm_decryptor(os.urandom(32), os.urandom(12))
-        with pytest.raises(S3EncryptionClientError, match="less than GCM tag length"):
-            GCMDelayedAuthDecryptingStream(stream_body, decryptor, tag_length=16, content_length=8)
