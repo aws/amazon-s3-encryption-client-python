@@ -13,7 +13,7 @@ from cryptography.hazmat.primitives.padding import PKCS7
 
 from s3_encryption.buffered_decrypt import one_shot_decrypt
 from s3_encryption.decryptor import AesCbcDecryptor, AesGcmDecryptor
-from s3_encryption.exceptions import S3EncryptionClientError
+from s3_encryption.exceptions import S3EncryptionClientSecurityError
 from s3_encryption.stream import DecryptingStream
 
 
@@ -225,7 +225,7 @@ class TestDelayedAuthCBCDecryption:
             _make_cbc_decryptor(wrong_key, iv, len(ciphertext)),
             content_length=len(ciphertext),
         )
-        with pytest.raises(S3EncryptionClientError, match="Failed to decrypt CBC content"):
+        with pytest.raises(S3EncryptionClientSecurityError, match="Failed to decrypt CBC content"):
             stream.read()
 
     def test_empty_ciphertext(self):
@@ -237,7 +237,7 @@ class TestDelayedAuthCBCDecryption:
             content_length=0,
         )
         # Empty stream finalize will fail because CBC expects at least one block
-        with pytest.raises(S3EncryptionClientError, match="Failed to decrypt CBC content"):
+        with pytest.raises(S3EncryptionClientSecurityError, match="Failed to decrypt CBC content"):
             stream.read()
 
 
@@ -349,7 +349,7 @@ class TestBufferedDecryptingStream:
         plaintext = b"wrong key"
         ct, _key, nonce = _encrypt_gcm(plaintext)
         wrong_key = os.urandom(32)
-        with pytest.raises(S3EncryptionClientError, match="Failed to decrypt"):
+        with pytest.raises(S3EncryptionClientSecurityError, match="Failed to decrypt"):
             one_shot_decrypt(
                 _make_streaming_body(ct),
                 _make_gcm_decryptor(wrong_key, nonce, len(ct)),
@@ -360,7 +360,7 @@ class TestBufferedDecryptingStream:
         ct, key, nonce = _encrypt_gcm(plaintext)
         tampered = bytearray(ct)
         tampered[0] ^= 0xFF
-        with pytest.raises(S3EncryptionClientError, match="Failed to decrypt"):
+        with pytest.raises(S3EncryptionClientSecurityError, match="Failed to decrypt"):
             one_shot_decrypt(
                 _make_streaming_body(bytes(tampered)),
                 _make_gcm_decryptor(key, nonce, len(ct)),
@@ -459,7 +459,7 @@ class TestDelayedAuthGCMDecryption:
             _make_gcm_decryptor(wrong_key, nonce, len(ct)),
             content_length=len(ct),
         )
-        with pytest.raises(S3EncryptionClientError, match="Failed to decrypt"):
+        with pytest.raises(S3EncryptionClientSecurityError, match="Failed to decrypt"):
             stream.read()
 
     def test_tampered_tag_raises_error(self):
@@ -472,7 +472,7 @@ class TestDelayedAuthGCMDecryption:
             _make_gcm_decryptor(key, nonce, len(ct)),
             content_length=len(ct),
         )
-        with pytest.raises(S3EncryptionClientError, match="Failed to decrypt"):
+        with pytest.raises(S3EncryptionClientSecurityError, match="Failed to decrypt"):
             stream.read()
 
     def test_small_data_less_than_tag_length(self):
@@ -546,8 +546,8 @@ class TestEdgeCasePlaintextLengths:
             content_length=len(ciphertext),
         )
         result = b""
-        while stream.readable():
-            result += stream.read(7)
+        while chunk := stream.read(7):
+            result += chunk
         assert result == plaintext
 
 

@@ -5,8 +5,9 @@
 from abc import ABC, abstractmethod
 
 from attrs import define, field
+from cryptography.exceptions import InvalidTag
 
-from .exceptions import S3EncryptionClientError
+from .exceptions import S3EncryptionClientError, S3EncryptionClientSecurityError
 
 
 class Decryptor(ABC):
@@ -72,7 +73,7 @@ class AesCbcDecryptor(Decryptor):
             plaintext += self._decryptor.finalize()
             return self._unpadder.update(plaintext) + self._unpadder.finalize()
         except Exception as e:
-            raise S3EncryptionClientError(f"Failed to decrypt CBC content: {e}") from e
+            raise S3EncryptionClientSecurityError(f"Failed to decrypt CBC content: {e}") from e
 
 
 @define
@@ -134,5 +135,7 @@ class AesGcmDecryptor(Decryptor):
             return plaintext + self._decryptor.finalize_with_tag(tag)
         except S3EncryptionClientError:
             raise
+        except InvalidTag as e:
+            raise S3EncryptionClientSecurityError(f"Failed to decrypt Object: {e}") from e
         except Exception as e:
             raise S3EncryptionClientError(f"Failed to decrypt Object: {e}") from e

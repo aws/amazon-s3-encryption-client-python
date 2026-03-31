@@ -56,12 +56,6 @@ class DecryptingStream(StreamingBody):
     def __attrs_post_init__(self):  # noqa: D105
         super().__init__(io.BytesIO(), content_length=self._content_length)
 
-    def __del__(self):  # noqa: D105
-        pass
-
-    def set_socket_timeout(self, timeout):  # noqa: D102
-        pass
-
     def readable(self):  # noqa: D102
         return not self._finalized
 
@@ -136,7 +130,7 @@ class DecryptingStream(StreamingBody):
 
     def __iter__(self):
         """Return an iterator to yield 1k chunks from the decryption stream."""
-        return self.iter_chunks(_DEFAULT_CHUNK_SIZE)
+        return self
 
     def __next__(self):
         """Return the next 1k chunk from the decryption stream."""
@@ -173,9 +167,7 @@ class DecryptingStream(StreamingBody):
     def _verify_content_length(self):
         """Verify that the decryptor consumed exactly content_length bytes."""
         if self._decryptor.content_length is not None and not (
-            self._decryptor.amount_read - 16
-            <= self._decryptor.content_length
-            <= self._decryptor.amount_read + 16
+            self._decryptor.amount_read == self._content_length
         ):
             raise IncompleteReadError(
                 actual_bytes=self._decryptor.amount_read,

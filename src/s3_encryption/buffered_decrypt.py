@@ -9,7 +9,7 @@ from botocore.response import StreamingBody
 from s3_encryption.decryptor import Decryptor
 
 
-def one_shot_decrypt(streaming_body: object, decryptor: Decryptor):
+def one_shot_decrypt(streaming_body: StreamingBody, decryptor: Decryptor):
     """Decrypt a streaming object.
 
     Args:

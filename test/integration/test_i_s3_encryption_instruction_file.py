@@ -176,7 +176,6 @@ def test_decrypt_v2_instruction_file_custom_suffix(delayed_auth):
 LARGE_FILE_SIZE = 52428800  # 50 MB
 
 
-@pytest.mark.skip(reason="Slow as hell")
 def test_decrypt_large_v2_instruction_file_delayed_auth():
     """Test streaming decryption of a 50 MB V2 object with delayed authentication."""
     key = TEST_OBJECTS["large_v2_instruction_file"]
@@ -200,8 +199,7 @@ def test_decrypt_large_v2_instruction_file_delayed_auth():
     assert total == LARGE_FILE_SIZE
 
 
-# TODO(v3): enable once V3 decryption is implemented
-@pytest.mark.skip(reason="V3 decryption not yet implemented")
+@pytest.mark.skip(reason="V3 large file not yet written to static bucket")
 def test_decrypt_large_v3_instruction_file_delayed_auth():
     """Test streaming decryption of a 50 MB V3 object with delayed authentication."""
     key = TEST_OBJECTS["large_v3_instruction_file"]

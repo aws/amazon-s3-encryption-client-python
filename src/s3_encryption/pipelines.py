@@ -246,7 +246,7 @@ class GetEncryptedObjectPipeline:
             A botocore.response.StreamingBody of plain-text
         """
         # Convert the metadata dictionary to an ObjectMetadata instance
-        streaming_body = response.get("Body")
+        streaming_body: StreamingBody = response.get("Body")
         content_length = response.get("ContentLength")
         encryption_metadata = response.get("Metadata", {})
         metadata = ObjectMetadata.from_dict(encryption_metadata)
