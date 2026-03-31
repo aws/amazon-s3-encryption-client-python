@@ -37,11 +37,15 @@ class DecryptingStream(StreamingBody):
 
     Extends botocore's StreamingBody so it can be used as a drop-in replacement
     for parsed["Body"]. All StreamingBody methods are explicitly overridden.
-
-    This stream is cipher-agnostic — the Decryptor handles all algorithm details.
-    Ciphertext is fed through decryptor.update() incrementally, and
-    decryptor.finalize() is called with any trailing data when the body is exhausted.
     """
+
+    # This stream is ALMOST cipher-agnostic — the Decryptor handles ALMOST all algorithm details.
+    # Ciphertext is fed through decryptor.update() incrementally, and
+    # decryptor.finalize() is called with any trailing data when the body is exhausted.
+    #
+    # ALMOST :: The AES-GCM tag is problematic when combined with iterators that can split
+    # the tag over two reads. To accommodate this, read() has a while loop with 3 return conditions.
+    # See inline comments of read for more details.
 
     _body: object = field()
     _decryptor: Decryptor = field()
