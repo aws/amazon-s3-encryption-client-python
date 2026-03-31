@@ -73,24 +73,37 @@ class DecryptingStream(StreamingBody):
         if self._finalized:
             return b""
 
+        # Loop until the decryptor produces non-empty plaintext.
+        # The GCM decryptor's tail buffer may absorb small reads entirely
+        # (returning b"" from update) while it holds back the trailing auth
+        # tag. Looping prevents callers from seeing spurious empty bytes
+        # mid-stream, which would break `while chunk := stream.read(amt)`.
         result = b""
         while not result:
             remaining = self._content_length - self._bytes_consumed
             if remaining <= 0:
+                # All content_length bytes consumed — finalize with no extra data.
                 return self._finalize(b"")
 
+            # Never read past content_length; cap at amt if provided.
             to_read = remaining if amt is None else min(amt, remaining)
             raw = self._body.read(to_read)
 
             if not raw:
+                # Underlying stream exhausted early — finalize with what we have.
                 return self._finalize(b"")
 
             self._bytes_consumed += len(raw)
             remaining = self._content_length - self._bytes_consumed
 
             if remaining <= 0:
+                # This is the last chunk — pass it to finalize so the decryptor
+                # can split off the GCM tag (or flush CBC padding) and verify.
                 return self._finalize(raw)
 
+            # Feed ciphertext to the decryptor. For GCM, the tail buffer holds
+            # back the last tag_length bytes, so update() may return b"" if
+            # the chunk was entirely absorbed into the buffer.
             result = self._decryptor.update(raw)
         return result
 
