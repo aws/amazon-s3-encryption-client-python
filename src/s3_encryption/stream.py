@@ -23,129 +23,8 @@ from .decryptor import Decryptor
 ##= reason=Optional Feature that is a two-way door to implement later
 ##% If Delayed Authentication mode is disabled, and no buffer size is provided, the S3EC MUST set the buffer size to a reasonable default.
 
+
 _DEFAULT_CHUNK_SIZE = 1024
-
-
-##= specification/s3-encryption/client.md#enable-delayed-authentication
-##= type=implementation
-##% When disabled the S3EC MUST NOT release plaintext from a stream which has not been authenticated.
-# slots=False because StreamingBody extends IOBase which already has __weakref__.
-@define(slots=False)
-class BufferedDecryptingStream(StreamingBody):
-    """A stream that buffers all ciphertext, decrypts, then releases plaintext.
-
-    Extends botocore's StreamingBody so it can be used as a drop-in replacement
-    for parsed["Body"]. All StreamingBody methods are explicitly overridden.
-
-    This stream is cipher-agnostic — the Decryptor handles all algorithm details.
-    """
-
-    _body: object = field()
-    _decryptor: Decryptor = field()
-    _content_length: int = field()
-    _plaintext: io.BytesIO = field(init=False, default=None)
-    _plaintext_length: int = field(init=False, default=0)
-
-    def __attrs_post_init__(self):  # noqa: D105
-        super().__init__(io.BytesIO(), content_length=self._content_length)
-
-    def _decrypt(self):
-        """Read all ciphertext, decrypt and verify, cache plaintext."""
-        if self._plaintext is not None:
-            return
-        data = self._body.read()
-        plaintext = self._decryptor.finalize(data)
-        self._plaintext = io.BytesIO(plaintext)
-        self._plaintext_length = len(plaintext)
-        self._raw_stream = self._plaintext
-
-    def __del__(self):  # noqa: D105
-        pass
-
-    def set_socket_timeout(self, timeout):  # noqa: D102
-        pass
-
-    def readable(self):  # noqa: D102
-        self._decrypt()
-        return self._plaintext.readable()
-
-    def read(self, amt=None):
-        """Read decrypted plaintext. Triggers full decryption on first call.
-
-        Args:
-            amt: Number of bytes to read. If None, reads all remaining data.
-
-        Returns:
-            bytes: Decrypted plaintext bytes.
-        """
-        self._decrypt()
-        return self._plaintext.read() if amt is None else self._plaintext.read(amt)
-
-    def readinto(self, b):  # noqa: D102
-        self._decrypt()
-        data = self._plaintext.read(len(b))
-        n = len(data)
-        b[:n] = data
-        return n
-
-    def readlines(self):  # noqa: D102
-        self._decrypt()
-        return self._plaintext.readlines()
-
-    def __iter__(self):  # noqa: D105
-        return self.iter_chunks(_DEFAULT_CHUNK_SIZE)
-
-    def __next__(self):  # noqa: D105
-        chunk = self.read(_DEFAULT_CHUNK_SIZE)
-        if chunk:
-            return chunk
-        raise StopIteration()
-
-    next = __next__
-
-    def iter_lines(self, chunk_size=_DEFAULT_CHUNK_SIZE, keepends=False):  # noqa: D102
-        pending = b""
-        for chunk in self.iter_chunks(chunk_size):
-            lines = (pending + chunk).splitlines(True)
-            for line in lines[:-1]:
-                yield line.splitlines(keepends)[0]
-            pending = lines[-1]
-        if pending:
-            yield pending.splitlines(keepends)[0]
-
-    def iter_chunks(self, chunk_size=_DEFAULT_CHUNK_SIZE):  # noqa: D102
-        while True:
-            chunk = self.read(chunk_size)
-            if chunk == b"":
-                break
-            yield chunk
-
-    def _verify_content_length(self):
-        """Verify that the decryptor consumed exactly content_length bytes."""
-        if (
-            self._decryptor.content_length is not None
-            and self._decryptor.amount_read != self._decryptor.content_length
-        ):
-            raise IncompleteReadError(
-                actual_bytes=self._decryptor.amount_read,
-                expected_bytes=self._decryptor.content_length,
-            )
-
-    def tell(self):  # noqa: D102
-        self._decrypt()
-        return self._plaintext.tell()
-
-    def close(self):
-        """Close the underlying stream."""
-        if hasattr(self._body, "close"):
-            self._body.close()
-
-    def __enter__(self):  # noqa: D105
-        self._decrypt()
-        return self
-
-    def __exit__(self, *args):  # noqa: D105
-        self.close()
 
 
 ##= specification/s3-encryption/client.md#enable-delayed-authentication
@@ -220,9 +99,16 @@ class DecryptingStream(StreamingBody):
         if self._finalized:
             return b""
         self._finalized = True
-        return self._decryptor.finalize(trailing_data)
+        plaintext = self._decryptor.finalize(trailing_data)
+        self._verify_content_length()
+        return plaintext
 
-    def readinto(self, b):  # noqa: D102
+    def readinto(self, b):
+        """Read bytes into a pre-allocated, writable bytes-like object b.
+
+        Returns the number of bytes decrypted.
+        Note: CBC Padding and GCM tag will be removed, so bytes read MAYBE greater than bytes decrypted.
+        """
         data = self.read(len(b))
         n = len(data)
         b[:n] = data
@@ -231,10 +117,12 @@ class DecryptingStream(StreamingBody):
     def readlines(self):  # noqa: D102
         return self.read().splitlines(True)
 
-    def __iter__(self):  # noqa: D105
+    def __iter__(self):
+        """Return an iterator to yield 1k chunks from the decryption stream."""
         return self.iter_chunks(_DEFAULT_CHUNK_SIZE)
 
-    def __next__(self):  # noqa: D105
+    def __next__(self):
+        """Return the next 1k chunk from the decryption stream."""
         chunk = self.read(_DEFAULT_CHUNK_SIZE)
         if chunk:
             return chunk
@@ -242,7 +130,12 @@ class DecryptingStream(StreamingBody):
 
     next = __next__
 
-    def iter_lines(self, chunk_size=_DEFAULT_CHUNK_SIZE, keepends=False):  # noqa: D102
+    def iter_lines(self, chunk_size=_DEFAULT_CHUNK_SIZE, keepends=False):
+        """Return an iterator to yield lines from the decryption stream.
+
+        This is achieved by reading chunk of bytes (of size chunk_size) at a
+        time from the chipher-text stream, decrypting them, and then yielding lines from there.
+        """
         pending = b""
         for chunk in self.iter_chunks(chunk_size):
             lines = (pending + chunk).splitlines(True)
@@ -252,7 +145,8 @@ class DecryptingStream(StreamingBody):
         if pending:
             yield pending.splitlines(keepends)[0]
 
-    def iter_chunks(self, chunk_size=_DEFAULT_CHUNK_SIZE):  # noqa: D102
+    def iter_chunks(self, chunk_size=_DEFAULT_CHUNK_SIZE):
+        """Return an iterator to yield chunks of chunk_size bytes from the raw stream."""
         while True:
             chunk = self.read(chunk_size)
             if chunk == b"":
@@ -275,7 +169,7 @@ class DecryptingStream(StreamingBody):
         return self._bytes_consumed
 
     def close(self):
-        """Close the underlying stream."""
+        """Close the underlying cipher-text stream."""
         if hasattr(self._body, "close"):
             self._body.close()
 

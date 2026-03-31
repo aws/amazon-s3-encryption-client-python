@@ -11,14 +11,12 @@ from datetime import datetime
 
 import boto3
 import pytest
+from botocore.response import StreamingBody
 
 from s3_encryption import S3EncryptionClient, S3EncryptionClientConfig
 from s3_encryption.materials.kms_keyring import KmsKeyring
 from s3_encryption.materials.materials import AlgorithmSuite, CommitmentPolicy
-from s3_encryption.stream import (
-    BufferedDecryptingStream,
-    DecryptingStream,
-)
+from s3_encryption.stream import DecryptingStream
 
 bucket = os.environ.get("CI_S3_BUCKET", "s3ec-python-github-test-bucket")
 region = os.environ.get("CI_AWS_REGION", "us-west-2")
@@ -73,7 +71,7 @@ def test_buffered_roundtrip(algorithm_suite, commitment_policy):
     response = s3ec.get_object(Bucket=bucket, Key=key)
 
     body = response["Body"]
-    assert isinstance(body, BufferedDecryptingStream)
+    assert isinstance(body, StreamingBody)
     assert body.read() == data
 
 

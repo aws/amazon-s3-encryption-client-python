@@ -11,12 +11,10 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.padding import PKCS7
 
+from s3_encryption.buffered_decrypt import one_shot_decrypt
 from s3_encryption.decryptor import AesCbcDecryptor, AesGcmDecryptor
 from s3_encryption.exceptions import S3EncryptionClientError
-from s3_encryption.stream import (
-    BufferedDecryptingStream,
-    DecryptingStream,
-)
+from s3_encryption.stream import DecryptingStream
 
 
 def _encrypt_gcm(plaintext: bytes):
@@ -105,19 +103,24 @@ class TestBufferedWithholdsUntilVerification:
         ct, key, nonce = _encrypt_gcm(plaintext)
         body = _make_streaming_body(ct)
 
-        stream = BufferedDecryptingStream(
-            body,
-            _make_gcm_decryptor(key, nonce, len(ct)),
-            content_length=len(ct),
-        )
-        # read(1) triggers _decrypt(), which calls self._body.read() with no amt,
-        # consuming the entire ciphertext and verifying the GCM tag before
-        # returning even 1 byte of plaintext.
-        chunk = stream.read(1)
+        decryptor = _make_gcm_decryptor(key, nonce, len(ct))
+        original_finalize = decryptor.finalize
+        finalize_called = []
 
+        def spy_finalize(data):
+            result = original_finalize(data)
+            finalize_called.append(True)
+            return result
+
+        decryptor.finalize = spy_finalize
+
+        stream = one_shot_decrypt(body, decryptor)
+
+        # one_shot_decrypt calls finalize() eagerly — tag is verified
+        # before any read() call on the returned stream.
+        assert finalize_called, "finalize (tag verification) must happen before read()"
+        chunk = stream.read(1)
         assert chunk == plaintext[:1]
-        # _plaintext being set confirms full decrypt+verify already happened
-        assert stream._plaintext is not None
 
 
 class TestDelayedAuthCBCDecryption:
@@ -243,20 +246,17 @@ class TestBufferedDecryptingStream:
     def test_full_read(self):
         plaintext = os.urandom(1024)
         ct, key, nonce = _encrypt_gcm(plaintext)
-        stream = BufferedDecryptingStream(
-            _make_streaming_body(ct),
-            _make_gcm_decryptor(key, nonce, len(ct)),
-            content_length=len(ct),
+        stream = one_shot_decrypt(
+            _make_streaming_body(ct), _make_gcm_decryptor(key, nonce, len(ct))
         )
         assert stream.read() == plaintext
 
     def test_partial_reads(self):
         plaintext = os.urandom(512)
         ct, key, nonce = _encrypt_gcm(plaintext)
-        stream = BufferedDecryptingStream(
+        stream = one_shot_decrypt(
             _make_streaming_body(ct),
             _make_gcm_decryptor(key, nonce, len(ct)),
-            content_length=len(ct),
         )
         result = b""
         while chunk := stream.read(100):
@@ -267,24 +267,24 @@ class TestBufferedDecryptingStream:
         plaintext = os.urandom(256)
         ct, key, nonce = _encrypt_gcm(plaintext)
         body = _make_streaming_body(ct)
-        stream = BufferedDecryptingStream(
-            body,
-            _make_gcm_decryptor(key, nonce, len(ct)),
-            content_length=len(ct),
-        )
-        assert stream._plaintext is None
-        stream.read(1)
-        assert stream._plaintext is not None
-        # Entire ciphertext consumed
+        decryptor = _make_gcm_decryptor(key, nonce, len(ct))
+        finalize_called = []
+        original_finalize = decryptor.finalize
+        decryptor.finalize = lambda data: (finalize_called.append(True), original_finalize(data))[1]
+
+        stream = one_shot_decrypt(body, decryptor)
+        # one_shot_decrypt eagerly decrypts — finalize called at construction
+        assert finalize_called
+        # Entire ciphertext consumed from the body
         assert body._stream.tell() == len(ct)
+        assert stream.read(1) == plaintext[:1]
 
     def test_tell(self):
         plaintext = os.urandom(200)
         ct, key, nonce = _encrypt_gcm(plaintext)
-        stream = BufferedDecryptingStream(
+        stream = one_shot_decrypt(
             _make_streaming_body(ct),
             _make_gcm_decryptor(key, nonce, len(ct)),
-            content_length=len(ct),
         )
         stream.read(50)
         assert stream.tell() == 50
@@ -292,10 +292,9 @@ class TestBufferedDecryptingStream:
     def test_readable(self):
         plaintext = b"readable test"
         ct, key, nonce = _encrypt_gcm(plaintext)
-        stream = BufferedDecryptingStream(
+        stream = one_shot_decrypt(
             _make_streaming_body(ct),
             _make_gcm_decryptor(key, nonce, len(ct)),
-            content_length=len(ct),
         )
         assert stream.readable()
 
@@ -303,38 +302,35 @@ class TestBufferedDecryptingStream:
         """Asserts that readinto is implemented."""
         plaintext = os.urandom(64)
         ct, key, nonce = _encrypt_gcm(plaintext)
-        stream = BufferedDecryptingStream(
+        stream = one_shot_decrypt(
             _make_streaming_body(ct),
             _make_gcm_decryptor(key, nonce, len(ct)),
-            content_length=len(ct),
         )
         buf = bytearray(64)
         n = stream.readinto(buf)
         assert n == 64
         assert bytes(buf) == plaintext
 
-    def test_enter_returns_self(self):
+    def test_enter_returns_stream(self):
         plaintext = b"enter"
         ct, key, nonce = _encrypt_gcm(plaintext)
-        stream = BufferedDecryptingStream(
+        stream = one_shot_decrypt(
             _make_streaming_body(ct),
             _make_gcm_decryptor(key, nonce, len(ct)),
-            content_length=len(ct),
         )
-        assert stream.__enter__() is stream
+        with stream as s:
+            assert s.read() == plaintext
 
-    def test_close_delegates(self):
-        """Asserts that close delegates to the body."""
+    def test_close(self):
+        """Asserts that close does not raise."""
         plaintext = b"close"
         ct, key, nonce = _encrypt_gcm(plaintext)
         body = _make_streaming_body(ct)
-        stream = BufferedDecryptingStream(
+        stream = one_shot_decrypt(
             body,
             _make_gcm_decryptor(key, nonce, len(ct)),
-            content_length=len(ct),
         )
-        stream.close()
-        body.close.assert_called_once()
+        stream.close()  # should not raise
 
     def test_close_without_close_attr(self):
         """Asserts that close handles bodies without close."""
@@ -343,10 +339,9 @@ class TestBufferedDecryptingStream:
         body = Mock()
         del body.close
         body.read = BytesIO(ct).read
-        stream = BufferedDecryptingStream(
+        stream = one_shot_decrypt(
             body,
             _make_gcm_decryptor(key, nonce, len(ct)),
-            content_length=len(ct),
         )
         stream.close()  # should not raise
 
@@ -354,34 +349,29 @@ class TestBufferedDecryptingStream:
         plaintext = b"wrong key"
         ct, _key, nonce = _encrypt_gcm(plaintext)
         wrong_key = os.urandom(32)
-        stream = BufferedDecryptingStream(
-            _make_streaming_body(ct),
-            _make_gcm_decryptor(wrong_key, nonce, len(ct)),
-            content_length=len(ct),
-        )
         with pytest.raises(S3EncryptionClientError, match="Failed to decrypt"):
-            stream.read()
+            one_shot_decrypt(
+                _make_streaming_body(ct),
+                _make_gcm_decryptor(wrong_key, nonce, len(ct)),
+            )
 
     def test_tampered_ciphertext_raises_error(self):
         plaintext = b"tamper test"
         ct, key, nonce = _encrypt_gcm(plaintext)
         tampered = bytearray(ct)
         tampered[0] ^= 0xFF
-        stream = BufferedDecryptingStream(
-            _make_streaming_body(bytes(tampered)),
-            _make_gcm_decryptor(key, nonce, len(ct)),
-            content_length=len(ct),
-        )
         with pytest.raises(S3EncryptionClientError, match="Failed to decrypt"):
-            stream.read()
+            one_shot_decrypt(
+                _make_streaming_body(bytes(tampered)),
+                _make_gcm_decryptor(key, nonce, len(ct)),
+            )
 
     def test_idempotent_decrypt(self):
         plaintext = os.urandom(128)
         ct, key, nonce = _encrypt_gcm(plaintext)
-        stream = BufferedDecryptingStream(
+        stream = one_shot_decrypt(
             _make_streaming_body(ct),
             _make_gcm_decryptor(key, nonce, len(ct)),
-            content_length=len(ct),
         )
         first = stream.read(63)
         second = stream.read(65)
@@ -517,7 +507,7 @@ class TestDelayedAuthGCMDecryption:
 # ---------------------------------------------------------------------------
 # Lengths chosen around AES block size (16) and two-block (32) boundaries,
 # plus zero and one byte, to exercise padding, tag-splitting, and empty-data paths.
-EDGE_CASE_LENGTHS = [0, 1, 8, 15, 16, 17, 31, 32, 33, 47, 48, 49]
+EDGE_CASE_LENGTHS = [0, 1, 8, 15, 16, 17, 31, 32, 33, 47, 48, 49, 300]
 
 
 class TestEdgeCasePlaintextLengths:
@@ -526,10 +516,9 @@ class TestEdgeCasePlaintextLengths:
     def test_buffered_gcm(self, length):
         plaintext = os.urandom(length)
         ct, key, nonce = _encrypt_gcm(plaintext)
-        stream = BufferedDecryptingStream(
+        stream = one_shot_decrypt(
             _make_streaming_body(ct),
             _make_gcm_decryptor(key, nonce, len(ct)),
-            content_length=len(ct),
         )
         assert stream.read() == plaintext
 
@@ -560,3 +549,107 @@ class TestEdgeCasePlaintextLengths:
         while stream.readable():
             result += stream.read(7)
         assert result == plaintext
+
+
+class TestDecryptingStreamIterators:
+    """Tests for iter_chunks, iter_lines, __iter__, __next__, readinto, and readlines."""
+
+    def _make_gcm_stream(self, plaintext):
+        ct, key, nonce = _encrypt_gcm(plaintext)
+        return DecryptingStream(
+            _make_streaming_body(ct),
+            _make_gcm_decryptor(key, nonce, len(ct)),
+            content_length=len(ct),
+        )
+
+    @pytest.mark.parametrize("chunk_size", EDGE_CASE_LENGTHS[1:])
+    def test_iter_chunks(self, chunk_size):
+        plaintext = os.urandom(300)
+        stream = self._make_gcm_stream(plaintext)
+        result = b""
+        for chunk in stream.iter_chunks(chunk_size):
+            assert (
+                len(chunk) <= chunk_size or not result
+            )  # first chunk may vary due to GCM buffering
+            result += chunk
+        assert result == plaintext
+
+    def test_iter_chunks_default_size(self):
+        plaintext = os.urandom(2048)
+        stream = self._make_gcm_stream(plaintext)
+        result = b"".join(stream.iter_chunks())
+        assert result == plaintext
+
+    def test_iter_chunks_empty(self):
+        stream = self._make_gcm_stream(b"")
+        assert list(stream.iter_chunks()) == []
+
+    def test_iter(self):
+        plaintext = os.urandom(2048)
+        stream = self._make_gcm_stream(plaintext)
+        result = b"".join(stream)
+        assert result == plaintext
+
+    def test_next(self):
+        plaintext = os.urandom(100)
+        stream = self._make_gcm_stream(plaintext)
+        first = next(stream)
+        assert len(first) > 0
+        # drain the rest
+        rest = b""
+        for chunk in stream:
+            rest += chunk
+        assert first + rest == plaintext
+
+    def test_next_raises_stop_iteration(self):
+        stream = self._make_gcm_stream(b"")
+        with pytest.raises(StopIteration):
+            next(stream)
+
+    def test_iter_lines(self):
+        plaintext = b"line1\nline2\nline3\n"
+        stream = self._make_gcm_stream(plaintext)
+        lines = list(stream.iter_lines())
+        assert lines == [b"line1", b"line2", b"line3"]
+
+    def test_iter_lines_keepends(self):
+        plaintext = b"line1\nline2\nline3\n"
+        stream = self._make_gcm_stream(plaintext)
+        lines = list(stream.iter_lines(keepends=True))
+        assert lines == [b"line1\n", b"line2\n", b"line3\n"]
+
+    def test_iter_lines_no_trailing_newline(self):
+        plaintext = b"first\nsecond"
+        stream = self._make_gcm_stream(plaintext)
+        lines = list(stream.iter_lines())
+        assert lines == [b"first", b"second"]
+
+    def test_iter_lines_empty(self):
+        stream = self._make_gcm_stream(b"")
+        assert list(stream.iter_lines()) == []
+
+    def test_readinto(self):
+        plaintext = os.urandom(64)
+        stream = self._make_gcm_stream(plaintext)
+        buf = bytearray(64)
+        n = stream.readinto(buf)
+        assert bytes(buf[:n]) == plaintext[:n]
+
+    def test_readinto_partial(self):
+        plaintext = os.urandom(200)
+        stream = self._make_gcm_stream(plaintext)
+        buf = bytearray(50)
+        result = b""
+        while n := stream.readinto(buf):
+            result += bytes(buf[:n])
+        assert result == plaintext
+
+    def test_readlines(self):
+        plaintext = b"aaa\nbbb\nccc\n"
+        stream = self._make_gcm_stream(plaintext)
+        assert stream.readlines() == [b"aaa\n", b"bbb\n", b"ccc\n"]
+
+    def test_readlines_no_trailing_newline(self):
+        plaintext = b"aaa\nbbb"
+        stream = self._make_gcm_stream(plaintext)
+        assert stream.readlines() == [b"aaa\n", b"bbb"]

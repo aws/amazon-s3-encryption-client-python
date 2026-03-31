@@ -11,10 +11,12 @@ import json
 import os
 
 from attrs import define, field
+from botocore.response import StreamingBody
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.padding import PKCS7
 
+from .buffered_decrypt import one_shot_decrypt
 from .decryptor import AesCbcDecryptor, AesGcmDecryptor
 from .exceptions import S3EncryptionClientError
 from .instruction_file import fetch_instruction_file
@@ -28,10 +30,7 @@ from .materials.materials import (
     EncryptionMaterials,
 )
 from .metadata import ObjectMetadata
-from .stream import (
-    BufferedDecryptingStream,
-    DecryptingStream,
-)
+from .stream import DecryptingStream
 
 
 @define
@@ -232,7 +231,7 @@ class GetEncryptedObjectPipeline:
         encryption_context=None,
         bucket=None,
         key=None,
-    ):
+    ) -> StreamingBody:
         """Decrypt the data after it is retrieved from S3.
 
         Args:
@@ -244,7 +243,7 @@ class GetEncryptedObjectPipeline:
             key (str, optional): S3 object key (required for instruction file)
 
         Returns:
-            A decrypting stream (BufferedDecryptingStream or DelayedAuthDecryptingStream).
+            A botocore.response.StreamingBody of plain-text
         """
         # Convert the metadata dictionary to an ObjectMetadata instance
         streaming_body = response.get("Body")
@@ -469,7 +468,7 @@ class GetEncryptedObjectPipeline:
         ##= specification/s3-encryption/client.md#enable-delayed-authentication
         ##= type=implementation
         ##% When disabled the S3EC MUST NOT release plaintext from a stream which has not been authenticated.
-        return BufferedDecryptingStream(streaming_body, decryptor, content_length=content_length)
+        return one_shot_decrypt(streaming_body, decryptor)
 
     def _decrypt_kc_gcm_streaming(
         self, dec_materials, metadata, streaming_body, enable_delayed_authentication, content_length
@@ -523,7 +522,10 @@ class GetEncryptedObjectPipeline:
         )
         if enable_delayed_authentication:
             return DecryptingStream(streaming_body, decryptor, content_length=content_length)
-        return BufferedDecryptingStream(streaming_body, decryptor, content_length=content_length)
+        ##= specification/s3-encryption/client.md#enable-delayed-authentication
+        ##= type=implementation
+        ##% When disabled the S3EC MUST NOT release plaintext from a stream which has not been authenticated.
+        return one_shot_decrypt(streaming_body, decryptor)
 
     def _decrypt_v2(self, metadata, encryption_context) -> DecryptionMaterials:
         """Prepare V2 decryption materials."""
