@@ -172,6 +172,26 @@ class AlgorithmSuite(Enum):
         ##% the IV used in the AES-GCM content encryption/decryption MUST consist entirely of bytes with the value 0x01.
         return b"\x01" * self.cipher_iv_length_bytes
 
+    @property
+    def cipher_block_size_bits(self) -> int:
+        """Block size of the cipher in bits."""
+        return self._cipher_block_size_bits
+
+    @property
+    def cipher_block_size_bytes(self) -> int:
+        """Block size of the cipher in bytes."""
+        return self._cipher_block_size_bits // 8
+
+    @property
+    def cipher_tag_length_bits(self) -> int:
+        """Authentication tag length of the cipher in bits."""
+        return self._cipher_tag_length_bits
+
+    @property
+    def cipher_tag_length_bytes(self) -> int:
+        """Authentication tag length of the cipher in bytes."""
+        return self._cipher_tag_length_bits // 8
+
 
 class CommitmentPolicy(Enum):
     """Commitment policies controlling key-commitment behavior."""

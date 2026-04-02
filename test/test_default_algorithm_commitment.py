@@ -83,6 +83,7 @@ class TestDefaultAlgorithmUsesKeyCommitment:
         response = {
             "Body": BytesIO(ciphertext),
             "Metadata": metadata,
+            "ContentLength": len(ciphertext),
         }
 
         # Decrypt with REQUIRE_ENCRYPT_REQUIRE_DECRYPT — this will reject
@@ -91,5 +92,7 @@ class TestDefaultAlgorithmUsesKeyCommitment:
             cmm,
             commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
         )
-        result = decrypt_pipeline.decrypt(response)
-        assert result == plaintext
+        result = decrypt_pipeline.decrypt(
+            response, ".instruction", enable_delayed_authentication=False
+        )
+        assert result.read() == plaintext

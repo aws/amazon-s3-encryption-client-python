@@ -34,7 +34,29 @@ _GET_OBJECT_CLEANUP_ATTRS = (_CTX_ENCRYPTION_CONTEXT, _CTX_BUCKET, _CTX_KEY)
 
 @define
 class S3EncryptionClientConfig:
-    """Configuration object for the S3 Encryption Client."""
+    """Configuration for the S3 Encryption Client.
+
+    Attributes:
+        keyring: Keyring used for encrypting/decrypting data keys.
+        encryption_algorithm: Algorithm suite for encryption. Defaults to
+            ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY (V3 key-committing).
+        commitment_policy: Key commitment policy for encryption and decryption.
+            Defaults to REQUIRE_ENCRYPT_REQUIRE_DECRYPT.
+        enable_legacy_unauthenticated_modes: If True, allow decryption of objects
+            encrypted with legacy CBC algorithm suites. Defaults to False.
+        cmm: Crypto materials manager. Defaults to a DefaultCryptoMaterialsManager
+            wrapping the provided keyring.
+        instruction_file_suffix: Suffix appended to the S3 object key when
+            fetching instruction files. Defaults to ".instruction".
+        enable_delayed_authentication: If True, release plaintext from streams
+            before GCM tag verification. Defaults to False. Has no effect for
+            CBC encrypted ciphertext, which is always streamed as there is no
+            authentication tag.
+
+    Raises:
+        S3EncryptionClientError: If the encryption algorithm is legacy, or if
+            the algorithm suite is incompatible with the commitment policy.
+    """
 
     keyring: AbstractKeyring
     encryption_algorithm: AlgorithmSuite = field(
@@ -59,6 +81,15 @@ class S3EncryptionClientConfig:
     ##% The default Instruction File behavior uses the same S3 object key
     ##% as its associated object suffixed with ".instruction".
     instruction_file_suffix: str = field(default=".instruction")
+
+    ##= specification/s3-encryption/client.md#enable-delayed-authentication
+    ##= type=implementation
+    ##% The S3EC MUST support the option to enable or disable Delayed Authentication mode.
+
+    ##= specification/s3-encryption/client.md#enable-delayed-authentication
+    ##= type=implication
+    ##% Delayed Authentication mode MUST be set to false by default.
+    enable_delayed_authentication: bool = field(default=False)
 
     @cmm.default
     def _default_cmm_for_keyring(self):
@@ -197,10 +228,18 @@ class S3EncryptionClientPlugin:
         # The parsed response already has the Body as a StreamingBody
         # We need to read it, decrypt it, and replace it
 
+        # content_length is going to the cipher-text's content length
+        content_length = parsed.get("ContentLength")
+        if content_length is None:
+            obj_key = getattr(self._context, _CTX_KEY, None)
+            raise S3EncryptionClientError(
+                f"S3 response is missing ContentLength and is invalid. Key: {obj_key}"
+            )
         # Create a response dict that matches what the pipeline expects
         response = {
             "Body": parsed.get("Body"),
             "Metadata": parsed.get("Metadata", {}),
+            "ContentLength": content_length,
         }
 
         # Create a pipeline and decrypt the data
@@ -212,18 +251,15 @@ class S3EncryptionClientPlugin:
         )
         decrypted_data = pipeline.decrypt(
             response,
-            encryption_context,
+            instruction_suffix=self.config.instruction_file_suffix,
+            enable_delayed_authentication=self.config.enable_delayed_authentication,
+            encryption_context=encryption_context,
             bucket=getattr(self._context, _CTX_BUCKET, None),
             key=getattr(self._context, _CTX_KEY, None),
-            instruction_suffix=self.config.instruction_file_suffix,
         )
 
-        # Create a new streaming body with the decrypted data
-        stream = io.BytesIO(decrypted_data)
-        streaming_body = StreamingBody(stream, len(decrypted_data))
-
-        # Replace body with decrypted data
-        parsed["Body"] = streaming_body
+        # Replace body with decrypting stream
+        parsed["Body"] = decrypted_data
 
     def process_instruction_file(self, parsed):
         """Process instruction file in plaintext mode.
