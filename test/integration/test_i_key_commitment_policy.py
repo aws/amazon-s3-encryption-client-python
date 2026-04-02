@@ -50,7 +50,8 @@ def _unique_key(prefix):
 
 class TestNonCommittingObjectDecryptPolicies:
     """Verify V2 (non-committing) objects can be decrypted under ALLOW policies
-    and rejected under REQUIRE_REQUIRE."""
+    and rejected under REQUIRE_REQUIRE.
+    """
 
     PLAINTEXT = b"non-committing policy integration test"
 
@@ -113,7 +114,8 @@ COMMITTING_WRITER_POLICIES = [
 @pytest.mark.parametrize("writer_policy", COMMITTING_WRITER_POLICIES)
 class TestCommittingObjectDecryptPolicies:
     """Verify V3 (committing) objects can be decrypted under all three policies,
-    regardless of which REQUIRE_ENCRYPT_* policy was used to write them."""
+    regardless of which REQUIRE_ENCRYPT_* policy was used to write them.
+    """
 
     PLAINTEXT = b"committing policy integration test"
 

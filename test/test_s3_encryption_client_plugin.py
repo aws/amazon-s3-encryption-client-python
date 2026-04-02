@@ -166,7 +166,5 @@ class TestS3EncryptionClientPlugin:
 
         params = {"body": b"test data", "headers": {}}
 
-        with pytest.raises(
-            S3EncryptionClientError, match="not supported in put_object"
-        ):
+        with pytest.raises(S3EncryptionClientError, match="not supported in put_object"):
             plugin.on_put_object_before_call(params)

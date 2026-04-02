@@ -137,8 +137,6 @@ class TestContentEncryption:
 
     def test_bytesio_body_encrypts_successfully(self):
         """Encryption MUST work when the body is a BytesIO object."""
-        from io import BytesIO
-
         cmm, key = _mock_cmm()
         pipeline = PutEncryptedObjectPipeline(
             cmm, AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY

@@ -126,6 +126,8 @@ def test_decrypt_invalid_instruction_file():
         s3ec.get_object(Bucket=bucket, Key=key)
 
     print(f"Error message: {exc_info.value}")
+
+
 def test_decrypt_instruction_file_wrong_suffix_raises():
     """Decryption MUST fail when the instruction file suffix doesn't match the actual S3 object."""
     from s3_encryption.exceptions import S3EncryptionClientError
