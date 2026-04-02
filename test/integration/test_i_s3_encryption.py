@@ -136,6 +136,19 @@ def test_binary_data_roundtrip(algorithm_suite, commitment_policy):
     response = s3ec.get_object(Bucket=bucket, Key=key)
     output = response["Body"].read()
     assert output == data
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_bytesio_body_roundtrip(algorithm_suite, commitment_policy):
+    """Test that a BytesIO body is encrypted and decrypted correctly."""
+    from io import BytesIO
+
+    key = _unique_key("bytesio-body-rt-")
+    data = b"BytesIO round trip test data"
+
+    s3ec = _make_client(algorithm_suite, commitment_policy)
+    s3ec.put_object(Bucket=bucket, Key=key, Body=BytesIO(data))
+    response = s3ec.get_object(Bucket=bucket, Key=key)
+    output = response["Body"].read()
+    assert output == data
 
 
 @pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)

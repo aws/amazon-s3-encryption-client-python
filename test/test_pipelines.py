@@ -310,3 +310,127 @@ class TestGetEncryptedObjectPipelineInstructionFile:
             S3EncryptionClientError, match="AES/GCM is not a valid key wrapping algorithm"
         ):
             pipeline.decrypt(mock_response, ".instruction", enable_delayed_authentication=False)
+
+    def test_decrypt_instruction_file_no_s3_client_raises(self):
+        """Instruction file fetch MUST fail when no s3_client is available."""
+        # Object metadata has no EDK — triggers instruction file path
+        object_metadata = {}
+
+        mock_keyring = Mock(spec=S3Keyring)
+        cmm = DefaultCryptoMaterialsManager(mock_keyring)
+        pipeline = GetEncryptedObjectPipeline(
+            cmm,
+            commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+            s3_client=None,  # No s3_client
+        )
+
+        mock_response = {
+            "Body": BytesIO(b"encrypted-data"),
+            "Metadata": object_metadata,
+        }
+
+        with pytest.raises(S3EncryptionClientError, match="s3_client required"):
+            pipeline.decrypt(
+                mock_response,
+                instruction_suffix=".instruction",
+                enable_delayed_authentication=False,
+                bucket="test-bucket",
+                key="test-key",
+            )
+
+    def test_decrypt_instruction_file_missing_bucket_key_raises(self):
+        """Instruction file fetch MUST fail when Bucket or Key is missing."""
+        object_metadata = {}
+
+        mock_s3_client = Mock()
+        mock_keyring = Mock(spec=S3Keyring)
+        cmm = DefaultCryptoMaterialsManager(mock_keyring)
+        pipeline = GetEncryptedObjectPipeline(
+            cmm,
+            commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+            s3_client=mock_s3_client,
+        )
+
+        mock_response = {
+            "Body": BytesIO(b"encrypted-data"),
+            "Metadata": object_metadata,
+        }
+
+        with pytest.raises(S3EncryptionClientError, match="Bucket and key required"):
+            pipeline.decrypt(
+                mock_response,
+                instruction_suffix=".instruction",
+                enable_delayed_authentication=False,
+                bucket=None,
+                key=None,
+            )
+
+    def test_decrypt_instruction_file_s3_not_found_raises(self):
+        """Instruction file fetch MUST fail when the file doesn't exist in S3."""
+        from botocore.exceptions import ClientError
+
+        object_metadata = {}
+
+        mock_s3_client = Mock()
+        mock_s3_client.get_object.side_effect = ClientError(
+            {"Error": {"Code": "NoSuchKey", "Message": "The specified key does not exist."}},
+            "GetObject",
+        )
+        # The fetch_instruction_file function checks for _s3ec_plugin_context
+        mock_s3_client._s3ec_plugin_context = Mock()
+
+        mock_keyring = Mock(spec=S3Keyring)
+        cmm = DefaultCryptoMaterialsManager(mock_keyring)
+        pipeline = GetEncryptedObjectPipeline(
+            cmm,
+            commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+            s3_client=mock_s3_client,
+        )
+
+        mock_response = {
+            "Body": BytesIO(b"encrypted-data"),
+            "Metadata": object_metadata,
+        }
+
+        with pytest.raises(ClientError):
+            pipeline.decrypt(
+                mock_response,
+                instruction_suffix=".instruction",
+                enable_delayed_authentication=False,
+                bucket="test-bucket",
+                key="test-key",
+            )
+
+    def test_decrypt_instruction_file_empty_metadata_raises(self):
+        """Instruction file with no valid metadata MUST raise an error."""
+        object_metadata = {}
+
+        mock_s3_client = Mock()
+        # Instruction file returns empty metadata (empty body parsed to nothing)
+        mock_s3_client.get_object.return_value = {
+            "Body": BytesIO(b""),
+            "Metadata": {},
+        }
+        mock_s3_client._s3ec_plugin_context = Mock()
+
+        mock_keyring = Mock(spec=S3Keyring)
+        cmm = DefaultCryptoMaterialsManager(mock_keyring)
+        pipeline = GetEncryptedObjectPipeline(
+            cmm,
+            commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+            s3_client=mock_s3_client,
+        )
+
+        mock_response = {
+            "Body": BytesIO(b"encrypted-data"),
+            "Metadata": object_metadata,
+        }
+
+        with pytest.raises(S3EncryptionClientError, match="empty metadata"):
+            pipeline.decrypt(
+                mock_response,
+                instruction_suffix=".instruction",
+                enable_delayed_authentication=False,
+                bucket="test-bucket",
+                key="test-key",
+            )
