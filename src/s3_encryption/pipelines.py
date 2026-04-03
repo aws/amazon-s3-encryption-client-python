@@ -170,6 +170,118 @@ class PutEncryptedObjectPipeline:
 
 
 @define
+class MultipartUploadPipeline:
+    """Pipeline for encrypting multipart uploads.
+
+    Manages a single AES-GCM cipher instance shared across all parts.
+    Parts MUST be uploaded in sequence (1, 2, 3, ...).
+
+    ##= specification/s3-encryption/client.md#optional-api-operations
+    ##= type=implementation
+    ##% UploadPart MUST encrypt each part.
+    ##% Each part MUST be encrypted in sequence.
+    ##% Each part MUST be encrypted using the same cipher instance for each part.
+    """
+
+    cmm: AbstractCryptoMaterialsManager = field()
+    encryption_algorithm: AlgorithmSuite = field()
+    encryption_context: dict = field(factory=dict)
+    _encryptor: object = field(init=False, default=None)
+    _metadata: dict = field(init=False, factory=dict)
+    _next_part: int = field(init=False, default=1)
+    _pending_part: tuple = field(init=False, default=None)  # (part_number, ciphertext)
+
+    def __attrs_post_init__(self):
+        """Obtain encryption materials and initialize the streaming cipher."""
+        enc_mats_request = EncryptionMaterials(
+            encryption_algorithm=self.encryption_algorithm,
+            encryption_context=self.encryption_context.copy(),
+        )
+        enc_mats = self.cmm.get_encryption_materials(enc_mats_request)
+        if enc_mats.plaintext_data_key is None:
+            raise S3EncryptionClientError("No plaintext data key found!")
+        if enc_mats.encrypted_data_key is None:
+            raise S3EncryptionClientError("No encrypted data key found!")
+
+        edk_bytes = enc_mats.encrypted_data_key.encrypted_data_key
+
+        if self.encryption_algorithm == AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY:
+            self._init_kc_gcm(enc_mats, edk_bytes)
+        else:
+            self._init_gcm(enc_mats, edk_bytes)
+
+    def _init_gcm(self, enc_mats, edk_bytes):
+        iv = os.urandom(enc_mats.encryption_algorithm.cipher_iv_length_bytes)
+        cipher = Cipher(algorithms.AES(enc_mats.plaintext_data_key), modes.GCM(iv))
+        self._encryptor = cipher.encryptor()
+        self._metadata = ObjectMetadata(
+            encrypted_data_key_v2=base64.b64encode(edk_bytes).decode("utf-8"),
+            encrypted_data_key_algorithm="kms+context",
+            content_iv=base64.b64encode(iv).decode("utf-8"),
+            content_cipher="AES/GCM/NoPadding",
+            encrypted_data_key_context=enc_mats.encryption_context,
+        ).to_dict()
+
+    def _init_kc_gcm(self, enc_mats, edk_bytes):
+        algorithm_suite = enc_mats.encryption_algorithm
+        message_id = os.urandom(algorithm_suite.commitment_nonce_length_bytes)
+        derived_encryption_key, commit_key = derive_keys(
+            enc_mats.plaintext_data_key, message_id, algorithm_suite
+        )
+        cipher = Cipher(
+            algorithms.AES(derived_encryption_key), modes.GCM(algorithm_suite.kc_gcm_iv)
+        )
+        self._encryptor = cipher.encryptor()
+        self._encryptor.authenticate_additional_data(algorithm_suite.suite_id_bytes)
+        self._metadata = ObjectMetadata(
+            content_cipher_v3=str(algorithm_suite.suite_id),
+            encrypted_data_key_algorithm_v3="12",
+            encrypted_data_key_v3=base64.b64encode(edk_bytes).decode("utf-8"),
+            message_id_v3=base64.b64encode(message_id).decode("utf-8"),
+            key_commitment_v3=base64.b64encode(commit_key).decode("utf-8"),
+            encryption_context_v3=(
+                enc_mats.encryption_context if enc_mats.encryption_context else None
+            ),
+        ).to_dict()
+
+    @property
+    def metadata(self):
+        """Return the encryption metadata dict for the multipart upload."""
+        return self._metadata
+
+    def encrypt_part(self, part_number, data):
+        """Encrypt a single part. Parts must be sequential starting from 1.
+
+        Returns (ready_part, ready_ciphertext) or (None, None) if no part
+        is ready to upload yet (the first call buffers).
+        """
+        if part_number != self._next_part:
+            raise S3EncryptionClientError(
+                f"Parts must be uploaded in sequence. Expected part {self._next_part}, "
+                f"got {part_number}."
+            )
+        if isinstance(data, str):
+            data = data.encode("utf-8")
+        self._next_part += 1
+
+        ciphertext = self._encryptor.update(data)
+
+        # Release the previously buffered part; buffer the new one
+        ready = self._pending_part
+        self._pending_part = (part_number, ciphertext)
+        return ready
+
+    def finalize(self):
+        """Finalize the cipher and return (part_number, ciphertext+tag) for the last part."""
+        if self._pending_part is None:
+            raise S3EncryptionClientError("No parts were encrypted.")
+        self._encryptor.finalize()
+        part_number, ciphertext = self._pending_part
+        self._pending_part = None
+        return part_number, ciphertext + self._encryptor.tag
+
+
+@define
 class GetEncryptedObjectPipeline:
     """Pipeline for decrypting objects after they are retrieved from S3.
 
