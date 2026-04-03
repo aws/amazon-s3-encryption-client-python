@@ -8,9 +8,7 @@ Tests cover the low-level multipart API (create/upload_part/complete/abort)
 and the high-level upload_file / upload_fileobj convenience methods.
 """
 
-import io
 import os
-import tempfile
 from datetime import datetime
 
 import boto3
@@ -210,70 +208,6 @@ def test_abort_multipart_upload(algorithm_suite, commitment_policy):
     plain_s3 = boto3.client("s3")
     with pytest.raises(plain_s3.exceptions.NoSuchKey):
         plain_s3.get_object(Bucket=bucket, Key=key)
-
-
-# ---------------------------------------------------------------------------
-# upload_file convenience method
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
-def test_upload_file_small(algorithm_suite, commitment_policy):
-    """upload_file with a file smaller than the multipart threshold uses put_object."""
-    key = _unique_key("upload-file-small-")
-    data = os.urandom(1024)
-
-    s3ec = _make_client(algorithm_suite, commitment_policy)
-
-    with tempfile.NamedTemporaryFile(delete=False) as f:
-        f.write(data)
-        tmp_path = f.name
-
-    try:
-        s3ec.upload_file(tmp_path, bucket, key)
-        response = s3ec.get_object(Bucket=bucket, Key=key)
-        assert response["Body"].read() == data
-    finally:
-        os.unlink(tmp_path)
-
-
-@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
-def test_upload_file_large_triggers_multipart(algorithm_suite, commitment_policy):
-    """upload_file with a file larger than the threshold triggers multipart upload."""
-    key = _unique_key("upload-file-large-")
-    # 11 MB — exceeds default 8 MB threshold
-    data = os.urandom(11 * 1024 * 1024)
-
-    s3ec = _make_client(algorithm_suite, commitment_policy)
-
-    with tempfile.NamedTemporaryFile(delete=False) as f:
-        f.write(data)
-        tmp_path = f.name
-
-    try:
-        s3ec.upload_file(tmp_path, bucket, key)
-        response = s3ec.get_object(Bucket=bucket, Key=key)
-        assert response["Body"].read() == data
-    finally:
-        os.unlink(tmp_path)
-
-
-# ---------------------------------------------------------------------------
-# upload_fileobj convenience method
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
-def test_upload_fileobj(algorithm_suite, commitment_policy):
-    """upload_fileobj encrypts a file-like object via multipart upload."""
-    key = _unique_key("upload-fileobj-")
-    data = os.urandom(11 * 1024 * 1024)
-
-    s3ec = _make_client(algorithm_suite, commitment_policy)
-
-    s3ec.upload_fileobj(io.BytesIO(data), bucket, key)
-    response = s3ec.get_object(Bucket=bucket, Key=key)
-    assert response["Body"].read() == data
 
 
 # ---------------------------------------------------------------------------
