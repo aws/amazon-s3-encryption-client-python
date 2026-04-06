@@ -252,3 +252,26 @@ def test_put_object_uses_configured_algorithm(algorithm_suite, commitment_policy
     meta_key, expected_value = _EXPECTED_ALGORITHM_METADATA[algorithm_suite]
     assert meta_key in metadata, f"Expected metadata key '{meta_key}' not found in {metadata}"
     assert metadata[meta_key] == expected_value
+
+
+##= specification/s3-encryption/client.md#enable-delayed-authentication
+##= type=test
+##% The S3EC MUST support the option to enable or disable Delayed Authentication mode.
+@pytest.mark.parametrize("enable_delayed_auth", [False, True], ids=["buffered", "delayed-auth"])
+def test_delayed_authentication_mode(enable_delayed_auth):
+    """S3EC MUST support enabling and disabling delayed authentication."""
+    key = _unique_key("delayed-auth-mode-")
+    data = b"test delayed authentication mode"
+
+    kms_client = boto3.client("kms", region_name=region)
+    keyring = KmsKeyring(kms_client, kms_key_id)
+    wrapped_client = boto3.client("s3")
+    config = S3EncryptionClientConfig(
+        keyring,
+        enable_delayed_authentication=enable_delayed_auth,
+    )
+    s3ec = S3EncryptionClient(wrapped_client, config)
+
+    s3ec.put_object(Bucket=bucket, Key=key, Body=data)
+    response = s3ec.get_object(Bucket=bucket, Key=key)
+    assert response["Body"].read() == data

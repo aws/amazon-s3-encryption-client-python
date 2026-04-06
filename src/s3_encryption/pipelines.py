@@ -11,11 +11,14 @@ import json
 import os
 
 from attrs import define, field
+from botocore.response import StreamingBody
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.padding import PKCS7
 
-from .exceptions import S3EncryptionClientError, S3EncryptionClientSecurityError
+from .buffered_decrypt import one_shot_decrypt
+from .decryptor import AesCbcDecryptor, AesGcmDecryptor
+from .exceptions import S3EncryptionClientError
 from .instruction_file import fetch_instruction_file
 from .key_derivation import derive_keys, verify_commitment
 from .materials.crypto_materials_manager import AbstractCryptoMaterialsManager
@@ -27,6 +30,7 @@ from .materials.materials import (
     EncryptionMaterials,
 )
 from .metadata import ObjectMetadata
+from .stream import DecryptingStream
 
 
 @define
@@ -222,26 +226,28 @@ class GetEncryptedObjectPipeline:
     def decrypt(
         self,
         response,
+        instruction_suffix,
+        enable_delayed_authentication,
         encryption_context=None,
         bucket=None,
         key=None,
-        instruction_suffix=".instruction",
-    ):
+    ) -> StreamingBody:
         """Decrypt the data after it is retrieved from S3.
 
         Args:
             response (dict): The response from S3 containing the encrypted data and metadata
+            instruction_suffix (str): suffix for instruction file
+            enable_delayed_authentication (bool): If True, release plaintext before GCM tag verification.
             encryption_context (dict, optional): Additional context for decryption
             bucket (str, optional): S3 bucket name (required for instruction file)
             key (str, optional): S3 object key (required for instruction file)
-            instruction_suffix(str, optional): suffix for instruction file; defaults to ".instruction".
 
         Returns:
-            bytes: The decrypted data
+            A botocore.response.StreamingBody of plain-text
         """
         # Convert the metadata dictionary to an ObjectMetadata instance
-        # TODO: Stream + Buffered Decryption
-        encrypted_data = response.get("Body").read()
+        streaming_body: StreamingBody = response.get("Body")
+        content_length = response.get("ContentLength")
         encryption_metadata = response.get("Metadata", {})
         metadata = ObjectMetadata.from_dict(encryption_metadata)
 
@@ -254,10 +260,12 @@ class GetEncryptedObjectPipeline:
 
             if self.s3_client is None:
                 raise S3EncryptionClientError("s3_client required to fetch instruction file")
-            # TODO: we should validate that these parameters must be None
-            # when not in instruction file mode.
             if bucket is None or key is None:
                 raise S3EncryptionClientError("Bucket and key required to fetch instruction file")
+            if instruction_suffix is None:
+                raise S3EncryptionClientError(
+                    "instruction_suffix required to fetch instruction file"
+                )
 
             instruction_key = key + instruction_suffix
             instruction_metadata = fetch_instruction_file(self.s3_client, bucket, instruction_key)
@@ -380,23 +388,144 @@ class GetEncryptedObjectPipeline:
         ##= type=implementation
         ##% When the commitment policy is REQUIRE_ENCRYPT_ALLOW_DECRYPT, the S3EC MUST allow decryption using algorithm suites which do not support key commitment.
 
-        # Perform decryption based on algorithm suite
+        if enable_delayed_authentication is None:
+            raise S3EncryptionClientError("enable_delayed_authentication must be explicitly set")
+
+        # Build decryptor and return streaming wrapper based on algorithm suite
         match dec_materials.algorithm_suite:
             case AlgorithmSuite.ALG_AES_256_CBC_IV16_NO_KDF:
-                return self._decrypt_cbc_content(dec_materials, encrypted_data)
+                return self._decrypt_cbc_streaming(dec_materials, streaming_body, content_length)
             case AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF:
-                ##= specification/s3-encryption/encryption.md#alg-aes-256-gcm-iv12-tag16-no-kdf
-                ##= type=implementation
-                ##% The client MUST NOT provide any AAD when encrypting with
-                ##% ALG_AES_256_GCM_IV12_TAG16_NO_KDF.
-                aesgcm = AESGCM(dec_materials.plaintext_data_key)
-                return aesgcm.decrypt(
-                    nonce=dec_materials.iv, data=encrypted_data, associated_data=None
+                return self._decrypt_gcm_streaming(
+                    dec_materials,
+                    streaming_body,
+                    enable_delayed_authentication,
+                    content_length,
                 )
             case AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY:
-                return self._decrypt_kc_gcm_content(dec_materials, encrypted_data, metadata)
+                return self._decrypt_kc_gcm_streaming(
+                    dec_materials,
+                    metadata,
+                    streaming_body,
+                    enable_delayed_authentication,
+                    content_length,
+                )
             case _:
                 raise S3EncryptionClientError("Unknown algorithm suite!")
+
+    @staticmethod
+    def _decrypt_cbc_streaming(dec_materials, streaming_body, content_length):
+        """Decrypt content encrypted with ALG_AES_256_CBC_IV16_NO_KDF.
+
+        CBC is always streamed (no buffered mode) since it has no auth tag.
+        """
+        ##= specification/s3-encryption/decryption.md#cbc-decryption
+        ##= type=implementation
+        ##% If an object is encrypted with ALG_AES_256_CBC_IV16_NO_KDF and
+        ##% [legacy unauthenticated algorithm suites](#legacy-decryption) is enabled,
+        ##% then the S3EC MUST create a cipher with AES in CBC Mode with PKCS5Padding or
+        ##% PKCS7Padding compatible padding for a 16-byte block cipher
+        ##% (example: for the Java JCE, this is "AES/CBC/PKCS5Padding").
+        ##= specification/s3-encryption/decryption.md#cbc-decryption
+        ##= type=implementation
+        ##% If the cipher object cannot be created as described above,
+        ##% Decryption MUST fail.
+        ##= specification/s3-encryption/decryption.md#cbc-decryption
+        ##= type=implementation
+        ##% The error SHOULD detail why the cipher could not be initialized
+        ##% (such as CBC or PKCS5Padding is not supported by the underlying crypto provider).
+        cipher = Cipher(
+            algorithms.AES(dec_materials.plaintext_data_key),
+            modes.CBC(dec_materials.iv),
+        )
+        # Remove PKCS7 padding (compatible with PKCS5Padding for 16-byte block ciphers)
+        unpadder = PKCS7(dec_materials.algorithm_suite.cipher_block_size_bits).unpadder()
+        decryptor = AesCbcDecryptor(cipher.decryptor(), unpadder, content_length=content_length)
+        return DecryptingStream(streaming_body, decryptor, content_length=content_length)
+
+    @staticmethod
+    def _decrypt_gcm_streaming(
+        dec_materials, streaming_body, enable_delayed_authentication, content_length
+    ):
+        """Decrypt content encrypted with ALG_AES_256_GCM_IV12_TAG16_NO_KDF."""
+        ##= specification/s3-encryption/encryption.md#alg-aes-256-gcm-iv12-tag16-no-kdf
+        ##= type=implementation
+        ##% The client MUST NOT provide any AAD when encrypting with
+        ##% ALG_AES_256_GCM_IV12_TAG16_NO_KDF.
+        cipher = Cipher(
+            algorithms.AES(dec_materials.plaintext_data_key), modes.GCM(dec_materials.iv)
+        )
+        decryptor = AesGcmDecryptor(
+            cipher.decryptor(),
+            tag_length=dec_materials.algorithm_suite.cipher_tag_length_bytes,
+            content_length=content_length,
+        )
+        if enable_delayed_authentication:
+            ##= specification/s3-encryption/client.md#enable-delayed-authentication
+            ##= type=implementation
+            ##% When enabled, the S3EC MAY release plaintext from a stream which has not been authenticated.
+            return DecryptingStream(streaming_body, decryptor, content_length=content_length)
+        ##= specification/s3-encryption/client.md#enable-delayed-authentication
+        ##= type=implementation
+        ##% When disabled the S3EC MUST NOT release plaintext from a stream which has not been authenticated.
+        return one_shot_decrypt(streaming_body, decryptor)
+
+    def _decrypt_kc_gcm_streaming(
+        self, dec_materials, metadata, streaming_body, enable_delayed_authentication, content_length
+    ):
+        """Decrypt content encrypted with ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY.
+
+        Performs HKDF key derivation, key commitment verification, then returns
+        a streaming decryptor.
+        """
+        message_id = base64.b64decode(metadata.message_id_v3)
+        stored_commitment = base64.b64decode(metadata.key_commitment_v3)
+
+        ##= specification/s3-encryption/decryption.md#decrypting-with-commitment
+        ##= type=implementation
+        ##% When using an algorithm suite which supports key commitment, the client MUST verify
+        ##% that the [derived key commitment](./key-derivation.md#hkdf-operation) contains the
+        ##% same bytes as the stored key commitment retrieved from the stored object's metadata.
+        ##= specification/s3-encryption/decryption.md#decrypting-with-commitment
+        ##= type=implementation
+        ##% When using an algorithm suite which supports key commitment, the client MUST verify the key commitment values match before deriving
+        ##% the [derived encryption key](./key-derivation.md#hkdf-operation).
+        derived_encryption_key, derived_commitment = derive_keys(
+            dec_materials.plaintext_data_key, message_id, dec_materials.algorithm_suite
+        )
+        verify_commitment(stored_commitment, derived_commitment)
+
+        ##= specification/s3-encryption/key-derivation.md#hkdf-operation
+        ##= type=implementation
+        ##% When encrypting or decrypting with ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+        ##% the IV used in the AES-GCM content encryption/decryption MUST consist entirely of bytes with the value 0x01.
+        ##= specification/s3-encryption/key-derivation.md#hkdf-operation
+        ##= type=implementation
+        ##% The IV's total length MUST match the IV length defined by the algorithm suite.
+        ##= specification/s3-encryption/key-derivation.md#hkdf-operation
+        ##= type=implementation
+        ##% The client MUST initialize the cipher, or call an AES-GCM encryption API, with the derived encryption key, an IV containing only bytes with the value 0x01,
+        ##% and the tag length defined in the Algorithm Suite when encrypting or decrypting with ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY.
+        ##= specification/s3-encryption/key-derivation.md#hkdf-operation
+        ##= type=implementation
+        ##% The client MUST set the AAD to the Algorithm Suite ID represented as bytes.
+        cipher = Cipher(
+            algorithms.AES(derived_encryption_key),
+            modes.GCM(dec_materials.algorithm_suite.kc_gcm_iv),
+        )
+        cipher_decryptor = cipher.decryptor()
+        cipher_decryptor.authenticate_additional_data(dec_materials.algorithm_suite.suite_id_bytes)
+        decryptor = AesGcmDecryptor(
+            cipher_decryptor,
+            tag_length=dec_materials.algorithm_suite.cipher_tag_length_bytes,
+            content_length=content_length,
+        )
+        if enable_delayed_authentication:
+            return DecryptingStream(streaming_body, decryptor, content_length=content_length)
+        ##= specification/s3-encryption/client.md#enable-delayed-authentication
+        ##= type=implementation
+        ##% When disabled the S3EC MUST NOT release plaintext from a stream which has not been authenticated.
+        return one_shot_decrypt(streaming_body, decryptor)
 
     def _decrypt_v2(self, metadata, encryption_context) -> DecryptionMaterials:
         """Prepare V2 decryption materials."""
@@ -439,40 +568,6 @@ class GetEncryptedObjectPipeline:
         )
 
         return self.cmm.decrypt_materials(dec_materials)
-
-    def _decrypt_cbc_content(self, dec_materials, encrypted_data):
-        """Decrypt content encrypted with ALG_AES_256_CBC_IV16_NO_KDF."""
-        ##= specification/s3-encryption/decryption.md#cbc-decryption
-        ##= type=implementation
-        ##% If an object is encrypted with ALG_AES_256_CBC_IV16_NO_KDF and
-        ##% [legacy unauthenticated algorithm suites](#legacy-decryption) is enabled,
-        ##% then the S3EC MUST create a cipher with AES in CBC Mode with PKCS5Padding or
-        ##% PKCS7Padding compatible padding for a 16-byte block cipher
-        ##% (example: for the Java JCE, this is "AES/CBC/PKCS5Padding").
-        ##= specification/s3-encryption/decryption.md#cbc-decryption
-        ##= type=implementation
-        ##% If the cipher object cannot be created as described above,
-        ##% Decryption MUST fail.
-        ##= specification/s3-encryption/decryption.md#cbc-decryption
-        ##= type=implementation
-        ##% The error SHOULD detail why the cipher could not be initialized
-        ##% (such as CBC or PKCS5Padding is not supported by the underlying crypto provider).
-        try:
-            cipher = Cipher(
-                algorithms.AES(dec_materials.plaintext_data_key),
-                modes.CBC(dec_materials.iv),
-            )
-            decryptor = cipher.decryptor()
-            padded_plaintext = decryptor.update(encrypted_data) + decryptor.finalize()
-
-            # Remove PKCS7 padding (compatible with PKCS5Padding for 16-byte block ciphers)
-            unpadder = PKCS7(128).unpadder()
-            return unpadder.update(padded_plaintext) + unpadder.finalize()
-        except Exception as e:
-            raise S3EncryptionClientSecurityError(
-                f"Failed to decrypt CBC content: {e}. "
-                "Ensure the underlying crypto provider supports AES/CBC/PKCS7Padding."
-            ) from e
 
     ##= specification/s3-encryption/data-format/content-metadata.md#v3-only
     ##% The V3 format uses compression here such that each wrapping algorithm is represented by a two digit string.
@@ -527,50 +622,3 @@ class GetEncryptedObjectPipeline:
         )
 
         return self.cmm.decrypt_materials(dec_materials)
-
-    def _decrypt_kc_gcm_content(self, dec_materials, encrypted_data, metadata):
-        """Decrypt content encrypted with ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY.
-
-        Performs HKDF key derivation, key commitment verification, and AES-GCM decryption.
-        """
-        message_id = base64.b64decode(metadata.message_id_v3)
-        stored_commitment = base64.b64decode(metadata.key_commitment_v3)
-
-        ##= specification/s3-encryption/encryption.md#alg-aes-256-gcm-hkdf-sha512-commit-key
-        ##= type=implementation
-        ##% The client MUST use HKDF to derive the key commitment value and the derived encrypting key as described in [Key Derivation](key-derivation.md).
-        derived_encryption_key, derived_commitment = derive_keys(
-            dec_materials.plaintext_data_key, message_id, dec_materials.algorithm_suite
-        )
-
-        ##= specification/s3-encryption/decryption.md#decrypting-with-commitment
-        ##= type=implementation
-        ##% When using an algorithm suite which supports key commitment, the client MUST verify
-        ##% that the [derived key commitment](./key-derivation.md#hkdf-operation) contains the
-        ##% same bytes as the stored key commitment retrieved from the stored object's metadata.
-        ##= specification/s3-encryption/decryption.md#decrypting-with-commitment
-        ##= type=implementation
-        ##% When using an algorithm suite which supports key commitment, the client MUST verify the key commitment values match before deriving
-        ##% the [derived encryption key](./key-derivation.md#hkdf-operation).
-        verify_commitment(stored_commitment, derived_commitment)
-
-        ##= specification/s3-encryption/key-derivation.md#hkdf-operation
-        ##= type=implementation
-        ##% When encrypting or decrypting with ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
-        ##% the IV used in the AES-GCM content encryption/decryption MUST consist entirely of bytes with the value 0x01.
-        ##= specification/s3-encryption/key-derivation.md#hkdf-operation
-        ##= type=implementation
-        ##% The IV's total length MUST match the IV length defined by the algorithm suite.
-        ##= specification/s3-encryption/key-derivation.md#hkdf-operation
-        ##= type=implementation
-        ##% The client MUST initialize the cipher, or call an AES-GCM encryption API, with the derived encryption key, an IV containing only bytes with the value 0x01,
-        ##% and the tag length defined in the Algorithm Suite when encrypting or decrypting with ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY.
-        ##= specification/s3-encryption/key-derivation.md#hkdf-operation
-        ##= type=implementation
-        ##% The client MUST set the AAD to the Algorithm Suite ID represented as bytes.
-        aesgcm = AESGCM(derived_encryption_key)
-        return aesgcm.decrypt(
-            nonce=dec_materials.algorithm_suite.kc_gcm_iv,
-            data=encrypted_data,
-            associated_data=dec_materials.algorithm_suite.suite_id_bytes,
-        )
