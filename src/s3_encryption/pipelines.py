@@ -179,7 +179,11 @@ class MultipartUploadPipeline:
     ##= specification/s3-encryption/client.md#optional-api-operations
     ##= type=implementation
     ##% UploadPart MUST encrypt each part.
+    ##= specification/s3-encryption/client.md#optional-api-operations
+    ##= type=implementation
     ##% Each part MUST be encrypted in sequence.
+    ##= specification/s3-encryption/client.md#optional-api-operations
+    ##= type=implementation
     ##% Each part MUST be encrypted using the same cipher instance for each part.
     """
 

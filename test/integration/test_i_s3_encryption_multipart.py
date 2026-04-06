@@ -71,7 +71,11 @@ def _unique_key(prefix):
 ##= specification/s3-encryption/client.md#optional-api-operations
 ##= type=test
 ##% UploadPart MUST encrypt each part.
+##= specification/s3-encryption/client.md#optional-api-operations
+##= type=test
 ##% Each part MUST be encrypted in sequence.
+##= specification/s3-encryption/client.md#optional-api-operations
+##= type=test
 ##% Each part MUST be encrypted using the same cipher instance for each part.
 ##= specification/s3-encryption/client.md#optional-api-operations
 ##= type=test
