@@ -6,6 +6,7 @@ import io
 import threading
 
 from attrs import define, field
+from botocore.exceptions import ClientError
 from botocore.response import StreamingBody
 
 from .exceptions import S3EncryptionClientError
@@ -225,6 +226,11 @@ class S3EncryptionClientPlugin:
         # Get encryption context from thread-local storage (set by get_object wrapper)
         encryption_context = getattr(self._context, _CTX_ENCRYPTION_CONTEXT, None)
 
+        # If Body is None, the S3 request failed (e.g., NoSuchKey).
+        # Return early and let boto3 raise the original error.
+        if parsed.get("Body", None) is None:
+            return
+
         # The parsed response already has the Body as a StreamingBody
         # We need to read it, decrypt it, and replace it
 
@@ -272,9 +278,16 @@ class S3EncryptionClientPlugin:
         """
         instruction_key = getattr(self._context, _CTX_KEY, None)
 
+        body = parsed.get("Body", None)
+        if body is None:
+            raise S3EncryptionClientError(
+                f"Instruction file body is empty for key: {instruction_key}"
+            )
+
         # In plaintext mode, parse instruction file and append to metadata
-        existing_metadata = parsed.get("Metadata", {})
-        instruction_data = parsed.get("Body").read()
+        # Metadata may be present but None, so `or {}` handles that case
+        existing_metadata = parsed.get("Metadata", {}) or {}
+        instruction_data = body.read()
         instruction_metadata = parse_instruction_file(instruction_data, instruction_key)
 
         # Append parsed instruction file content to existing metadata
@@ -285,6 +298,32 @@ class S3EncryptionClientPlugin:
         stream = io.BytesIO(b"")
         streaming_body = StreamingBody(stream, 0)
         parsed["Body"] = streaming_body
+
+
+def _validate_encryption_context(encryption_context):
+    """Validate that all encryption context keys and values are US-ASCII.
+
+    S3 applies double-encoding to non-ASCII metadata values that SDKs do not
+    automatically decode, which causes decryption to fail because the stored
+    encryption context won't match the original.
+
+    Raises:
+        S3EncryptionClientError: If any key or value contains non-ASCII characters.
+    """
+    if encryption_context is None:
+        return
+    if not isinstance(encryption_context, dict):
+        raise S3EncryptionClientError("EncryptionContext must be a dictionary")
+    for k, v in encryption_context.items():
+        if not isinstance(k, str) or not isinstance(v, str):
+            raise S3EncryptionClientError("EncryptionContext keys and values must be strings")
+        if not k.isascii() or not v.isascii():
+            raise S3EncryptionClientError(
+                f"EncryptionContext keys and values must contain only US-ASCII characters. "
+                f"Non-ASCII characters in S3 metadata are encoded by the server "
+                f"and will cause decryption to fail. "
+                f"First offending entry: {repr(k)}: {repr(v)}"
+            )
 
 
 @define
@@ -315,6 +354,15 @@ class S3EncryptionClient:
         event_system.register("before-call.s3.PutObject", self._plugin.on_put_object_before_call)
         event_system.register("after-call.s3.GetObject", self._plugin.on_get_object_after_call)
 
+    def __getattr__(self, name):
+        """Proxy unrecognized attributes to the wrapped S3 client.
+
+        This allows the S3EncryptionClient to be used like a regular boto3 S3
+        client for operations it doesn't intercept (e.g. copy_object,
+        delete_object, list_objects_v2, etc.).
+        """
+        return getattr(self.wrapped_s3_client, name)
+
     def put_object(self, **kwargs):
         """Encrypt and upload an object to S3.
 
@@ -336,6 +384,7 @@ class S3EncryptionClient:
         """
         # Extract EncryptionContext if provided (not a standard S3 parameter)
         encryption_context = kwargs.pop("EncryptionContext", None)
+        _validate_encryption_context(encryption_context)
 
         # Store encryption context in thread-local storage for the event handler
         self._plugin._context.encryption_context = encryption_context
@@ -371,6 +420,7 @@ class S3EncryptionClient:
         """
         # Extract EncryptionContext if provided (not a standard S3 parameter)
         encryption_context = kwargs.pop("EncryptionContext", None)
+        _validate_encryption_context(encryption_context)
 
         # Store encryption context in thread-local storage for the event handler
         setattr(self._plugin._context, _CTX_ENCRYPTION_CONTEXT, encryption_context)
@@ -385,9 +435,16 @@ class S3EncryptionClient:
         except S3EncryptionClientError:
             # Re-raise our own exceptions without wrapping
             raise
+        except ClientError as e:
+            # Wrap S3 service errors (e.g., NoSuchKey) with context
+            raise S3EncryptionClientError(
+                f"Failed to retrieve and/or decrypt object: {str(e)}"
+            ) from e
         except Exception as e:
             # Wrap any unexpected errors during decryption
-            raise S3EncryptionClientError(f"Failed to decrypt object: {str(e)}") from e
+            raise S3EncryptionClientError(
+                f"Failed to retrieve and/or decrypt object: {str(e)}"
+            ) from e
         finally:
             # Clean up thread-local storage;
             # do not clean up the client as it is not thread local only

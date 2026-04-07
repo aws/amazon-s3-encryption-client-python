@@ -179,6 +179,30 @@ The metadata strategy is determined by the encrypted object, not by a config fla
 | G2 | `put_object` called while in instruction-file mode | Reject: instruction file mode not supported for put_object |
 | G3 | Instruction file fetch with no `s3_client` available | Reject: s3_client required |
 | G4 | Instruction file fetch with missing `Bucket` or `Key` | Reject: bucket and key required |
+| G5 | Non-ASCII characters in EncryptionContext | Reject: keys and values must be US-ASCII |
+| G6 | Inaccessible KMS key (AccessDenied) | Reject: KMS AccessDeniedException propagated |
+| G7 | GetObject on nonexistent S3 key | Reject: S3 NoSuchKey propagated |
+
+---
+
+## 8. S3 Interoperability
+
+| # | Scenario | Expected |
+|---|----------|----------|
+| S3-1 | PutObject with non-encryption S3 options (StorageClass, ContentType, ContentDisposition) | Options applied correctly on the S3 object; data round-trips |
+| S3-2 | CopyObject on an encrypted object, then GetObject on the copy | Decryption succeeds on the copied object |
+
+---
+
+## 9. Multi-Region Key (MRK) Cross-Region
+
+| # | Scenario | Expected |
+|---|----------|----------|
+| MRK-1 | Encrypt with MRK primary (us-west-2), decrypt with MRK replica (us-east-1) | Success |
+| MRK-2 | Encrypt with MRK replica (us-east-1), decrypt with MRK primary (us-west-2) | Success |
+| MRK-3 | Round-trip with MRK primary in same region | Success |
+| MRK-4 | Round-trip with MRK replica in same region | Success |
+| MRK-5 | Decrypt with KMS client in non-replicated region | Reject: KMS error |
 
 ---
 
