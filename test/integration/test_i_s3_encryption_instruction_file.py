@@ -145,7 +145,7 @@ def test_decrypt_instruction_file_wrong_suffix_raises():
     )
     s3ec = S3EncryptionClient(wrapped_client, config)
 
-    with pytest.raises(S3EncryptionClientError, match="Failed to decrypt object"):
+    with pytest.raises(S3EncryptionClientError, match="Instruction file body is empty"):
         s3ec.get_object(Bucket=bucket, Key=key)
 
 
