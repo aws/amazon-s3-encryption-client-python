@@ -300,6 +300,34 @@ class S3EncryptionClientPlugin:
         parsed["Body"] = streaming_body
 
 
+def _validate_encryption_context(encryption_context):
+    """Validate that all encryption context keys and values are US-ASCII.
+
+    S3 applies double-encoding to non-ASCII metadata values that SDKs do not
+    automatically decode, which causes decryption to fail because the stored
+    encryption context won't match the original.
+
+    Raises:
+        S3EncryptionClientError: If any key or value contains non-ASCII characters.
+    """
+    if encryption_context is None:
+        return
+    if not isinstance(encryption_context, dict):
+        raise S3EncryptionClientError("EncryptionContext must be a dictionary")
+    for k, v in encryption_context.items():
+        if not isinstance(k, str) or not isinstance(v, str):
+            raise S3EncryptionClientError(
+                "EncryptionContext keys and values must be strings"
+            )
+        if not k.isascii() or not v.isascii():
+            raise S3EncryptionClientError(
+                f"EncryptionContext keys and values must contain only US-ASCII characters. "
+                f"Non-ASCII characters in S3 metadata are encoded by the server "
+                f"and will cause decryption to fail. "
+                f"First offending entry: {repr(k)}: {repr(v)}"
+            )
+
+
 @define
 class S3EncryptionClient:
     """Client for encrypting and decrypting S3 objects.
@@ -358,6 +386,7 @@ class S3EncryptionClient:
         """
         # Extract EncryptionContext if provided (not a standard S3 parameter)
         encryption_context = kwargs.pop("EncryptionContext", None)
+        _validate_encryption_context(encryption_context)
 
         # Store encryption context in thread-local storage for the event handler
         self._plugin._context.encryption_context = encryption_context
@@ -393,6 +422,7 @@ class S3EncryptionClient:
         """
         # Extract EncryptionContext if provided (not a standard S3 parameter)
         encryption_context = kwargs.pop("EncryptionContext", None)
+        _validate_encryption_context(encryption_context)
 
         # Store encryption context in thread-local storage for the event handler
         setattr(self._plugin._context, _CTX_ENCRYPTION_CONTEXT, encryption_context)

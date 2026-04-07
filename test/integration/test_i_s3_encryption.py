@@ -379,3 +379,25 @@ def test_copy_object_then_decrypt(algorithm_suite, commitment_policy):
     # Decrypt the copied object
     response = s3ec.get_object(Bucket=bucket, Key=dst_key)
     assert response["Body"].read() == data
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_non_ascii_encryption_context_rejected(algorithm_suite, commitment_policy):
+    """Non-US-ASCII characters in EncryptionContext MUST be rejected.
+
+    S3 applies an esoteric double-encoding to non-ASCII metadata values that
+    most SDKs do not automatically decode. This causes decryption to fail
+    because the stored encryption context won't match the original. Currently
+    boto3 rejects non-ASCII header values before the request is sent.
+    """
+    key = _unique_key("non-ascii-ec-")
+    non_ascii_contexts = [
+        {"department": "ingeniería"},       # Latin accented
+        {"部門": "engineering"},             # CJK key
+        {"project": "проект"},              # Cyrillic value
+        {"emoji": "test 🔑"},               # Emoji
+    ]
+
+    s3ec = _make_client(algorithm_suite, commitment_policy)
+
+    for ec in non_ascii_contexts:
+        with pytest.raises(S3EncryptionClientError, match="US-ASCII"):
+            s3ec.put_object(Bucket=bucket, Key=key, Body=b"test", EncryptionContext=ec)
