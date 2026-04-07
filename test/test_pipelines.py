@@ -392,7 +392,7 @@ class TestGetEncryptedObjectPipelineInstructionFile:
             "Metadata": object_metadata,
         }
 
-        with pytest.raises(ClientError):
+        with pytest.raises(S3EncryptionClientError, match="Instruction File"):
             pipeline.decrypt(
                 mock_response,
                 instruction_suffix=".instruction",

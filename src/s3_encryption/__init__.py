@@ -328,6 +328,15 @@ class S3EncryptionClient:
         event_system.register("before-call.s3.PutObject", self._plugin.on_put_object_before_call)
         event_system.register("after-call.s3.GetObject", self._plugin.on_get_object_after_call)
 
+    def __getattr__(self, name):
+        """Proxy unrecognized attributes to the wrapped S3 client.
+
+        This allows the S3EncryptionClient to be used like a regular boto3 S3
+        client for operations it doesn't intercept (e.g. copy_object,
+        delete_object, list_objects_v2, etc.).
+        """
+        return getattr(self.wrapped_s3_client, name)
+
     def put_object(self, **kwargs):
         """Encrypt and upload an object to S3.
 
