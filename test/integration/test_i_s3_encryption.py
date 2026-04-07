@@ -379,6 +379,8 @@ def test_copy_object_then_decrypt(algorithm_suite, commitment_policy):
     # Decrypt the copied object
     response = s3ec.get_object(Bucket=bucket, Key=dst_key)
     assert response["Body"].read() == data
+
+
 @pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
 def test_non_ascii_encryption_context_rejected(algorithm_suite, commitment_policy):
     """Non-US-ASCII characters in EncryptionContext MUST be rejected.
@@ -390,10 +392,10 @@ def test_non_ascii_encryption_context_rejected(algorithm_suite, commitment_polic
     """
     key = _unique_key("non-ascii-ec-")
     non_ascii_contexts = [
-        {"department": "ingeniería"},       # Latin accented
-        {"部門": "engineering"},             # CJK key
-        {"project": "проект"},              # Cyrillic value
-        {"emoji": "test 🔑"},               # Emoji
+        {"department": "ingeniería"},  # Latin accented
+        {"部門": "engineering"},  # CJK key
+        {"project": "проект"},  # Cyrillic value
+        {"emoji": "test 🔑"},  # Emoji
     ]
 
     s3ec = _make_client(algorithm_suite, commitment_policy)

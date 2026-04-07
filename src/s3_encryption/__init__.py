@@ -316,9 +316,7 @@ def _validate_encryption_context(encryption_context):
         raise S3EncryptionClientError("EncryptionContext must be a dictionary")
     for k, v in encryption_context.items():
         if not isinstance(k, str) or not isinstance(v, str):
-            raise S3EncryptionClientError(
-                "EncryptionContext keys and values must be strings"
-            )
+            raise S3EncryptionClientError("EncryptionContext keys and values must be strings")
         if not k.isascii() or not v.isascii():
             raise S3EncryptionClientError(
                 f"EncryptionContext keys and values must contain only US-ASCII characters. "
