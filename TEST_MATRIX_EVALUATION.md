@@ -1,6 +1,10 @@
 # S3 Encryption Client — Test Matrix Evaluation
 
 Maps each test case from `TEST_MATRIX.md` to existing tests in the codebase.
+<<<<<<< HEAD
+=======
+"TODO" means no existing test was found for that case.
+>>>>>>> 3ddb5ebdec495b464691b9ae15e31972443d97e5
 
 ---
 
