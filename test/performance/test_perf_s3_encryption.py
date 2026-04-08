@@ -5,6 +5,10 @@
 Each test runs multiple rounds with large objects to get a meaningful signal.
 Results are collected via a module-scoped list and written to a JSON file
 that the HTML report generator consumes.
+
+To avoid ordering bias (first algorithm suite paying cold-start penalties for
+TCP/TLS connection establishment, KMS client init, etc.), every benchmark
+function runs warmup rounds that are discarded before recording.
 """
 
 import json
@@ -21,6 +25,7 @@ from .conftest import BUCKET, KMS_KEY_ID, NUM_ROUNDS, OBJECT_SIZES_MB, REGION, _
 
 PERF_KEY_PREFIX = "perf-test/"
 RESULTS_FILE = os.environ.get("PERF_RESULTS_FILE", "perf-results/results.json")
+WARMUP_ROUNDS = int(os.environ.get("PERF_WARMUP_ROUNDS", "3"))
 
 # Collect all benchmark results here
 _results: list[dict] = []
@@ -50,17 +55,15 @@ def _unique_key(prefix: str) -> str:
 
 
 def _record(test_name, size_mb, durations):
-    _results.append(
-        {
-            "test": test_name,
-            "size_mb": size_mb,
-            "rounds": len(durations),
-            "durations_s": durations,
-            "mean_s": sum(durations) / len(durations),
-            "min_s": min(durations),
-            "max_s": max(durations),
-        }
-    )
+    _results.append({
+        "test": test_name,
+        "size_mb": size_mb,
+        "rounds": len(durations),
+        "durations_s": durations,
+        "mean_s": sum(durations) / len(durations),
+        "min_s": min(durations),
+        "max_s": max(durations),
+    })
 
 
 def _algo_label(algorithm_suite):
@@ -68,6 +71,23 @@ def _algo_label(algorithm_suite):
     if algorithm_suite == AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF:
         return "aes_gcm"
     return "kc_gcm"
+
+
+def _warmup_put(client_or_s3ec, payload, prefix, is_s3ec=True):
+    """Run warmup put_object calls to establish connections; results discarded."""
+    for _ in range(WARMUP_ROUNDS):
+        key = _unique_key(f"warmup-{prefix}-")
+        if is_s3ec:
+            client_or_s3ec.put_object(Bucket=BUCKET, Key=key, Body=payload)
+        else:
+            client_or_s3ec.put_object(Bucket=BUCKET, Key=key, Body=payload)
+
+
+def _warmup_get(client_or_s3ec, object_key):
+    """Run warmup get_object calls; results discarded."""
+    for _ in range(WARMUP_ROUNDS):
+        resp = client_or_s3ec.get_object(Bucket=BUCKET, Key=object_key)
+        resp["Body"].read()
 
 
 # ---------------------------------------------------------------------------
@@ -84,6 +104,7 @@ def test_s3ec_put_vs_plain_put(plain_s3, size_mb, algorithm_suite, commitment_po
 
     # Benchmark plain S3 put (only record once per size, skip for second algo)
     if algorithm_suite == AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF:
+        _warmup_put(plain_s3, payload, f"plain-put-{size_mb}mb", is_s3ec=False)
         plain_durations = []
         for _ in range(NUM_ROUNDS):
             key = _unique_key(f"plain-put-{size_mb}mb-")
@@ -94,6 +115,7 @@ def test_s3ec_put_vs_plain_put(plain_s3, size_mb, algorithm_suite, commitment_po
 
     # Benchmark S3EC put
     s3ec = _make_s3ec(algorithm_suite, commitment_policy)
+    _warmup_put(s3ec, payload, f"s3ec-put-{label}-{size_mb}mb")
     s3ec_durations = []
     for _ in range(NUM_ROUNDS):
         key = _unique_key(f"s3ec-put-{label}-{size_mb}mb-")
@@ -120,6 +142,7 @@ def test_s3ec_get_vs_plain_get(plain_s3, size_mb, algorithm_suite, commitment_po
         plain_key = _unique_key(f"plain-get-src-{size_mb}mb-")
         plain_s3.put_object(Bucket=BUCKET, Key=plain_key, Body=payload)
 
+        _warmup_get(plain_s3, plain_key)
         plain_durations = []
         for _ in range(NUM_ROUNDS):
             t0 = time.perf_counter()
@@ -133,6 +156,7 @@ def test_s3ec_get_vs_plain_get(plain_s3, size_mb, algorithm_suite, commitment_po
     enc_key = _unique_key(f"s3ec-get-src-{label}-{size_mb}mb-")
     s3ec.put_object(Bucket=BUCKET, Key=enc_key, Body=payload)
 
+    _warmup_get(s3ec, enc_key)
     s3ec_durations = []
     for _ in range(NUM_ROUNDS):
         t0 = time.perf_counter()
@@ -156,8 +180,15 @@ def test_s3ec_roundtrip_vs_local_crypto(
     label = _algo_label(algorithm_suite)
     payload = _generate_payload(size_mb)
 
-    # S3EC roundtrip
+    # S3EC roundtrip — warmup
     s3ec = _make_s3ec(algorithm_suite, commitment_policy)
+    for _ in range(WARMUP_ROUNDS):
+        wkey = _unique_key(f"warmup-rt-{label}-{size_mb}mb-")
+        s3ec.put_object(Bucket=BUCKET, Key=wkey, Body=payload)
+        resp = s3ec.get_object(Bucket=BUCKET, Key=wkey)
+        resp["Body"].read()
+
+    # S3EC roundtrip — measured
     s3ec_durations = []
     for _ in range(NUM_ROUNDS):
         key = _unique_key(f"s3ec-rt-{label}-{size_mb}mb-")
@@ -170,6 +201,19 @@ def test_s3ec_roundtrip_vs_local_crypto(
 
     # Local crypto + plain S3 roundtrip (only once per size)
     if algorithm_suite == AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF:
+        # Warmup local crypto path
+        for _ in range(WARMUP_ROUNDS):
+            wkey = _unique_key(f"warmup-local-rt-{size_mb}mb-")
+            dk_resp = kms_client.generate_data_key(KeyId=KMS_KEY_ID, KeySpec="AES_256")
+            aesgcm = AESGCM(dk_resp["Plaintext"])
+            nonce = os.urandom(12)
+            ct = aesgcm.encrypt(nonce, payload, None)
+            plain_s3.put_object(Bucket=BUCKET, Key=wkey, Body=nonce + ct)
+            resp = plain_s3.get_object(Bucket=BUCKET, Key=wkey)
+            blob = resp["Body"].read()
+            aesgcm.decrypt(blob[:12], blob[12:], None)
+
+        # Measured
         local_durations = []
         for _ in range(NUM_ROUNDS):
             key = _unique_key(f"local-rt-{size_mb}mb-")
