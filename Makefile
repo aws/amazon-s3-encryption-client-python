@@ -1,4 +1,4 @@
-.PHONY: lint format test test-unit test-integration install
+.PHONY: lint format test test-unit test-integration test-perf install
 
 # Default target
 all: lint test duvet
@@ -25,11 +25,15 @@ test: test-unit test-integration
 
 # Run unit tests (creates .coverage report)
 test-unit:
-	uv run pytest test/ --ignore=test/integration/ --verbose --cov=src/s3_encryption --cov-report=term-missing
+	uv run pytest test/ --ignore=test/integration/ --ignore=test/performance/ --verbose --cov=src/s3_encryption --cov-report=term-missing
 
 # Run integration tests (appends to .coverage report from test-unit)
 test-integration:
 	uv run pytest test/integration/ --verbose --cov=src/s3_encryption --cov-append --cov-report=term-missing
+
+# Run performance tests
+test-perf:
+	uv run pytest test/performance/ --verbose -x
 
 # Clean up cache files
 clean:
