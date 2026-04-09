@@ -57,7 +57,7 @@ jobs:
           CI_KMS_KEY_ALIAS: ${{ vars.CI_KMS_KEY_ALIAS }}
 
       - name: Run examples
-        run: uv run pytest examples/ -v -m examples          
+        run: make test-examples
 
       - name: Generate coverage HTML report
         if: always()

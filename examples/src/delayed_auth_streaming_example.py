@@ -12,6 +12,10 @@ With delayed authentication enabled, plaintext is released incrementally as it
 is decrypted, before the authentication tag has been verified. This allows
 processing large files without buffering the entire object in memory.
 
+Your application should still read the stream to completion. In the event that
+an error is thrown in the final read due to an invalid authentication tag,
+your application must be able to invalidate the associated data.
+
 WARNING: With delayed authentication, plaintext is released before it has been
 authenticated. An attacker could modify the ciphertext and the client would
 release tampered plaintext before detecting the modification. Only use this
@@ -27,6 +31,7 @@ This example:
 """
 
 from s3_encryption import S3EncryptionClient, S3EncryptionClientConfig
+from s3_encryption.exceptions import S3EncryptionClientSecurityError
 from s3_encryption.materials.kms_keyring import KmsKeyring
 
 # 10 MB of example data
@@ -66,13 +71,19 @@ def delayed_auth_streaming_decrypt(
     body = response["Body"]
 
     chunks = []
-    while True:
-        chunk = body.read(CHUNK_SIZE)
-        if not chunk:
-            break
-        chunks.append(chunk)
+    try:
+        while True:
+            chunk = body.read(CHUNK_SIZE)
+            if not chunk:
+                break
+            chunks.append(chunk)
 
-    plaintext = b"".join(chunks)
+        plaintext = b"".join(chunks)
+
+    except S3EncryptionClientSecurityError:
+        # Authentication tag verification failed.
+        # Discard any plaintext released before the error.
+        raise
 
     # 5. Verify the decrypted content matches the original.
     assert plaintext == EXAMPLE_DATA, "Decrypted plaintext does not match original data"

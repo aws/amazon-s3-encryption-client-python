@@ -32,7 +32,7 @@ Encryption Context used in this example::
         "kms:EncryptionContext:aws-s3-bucket": "<bucket>"
 """
 
-from s3_encryption import S3EncryptionClient, S3EncryptionClientConfig
+from s3_encryption import S3EncryptionClient, S3EncryptionClientConfig, S3EncryptionClientError
 from s3_encryption.materials.kms_keyring import KmsKeyring
 
 EXAMPLE_DATA: bytes = b"Hello, S3 Encryption Client!"
@@ -79,3 +79,17 @@ def kms_keyring_put_get(s3_client, kms_client, kms_key_id: str, bucket: str, key
 
     # 6. Optional Verify the decrypted plaintext matches the original.
     assert plaintext == EXAMPLE_DATA, "Decrypted plaintext does not match original data"
+
+    # However, if the Encryption Context is not present at decryption time, then decryption will fail
+    failed = False
+    try:
+        _ = s3ec.get_object(
+            Bucket=bucket, Key=key,
+            # Incomplete Encryption Context
+            EncryptionContext={"aws-s3-bucket": bucket})
+    except S3EncryptionClientError as e:
+        failed = True
+        assert hasattr(e, "kwargs")
+        assert e.kwargs.get("msg") is not None
+        assert e.kwargs.get("msg") == "Provided encryption context does not match information retrieved from S3"
+    assert failed

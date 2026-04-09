@@ -21,7 +21,7 @@ format:
 	uv run ruff check --fix src/ test/
 
 # Run all tests with combined coverage
-test: test-unit test-integration
+test: test-unit test-integration test-examples
 
 # Run unit tests (creates .coverage report)
 test-unit:
@@ -30,6 +30,9 @@ test-unit:
 # Run integration tests (appends to .coverage report from test-unit)
 test-integration:
 	uv run pytest test/integration/ --verbose --cov=src/s3_encryption --cov-append --cov-report=term-missing
+
+test-examples:
+	uv run pytest examples/test/ -v
 
 # Clean up cache files
 clean:

@@ -12,6 +12,10 @@ the instruction file has the same key as the encrypted object with a
 You can also use a custom instruction file suffix. This requires configuring
 the S3 Encryption Client with the matching suffix.
 
+NOTE: At this time, the S3 Encryption Client in Python ONLY supports decrypting
+(reading) with instruction files; encrypting with instruction files is not supported
+at this time.
+
 This example:
 1. Decrypts an object using the default instruction file suffix (".instruction")
 2. Decrypts the same object using a custom instruction file suffix
