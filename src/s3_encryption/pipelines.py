@@ -612,8 +612,13 @@ class GetEncryptedObjectPipeline:
         stored_context = {}
         if wrap_alg == "kms+context":
             raw_ctx = metadata.encryption_context_v3
-        else:
+        elif wrap_alg in ("AES/GCM", "RSA-OAEP-SHA1"):
             raw_ctx = metadata.mat_desc_v3
+        else:
+            raise S3EncryptionClientError(
+                f"Unexpected V3 wrapping algorithm for context selection: '{wrap_alg}'. "
+                f"The object metadata may have been tampered with."
+            )
 
         if raw_ctx is not None:
             if isinstance(raw_ctx, dict):
