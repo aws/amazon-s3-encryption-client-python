@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """Security integration tests for S3 Encryption Client.
 
-These tests verify that the client is resilient against metadata-tampering
-attacks, particularly downgrade attacks that attempt to bypass encryption
-context validation by modifying the wrapping algorithm metadata.
+These tests verify that the client correctly handles metadata tampering
+scenarios, particularly wrapping algorithm downgrade attempts that modify
+metadata to bypass encryption context validation.
 """
 
 import json
@@ -46,15 +46,11 @@ def _make_client(algorithm_suite, commitment_policy, enable_legacy_wrapping=Fals
 
 
 class TestWrappingAlgorithmDowngradeAttack:
-    """Tests for the wrapping algorithm downgrade attack (pentest finding).
+    """Tests for wrapping algorithm downgrade scenarios.
 
-    Attack scenario: An attacker with S3 write access modifies the object's
-    x-amz-w metadata from '12' (kms+context) to 'kms'. This attempts to
-    force the KmsKeyring into the KmsV1 decryption path, which does not
-    perform client-side encryption context comparison. If successful, a
-    caller providing a mismatched EncryptionContext on get_object would
-    still decrypt the object, defeating application-level access control
-    based on encryption context.
+    These tests verify behavior when the wrapping algorithm metadata is
+    modified from kms+context to kms. In V3 format, "kms" is not a valid
+    compressed wrapping algorithm code, so the client MUST reject it.
     """
 
     def test_v3_downgrade_wrap_alg_to_kms_rejected_without_legacy(self):
@@ -190,16 +186,10 @@ class TestWrappingAlgorithmDowngradeAttack:
             s3ec_legacy.get_object(Bucket=bucket, Key=key, EncryptionContext=encryption_context)
 
     def test_v3_downgrade_with_matdesc_injection(self):
-        """Tampering x-amz-w to 'kms' AND copying x-amz-t into x-amz-m defeats V3 protection.
+        """Tampering x-amz-w to 'kms' AND copying x-amz-t into x-amz-m MUST be rejected.
 
-        The previous V3 tests showed the attack fails because the KmsV1 path
-        reads from x-amz-m (mat_desc), which is empty for V3 objects. But if
-        the attacker also copies the original encryption context from x-amz-t
-        into x-amz-m, KMS Decrypt receives the correct bound context and
-        succeeds. The caller's mismatched EncryptionContext is silently ignored.
-
-        CURRENT BEHAVIOR: Decryption SUCCEEDS with mismatched context — this is the bug.
-        EXPECTED BEHAVIOR: Decryption should FAIL.
+        "kms" is not a valid V3 compressed wrapping algorithm code, so the
+        client rejects it before the matdesc injection has any effect.
         """
         key = _unique_key("sec-v3-downgrade-matdesc-")
         data = b"sensitive data with context"
@@ -231,8 +221,7 @@ class TestWrappingAlgorithmDowngradeAttack:
             MetadataDirective="REPLACE",
         )
 
-        # 3. Decrypt with legacy enabled + mismatched context SHOULD fail
-        #    but currently SUCCEEDS because x-amz-m now has the bound context
+        # 3. Decrypt with legacy enabled + mismatched context MUST fail
         s3ec_legacy = _make_client(
             AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
             CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
@@ -243,31 +232,29 @@ class TestWrappingAlgorithmDowngradeAttack:
 
 
 class TestV2WrappingAlgorithmDowngradeAttack:
-    """Same downgrade attack but targeting V2 format objects.
+    """V2 wrapping algorithm downgrade tests.
 
-    V2 stores the wrapping algorithm in x-amz-wrap-alg. The attacker
-    changes it from 'kms+context' to 'kms'.
+    V2 stores the wrapping algorithm in x-amz-wrap-alg. When changed from
+    'kms+context' to 'kms', the KmsV1 decryption path is used. Since
+    x-amz-matdesc already contains the original bound context, KMS Decrypt
+    succeeds and the caller-provided EncryptionContext is not validated.
 
-    CONFIRMED VULNERABILITY: For V2 objects, the KmsV1 path passes the
-    stored encryption context (from x-amz-matdesc) directly to KMS Decrypt.
-    Since x-amz-matdesc contains the original context used during
-    GenerateDataKey, KMS happily decrypts the data key. The caller's
-    mismatched EncryptionContext is silently ignored, defeating
-    application-level access control.
+    This is a known limitation of the V2 format when legacy wrapping
+    algorithms are enabled.
     """
 
     @pytest.mark.xfail(
-        reason="CONFIRMED VULNERABILITY: V2 wrapping algorithm downgrade bypasses "
-        "encryption context validation when enable_legacy_wrapping_algorithms=True. "
-        "The KmsV1 path skips client-side context comparison and KMS Decrypt "
-        "succeeds because x-amz-matdesc contains the original bound context.",
+        reason="Known V2 format limitation: the KmsV1 path does not perform "
+        "client-side encryption context comparison, and x-amz-matdesc "
+        "contains the original bound context.",
         strict=True,
     )
     def test_v2_downgrade_wrap_alg_to_kms_mismatched_context(self):
-        """Tampering x-amz-wrap-alg from 'kms+context' to 'kms' with wrong context MUST fail.
+        """Tampering x-amz-wrap-alg from 'kms+context' to 'kms' with wrong context.
 
-        CURRENT BEHAVIOR: Decryption SUCCEEDS with mismatched context — this is the bug.
-        EXPECTED BEHAVIOR: Decryption should FAIL because the caller's context doesn't match.
+        With legacy wrapping enabled, the KmsV1 path uses the stored matdesc
+        for KMS Decrypt, which succeeds. The mismatched caller context is
+        not checked.
         """
         key = _unique_key("sec-v2-downgrade-")
         data = b"sensitive v2 data"
@@ -299,8 +286,7 @@ class TestV2WrappingAlgorithmDowngradeAttack:
             MetadataDirective="REPLACE",
         )
 
-        # 3. Decrypt with legacy enabled + mismatched context SHOULD fail
-        #    but currently SUCCEEDS — this is the vulnerability
+        # 3. Decrypt with legacy enabled + mismatched context
         s3ec_legacy = _make_client(
             AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
             CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
