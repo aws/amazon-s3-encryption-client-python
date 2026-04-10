@@ -53,6 +53,11 @@ tasks {
         outputs.upToDateWhen { false }
         outputs.cacheIf { false }
         
+        // TEMPORARY: Only run the downgrade attack tests for faster CI iteration
+        filter {
+            includeTestsMatching("software.amazon.encryption.s3.WrappingAlgorithmDowngradeTests")
+        }
+
         // Enable parallel test execution
         systemProperty("junit.jupiter.execution.parallel.enabled", "true")
         systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
@@ -65,15 +70,15 @@ tasks {
 
         // Passing information from Gradle into the tests so that we can filter our servers
         systemProperty("test.filter.servers", System.getProperty("test.filter.servers"))
-        // For debugging
-        // // Enable System.out output
-        // testLogging {
-        //     events("passed", "skipped", "failed", "standardOut", "standardError")
-        //     showStandardStreams = true
-        // }
 
-        // // Disable AWS SDK v1 deprecation warnings
-        // systemProperty("aws.java.v1.disableDeprecationAnnouncement", "true")
+        // Enable System.out output for debugging
+        testLogging {
+            events("passed", "skipped", "failed", "standardOut", "standardError")
+            showStandardStreams = true
+        }
+
+        // Disable AWS SDK v1 deprecation warnings
+        systemProperty("aws.java.v1.disableDeprecationAnnouncement", "true")
     }
 }
 

@@ -11,7 +11,11 @@ from s3_encryption.materials.materials import AlgorithmSuite, CommitmentPolicy
 import boto3
 import uvicorn
 import json
+import logging
 import uuid
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("python-v3-server")
 
 app = FastAPI(title="Python Server")
 
@@ -106,6 +110,11 @@ async def put_object(bucket: str, key: str, request: Request):
         metadata = request.headers.get("Content-Metadata", "")
         enc_ctx = metadata_string_to_map(metadata)
 
+        logger.info(
+            "PUT /object/%s/%s — clientID=%s, raw Content-Metadata=%r, parsed enc_ctx=%s",
+            bucket, key, client_id, metadata, enc_ctx,
+        )
+
         # Make the PutObject request
         response = client.put_object(
             **{"Bucket": bucket, "Key": key, "Body": body, "EncryptionContext": enc_ctx}
@@ -144,6 +153,11 @@ async def get_object(bucket: str, key: str, request: Request):
     metadata = request.headers.get("Content-Metadata", "")
     enc_ctx = metadata_string_to_map(metadata)
 
+    logger.info(
+        "GET /object/%s/%s — clientID=%s, raw Content-Metadata=%r, parsed enc_ctx=%s",
+        bucket, key, client_id, metadata, enc_ctx,
+    )
+
     try:
         # Use the client to make a GetObject request to S3
         response = client.get_object(**{"Bucket": bucket, "Key": key, "EncryptionContext": enc_ctx})
@@ -151,6 +165,11 @@ async def get_object(bucket: str, key: str, request: Request):
         # Extract the body and metadata from the response
         body = response.get("Body").read() if response.get("Body") else b""
         metadata = response.get("Metadata", [])
+
+        logger.info(
+            "GET /object/%s/%s — decryption succeeded, body length=%d",
+            bucket, key, len(body),
+        )
 
         # Convert metadata dictionary to a list of key-value pairs if it's a dict
         if isinstance(metadata, dict):
@@ -166,8 +185,16 @@ async def get_object(bucket: str, key: str, request: Request):
         # Return the body as the response payload
         return Response(content=body, headers=headers)
     except S3EncryptionClientError as ex:
+        logger.info(
+            "GET /object/%s/%s — S3EncryptionClientError: %s",
+            bucket, key, ex,
+        )
         return create_s3_encryption_client_error(str(ex))
     except Exception as e:
+        logger.info(
+            "GET /object/%s/%s — unexpected %s: %s",
+            bucket, key, type(e).__name__, e,
+        )
         return create_generic_server_error(str(e))
 
 
