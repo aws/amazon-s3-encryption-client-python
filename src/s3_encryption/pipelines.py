@@ -589,7 +589,13 @@ class GetEncryptedObjectPipeline:
 
         # Map V3 compressed wrapping algorithm to canonical key_provider_info
         raw_wrap_alg = metadata.encrypted_data_key_algorithm_v3 or "12"
-        wrap_alg = self._V3_WRAP_ALG_MAP.get(raw_wrap_alg, raw_wrap_alg)
+        wrap_alg = self._V3_WRAP_ALG_MAP.get(raw_wrap_alg)
+        if wrap_alg is None:
+            raise S3EncryptionClientError(
+                f"Unknown V3 wrapping algorithm: '{raw_wrap_alg}'. "
+                f"Valid values are: {list(self._V3_WRAP_ALG_MAP.keys())}. "
+                f"The object metadata may have been tampered with."
+            )
 
         encrypted_data_key = EncryptedDataKey(
             key_provider_id=b"S3Keyring",

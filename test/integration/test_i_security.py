@@ -6,12 +6,13 @@ These tests verify that the client is resilient against metadata-tampering
 attacks, particularly downgrade attacks that attempt to bypass encryption
 context validation by modifying the wrapping algorithm metadata.
 """
+
 import json
 import os
+from datetime import datetime
 
 import boto3
 import pytest
-from datetime import datetime
 
 from s3_encryption import S3EncryptionClient, S3EncryptionClientConfig
 from s3_encryption.exceptions import S3EncryptionClientError
@@ -71,17 +72,15 @@ class TestWrappingAlgorithmDowngradeAttack:
             AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
             CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
         )
-        s3ec.put_object(
-            Bucket=bucket, Key=key, Body=data, EncryptionContext=encryption_context
-        )
+        s3ec.put_object(Bucket=bucket, Key=key, Body=data, EncryptionContext=encryption_context)
 
         # 2. Attacker tampers x-amz-w from '12' to 'kms' via S3 copy
         plain_s3 = boto3.client("s3")
         head = plain_s3.head_object(Bucket=bucket, Key=key)
         original_metadata = head["Metadata"]
-        assert original_metadata.get("x-amz-w") == "12", (
-            f"Expected x-amz-w='12', got {original_metadata.get('x-amz-w')}"
-        )
+        assert (
+            original_metadata.get("x-amz-w") == "12"
+        ), f"Expected x-amz-w='12', got {original_metadata.get('x-amz-w')}"
 
         tampered_metadata = original_metadata.copy()
         tampered_metadata["x-amz-w"] = "kms"
@@ -96,9 +95,7 @@ class TestWrappingAlgorithmDowngradeAttack:
 
         # 3. Decryption with mismatched context MUST fail
         with pytest.raises((S3EncryptionClientError, Exception)):
-            s3ec.get_object(
-                Bucket=bucket, Key=key, EncryptionContext={"project": "beta"}
-            )
+            s3ec.get_object(Bucket=bucket, Key=key, EncryptionContext={"project": "beta"})
 
     def test_v3_downgrade_wrap_alg_to_kms_rejected_with_legacy(self):
         """Tampering x-amz-w from '12' to 'kms' MUST still fail even with legacy enabled.
@@ -144,9 +141,7 @@ class TestWrappingAlgorithmDowngradeAttack:
             enable_legacy_wrapping=True,
         )
         with pytest.raises((S3EncryptionClientError, Exception)):
-            s3ec_legacy.get_object(
-                Bucket=bucket, Key=key, EncryptionContext={"project": "beta"}
-            )
+            s3ec_legacy.get_object(Bucket=bucket, Key=key, EncryptionContext={"project": "beta"})
 
     def test_v3_downgrade_wrap_alg_correct_context_still_fails(self):
         """Tampering x-amz-w from '12' to 'kms' MUST fail even with the correct context.
@@ -168,9 +163,7 @@ class TestWrappingAlgorithmDowngradeAttack:
             AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
             CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
         )
-        s3ec.put_object(
-            Bucket=bucket, Key=key, Body=data, EncryptionContext=encryption_context
-        )
+        s3ec.put_object(Bucket=bucket, Key=key, Body=data, EncryptionContext=encryption_context)
 
         # 2. Attacker tampers x-amz-w
         plain_s3 = boto3.client("s3")
@@ -194,19 +187,8 @@ class TestWrappingAlgorithmDowngradeAttack:
             enable_legacy_wrapping=True,
         )
         with pytest.raises((S3EncryptionClientError, Exception)):
-            s3ec_legacy.get_object(
-                Bucket=bucket, Key=key, EncryptionContext=encryption_context
-            )
+            s3ec_legacy.get_object(Bucket=bucket, Key=key, EncryptionContext=encryption_context)
 
-
-    @pytest.mark.xfail(
-        reason="CONFIRMED VULNERABILITY: V3 wrapping algorithm downgrade bypasses "
-        "encryption context validation when the attacker also copies x-amz-t "
-        "into x-amz-m. The KmsV1 path reads stored context from x-amz-m, "
-        "which now contains the original bound context, so KMS Decrypt succeeds "
-        "and the caller's mismatched EncryptionContext is ignored.",
-        strict=True,
-    )
     def test_v3_downgrade_with_matdesc_injection(self):
         """Tampering x-amz-w to 'kms' AND copying x-amz-t into x-amz-m defeats V3 protection.
 
@@ -228,9 +210,7 @@ class TestWrappingAlgorithmDowngradeAttack:
             AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
             CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
         )
-        s3ec.put_object(
-            Bucket=bucket, Key=key, Body=data, EncryptionContext=encryption_context
-        )
+        s3ec.put_object(Bucket=bucket, Key=key, Body=data, EncryptionContext=encryption_context)
 
         # 2. Attacker tampers x-amz-w AND copies x-amz-t into x-amz-m
         plain_s3 = boto3.client("s3")
@@ -259,9 +239,7 @@ class TestWrappingAlgorithmDowngradeAttack:
             enable_legacy_wrapping=True,
         )
         with pytest.raises((S3EncryptionClientError, Exception)):
-            s3ec_legacy.get_object(
-                Bucket=bucket, Key=key, EncryptionContext={"project": "beta"}
-            )
+            s3ec_legacy.get_object(Bucket=bucket, Key=key, EncryptionContext={"project": "beta"})
 
 
 class TestV2WrappingAlgorithmDowngradeAttack:
@@ -300,17 +278,15 @@ class TestV2WrappingAlgorithmDowngradeAttack:
             AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
             CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
         )
-        s3ec.put_object(
-            Bucket=bucket, Key=key, Body=data, EncryptionContext=encryption_context
-        )
+        s3ec.put_object(Bucket=bucket, Key=key, Body=data, EncryptionContext=encryption_context)
 
         # 2. Attacker tampers x-amz-wrap-alg from 'kms+context' to 'kms'
         plain_s3 = boto3.client("s3")
         head = plain_s3.head_object(Bucket=bucket, Key=key)
         original_metadata = head["Metadata"]
-        assert original_metadata.get("x-amz-wrap-alg") == "kms+context", (
-            f"Expected x-amz-wrap-alg='kms+context', got {original_metadata.get('x-amz-wrap-alg')}"
-        )
+        assert (
+            original_metadata.get("x-amz-wrap-alg") == "kms+context"
+        ), f"Expected x-amz-wrap-alg='kms+context', got {original_metadata.get('x-amz-wrap-alg')}"
 
         tampered_metadata = original_metadata.copy()
         tampered_metadata["x-amz-wrap-alg"] = "kms"
@@ -331,9 +307,7 @@ class TestV2WrappingAlgorithmDowngradeAttack:
             enable_legacy_wrapping=True,
         )
         with pytest.raises((S3EncryptionClientError, Exception)):
-            s3ec_legacy.get_object(
-                Bucket=bucket, Key=key, EncryptionContext={"project": "beta"}
-            )
+            s3ec_legacy.get_object(Bucket=bucket, Key=key, EncryptionContext={"project": "beta"})
 
 
 class TestEncryptionContextBypassAttempts:
@@ -349,9 +323,7 @@ class TestEncryptionContextBypassAttempts:
             AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
             CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
         )
-        s3ec.put_object(
-            Bucket=bucket, Key=key, Body=data, EncryptionContext=encryption_context
-        )
+        s3ec.put_object(Bucket=bucket, Key=key, Body=data, EncryptionContext=encryption_context)
 
         with pytest.raises(S3EncryptionClientError):
             s3ec.get_object(Bucket=bucket, Key=key)
@@ -371,9 +343,7 @@ class TestEncryptionContextBypassAttempts:
             AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
             CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
         )
-        s3ec.put_object(
-            Bucket=bucket, Key=key, Body=data, EncryptionContext=encryption_context
-        )
+        s3ec.put_object(Bucket=bucket, Key=key, Body=data, EncryptionContext=encryption_context)
 
         # Tamper the stored encryption context in x-amz-t
         plain_s3 = boto3.client("s3")
@@ -381,9 +351,7 @@ class TestEncryptionContextBypassAttempts:
         tampered_metadata = head["Metadata"].copy()
 
         # Replace the stored context with attacker-controlled values
-        tampered_metadata["x-amz-t"] = json.dumps(
-            {"project": "beta", "aws:x-amz-cek-alg": "115"}
-        )
+        tampered_metadata["x-amz-t"] = json.dumps({"project": "beta", "aws:x-amz-cek-alg": "115"})
 
         plain_s3.copy_object(
             Bucket=bucket,
@@ -395,6 +363,4 @@ class TestEncryptionContextBypassAttempts:
 
         # Decryption with the tampered context should fail at KMS
         with pytest.raises((S3EncryptionClientError, Exception)):
-            s3ec.get_object(
-                Bucket=bucket, Key=key, EncryptionContext={"project": "beta"}
-            )
+            s3ec.get_object(Bucket=bucket, Key=key, EncryptionContext={"project": "beta"})
