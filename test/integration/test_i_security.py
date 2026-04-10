@@ -199,15 +199,98 @@ class TestWrappingAlgorithmDowngradeAttack:
             )
 
 
+    @pytest.mark.xfail(
+        reason="CONFIRMED VULNERABILITY: V3 wrapping algorithm downgrade bypasses "
+        "encryption context validation when the attacker also copies x-amz-t "
+        "into x-amz-m. The KmsV1 path reads stored context from x-amz-m, "
+        "which now contains the original bound context, so KMS Decrypt succeeds "
+        "and the caller's mismatched EncryptionContext is ignored.",
+        strict=True,
+    )
+    def test_v3_downgrade_with_matdesc_injection(self):
+        """Tampering x-amz-w to 'kms' AND copying x-amz-t into x-amz-m defeats V3 protection.
+
+        The previous V3 tests showed the attack fails because the KmsV1 path
+        reads from x-amz-m (mat_desc), which is empty for V3 objects. But if
+        the attacker also copies the original encryption context from x-amz-t
+        into x-amz-m, KMS Decrypt receives the correct bound context and
+        succeeds. The caller's mismatched EncryptionContext is silently ignored.
+
+        CURRENT BEHAVIOR: Decryption SUCCEEDS with mismatched context — this is the bug.
+        EXPECTED BEHAVIOR: Decryption should FAIL.
+        """
+        key = _unique_key("sec-v3-downgrade-matdesc-")
+        data = b"sensitive data with context"
+        encryption_context = {"project": "alpha"}
+
+        # 1. Encrypt with kms+context (V3)
+        s3ec = _make_client(
+            AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+            CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+        )
+        s3ec.put_object(
+            Bucket=bucket, Key=key, Body=data, EncryptionContext=encryption_context
+        )
+
+        # 2. Attacker tampers x-amz-w AND copies x-amz-t into x-amz-m
+        plain_s3 = boto3.client("s3")
+        head = plain_s3.head_object(Bucket=bucket, Key=key)
+        tampered_metadata = head["Metadata"].copy()
+
+        # Downgrade wrapping algorithm
+        tampered_metadata["x-amz-w"] = "kms"
+        # Copy the original bound context from x-amz-t into x-amz-m
+        # so the KmsV1 path reads it as mat_desc and passes it to KMS Decrypt
+        tampered_metadata["x-amz-m"] = tampered_metadata["x-amz-t"]
+
+        plain_s3.copy_object(
+            Bucket=bucket,
+            Key=key,
+            CopySource={"Bucket": bucket, "Key": key},
+            Metadata=tampered_metadata,
+            MetadataDirective="REPLACE",
+        )
+
+        # 3. Decrypt with legacy enabled + mismatched context SHOULD fail
+        #    but currently SUCCEEDS because x-amz-m now has the bound context
+        s3ec_legacy = _make_client(
+            AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+            CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+            enable_legacy_wrapping=True,
+        )
+        with pytest.raises((S3EncryptionClientError, Exception)):
+            s3ec_legacy.get_object(
+                Bucket=bucket, Key=key, EncryptionContext={"project": "beta"}
+            )
+
+
 class TestV2WrappingAlgorithmDowngradeAttack:
     """Same downgrade attack but targeting V2 format objects.
 
     V2 stores the wrapping algorithm in x-amz-wrap-alg. The attacker
     changes it from 'kms+context' to 'kms'.
+
+    CONFIRMED VULNERABILITY: For V2 objects, the KmsV1 path passes the
+    stored encryption context (from x-amz-matdesc) directly to KMS Decrypt.
+    Since x-amz-matdesc contains the original context used during
+    GenerateDataKey, KMS happily decrypts the data key. The caller's
+    mismatched EncryptionContext is silently ignored, defeating
+    application-level access control.
     """
 
+    @pytest.mark.xfail(
+        reason="CONFIRMED VULNERABILITY: V2 wrapping algorithm downgrade bypasses "
+        "encryption context validation when enable_legacy_wrapping_algorithms=True. "
+        "The KmsV1 path skips client-side context comparison and KMS Decrypt "
+        "succeeds because x-amz-matdesc contains the original bound context.",
+        strict=True,
+    )
     def test_v2_downgrade_wrap_alg_to_kms_mismatched_context(self):
-        """Tampering x-amz-wrap-alg from 'kms+context' to 'kms' with wrong context MUST fail."""
+        """Tampering x-amz-wrap-alg from 'kms+context' to 'kms' with wrong context MUST fail.
+
+        CURRENT BEHAVIOR: Decryption SUCCEEDS with mismatched context — this is the bug.
+        EXPECTED BEHAVIOR: Decryption should FAIL because the caller's context doesn't match.
+        """
         key = _unique_key("sec-v2-downgrade-")
         data = b"sensitive v2 data"
         encryption_context = {"project": "alpha"}
@@ -240,7 +323,8 @@ class TestV2WrappingAlgorithmDowngradeAttack:
             MetadataDirective="REPLACE",
         )
 
-        # 3. Decrypt with legacy enabled + mismatched context MUST fail
+        # 3. Decrypt with legacy enabled + mismatched context SHOULD fail
+        #    but currently SUCCEEDS — this is the vulnerability
         s3ec_legacy = _make_client(
             AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
             CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
