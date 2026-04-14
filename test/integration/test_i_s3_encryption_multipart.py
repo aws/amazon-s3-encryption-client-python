@@ -97,8 +97,17 @@ def test_multipart_two_parts_roundtrip(algorithm_suite, commitment_policy):
 
     try:
         # Upload parts
-        s3ec.upload_part(Bucket=bucket, Key=key, UploadId=upload_id, PartNumber=1, Body=part1_data)
-        s3ec.upload_part(Bucket=bucket, Key=key, UploadId=upload_id, PartNumber=2, Body=part2_data)
+        resp1 = s3ec.upload_part(
+            Bucket=bucket, Key=key, UploadId=upload_id, PartNumber=1, Body=part1_data
+        )
+        resp2 = s3ec.upload_part(
+            Bucket=bucket,
+            Key=key,
+            UploadId=upload_id,
+            PartNumber=2,
+            Body=part2_data,
+            IsLastPart=True,
+        )
 
         # Complete
         s3ec.complete_multipart_upload(
@@ -107,8 +116,8 @@ def test_multipart_two_parts_roundtrip(algorithm_suite, commitment_policy):
             UploadId=upload_id,
             MultipartUpload={
                 "Parts": [
-                    {"PartNumber": 1},
-                    {"PartNumber": 2},
+                    {"PartNumber": 1, "ETag": resp1["ETag"]},
+                    {"PartNumber": 2, "ETag": resp2["ETag"]},
                 ]
             },
         )
@@ -133,13 +142,20 @@ def test_multipart_single_part(algorithm_suite, commitment_policy):
     upload_id = create_resp["UploadId"]
 
     try:
-        s3ec.upload_part(Bucket=bucket, Key=key, UploadId=upload_id, PartNumber=1, Body=data)
+        resp = s3ec.upload_part(
+            Bucket=bucket,
+            Key=key,
+            UploadId=upload_id,
+            PartNumber=1,
+            Body=data,
+            IsLastPart=True,
+        )
 
         s3ec.complete_multipart_upload(
             Bucket=bucket,
             Key=key,
             UploadId=upload_id,
-            MultipartUpload={"Parts": [{"PartNumber": 1}]},
+            MultipartUpload={"Parts": [{"PartNumber": 1, "ETag": resp["ETag"]}]},
         )
     except Exception:
         s3ec.abort_multipart_upload(Bucket=bucket, Key=key, UploadId=upload_id)
@@ -164,10 +180,16 @@ def test_multipart_three_parts(algorithm_suite, commitment_policy):
     try:
         parts = []
         for i, part_data in enumerate(parts_data, start=1):
-            s3ec.upload_part(
-                Bucket=bucket, Key=key, UploadId=upload_id, PartNumber=i, Body=part_data
+            is_last = i == len(parts_data)
+            resp = s3ec.upload_part(
+                Bucket=bucket,
+                Key=key,
+                UploadId=upload_id,
+                PartNumber=i,
+                Body=part_data,
+                IsLastPart=is_last,
             )
-            parts.append({"PartNumber": i})
+            parts.append({"PartNumber": i, "ETag": resp["ETag"]})
 
         s3ec.complete_multipart_upload(
             Bucket=bucket,
@@ -234,11 +256,16 @@ def test_multipart_with_encryption_context(algorithm_suite, commitment_policy):
     upload_id = create_resp["UploadId"]
 
     try:
-        s3ec.upload_part(
+        resp1 = s3ec.upload_part(
             Bucket=bucket, Key=key, UploadId=upload_id, PartNumber=1, Body=data[:FIVE_MB]
         )
-        s3ec.upload_part(
-            Bucket=bucket, Key=key, UploadId=upload_id, PartNumber=2, Body=data[FIVE_MB:]
+        resp2 = s3ec.upload_part(
+            Bucket=bucket,
+            Key=key,
+            UploadId=upload_id,
+            PartNumber=2,
+            Body=data[FIVE_MB:],
+            IsLastPart=True,
         )
 
         s3ec.complete_multipart_upload(
@@ -247,8 +274,8 @@ def test_multipart_with_encryption_context(algorithm_suite, commitment_policy):
             UploadId=upload_id,
             MultipartUpload={
                 "Parts": [
-                    {"PartNumber": 1},
-                    {"PartNumber": 2},
+                    {"PartNumber": 1, "ETag": resp1["ETag"]},
+                    {"PartNumber": 2, "ETag": resp2["ETag"]},
                 ]
             },
         )
@@ -282,11 +309,16 @@ def test_multipart_decrypt_with_delayed_auth(algorithm_suite, commitment_policy)
     upload_id = create_resp["UploadId"]
 
     try:
-        writer.upload_part(
+        resp1 = writer.upload_part(
             Bucket=bucket, Key=key, UploadId=upload_id, PartNumber=1, Body=data[:FIVE_MB]
         )
-        writer.upload_part(
-            Bucket=bucket, Key=key, UploadId=upload_id, PartNumber=2, Body=data[FIVE_MB:]
+        resp2 = writer.upload_part(
+            Bucket=bucket,
+            Key=key,
+            UploadId=upload_id,
+            PartNumber=2,
+            Body=data[FIVE_MB:],
+            IsLastPart=True,
         )
 
         writer.complete_multipart_upload(
@@ -295,8 +327,8 @@ def test_multipart_decrypt_with_delayed_auth(algorithm_suite, commitment_policy)
             UploadId=upload_id,
             MultipartUpload={
                 "Parts": [
-                    {"PartNumber": 1},
-                    {"PartNumber": 2},
+                    {"PartNumber": 1, "ETag": resp1["ETag"]},
+                    {"PartNumber": 2, "ETag": resp2["ETag"]},
                 ]
             },
         )
@@ -331,11 +363,16 @@ def test_multipart_metadata_present(algorithm_suite, commitment_policy):
     upload_id = create_resp["UploadId"]
 
     try:
-        s3ec.upload_part(
+        resp1 = s3ec.upload_part(
             Bucket=bucket, Key=key, UploadId=upload_id, PartNumber=1, Body=data[:FIVE_MB]
         )
-        s3ec.upload_part(
-            Bucket=bucket, Key=key, UploadId=upload_id, PartNumber=2, Body=data[FIVE_MB:]
+        resp2 = s3ec.upload_part(
+            Bucket=bucket,
+            Key=key,
+            UploadId=upload_id,
+            PartNumber=2,
+            Body=data[FIVE_MB:],
+            IsLastPart=True,
         )
 
         s3ec.complete_multipart_upload(
@@ -344,8 +381,8 @@ def test_multipart_metadata_present(algorithm_suite, commitment_policy):
             UploadId=upload_id,
             MultipartUpload={
                 "Parts": [
-                    {"PartNumber": 1},
-                    {"PartNumber": 2},
+                    {"PartNumber": 1, "ETag": resp1["ETag"]},
+                    {"PartNumber": 2, "ETag": resp2["ETag"]},
                 ]
             },
         )
@@ -415,7 +452,7 @@ def test_upload_part_invalid_upload_id_fails(algorithm_suite, commitment_policy)
 
 @pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
 def test_complete_without_parts_fails(algorithm_suite, commitment_policy):
-    """Completing a multipart upload with no parts uploaded must fail."""
+    """Completing a multipart upload without marking a final part must fail."""
     key = _unique_key("mpu-no-parts-")
 
     s3ec = _make_client(algorithm_suite, commitment_policy)
@@ -424,7 +461,7 @@ def test_complete_without_parts_fails(algorithm_suite, commitment_policy):
     upload_id = create_resp["UploadId"]
 
     try:
-        with pytest.raises((S3EncryptionClientError, Exception)):
+        with pytest.raises(S3EncryptionClientError, match="final part has not been uploaded"):
             s3ec.complete_multipart_upload(
                 Bucket=bucket,
                 Key=key,
@@ -457,11 +494,16 @@ def test_multipart_user_metadata_preserved(algorithm_suite, commitment_policy):
     upload_id = create_resp["UploadId"]
 
     try:
-        s3ec.upload_part(
+        resp1 = s3ec.upload_part(
             Bucket=bucket, Key=key, UploadId=upload_id, PartNumber=1, Body=data[:FIVE_MB]
         )
-        s3ec.upload_part(
-            Bucket=bucket, Key=key, UploadId=upload_id, PartNumber=2, Body=data[FIVE_MB:]
+        resp2 = s3ec.upload_part(
+            Bucket=bucket,
+            Key=key,
+            UploadId=upload_id,
+            PartNumber=2,
+            Body=data[FIVE_MB:],
+            IsLastPart=True,
         )
 
         s3ec.complete_multipart_upload(
@@ -470,8 +512,8 @@ def test_multipart_user_metadata_preserved(algorithm_suite, commitment_policy):
             UploadId=upload_id,
             MultipartUpload={
                 "Parts": [
-                    {"PartNumber": 1},
-                    {"PartNumber": 2},
+                    {"PartNumber": 1, "ETag": resp1["ETag"]},
+                    {"PartNumber": 2, "ETag": resp2["ETag"]},
                 ]
             },
         )

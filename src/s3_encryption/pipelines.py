@@ -193,7 +193,7 @@ class MultipartUploadPipeline:
     _encryptor: object = field(init=False, default=None)
     _metadata: dict = field(init=False, factory=dict)
     _next_part: int = field(init=False, default=1)
-    _pending_part: tuple = field(init=False, default=None)  # (part_number, ciphertext)
+    _has_final_part_been_seen: bool = field(init=False, default=False)
 
     def __attrs_post_init__(self):
         """Obtain encryption materials and initialize the streaming cipher."""
@@ -253,12 +253,24 @@ class MultipartUploadPipeline:
         """Return the encryption metadata dict for the multipart upload."""
         return self._metadata
 
-    def encrypt_part(self, part_number, data):
+    @property
+    def has_final_part_been_seen(self):
+        """Return whether the final part has been encrypted."""
+        return self._has_final_part_been_seen
+
+    def encrypt_part(self, part_number, data, is_last=False):
         """Encrypt a single part. Parts must be sequential starting from 1.
 
-        Returns (ready_part, ready_ciphertext) or (None, None) if no part
-        is ready to upload yet (the first call buffers).
+        Args:
+            part_number: The 1-based part number.
+            data: The plaintext bytes for this part.
+            is_last: If True, finalizes the cipher and appends the GCM auth tag.
+
+        Returns:
+            The encrypted ciphertext bytes for this part.
         """
+        if self._has_final_part_been_seen:
+            raise S3EncryptionClientError("Cannot encrypt more parts after the final part.")
         if part_number != self._next_part:
             raise S3EncryptionClientError(
                 f"Parts must be uploaded in sequence. Expected part {self._next_part}, "
@@ -270,19 +282,12 @@ class MultipartUploadPipeline:
 
         ciphertext = self._encryptor.update(data)
 
-        # Release the previously buffered part; buffer the new one
-        ready = self._pending_part
-        self._pending_part = (part_number, ciphertext)
-        return ready
+        if is_last:
+            self._encryptor.finalize()
+            ciphertext += self._encryptor.tag
+            self._has_final_part_been_seen = True
 
-    def finalize(self):
-        """Finalize the cipher and return (part_number, ciphertext+tag) for the last part."""
-        if self._pending_part is None:
-            raise S3EncryptionClientError("No parts were encrypted.")
-        self._encryptor.finalize()
-        part_number, ciphertext = self._pending_part
-        self._pending_part = None
-        return part_number, ciphertext + self._encryptor.tag
+        return ciphertext
 
 
 @define

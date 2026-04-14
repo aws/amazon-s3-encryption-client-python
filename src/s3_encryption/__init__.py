@@ -458,13 +458,16 @@ class S3EncryptionClient:
         """Encrypt and upload a single part of a multipart upload.
 
         Parts must be uploaded in sequential order (1, 2, 3, ...).
+        The caller MUST set ``IsLastPart=True`` on the final part so the
+        GCM authentication tag is appended to the ciphertext.
 
         Args:
             **kwargs: Arguments for S3 upload_part. Must include UploadId,
-                      PartNumber, and Body.
+                      PartNumber, and Body. Set IsLastPart=True on the
+                      final part.
 
         Returns:
-            The response from S3 upload_part.
+            The response from S3 upload_part (includes ETag).
         """
         upload_id = kwargs.get("UploadId")
         pipeline = self._multipart_uploads.get(upload_id)
@@ -475,6 +478,7 @@ class S3EncryptionClient:
             )
 
         part_number = kwargs["PartNumber"]
+        is_last = kwargs.pop("IsLastPart", False)
         body = kwargs.get("Body", b"")
         if isinstance(body, str):
             body = body.encode("utf-8")
@@ -482,38 +486,34 @@ class S3EncryptionClient:
             body = body.read()
 
         try:
-            ready = pipeline.encrypt_part(part_number, body)
+            ciphertext = pipeline.encrypt_part(part_number, body, is_last=is_last)
         except S3EncryptionClientError:
             raise
         except Exception as e:
             raise S3EncryptionClientError(f"Failed to encrypt part {part_number}: {e}") from e
 
-        # If a previously buffered part is ready, upload it now
-        if ready is not None:
-            ready_number, ready_ciphertext = ready
-            self.wrapped_s3_client.upload_part(
-                Bucket=kwargs["Bucket"],
-                Key=kwargs["Key"],
-                UploadId=upload_id,
-                PartNumber=ready_number,
-                Body=ready_ciphertext,
-            )
-
-        # Return a synthetic response with the part number; the actual ETag
-        # will be collected at complete time since this part is still buffered.
-        return {"PartNumber": part_number}
+        return self.wrapped_s3_client.upload_part(
+            Bucket=kwargs["Bucket"],
+            Key=kwargs["Key"],
+            UploadId=upload_id,
+            PartNumber=part_number,
+            Body=ciphertext,
+        )
 
     ##= specification/s3-encryption/client.md#optional-api-operations
     ##= type=implementation
     ##% CompleteMultipartUpload MAY be implemented by the S3EC.
     ##% CompleteMultipartUpload MUST complete the multipart upload.
     def complete_multipart_upload(self, **kwargs):
-        """Finalize the cipher and complete the multipart upload.
+        """Complete the multipart upload.
 
-        The GCM auth tag is appended to the last part before completing.
+        The final part must have been uploaded with ``IsLastPart=True``
+        before calling this method.
 
         Args:
             **kwargs: Arguments for S3 complete_multipart_upload.
+                      MultipartUpload.Parts must include PartNumber and ETag
+                      for each part.
 
         Returns:
             The response from S3 complete_multipart_upload.
@@ -523,37 +523,13 @@ class S3EncryptionClient:
         if pipeline is None:
             raise S3EncryptionClientError(f"No multipart upload found for UploadId: {upload_id}.")
 
-        parts = kwargs.get("MultipartUpload", {}).get("Parts", [])
-        if not parts:
-            raise S3EncryptionClientError("Cannot complete multipart upload with no parts.")
+        if not pipeline.has_final_part_been_seen:
+            raise S3EncryptionClientError(
+                "Cannot complete multipart upload: the final part has not been uploaded. "
+                "Set IsLastPart=True on the last upload_part call."
+            )
 
         try:
-            # Finalize cipher — appends GCM tag to the buffered last part
-            last_part_number, last_ciphertext = pipeline.finalize()
-
-            # Upload the final part (ciphertext + tag)
-            self.wrapped_s3_client.upload_part(
-                Bucket=kwargs["Bucket"],
-                Key=kwargs["Key"],
-                UploadId=upload_id,
-                PartNumber=last_part_number,
-                Body=last_ciphertext,
-            )
-
-            # Build the actual Parts list from previously uploaded parts + final part.
-            # The caller's Parts list has part numbers but no real ETags for the
-            # buffered part, so we need to collect ETags from the uploaded parts.
-            # Re-list parts from S3 to get correct ETags for all uploaded parts.
-            list_resp = self.wrapped_s3_client.list_parts(
-                Bucket=kwargs["Bucket"],
-                Key=kwargs["Key"],
-                UploadId=upload_id,
-            )
-            real_parts = [
-                {"PartNumber": p["PartNumber"], "ETag": p["ETag"]} for p in list_resp["Parts"]
-            ]
-            kwargs["MultipartUpload"] = {"Parts": real_parts}
-
             return self.wrapped_s3_client.complete_multipart_upload(**kwargs)
         except S3EncryptionClientError:
             raise
@@ -637,19 +613,22 @@ class S3EncryptionClient:
         try:
             parts = []
             part_number = 0
-            while True:
-                chunk = readable.read(chunksize)
-                if not chunk:
-                    break
+            # Read ahead so we can detect the last chunk
+            current_chunk = readable.read(chunksize)
+            while current_chunk:
+                next_chunk = readable.read(chunksize)
                 part_number += 1
-                self.upload_part(
+                is_last = not next_chunk
+                resp = self.upload_part(
                     Bucket=bucket,
                     Key=key,
                     UploadId=upload_id,
                     PartNumber=part_number,
-                    Body=chunk,
+                    Body=current_chunk,
+                    IsLastPart=is_last,
                 )
-                parts.append({"PartNumber": part_number})
+                parts.append({"PartNumber": part_number, "ETag": resp["ETag"]})
+                current_chunk = next_chunk
 
             return self.complete_multipart_upload(
                 Bucket=bucket,
