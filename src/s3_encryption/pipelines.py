@@ -316,6 +316,30 @@ class GetEncryptedObjectPipeline:
         # Determine the algorithm suite from the metadata
         algorithm_suite = self._determine_algorithm_suite(metadata)
 
+        # Reject metadata that contains keys from multiple format versions.
+        # This prevents format confusion attacks where an attacker injects
+        # V2 keys via an instruction file to bypass V3 key-commitment verification.
+        if metadata.has_exclusive_key_collision():
+            raise S3EncryptionClientError(
+                "Object metadata contains keys from multiple format versions. "
+                "The object or its instruction file may have been tampered with."
+            )
+
+        # Also reject V2 format metadata that contains V3 content keys.
+        # In the instruction file injection scenario, the attacker replaces
+        # V3 EDK keys with V2 keys, but V3 content keys (x-amz-c, x-amz-d,
+        # x-amz-i) remain from the object metadata. This combination is
+        # never produced by legitimate encryption.
+        if metadata.is_v2_format() and (
+            metadata.content_cipher_v3 is not None
+            or metadata.key_commitment_v3 is not None
+            or metadata.message_id_v3 is not None
+        ):
+            raise S3EncryptionClientError(
+                "Object metadata contains V2 format keys alongside V3 content keys. "
+                "The object or its instruction file may have been tampered with."
+            )
+
         # Determine which format we're dealing with and get decryption materials
         if metadata.is_v1_format():
             dec_materials = self._decrypt_v1(metadata, encryption_context)
