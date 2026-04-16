@@ -140,13 +140,12 @@ def test_decrypt_instruction_file_wrong_suffix_raises():
     wrapped_client = boto3.client("s3")
     config = S3EncryptionClientConfig(
         keyring,
-        instruction_file_suffix=".wrong-suffix",
         commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
     )
     s3ec = S3EncryptionClient(wrapped_client, config)
 
     with pytest.raises(S3EncryptionClientError, match="Instruction file body is empty"):
-        s3ec.get_object(Bucket=bucket, Key=key)
+        s3ec.get_object(Bucket=bucket, Key=key, InstructionFileSuffix=".wrong-suffix")
 
 
 def test_decrypt_v3_instruction_file_custom_suffix():
