@@ -396,6 +396,7 @@ def test_non_ascii_encryption_context_rejected(algorithm_suite, commitment_polic
         {"部門": "engineering"},  # CJK key
         {"project": "проект"},  # Cyrillic value
         {"emoji": "test 🔑"},  # Emoji
+        {"long😮‍💨": "𐀂"},  # Long Sigh/Psi
     ]
 
     s3ec = _make_client(algorithm_suite, commitment_policy)

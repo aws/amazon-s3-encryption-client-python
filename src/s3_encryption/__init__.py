@@ -353,7 +353,7 @@ class S3EncryptionClient:
 
         This allows the S3EncryptionClient to be used like a regular boto3 S3
         client for operations it doesn't intercept (e.g. copy_object,
-        delete_object, list_objects_v2, etc.).
+        list_objects_v2, etc.).
         """
         return getattr(self.wrapped_s3_client, name)
 

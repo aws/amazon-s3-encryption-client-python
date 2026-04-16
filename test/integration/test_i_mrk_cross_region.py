@@ -44,6 +44,7 @@ def _make_client(kms_region, kms_key_id):
     """Create an S3EncryptionClient using a KMS client in the given region."""
     kms_client = boto3.client("kms", region_name=kms_region)
     keyring = KmsKeyring(kms_client, kms_key_id)
+    # Always use a primary region S3 client
     wrapped_client = boto3.client("s3", region_name=primary_region)
     config = S3EncryptionClientConfig(keyring=keyring)
     return S3EncryptionClient(wrapped_client, config)
