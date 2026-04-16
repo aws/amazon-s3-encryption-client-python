@@ -138,12 +138,13 @@ def test_decrypt_v3_instruction_file_custom_suffix():
     wrapped_client = boto3.client("s3")
     config = S3EncryptionClientConfig(
         keyring,
-        instruction_file_suffix=".custom-suffix-instruction",
         commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
     )
     s3ec = S3EncryptionClient(wrapped_client, config)
 
-    response = s3ec.get_object(Bucket=bucket, Key=key)
+    response = s3ec.get_object(
+        Bucket=bucket, Key=key, InstructionFileSuffix=".custom-suffix-instruction"
+    )
     output = response["Body"].read().decode("utf-8")
 
     assert output == "static-v3-instruction-file-from-java-v4"
@@ -161,13 +162,14 @@ def test_decrypt_v2_instruction_file_custom_suffix(delayed_auth):
     config = S3EncryptionClientConfig(
         keyring,
         encryption_algorithm=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
-        instruction_file_suffix=".custom-suffix-instruction",
         commitment_policy=CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
         enable_delayed_authentication=delayed_auth,
     )
     s3ec = S3EncryptionClient(wrapped_client, config)
 
-    response = s3ec.get_object(Bucket=bucket, Key=key)
+    response = s3ec.get_object(
+        Bucket=bucket, Key=key, InstructionFileSuffix=".custom-suffix-instruction"
+    )
     output = response["Body"].read().decode("utf-8")
 
     assert output == "static-v2-instruction-file-from-java-v4"
