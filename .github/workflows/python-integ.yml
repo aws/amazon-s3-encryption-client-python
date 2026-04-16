@@ -64,7 +64,10 @@ jobs:
           CI_MRK_KEY_ID_PRIMARY: ${{ vars.CI_MRK_KEY_ID_PRIMARY }}
           CI_MRK_KEY_ID_REPLICA: ${{ vars.CI_MRK_KEY_ID_REPLICA }}
 
-      - name: Upload unit test coverage report
+      - name: Run examples
+        run: make test-examples
+
+      - name: Generate coverage HTML report
         if: always()
         uses: actions/upload-artifact@v7
         with:
