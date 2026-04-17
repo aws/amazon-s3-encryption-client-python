@@ -48,34 +48,35 @@ jobs:
           aws-region: us-west-2
 
       - name: Run unit tests
-        run: make test-unit
+        run: |
+          uv run pytest test/ --ignore=test/integration/ --verbose \
+            --cov=src/s3_encryption --cov-report=term-missing --cov-report=html:coverage-unit \
+            --cov-fail-under=89
 
       - name: Run integration tests
-        run: make test-integration
+        run: |
+          uv run pytest test/integration/ --verbose \
+            --cov=src/s3_encryption --cov-report=term-missing --cov-report=html:coverage-integ \
+            --cov-fail-under=83
         env:
           CI_S3_BUCKET: ${{ vars.CI_S3_BUCKET }}
           CI_KMS_KEY_ALIAS: ${{ vars.CI_KMS_KEY_ALIAS }}
+          CI_MRK_KEY_ID_PRIMARY: ${{ vars.CI_MRK_KEY_ID_PRIMARY }}
+          CI_MRK_KEY_ID_REPLICA: ${{ vars.CI_MRK_KEY_ID_REPLICA }}
 
       - name: Run examples
         run: make test-examples
 
       - name: Generate coverage HTML report
         if: always()
-        run: uv run coverage html -d coverage-report
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-unit
+          path: coverage-unit/
 
-      - name: Upload coverage report
+      - name: Upload integration test coverage report
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: coverage-report
-          path: coverage-report/
-
-      - name: Check coverage threshold
-        run: |
-          THRESHOLD=93
-          ACTUAL=$(uv run coverage report --format=total)
-          echo "Coverage: ${ACTUAL}% (threshold: ${THRESHOLD}%)"
-          if [ "$ACTUAL" -gt "$THRESHOLD" ]; then
-            echo "::warning::Coverage is ${ACTUAL}%, consider updating --fail-under to ${ACTUAL} in python-integ.yml"
-          fi
-          uv run coverage report --fail-under=$THRESHOLD
+          name: coverage-integ
+          path: coverage-integ/
