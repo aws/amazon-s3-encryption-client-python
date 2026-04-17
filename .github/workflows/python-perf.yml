@@ -11,7 +11,7 @@ on:
 
 jobs:
   python-perf:
-    runs-on: macos-14-large
+    runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
