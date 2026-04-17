@@ -23,13 +23,13 @@ format:
 # Run all tests with combined coverage
 test: test-unit test-integration test-examples
 
-# Run unit tests (creates .coverage report)
+# Run unit tests with coverage
 test-unit:
-	uv run pytest test/ --ignore=test/integration/ --verbose --cov=src/s3_encryption --cov-report=term-missing
+	uv run pytest test/ --ignore=test/integration/ --verbose --cov=src/s3_encryption --cov-report=term-missing --cov-fail-under=89
 
-# Run integration tests (appends to .coverage report from test-unit)
+# Run integration tests with separate coverage
 test-integration:
-	uv run pytest test/integration/ --verbose --cov=src/s3_encryption --cov-append --cov-report=term-missing
+	uv run pytest test/integration/ --verbose --cov=src/s3_encryption --cov-report=term-missing --cov-fail-under=83
 
 test-examples:
 	uv run pytest examples/test/ -v

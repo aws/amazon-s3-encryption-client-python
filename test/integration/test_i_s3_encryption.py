@@ -139,6 +139,21 @@ def test_binary_data_roundtrip(algorithm_suite, commitment_policy):
 
 
 @pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_bytesio_body_roundtrip(algorithm_suite, commitment_policy):
+    """Test that a BytesIO body is encrypted and decrypted correctly."""
+    from io import BytesIO
+
+    key = _unique_key("bytesio-body-rt-")
+    data = b"BytesIO round trip test data"
+
+    s3ec = _make_client(algorithm_suite, commitment_policy)
+    s3ec.put_object(Bucket=bucket, Key=key, Body=BytesIO(data))
+    response = s3ec.get_object(Bucket=bucket, Key=key)
+    output = response["Body"].read()
+    assert output == data
+
+
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
 def test_invalid_body_types(algorithm_suite, commitment_policy):
     """Test that put_object raises an exception when given invalid body types."""
     key = _unique_key("invalid-body-type-")
@@ -275,3 +290,117 @@ def test_delayed_authentication_mode(enable_delayed_auth):
     s3ec.put_object(Bucket=bucket, Key=key, Body=data)
     response = s3ec.get_object(Bucket=bucket, Key=key)
     assert response["Body"].read() == data
+
+
+def test_inaccessible_kms_key_raises_access_denied():
+    """put_object with a KMS key we lack permission for MUST surface AccessDeniedException."""
+    from botocore.exceptions import ClientError
+
+    fake_key_arn = "arn:aws:kms:us-west-2:123456789012:key/00000000-0000-0000-0000-000000000000"
+    kms_client = boto3.client("kms", region_name=region)
+    keyring = KmsKeyring(kms_client, fake_key_arn)
+    wrapped_client = boto3.client("s3")
+    config = S3EncryptionClientConfig(keyring=keyring)
+    s3ec = S3EncryptionClient(wrapped_client, config)
+
+    key = _unique_key("access-denied-")
+
+    with pytest.raises(S3EncryptionClientError, match="Failed to encrypt object") as exc_info:
+        s3ec.put_object(Bucket=bucket, Key=key, Body=b"should fail")
+
+    # Unwrap and verify the root cause is AccessDeniedException
+    cause = exc_info.value.__cause__
+    assert isinstance(cause, ClientError)
+    assert cause.response["Error"]["Code"] == "AccessDeniedException"
+
+
+def test_get_nonexistent_object_raises_no_such_key():
+    """get_object for a key that doesn't exist MUST surface NoSuchKey."""
+    from botocore.exceptions import ClientError
+
+    s3ec = _make_client(
+        AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+        CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+    )
+
+    with pytest.raises(S3EncryptionClientError, match="NoSuchKey") as exc_info:
+        s3ec.get_object(Bucket=bucket, Key="this-key-definitely-does-not-exist")
+
+    cause = exc_info.value.__cause__
+    assert isinstance(cause, ClientError)
+    assert cause.response["Error"]["Code"] == "NoSuchKey"
+
+
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_s3_passthrough_options_preserved(algorithm_suite, commitment_policy):
+    """S3 options unrelated to encryption (e.g. StorageClass, ContentType) MUST be applied."""
+    key = _unique_key("passthrough-opts-")
+    data = b'{"message": "hello"}'
+
+    s3ec = _make_client(algorithm_suite, commitment_policy)
+    s3ec.put_object(
+        Bucket=bucket,
+        Key=key,
+        Body=data,
+        StorageClass="STANDARD_IA",
+        ContentType="application/json",
+        ContentDisposition="attachment; filename=test.json",
+    )
+
+    # Read back with head_object via the S3EC instance to verify the options were applied
+    head = s3ec.head_object(Bucket=bucket, Key=key)
+    assert head["StorageClass"] == "STANDARD_IA"
+    assert head["ContentType"] == "application/json"
+    assert head["ContentDisposition"] == "attachment; filename=test.json"
+
+    # Also verify the data round-trips correctly
+    response = s3ec.get_object(Bucket=bucket, Key=key)
+    assert response["Body"].read() == data
+
+
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_copy_object_then_decrypt(algorithm_suite, commitment_policy):
+    """An encrypted object copied via CopyObject MUST still decrypt correctly."""
+    src_key = _unique_key("copy-src-")
+    dst_key = _unique_key("copy-dst-")
+    data = b"copy object round trip test"
+
+    s3ec = _make_client(algorithm_suite, commitment_policy)
+    s3ec.put_object(Bucket=bucket, Key=src_key, Body=data)
+
+    # Copy using the S3EC instance (copy_object proxies to the wrapped S3 client)
+    s3ec.copy_object(
+        Bucket=bucket,
+        Key=dst_key,
+        CopySource={"Bucket": bucket, "Key": src_key},
+        MetadataDirective="COPY",
+    )
+
+    # Decrypt the copied object
+    response = s3ec.get_object(Bucket=bucket, Key=dst_key)
+    assert response["Body"].read() == data
+
+
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_non_ascii_encryption_context_rejected(algorithm_suite, commitment_policy):
+    """Non-US-ASCII characters in EncryptionContext MUST be rejected.
+
+    S3 applies an esoteric double-encoding to non-ASCII metadata values that
+    most SDKs do not automatically decode. This causes decryption to fail
+    because the stored encryption context won't match the original. Currently
+    boto3 rejects non-ASCII header values before the request is sent.
+    """
+    key = _unique_key("non-ascii-ec-")
+    non_ascii_contexts = [
+        {"department": "ingeniería"},  # Latin accented
+        {"部門": "engineering"},  # CJK key
+        {"project": "проект"},  # Cyrillic value
+        {"emoji": "test 🔑"},  # Emoji
+        {"long😮‍💨": "𐀂"},  # Long Sigh/Psi
+    ]
+
+    s3ec = _make_client(algorithm_suite, commitment_policy)
+
+    for ec in non_ascii_contexts:
+        with pytest.raises(S3EncryptionClientError, match="US-ASCII"):
+            s3ec.put_object(Bucket=bucket, Key=key, Body=b"test", EncryptionContext=ec)

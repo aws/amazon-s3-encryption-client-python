@@ -129,6 +129,25 @@ def test_decrypt_invalid_instruction_file():
     print(f"Error message: {exc_info.value}")
 
 
+def test_decrypt_instruction_file_wrong_suffix_raises():
+    """Decryption MUST fail when the instruction file suffix doesn't match the actual S3 object."""
+    from s3_encryption.exceptions import S3EncryptionClientError
+
+    key = TEST_OBJECTS["v3_instruction_file"]
+
+    kms_client = boto3.client("kms", region_name=region)
+    keyring = KmsKeyring(kms_client, kms_key_id)
+    wrapped_client = boto3.client("s3")
+    config = S3EncryptionClientConfig(
+        keyring,
+        commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+    )
+    s3ec = S3EncryptionClient(wrapped_client, config)
+
+    with pytest.raises(S3EncryptionClientError, match="Instruction file body is empty"):
+        s3ec.get_object(Bucket=bucket, Key=key, InstructionFileSuffix=".wrong-suffix")
+
+
 def test_decrypt_v3_instruction_file_custom_suffix():
     """Test decrypting V3 object with a custom instruction file suffix."""
     key = TEST_OBJECTS["v3_instruction_file"]
