@@ -9,7 +9,6 @@ import pytest
 
 from s3_encryption import S3EncryptionClient, S3EncryptionClientConfig
 from s3_encryption.materials.kms_keyring import KmsKeyring
-from s3_encryption.materials.materials import AlgorithmSuite, CommitmentPolicy
 
 BUCKET = os.environ.get("CI_S3_BUCKET", "s3ec-python-github-test-bucket")
 REGION = os.environ.get("CI_AWS_REGION", "us-west-2")
@@ -32,22 +31,6 @@ def _make_s3ec(algorithm_suite, commitment_policy):
         commitment_policy=commitment_policy,
     )
     return S3EncryptionClient(wrapped_client, config)
-
-
-@pytest.fixture(scope="module")
-def s3ec_v2():
-    return _make_s3ec(
-        AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
-        CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
-    )
-
-
-@pytest.fixture(scope="module")
-def s3ec_v3():
-    return _make_s3ec(
-        AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
-        CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
-    )
 
 
 @pytest.fixture(scope="module")
