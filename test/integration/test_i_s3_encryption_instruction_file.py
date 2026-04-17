@@ -129,6 +129,25 @@ def test_decrypt_invalid_instruction_file():
     print(f"Error message: {exc_info.value}")
 
 
+def test_decrypt_instruction_file_wrong_suffix_raises():
+    """Decryption MUST fail when the instruction file suffix doesn't match the actual S3 object."""
+    from s3_encryption.exceptions import S3EncryptionClientError
+
+    key = TEST_OBJECTS["v3_instruction_file"]
+
+    kms_client = boto3.client("kms", region_name=region)
+    keyring = KmsKeyring(kms_client, kms_key_id)
+    wrapped_client = boto3.client("s3")
+    config = S3EncryptionClientConfig(
+        keyring,
+        commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+    )
+    s3ec = S3EncryptionClient(wrapped_client, config)
+
+    with pytest.raises(S3EncryptionClientError, match="Instruction file body is empty"):
+        s3ec.get_object(Bucket=bucket, Key=key, InstructionFileSuffix=".wrong-suffix")
+
+
 def test_decrypt_v3_instruction_file_custom_suffix():
     """Test decrypting V3 object with a custom instruction file suffix."""
     key = TEST_OBJECTS["v3_instruction_file"]
@@ -138,12 +157,13 @@ def test_decrypt_v3_instruction_file_custom_suffix():
     wrapped_client = boto3.client("s3")
     config = S3EncryptionClientConfig(
         keyring,
-        instruction_file_suffix=".custom-suffix-instruction",
         commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
     )
     s3ec = S3EncryptionClient(wrapped_client, config)
 
-    response = s3ec.get_object(Bucket=bucket, Key=key)
+    response = s3ec.get_object(
+        Bucket=bucket, Key=key, InstructionFileSuffix=".custom-suffix-instruction"
+    )
     output = response["Body"].read().decode("utf-8")
 
     assert output == "static-v3-instruction-file-from-java-v4"
@@ -161,13 +181,14 @@ def test_decrypt_v2_instruction_file_custom_suffix(delayed_auth):
     config = S3EncryptionClientConfig(
         keyring,
         encryption_algorithm=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
-        instruction_file_suffix=".custom-suffix-instruction",
         commitment_policy=CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
         enable_delayed_authentication=delayed_auth,
     )
     s3ec = S3EncryptionClient(wrapped_client, config)
 
-    response = s3ec.get_object(Bucket=bucket, Key=key)
+    response = s3ec.get_object(
+        Bucket=bucket, Key=key, InstructionFileSuffix=".custom-suffix-instruction"
+    )
     output = response["Body"].read().decode("utf-8")
 
     assert output == "static-v2-instruction-file-from-java-v4"

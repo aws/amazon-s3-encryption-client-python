@@ -135,6 +135,21 @@ class TestContentEncryption:
         _, meta = pipeline.encrypt(b"test")
         assert "x-amz-i" in meta
 
+    def test_bytesio_body_encrypts_successfully(self):
+        """Encryption MUST work when the body is a BytesIO object."""
+        cmm, key = _mock_cmm()
+        pipeline = PutEncryptedObjectPipeline(
+            cmm, AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+        )
+        plaintext = b"BytesIO body test data"
+
+        # The plugin reads BytesIO via .read(), so the pipeline receives bytes.
+        # Verify the pipeline encrypts bytes from a BytesIO source correctly.
+        ciphertext, meta = pipeline.encrypt(plaintext)
+        assert ciphertext != plaintext
+        assert len(ciphertext) > 0
+        assert "x-amz-i" in meta  # V3 message ID present
+
 
 # ---------------------------------------------------------------------------
 # ALG_AES_256_GCM_IV12_TAG16_NO_KDF

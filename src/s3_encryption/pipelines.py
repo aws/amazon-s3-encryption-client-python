@@ -494,8 +494,9 @@ class GetEncryptedObjectPipeline:
         ##% When disabled the S3EC MUST NOT release plaintext from a stream which has not been authenticated.
         return one_shot_decrypt(streaming_body, decryptor)
 
+    @staticmethod
     def _decrypt_kc_gcm_streaming(
-        self, dec_materials, metadata, streaming_body, enable_delayed_authentication, content_length
+        dec_materials, metadata, streaming_body, enable_delayed_authentication, content_length
     ):
         """Decrypt content encrypted with ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY.
 

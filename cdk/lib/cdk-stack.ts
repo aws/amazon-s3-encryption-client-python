@@ -65,6 +65,33 @@ export class S3ECPythonGithub extends cdk.Stack {
       }
     )
 
+    // Multi-Region Key (MRK) for cross-region testing.
+    // The primary key is created here in the stack's region (us-west-2).
+    // A replica MUST be created manually in us-east-1 via the AWS Console
+    // or a separate CDK stack, since CDK cannot create cross-region replicas
+    // within a single stack.
+    const S3ECMRKPrimaryKey = new Key(
+      this,
+      "S3ECMRKPrimaryKey",
+      {
+        enableKeyRotation: true,
+        description: "Multi-Region primary key for S3EC cross-region testing",
+        // multiRegion is not a direct CDK L2 prop; use cfnOptions override
+      }
+    );
+    // Override to enable multi-region on the underlying CloudFormation resource
+    const cfnMrkKey = S3ECMRKPrimaryKey.node.defaultChild as cdk.aws_kms.CfnKey;
+    cfnMrkKey.addPropertyOverride("MultiRegion", true);
+
+    const S3ECMRKPrimaryKeyAlias = new Alias(
+      this,
+      "S3ECMRKPrimaryKeyAlias",
+      {
+        aliasName: "alias/S3EC-Python-MRK-Primary",
+        targetKey: S3ECMRKPrimaryKey,
+      }
+    );
+
     // S3 buckets
     const AccessConfiguration: BlockPublicAccessOptions = {
       blockPublicAcls: false,
@@ -162,6 +189,10 @@ export class S3ECPythonGithub extends cdk.Stack {
               resources: [
                 S3ECGithubKMSKey.keyArn,
                 S3ECTestServerKMSKey.keyArn, // Add access to the test-server KMS key
+                S3ECMRKPrimaryKey.keyArn, // MRK primary key
+                // MRK replica in us-east-1 — ARN must use wildcard account
+                // since the replica shares the same key ID but different region
+                `arn:aws:kms:us-east-1:${this.account}:key/${S3ECMRKPrimaryKey.keyId}`,
               ]
             })
           ]

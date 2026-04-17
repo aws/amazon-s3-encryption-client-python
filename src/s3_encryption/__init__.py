@@ -27,10 +27,16 @@ _CTX_BUCKET = "bucket"
 _CTX_KEY = "key"
 _CTX_S3_CLIENT = "s3_client"
 _CTX_INSTRUCTION_FILE_MODE = "instruction_file_mode"
+_CTX_INSTRUCTION_FILE_SUFFIX = "instruction_file_suffix"
 
 # Attributes to clean up after get_object completes
 # (s3_client is intentionally excluded — it is not request-scoped)
-_GET_OBJECT_CLEANUP_ATTRS = (_CTX_ENCRYPTION_CONTEXT, _CTX_BUCKET, _CTX_KEY)
+_GET_OBJECT_CLEANUP_ATTRS = (
+    _CTX_ENCRYPTION_CONTEXT,
+    _CTX_BUCKET,
+    _CTX_KEY,
+    _CTX_INSTRUCTION_FILE_SUFFIX,
+)
 
 
 @define
@@ -47,8 +53,6 @@ class S3EncryptionClientConfig:
             encrypted with legacy CBC algorithm suites. Defaults to False.
         cmm: Crypto materials manager. Defaults to a DefaultCryptoMaterialsManager
             wrapping the provided keyring.
-        instruction_file_suffix: Suffix appended to the S3 object key when
-            fetching instruction files. Defaults to ".instruction".
         enable_delayed_authentication: If True, release plaintext from streams
             before GCM tag verification. Defaults to False. Has no effect for
             CBC encrypted ciphertext, which is always streamed as there is no
@@ -72,16 +76,6 @@ class S3EncryptionClientConfig:
     ##% The option to enable legacy unauthenticated modes MUST be set to false by default.
     enable_legacy_unauthenticated_modes: bool = field(default=False)
     cmm: AbstractCryptoMaterialsManager = field()
-    ##= specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
-    ##= type=implementation
-    ##% The S3EC SHOULD support providing a custom Instruction File suffix
-    ##% on GetObject requests, regardless of whether or not re-encryption is supported.
-
-    ##= specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
-    ##= type=implementation
-    ##% The default Instruction File behavior uses the same S3 object key
-    ##% as its associated object suffixed with ".instruction".
-    instruction_file_suffix: str = field(default=".instruction")
 
     ##= specification/s3-encryption/client.md#enable-delayed-authentication
     ##= type=implementation
@@ -257,7 +251,7 @@ class S3EncryptionClientPlugin:
         )
         decrypted_data = pipeline.decrypt(
             response,
-            instruction_suffix=self.config.instruction_file_suffix,
+            instruction_suffix=getattr(self._context, _CTX_INSTRUCTION_FILE_SUFFIX, ".instruction"),
             enable_delayed_authentication=self.config.enable_delayed_authentication,
             encryption_context=encryption_context,
             bucket=getattr(self._context, _CTX_BUCKET, None),
@@ -300,6 +294,32 @@ class S3EncryptionClientPlugin:
         parsed["Body"] = streaming_body
 
 
+def _validate_encryption_context(encryption_context):
+    """Validate that all encryption context keys and values are US-ASCII.
+
+    S3 applies double-encoding to non-ASCII metadata values that SDKs do not
+    automatically decode, which causes decryption to fail because the stored
+    encryption context won't match the original.
+
+    Raises:
+        S3EncryptionClientError: If any key or value contains non-ASCII characters.
+    """
+    if encryption_context is None:
+        return
+    if not isinstance(encryption_context, dict):
+        raise S3EncryptionClientError("EncryptionContext must be a dictionary")
+    for k, v in encryption_context.items():
+        if not isinstance(k, str) or not isinstance(v, str):
+            raise S3EncryptionClientError("EncryptionContext keys and values must be strings")
+        if not k.isascii() or not v.isascii():
+            raise S3EncryptionClientError(
+                f"EncryptionContext keys and values must contain only US-ASCII characters. "
+                f"Non-ASCII characters in S3 metadata are encoded by the server "
+                f"and will cause decryption to fail. "
+                f"First offending entry: {repr(k)}: {repr(v)}"
+            )
+
+
 @define
 class S3EncryptionClient:
     """Client for encrypting and decrypting S3 objects.
@@ -328,6 +348,15 @@ class S3EncryptionClient:
         event_system.register("before-call.s3.PutObject", self._plugin.on_put_object_before_call)
         event_system.register("after-call.s3.GetObject", self._plugin.on_get_object_after_call)
 
+    def __getattr__(self, name):
+        """Proxy unrecognized attributes to the wrapped S3 client.
+
+        This allows the S3EncryptionClient to be used like a regular boto3 S3
+        client for operations it doesn't intercept (e.g. copy_object,
+        list_objects_v2, etc.).
+        """
+        return getattr(self.wrapped_s3_client, name)
+
     def put_object(self, **kwargs):
         """Encrypt and upload an object to S3.
 
@@ -349,6 +378,7 @@ class S3EncryptionClient:
         """
         # Extract EncryptionContext if provided (not a standard S3 parameter)
         encryption_context = kwargs.pop("EncryptionContext", None)
+        _validate_encryption_context(encryption_context)
 
         # Store encryption context in thread-local storage for the event handler
         self._plugin._context.encryption_context = encryption_context
@@ -374,6 +404,8 @@ class S3EncryptionClient:
         Args:
             **kwargs: Arguments to pass to the S3 client's get_object method.
                       May include EncryptionContext if it was used during encryption.
+                      May include InstructionFileSuffix to override the default
+                      ".instruction" suffix for instruction file lookups.
 
         Returns:
             The response from the S3 client's get_object method with the Body
@@ -384,9 +416,21 @@ class S3EncryptionClient:
         """
         # Extract EncryptionContext if provided (not a standard S3 parameter)
         encryption_context = kwargs.pop("EncryptionContext", None)
+        _validate_encryption_context(encryption_context)
+        ##= specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
+        ##= type=implementation
+        ##% The S3EC SHOULD support providing a custom Instruction File suffix
+        ##% on GetObject requests, regardless of whether or not re-encryption is supported.
+
+        ##= specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
+        ##= type=implementation
+        ##% The default Instruction File behavior uses the same S3 object key
+        ##% as its associated object suffixed with ".instruction".
+        instruction_file_suffix = kwargs.pop("InstructionFileSuffix", ".instruction")
 
         # Store encryption context in thread-local storage for the event handler
         setattr(self._plugin._context, _CTX_ENCRYPTION_CONTEXT, encryption_context)
+        setattr(self._plugin._context, _CTX_INSTRUCTION_FILE_SUFFIX, instruction_file_suffix)
         # Store wrapped client in thread-local storage for
         # the event handler to fetch instruction files
         setattr(self._plugin._context, _CTX_S3_CLIENT, self.wrapped_s3_client)

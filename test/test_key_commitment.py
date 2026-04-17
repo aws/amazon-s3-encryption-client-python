@@ -163,3 +163,27 @@ class TestCommitmentPolicy:
         )
         result = pipeline.decrypt(response, ".instruction", enable_delayed_authentication=False)
         assert result.read() == plaintext
+
+    def test_require_encrypt_allow_decrypt_allows_committing_decrypt(self):
+        """REQUIRE_ENCRYPT_ALLOW_DECRYPT MUST allow decryption with committing suites."""
+        key = os.urandom(32)
+        response, dec_mats, plaintext = _v3_kc_gcm_response(key)
+
+        pipeline = _make_pipeline(
+            commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT,
+            keyring_return=dec_mats,
+        )
+        result = pipeline.decrypt(response, ".instruction", enable_delayed_authentication=False)
+        assert result.read() == plaintext
+
+    def test_forbid_encrypt_allow_decrypt_allows_committing_decrypt(self):
+        """FORBID_ENCRYPT_ALLOW_DECRYPT MUST allow decryption with committing suites."""
+        key = os.urandom(32)
+        response, dec_mats, plaintext = _v3_kc_gcm_response(key)
+
+        pipeline = _make_pipeline(
+            commitment_policy=CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
+            keyring_return=dec_mats,
+        )
+        result = pipeline.decrypt(response, ".instruction", enable_delayed_authentication=False)
+        assert result.read() == plaintext
