@@ -21,7 +21,7 @@ format:
 	uv run ruff check --fix src/ test/
 
 # Run all tests with combined coverage
-test: test-unit test-integration
+test: test-unit test-integration test-examples
 
 # Run unit tests (creates .coverage report)
 test-unit:
@@ -34,6 +34,9 @@ test-integration:
 # Run performance tests
 test-perf:
 	uv run pytest test/performance/ --verbose -x
+
+test-examples:
+	uv run pytest examples/test/ -v
 
 # Clean up cache files
 clean:
