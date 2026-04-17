@@ -76,7 +76,7 @@ class AesCbcDecryptor(Decryptor):
             # Use a fixed message for all CBC failures to prevent padding oracle attacks.
             # Different failure modes (bad padding, truncated ciphertext, wrong key) MUST
             # produce identical error responses so an attacker cannot distinguish them.
-            raise S3EncryptionClientSecurityError("Failed to decrypt CBC content.")
+            raise S3EncryptionClientSecurityError("Failed to decrypt CBC content.") from None
 
 
 @define
