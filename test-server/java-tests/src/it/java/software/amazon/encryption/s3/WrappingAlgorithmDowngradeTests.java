@@ -240,12 +240,17 @@ public class WrappingAlgorithmDowngradeTests {
                     + " (language: " + language.getLanguageName() + ")");
             }
             // For non-resilient languages, this is the expected (known) behavior
-        } catch (S3EncryptionClientError | Exception e) {
+        } catch (S3EncryptionClientError e) {
             if (!expectRejection) {
                 fail("V2 downgrade was unexpectedly rejected for: " + objectKey
                     + " (language: " + language.getLanguageName() + "): " + e.getMessage());
             }
             // For resilient languages, rejection is expected
+        } catch (Exception e) {
+            if (!expectRejection) {
+                fail("V2 downgrade was unexpectedly rejected for: " + objectKey
+                    + " (language: " + language.getLanguageName() + "): " + e.getMessage());
+            }
         }
     }
 }
