@@ -49,7 +49,7 @@ jobs:
 
       - name: Run unit tests
         run: |
-          uv run pytest test/ --ignore=test/integration/ --verbose \
+          uv run pytest test/ --ignore=test/integration/ --ignore=test/performance/ --verbose \
             --cov=src/s3_encryption --cov-report=term-missing --cov-report=html:coverage-unit \
             --cov-fail-under=89
 
