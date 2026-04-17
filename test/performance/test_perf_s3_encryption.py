@@ -34,8 +34,14 @@ _PAYLOADS: dict[int, bytes] = {}
 _WARMUP_PAYLOAD = b"x" * 1024
 
 # Algorithm suite configs
-_AES_GCM = (AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF, CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
-_KC_GCM = (AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY, CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT)
+_AES_GCM = (
+    AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+    CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
+)
+_KC_GCM = (
+    AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+    CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+)
 
 
 def _get_payload(size_mb: int) -> bytes:
@@ -50,15 +56,17 @@ def _unique_key(prefix: str) -> str:
 
 
 def _record(test_name, size_mb, durations):
-    _results.append({
-        "test": test_name,
-        "size_mb": size_mb,
-        "rounds": len(durations),
-        "durations_s": durations,
-        "mean_s": sum(durations) / len(durations),
-        "min_s": min(durations),
-        "max_s": max(durations),
-    })
+    _results.append(
+        {
+            "test": test_name,
+            "size_mb": size_mb,
+            "rounds": len(durations),
+            "durations_s": durations,
+            "mean_s": sum(durations) / len(durations),
+            "min_s": min(durations),
+            "max_s": max(durations),
+        }
+    )
 
 
 def _warmup_connection(client):
