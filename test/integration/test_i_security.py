@@ -234,27 +234,19 @@ class TestWrappingAlgorithmDowngradeAttack:
 class TestV2WrappingAlgorithmDowngradeAttack:
     """V2 wrapping algorithm downgrade tests.
 
-    V2 stores the wrapping algorithm in x-amz-wrap-alg. When changed from
-    'kms+context' to 'kms', the KmsV1 decryption path is used. Since
-    x-amz-matdesc already contains the original bound context, KMS Decrypt
-    succeeds and the caller-provided EncryptionContext is not validated.
-
-    This is a known limitation of the V2 format when legacy wrapping
-    algorithms are enabled.
+    V2 stores the wrapping algorithm in x-amz-wrap-alg. The KmsV1 ("kms")
+    wrapping algorithm does not support caller-provided encryption context.
+    When a caller provides encryption context on decrypt and the wrapping
+    algorithm is "kms", the client MUST reject the request. This is the
+    canonical behavior established by the Java AmazonS3EncryptionClientV2.
     """
 
-    @pytest.mark.xfail(
-        reason="Known V2 format limitation: the KmsV1 path does not perform "
-        "client-side encryption context comparison, and x-amz-matdesc "
-        "contains the original bound context.",
-        strict=True,
-    )
     def test_v2_downgrade_wrap_alg_to_kms_mismatched_context(self):
         """Tampering x-amz-wrap-alg from 'kms+context' to 'kms' with wrong context.
 
-        With legacy wrapping enabled, the KmsV1 path uses the stored matdesc
-        for KMS Decrypt, which succeeds. The mismatched caller context is
-        not checked.
+        The KmsV1 wrapping algorithm does not support encryption context.
+        The client MUST reject when a caller provides encryption context
+        and the wrapping algorithm is 'kms'.
         """
         key = _unique_key("sec-v2-downgrade-")
         data = b"sensitive v2 data"

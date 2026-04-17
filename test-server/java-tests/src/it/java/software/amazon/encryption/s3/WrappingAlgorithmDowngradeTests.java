@@ -13,8 +13,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
-import java.util.Set;
-
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.CopyObjectRequest;
@@ -46,9 +44,13 @@ import software.amazon.encryption.s3.model.S3EncryptionClientError;
  * V3 format: All implementations MUST reject the downgrade because "kms" is not
  * a valid V3 compressed wrapping algorithm code.
  *
- * V2 format: Implementations that validate encryption context at the pipeline
- * layer (Go, C++) reject the downgrade. Implementations that delegate context
- * validation to the keyring may not catch the downgrade in V2 format.
+ * V2 format: The KmsV1 ("kms") wrapping algorithm does not support caller-provided
+ * encryption context. When a caller provides encryption context on decrypt and the
+ * wrapping algorithm is "kms", the client MUST reject the request. This is the
+ * canonical behavior established by the Java AmazonS3EncryptionClientV2, which
+ * refuses to decrypt "kms"-wrapped objects entirely. Implementations that validate
+ * encryption context at the pipeline layer (Go, C++) also reject this correctly.
+ * All implementations MUST reject this downgrade.
  */
 @DisplayName("Wrapping Algorithm Downgrade Tests")
 public class WrappingAlgorithmDowngradeTests {
@@ -57,13 +59,6 @@ public class WrappingAlgorithmDowngradeTests {
     private static final KeyMaterial kmsKeyArn = KeyMaterial.builder()
         .kmsKeyId(TestUtils.KMS_KEY_ARN)
         .build();
-
-    // Languages that validate encryption context at the pipeline layer,
-    // making them resilient to V2 wrapping algorithm downgrade.
-    private static final Set<String> V2_DOWNGRADE_RESILIENT = Set.of(
-        TestUtils.GO_V4,
-        TestUtils.CPP_V3
-    );
 
     // Encryption context used during encryption
     private static final String ENCRYPT_CONTEXT = "[project]:[alpha]";
@@ -167,17 +162,16 @@ public class WrappingAlgorithmDowngradeTests {
     /**
      * V2 format: Changing x-amz-wrap-alg from "kms+context" to "kms".
      *
-     * For V2, x-amz-matdesc already contains the original bound context,
-     * so only the wrapping algorithm needs to change.
-     *
-     * Languages that validate encryption context at the pipeline layer (Go, C++)
-     * reject this regardless of wrapping algorithm. Other languages delegate
-     * context validation to the keyring, where the KmsV1 path does not
-     * perform the comparison.
+     * The KmsV1 ("kms") wrapping algorithm does not support caller-provided
+     * encryption context. When a caller provides encryption context on decrypt
+     * and the wrapping algorithm has been tampered to "kms", the client MUST
+     * reject the request. This matches the canonical behavior of the Java
+     * AmazonS3EncryptionClientV2, which refuses to decrypt "kms"-wrapped
+     * objects entirely.
      */
-    @ParameterizedTest(name = "{0}: V2 wrapping algorithm downgrade")
+    @ParameterizedTest(name = "{0}: V2 wrapping algorithm downgrade must fail")
     @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
-    void v2_downgrade_wrap_alg(
+    void v2_downgrade_wrap_alg_must_fail(
         TestUtils.LanguageServerTarget language
     ) {
         if (ENCRYPTION_CONTEXT_ON_ENCRYPT_UNSUPPORTED.contains(language.getLanguageName())
@@ -185,8 +179,6 @@ public class WrappingAlgorithmDowngradeTests {
             throw new TestAbortedException(
                 "Encryption context not supported for: " + language.getLanguageName());
         }
-
-        boolean expectRejection = V2_DOWNGRADE_RESILIENT.contains(language.getLanguageName());
 
         String objectKey = appendTestSuffix("sec-v2-downgrade-" + language.getLanguageName());
         S3ECTestServerClient client = TestUtils.testServerClientFor(language);
@@ -216,7 +208,7 @@ public class WrappingAlgorithmDowngradeTests {
         tamperMetadata(objectKey, userMeta);
 
         // 3. Create a client with legacy wrapping enabled and attempt decrypt
-        //    with mismatched context
+        //    with mismatched context — MUST fail
         CreateClientOutput legacyClientOutput = client.createClient(CreateClientInput.builder()
             .config(S3ECConfig.builder()
                 .keyMaterial(kmsKeyArn)
@@ -234,23 +226,12 @@ public class WrappingAlgorithmDowngradeTests {
                 .key(objectKey)
                 .metadata(List.of(MISMATCHED_CONTEXT))
                 .build());
-            // Decryption succeeded with mismatched context
-            if (expectRejection) {
-                fail("V2 downgrade should have been rejected for: " + objectKey
-                    + " (language: " + language.getLanguageName() + ")");
-            }
-            // For non-resilient languages, this is the expected (known) behavior
+            fail("V2 downgrade should have been rejected for: " + objectKey
+                + " (language: " + language.getLanguageName() + ")");
         } catch (S3EncryptionClientError e) {
-            if (!expectRejection) {
-                fail("V2 downgrade was unexpectedly rejected for: " + objectKey
-                    + " (language: " + language.getLanguageName() + "): " + e.getMessage());
-            }
-            // For resilient languages, rejection is expected
+            // Expected — tampered wrapping algorithm was rejected
         } catch (Exception e) {
-            if (!expectRejection) {
-                fail("V2 downgrade was unexpectedly rejected for: " + objectKey
-                    + " (language: " + language.getLanguageName() + "): " + e.getMessage());
-            }
+            // Rejected via a different error type — still a pass.
         }
     }
 }

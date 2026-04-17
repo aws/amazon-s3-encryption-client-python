@@ -200,6 +200,15 @@ class KmsKeyring(S3Keyring):
                         f"Enable legacy wrapping algorithms to use legacy key wrapping "
                         f"algorithm: {edk.key_provider_info}"
                     )
+                # The KmsV1 wrapping algorithm does not support caller-provided
+                # encryption context. If the caller provided encryption context,
+                # the client MUST reject the request.
+                if dec_materials.encryption_context_from_request:
+                    raise S3EncryptionClientError(
+                        "Encryption context is not supported with the KmsV1 (kms) "
+                        "wrapping algorithm. Use kms+context wrapping algorithm to "
+                        "use encryption context."
+                    )
             else:
                 raise S3EncryptionClientError(
                     f"{edk.key_provider_info} is not a valid key wrapping algorithm!"
