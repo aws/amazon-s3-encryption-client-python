@@ -200,15 +200,23 @@ class KmsKeyring(S3Keyring):
                         f"Enable legacy wrapping algorithms to use legacy key wrapping "
                         f"algorithm: {edk.key_provider_info}"
                     )
-                # The KmsV1 wrapping algorithm does not support caller-provided
-                # encryption context. If the caller provided encryption context,
-                # the client MUST reject the request.
-                if dec_materials.encryption_context_from_request:
-                    raise S3EncryptionClientError(
-                        "Encryption context is not supported with the KmsV1 (kms) "
-                        "wrapping algorithm. Use kms+context wrapping algorithm to "
-                        "use encryption context."
-                    )
+                # The KmsV1 path must also validate caller-provided encryption
+                # context against the stored materials description, matching the
+                # behavior of the kms+context path. Without this check, an attacker
+                # who tampers x-amz-wrap-alg from kms+context to kms can bypass
+                # the encryption context comparison.
+                encryption_context_from_request = dec_materials.encryption_context_from_request
+                if encryption_context_from_request:
+                    encryption_context_stored = dec_materials.encryption_context_stored
+                    encryption_context_stored_copy = encryption_context_stored.copy()
+                    encryption_context_stored_copy.pop(KMS_V1_DEFAULT_KEY, None)
+                    encryption_context_stored_copy.pop(KMS_CONTEXT_DEFAULT_KEY, None)
+
+                    if encryption_context_stored_copy != encryption_context_from_request:
+                        raise S3EncryptionClientError(
+                            "Provided encryption context does not match information "
+                            "retrieved from S3"
+                        )
             else:
                 raise S3EncryptionClientError(
                     f"{edk.key_provider_info} is not a valid key wrapping algorithm!"
