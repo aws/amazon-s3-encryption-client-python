@@ -404,7 +404,7 @@ class TestCBCErrorIndistinguishability:
             decryptor1.finalize(ciphertext)
 
         # Tampered ciphertext: last byte flipped, unpadding fails
-        tampered = ciphertext[:-1] + bytes([(ciphertext[-1] ^ 0x01)])
+        tampered = ciphertext[:-1] + bytes([ciphertext[-1] ^ 0x01])
         decryptor2 = self._make_cbc_decryptor(key, iv, len(tampered))
         with pytest.raises(S3EncryptionClientSecurityError) as exc2:
             decryptor2.finalize(tampered)
@@ -416,9 +416,9 @@ class TestCBCErrorIndistinguishability:
         )
 
         # Neither message should contain details about the underlying failure
-        assert "padding" not in str(exc1.value).lower(), (
-            f"Error message leaks padding information: {str(exc1.value)!r}"
-        )
+        assert (
+            "padding" not in str(exc1.value).lower()
+        ), f"Error message leaks padding information: {str(exc1.value)!r}"
 
     def test_truncated_ciphertext_produces_same_error(self):
         """Truncated ciphertext MUST produce the same error as padding failure.
@@ -482,8 +482,8 @@ class TestInstructionFileFormatConfusion:
         # In V3 instruction file mode, the object metadata has content keys
         # (x-amz-c, x-amz-d, x-amz-i) but NOT the EDK (x-amz-3).
         v3_object_metadata = {
-            "x-amz-c": "115",           # V3 content cipher
-            "x-amz-d": "dGVzdA==",      # V3 key commitment
+            "x-amz-c": "115",  # V3 content cipher
+            "x-amz-d": "dGVzdA==",  # V3 key commitment
             "x-amz-i": "bWVzc2FnZQ==",  # V3 message ID
         }
 
@@ -493,17 +493,17 @@ class TestInstructionFileFormatConfusion:
         attacker_instruction_file = {
             "x-amz-key-v2": "YXR0YWNrZXJfa2V5",  # V2 encrypted data key
             "x-amz-cek-alg": "AES/GCM/NoPadding",  # V2 content cipher
-            "x-amz-iv": "YXR0YWNrZXJfaXY=",        # V2 IV
-            "x-amz-wrap-alg": "kms+context",        # V2 wrapping algorithm
+            "x-amz-iv": "YXR0YWNrZXJfaXY=",  # V2 IV
+            "x-amz-wrap-alg": "kms+context",  # V2 wrapping algorithm
             "x-amz-matdesc": '{"aws:x-amz-cek-alg": "AES/GCM/NoPadding"}',
         }
 
         # The forbidden-keys check only blocks V3-exclusive keys
         v3_exclusive = {"x-amz-c", "x-amz-d", "x-amz-i"}
         injected_keys = set(attacker_instruction_file.keys())
-        assert not (injected_keys & v3_exclusive), (
-            "Test setup error: attacker keys should not overlap with V3 exclusive keys"
-        )
+        assert not (
+            injected_keys & v3_exclusive
+        ), "Test setup error: attacker keys should not overlap with V3 exclusive keys"
 
         # Merge: instruction_metadata.update(encryption_metadata)
         # This is the same merge order as pipelines.py line 297
@@ -515,18 +515,18 @@ class TestInstructionFileFormatConfusion:
         # The merged metadata has V2 keys AND V3 content keys (x-amz-c, x-amz-d, x-amz-i)
         # but NOT the V3 EDK (x-amz-3), since the attacker replaced it with V2 keys.
         # is_v2_format() matches because it only checks for V2 key presence + V1 absence
-        assert merged_metadata.is_v2_format(), (
-            "is_v2_format() should match when V2 keys are injected alongside V3 content keys"
-        )
+        assert (
+            merged_metadata.is_v2_format()
+        ), "is_v2_format() should match when V2 keys are injected alongside V3 content keys"
         # is_v3_format() does NOT match because encrypted_data_key_v3 is None
         # (the attacker didn't include x-amz-3) AND encrypted_data_key_v2 is not None
-        assert not merged_metadata.is_v3_format(), (
-            "is_v3_format() should NOT match when V2 EDK key is present"
-        )
+        assert (
+            not merged_metadata.is_v3_format()
+        ), "is_v3_format() should NOT match when V2 EDK key is present"
         # V3 content keys are present but ignored — format dispatch goes to V2
-        assert merged_metadata.content_cipher_v3 is not None, (
-            "V3 content cipher should still be present in merged metadata"
-        )
+        assert (
+            merged_metadata.content_cipher_v3 is not None
+        ), "V3 content cipher should still be present in merged metadata"
 
     def test_exclusive_key_collision_detected_during_decrypt(self):
         """The decrypt pipeline MUST reject metadata with exclusive key collisions.
@@ -537,10 +537,10 @@ class TestInstructionFileFormatConfusion:
         """
         import base64
         import os
-        from unittest.mock import MagicMock, patch
+        from unittest.mock import MagicMock
 
         from s3_encryption.materials.crypto_materials_manager import DefaultCryptoMaterialsManager
-        from s3_encryption.materials.materials import CommitmentPolicy, DecryptionMaterials
+        from s3_encryption.materials.materials import CommitmentPolicy
         from s3_encryption.pipelines import GetEncryptedObjectPipeline
 
         # Create a mock CMM that would return decryption materials
