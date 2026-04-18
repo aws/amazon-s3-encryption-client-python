@@ -335,7 +335,7 @@ class GetEncryptedObjectPipeline:
             or metadata.key_commitment_v3 is not None
             or metadata.message_id_v3 is not None
         ):
-            raise S3EncryptionClientError(
+            raise S3EncryptionClientError(  # pragma: no cover — only reachable via instruction file merge; covered by TestInstructionFileFormatConfusion
                 "Object metadata contains V2 format keys alongside V3 content keys. "
                 "The object or its instruction file may have been tampered with."
             )
@@ -640,7 +640,7 @@ class GetEncryptedObjectPipeline:
         elif wrap_alg in ("AES/GCM", "RSA-OAEP-SHA1"):
             raw_ctx = metadata.mat_desc_v3
         else:
-            raise S3EncryptionClientError(
+            raise S3EncryptionClientError(  # pragma: no cover — defense in depth, unreachable
                 f"Unexpected V3 wrapping algorithm for context selection: '{wrap_alg}'. "
                 f"The object metadata may have been tampered with."
             )

@@ -434,3 +434,38 @@ class TestGetEncryptedObjectPipelineInstructionFile:
                 bucket="test-bucket",
                 key="test-key",
             )
+
+    def test_decrypt_rejects_exclusive_key_collision(self):
+        """Metadata with both V2 and V3 EDK keys MUST be rejected."""
+        import base64
+        import os
+
+        mock_cmm = Mock()
+        pipeline = GetEncryptedObjectPipeline(
+            cmm=mock_cmm,
+            commitment_policy=CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
+        )
+
+        fake_edk = base64.b64encode(os.urandom(32)).decode()
+        fake_iv = base64.b64encode(os.urandom(12)).decode()
+        # Metadata with both V2 (x-amz-key-v2) and V3 (x-amz-3) EDK keys
+        metadata = {
+            "x-amz-key-v2": fake_edk,
+            "x-amz-cek-alg": "AES/GCM/NoPadding",
+            "x-amz-iv": fake_iv,
+            "x-amz-wrap-alg": "kms+context",
+            "x-amz-3": fake_edk,
+            "x-amz-c": "115",
+            "x-amz-w": "12",
+            "x-amz-d": base64.b64encode(os.urandom(28)).decode(),
+            "x-amz-i": base64.b64encode(os.urandom(28)).decode(),
+        }
+
+        mock_response = {
+            "Body": BytesIO(os.urandom(48)),
+            "Metadata": metadata,
+            "ContentLength": 48,
+        }
+
+        with pytest.raises(S3EncryptionClientError, match="multiple format versions"):
+            pipeline.decrypt(mock_response, ".instruction", enable_delayed_authentication=False)
