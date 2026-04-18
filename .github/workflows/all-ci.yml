@@ -37,6 +37,16 @@ jobs:
       python-version: ${{ inputs.python-version || '3.11' }}
     secrets: inherit
 
+  python-perf:
+    permissions:
+      id-token: write
+      contents: read
+    name: Python Performance Tests
+    uses: ./.github/workflows/python-perf.yml
+    with:
+      python-version: ${{ inputs.python-version || '3.11' }}
+    secrets: inherit
+
   run-duvet:
     permissions:
       id-token: write

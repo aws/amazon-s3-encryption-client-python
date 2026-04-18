@@ -57,3 +57,4 @@ smithy-java-core/out
 *.pid
 .coverage
 coverage-report/
+perf-results/

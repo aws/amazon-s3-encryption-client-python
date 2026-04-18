@@ -1,4 +1,4 @@
-name: Python Integration Tests
+name: Python Performance Tests
 
 on:
   workflow_call:
@@ -10,8 +10,8 @@ on:
         type: string
 
 jobs:
-  python-integ:
-    runs-on: macos-14-large
+  python-perf:
+    runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
@@ -26,12 +26,12 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: ${{ inputs.python-version || '3.11' }}
-      
+
       - name: Cache uv dependencies
         uses: actions/cache@v5
         with:
           path: ~/.cache/uv
-          key: ${{ runner.os }}-uv-${{ hashFiles('./test-server/python-v3-server/**/pyproject.toml') }}
+          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
           restore-keys: |
             ${{ runner.os }}-uv-
 
@@ -47,36 +47,20 @@ jobs:
           role-to-assume: arn:aws:iam::370957321024:role/S3EC-Python-Github-test-role
           aws-region: us-west-2
 
-      - name: Run unit tests
-        run: |
-          uv run pytest test/ --ignore=test/integration/ --ignore=test/performance/ --verbose \
-            --cov=src/s3_encryption --cov-report=term-missing --cov-report=html:coverage-unit \
-            --cov-fail-under=89
-
-      - name: Run integration tests
-        run: |
-          uv run pytest test/integration/ --verbose \
-            --cov=src/s3_encryption --cov-report=term-missing --cov-report=html:coverage-integ \
-            --cov-fail-under=83
+      - name: Run performance tests
+        run: make test-perf
         env:
           CI_S3_BUCKET: ${{ vars.CI_S3_BUCKET }}
           CI_KMS_KEY_ALIAS: ${{ vars.CI_KMS_KEY_ALIAS }}
-          CI_MRK_KEY_ID_PRIMARY: ${{ vars.CI_MRK_KEY_ID_PRIMARY }}
-          CI_MRK_KEY_ID_REPLICA: ${{ vars.CI_MRK_KEY_ID_REPLICA }}
+          PERF_NUM_ROUNDS: "30"
 
-      - name: Run examples
-        run: make test-examples
+      - name: Generate performance HTML report
+        if: always()
+        run: uv run python test/performance/generate_report.py
 
-      - name: Generate coverage HTML report
+      - name: Upload performance report
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: coverage-unit
-          path: coverage-unit/
-
-      - name: Upload integration test coverage report
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: coverage-integ
-          path: coverage-integ/
+          name: performance-report
+          path: perf-results/
