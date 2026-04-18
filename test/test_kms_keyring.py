@@ -473,8 +473,11 @@ class TestKmsKeyringOnDecrypt:
         mock_kms_client = MagicMock()
         mock_kms_client.decrypt.return_value = {"Plaintext": b"decrypted-key-material-32-bytes!"}
 
-        keyring = KmsKeyring(mock_kms_client, "arn:aws:kms:us-east-1:123456789012:key/test-key",
-                             enable_legacy_wrapping_algorithms=True)
+        keyring = KmsKeyring(
+            mock_kms_client,
+            "arn:aws:kms:us-east-1:123456789012:key/test-key",
+            enable_legacy_wrapping_algorithms=True,
+        )
 
         edk = EncryptedDataKey(
             key_provider_id=b"S3Keyring",
@@ -494,8 +497,11 @@ class TestKmsKeyringOnDecrypt:
     def test_on_decrypt_kms_v1_rejects_mismatched_encryption_context(self):
         """KmsV1 path must reject mismatched caller-provided encryption context."""
         mock_kms_client = MagicMock()
-        keyring = KmsKeyring(mock_kms_client, "arn:aws:kms:us-east-1:123456789012:key/test-key",
-                             enable_legacy_wrapping_algorithms=True)
+        keyring = KmsKeyring(
+            mock_kms_client,
+            "arn:aws:kms:us-east-1:123456789012:key/test-key",
+            enable_legacy_wrapping_algorithms=True,
+        )
 
         edk = EncryptedDataKey(
             key_provider_id=b"S3Keyring",
