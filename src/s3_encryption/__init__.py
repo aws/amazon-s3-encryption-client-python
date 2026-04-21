@@ -395,6 +395,93 @@ class S3EncryptionClient:
             if hasattr(self._plugin._context, _CTX_ENCRYPTION_CONTEXT):
                 delattr(self._plugin._context, _CTX_ENCRYPTION_CONTEXT)
 
+    ##= specification/s3-encryption/client.md#required-api-operations
+    ##% - DeleteObject MUST be implemented by the S3EC.
+    def delete_object(self, **kwargs):
+        """Delete an object and its associated instruction file from S3.
+
+        Args:
+            **kwargs: Arguments to pass to the S3 client's delete_object method.
+                      Must include Bucket and Key parameters.
+                      May include InstructionFileSuffix to override the default
+                      ".instruction" suffix for instruction file deletion.
+
+        Returns:
+            The response from the S3 client's delete_object call for the object.
+
+        Raises:
+            S3EncryptionClientError: If the delete operation fails.
+        """
+        ##= specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
+        ##= type=implementation
+        ##% The default Instruction File behavior uses the same S3 object key
+        ##% as its associated object suffixed with ".instruction".
+        instruction_file_suffix = kwargs.pop("InstructionFileSuffix", ".instruction")
+
+        try:
+            ##= specification/s3-encryption/client.md#required-api-operations
+            ##= type=implementation
+            ##% - DeleteObject MUST delete the given object key.
+            response = self.wrapped_s3_client.delete_object(**kwargs)
+
+            ##= specification/s3-encryption/client.md#required-api-operations
+            ##= type=implementation
+            ##% - DeleteObject MUST delete the associated instruction file
+            ##%   using the default instruction file suffix.
+            instruction_key = kwargs["Key"] + instruction_file_suffix
+            self.wrapped_s3_client.delete_object(Bucket=kwargs["Bucket"], Key=instruction_key)
+
+            return response
+        except S3EncryptionClientError:
+            raise
+        except Exception as e:
+            raise S3EncryptionClientError(f"Failed to delete object: {str(e)}") from e
+
+    ##= specification/s3-encryption/client.md#required-api-operations
+    ##% - DeleteObjects MUST be implemented by the S3EC.
+    def delete_objects(self, **kwargs):
+        """Delete multiple objects and their associated instruction files from S3.
+
+        2 requests are issued, one for the objects, and one for the instruction files.
+        If either requests fail, the operation fails, and maybe tried again to clean up any missed files.
+
+        Args:
+            **kwargs: Arguments to pass to the S3 client's delete_objects method.
+                      Must include Bucket and Delete (with Objects list) parameters.
+                      May include InstructionFileSuffix to override the default
+                      ".instruction" suffix for instruction file deletion.
+
+        Returns:
+            The response from the S3 client's delete_objects call for the objects.
+
+        Raises:
+            S3EncryptionClientError: If either delete operations fails.
+        """
+        instruction_file_suffix = kwargs.pop("InstructionFileSuffix", ".instruction")
+
+        try:
+            ##= specification/s3-encryption/client.md#required-api-operations
+            ##= type=implementation
+            ##% - DeleteObjects MUST delete each of the given objects.
+            response = self.wrapped_s3_client.delete_objects(**kwargs)
+
+            ##= specification/s3-encryption/client.md#required-api-operations
+            ##= type=implementation
+            ##% - DeleteObjects MUST delete each of the corresponding instruction files
+            ##%   using the default instruction file suffix.
+            instruction_objects = [
+                {"Key": obj["Key"] + instruction_file_suffix} for obj in kwargs["Delete"]["Objects"]
+            ]
+            self.wrapped_s3_client.delete_objects(
+                Bucket=kwargs["Bucket"], Delete={"Objects": instruction_objects}
+            )
+
+            return response
+        except S3EncryptionClientError:
+            raise
+        except Exception as e:
+            raise S3EncryptionClientError(f"Failed to delete objects: {str(e)}") from e
+
     def get_object(self, **kwargs):
         """Download and decrypt an object from S3.
 
