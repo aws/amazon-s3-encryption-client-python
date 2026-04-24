@@ -391,3 +391,160 @@ def test_instruction_file_config_default_still_decrypts_instruction_files():
     output = response["Body"].read().decode("utf-8")
 
     assert output == "static-v3-instruction-file-from-java-v4"
+
+
+# --- InstructionFileConfig delete_object / delete_objects integration tests ---
+
+
+def _object_exists(bucket_name, key_name):
+    """Return True if the object exists in the bucket."""
+    from botocore.exceptions import ClientError
+
+    s3 = boto3.client("s3")
+    try:
+        s3.head_object(Bucket=bucket_name, Key=key_name)
+        return True
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "404":
+            return False
+        raise
+
+
+def test_delete_object_skips_instruction_file_when_disabled():
+    """delete_object with disable_delete_object=True must NOT delete the instruction file."""
+    from s3_encryption.instruction_file_config import InstructionFileConfig
+
+    kms_client = boto3.client("kms", region_name=region)
+    keyring = KmsKeyring(kms_client, kms_key_id)
+    plain_s3 = boto3.client("s3")
+
+    test_key = f"ifc-delete-obj-skip-{uuid.uuid4()}"
+    instr_key = test_key + ".instruction"
+
+    # Put an encrypted object and a fake instruction file
+    default_client = S3EncryptionClient(
+        boto3.client("s3"), S3EncryptionClientConfig(keyring)
+    )
+    default_client.put_object(Bucket=bucket, Key=test_key, Body=b"data")
+    plain_s3.put_object(Bucket=bucket, Key=instr_key, Body=b"{}")
+
+    try:
+        # Delete with instruction file deletion disabled
+        config = S3EncryptionClientConfig(
+            keyring,
+            instruction_file_config=InstructionFileConfig(disable_delete_object=True),
+        )
+        s3ec = S3EncryptionClient(boto3.client("s3"), config)
+        s3ec.delete_object(Bucket=bucket, Key=test_key)
+
+        # Object should be gone, instruction file should remain
+        assert not _object_exists(bucket, test_key)
+        assert _object_exists(bucket, instr_key)
+    finally:
+        # Clean up the instruction file
+        plain_s3.delete_object(Bucket=bucket, Key=instr_key)
+
+
+def test_delete_object_deletes_instruction_file_when_not_disabled():
+    """delete_object with default config must delete the instruction file."""
+    from s3_encryption.instruction_file_config import InstructionFileConfig
+
+    kms_client = boto3.client("kms", region_name=region)
+    keyring = KmsKeyring(kms_client, kms_key_id)
+    plain_s3 = boto3.client("s3")
+
+    test_key = f"ifc-delete-obj-default-{uuid.uuid4()}"
+    instr_key = test_key + ".instruction"
+
+    default_client = S3EncryptionClient(
+        boto3.client("s3"), S3EncryptionClientConfig(keyring)
+    )
+    default_client.put_object(Bucket=bucket, Key=test_key, Body=b"data")
+    plain_s3.put_object(Bucket=bucket, Key=instr_key, Body=b"{}")
+
+    # Delete with default config (instruction file deletion enabled)
+    config = S3EncryptionClientConfig(
+        keyring,
+        instruction_file_config=InstructionFileConfig(disable_delete_object=False),
+    )
+    s3ec = S3EncryptionClient(boto3.client("s3"), config)
+    s3ec.delete_object(Bucket=bucket, Key=test_key)
+
+    assert not _object_exists(bucket, test_key)
+    assert not _object_exists(bucket, instr_key)
+
+
+def test_delete_objects_skips_instruction_files_when_disabled():
+    """delete_objects with disable_delete_objects=True must NOT delete instruction files."""
+    from s3_encryption.instruction_file_config import InstructionFileConfig
+
+    kms_client = boto3.client("kms", region_name=region)
+    keyring = KmsKeyring(kms_client, kms_key_id)
+    plain_s3 = boto3.client("s3")
+
+    keys = [f"ifc-delete-objs-skip-{uuid.uuid4()}" for _ in range(2)]
+    instr_keys = [k + ".instruction" for k in keys]
+
+    default_client = S3EncryptionClient(
+        boto3.client("s3"), S3EncryptionClientConfig(keyring)
+    )
+    for key in keys:
+        default_client.put_object(Bucket=bucket, Key=key, Body=b"data")
+    for instr_key in instr_keys:
+        plain_s3.put_object(Bucket=bucket, Key=instr_key, Body=b"{}")
+
+    try:
+        config = S3EncryptionClientConfig(
+            keyring,
+            instruction_file_config=InstructionFileConfig(disable_delete_objects=True),
+        )
+        s3ec = S3EncryptionClient(boto3.client("s3"), config)
+        s3ec.delete_objects(
+            Bucket=bucket,
+            Delete={"Objects": [{"Key": k} for k in keys]},
+        )
+
+        for key in keys:
+            assert not _object_exists(bucket, key)
+        for instr_key in instr_keys:
+            assert _object_exists(bucket, instr_key)
+    finally:
+        plain_s3.delete_objects(
+            Bucket=bucket,
+            Delete={"Objects": [{"Key": k} for k in instr_keys]},
+        )
+
+
+def test_delete_objects_deletes_instruction_files_when_not_disabled():
+    """delete_objects with default config must delete instruction files."""
+    from s3_encryption.instruction_file_config import InstructionFileConfig
+
+    kms_client = boto3.client("kms", region_name=region)
+    keyring = KmsKeyring(kms_client, kms_key_id)
+    plain_s3 = boto3.client("s3")
+
+    keys = [f"ifc-delete-objs-default-{uuid.uuid4()}" for _ in range(2)]
+    instr_keys = [k + ".instruction" for k in keys]
+
+    default_client = S3EncryptionClient(
+        boto3.client("s3"), S3EncryptionClientConfig(keyring)
+    )
+    for key in keys:
+        default_client.put_object(Bucket=bucket, Key=key, Body=b"data")
+    for instr_key in instr_keys:
+        plain_s3.put_object(Bucket=bucket, Key=instr_key, Body=b"{}")
+
+    config = S3EncryptionClientConfig(
+        keyring,
+        instruction_file_config=InstructionFileConfig(disable_delete_objects=False),
+    )
+    s3ec = S3EncryptionClient(boto3.client("s3"), config)
+    s3ec.delete_objects(
+        Bucket=bucket,
+        Delete={"Objects": [{"Key": k} for k in keys]},
+    )
+
+    for key in keys:
+        assert not _object_exists(bucket, key)
+    for instr_key in instr_keys:
+        assert not _object_exists(bucket, instr_key)
