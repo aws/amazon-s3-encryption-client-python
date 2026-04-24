@@ -7,17 +7,24 @@ scenarios, particularly wrapping algorithm downgrade attempts that modify
 metadata to bypass encryption context validation.
 """
 
+import base64
 import json
 import os
 from datetime import datetime
+from unittest.mock import MagicMock
 
 import boto3
 import pytest
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.padding import PKCS7
 
 from s3_encryption import S3EncryptionClient, S3EncryptionClientConfig
-from s3_encryption.exceptions import S3EncryptionClientError
+from s3_encryption.decryptor import AesCbcDecryptor
+from s3_encryption.exceptions import S3EncryptionClientError, S3EncryptionClientSecurityError
+from s3_encryption.materials.crypto_materials_manager import DefaultCryptoMaterialsManager
 from s3_encryption.materials.kms_keyring import KmsKeyring
 from s3_encryption.materials.materials import AlgorithmSuite, CommitmentPolicy
+from s3_encryption.pipelines import GetEncryptedObjectPipeline
 
 bucket = os.environ.get("CI_S3_BUCKET", "s3ec-python-github-test-bucket")
 region = os.environ.get("CI_AWS_REGION", "us-west-2")
@@ -92,6 +99,42 @@ class TestWrappingAlgorithmDowngradeAttack:
         # 3. Decryption with mismatched context MUST fail
         with pytest.raises((S3EncryptionClientError, Exception)):
             s3ec.get_object(Bucket=bucket, Key=key, EncryptionContext={"project": "beta"})
+
+    def test_v3_downgrade_wrap_alg_to_kms_rejected_with_correct_context(self):
+        """Tampering x-amz-w from '12' to 'kms' MUST fail even with the original context.
+
+        The V3 wrapping algorithm validation rejects "kms" as an invalid
+        compressed code regardless of what encryption context the caller
+        provides. The rejection happens before any context comparison.
+        """
+        key = _unique_key("sec-downgrade-no-legacy-correct-ctx-")
+        data = b"sensitive data with context"
+        encryption_context = {"project": "alpha"}
+
+        # 1. Encrypt normally with kms+context (V3 format)
+        s3ec = _make_client(
+            AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+            CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+        )
+        s3ec.put_object(Bucket=bucket, Key=key, Body=data, EncryptionContext=encryption_context)
+
+        # 2. Tamper x-amz-w from '12' to 'kms'
+        plain_s3 = boto3.client("s3")
+        head = plain_s3.head_object(Bucket=bucket, Key=key)
+        tampered_metadata = head["Metadata"].copy()
+        tampered_metadata["x-amz-w"] = "kms"
+
+        plain_s3.copy_object(
+            Bucket=bucket,
+            Key=key,
+            CopySource={"Bucket": bucket, "Key": key},
+            Metadata=tampered_metadata,
+            MetadataDirective="REPLACE",
+        )
+
+        # 3. Decryption with the ORIGINAL (correct) context MUST still fail
+        with pytest.raises((S3EncryptionClientError, Exception)):
+            s3ec.get_object(Bucket=bucket, Key=key, EncryptionContext=encryption_context)
 
     def test_v3_downgrade_wrap_alg_to_kms_rejected_with_legacy(self):
         """Tampering x-amz-w from '12' to 'kms' MUST still fail even with legacy enabled.
@@ -241,12 +284,54 @@ class TestV2WrappingAlgorithmDowngradeAttack:
     canonical behavior established by the Java AmazonS3EncryptionClientV2.
     """
 
+    def test_v2_downgrade_wrap_alg_to_kms_correct_context(self):
+        """Tampering x-amz-wrap-alg to 'kms' MUST fail even with the original correct context.
+
+        The KmsV1 wrapping algorithm does not support encryption context.
+        The client MUST reject when a caller provides any encryption context
+        and the wrapping algorithm is 'kms', regardless of whether the
+        context matches the stored matdesc.
+        """
+        key = _unique_key("sec-v2-downgrade-correct-ctx-")
+        data = b"sensitive v2 data"
+        encryption_context = {"project": "alpha"}
+
+        # 1. Encrypt with V2 format (AES_GCM, kms+context wrapping)
+        s3ec = _make_client(
+            AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+            CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
+        )
+        s3ec.put_object(Bucket=bucket, Key=key, Body=data, EncryptionContext=encryption_context)
+
+        # 2. Tamper x-amz-wrap-alg from 'kms+context' to 'kms'
+        plain_s3 = boto3.client("s3")
+        head = plain_s3.head_object(Bucket=bucket, Key=key)
+        tampered_metadata = head["Metadata"].copy()
+        tampered_metadata["x-amz-wrap-alg"] = "kms"
+
+        plain_s3.copy_object(
+            Bucket=bucket,
+            Key=key,
+            CopySource={"Bucket": bucket, "Key": key},
+            Metadata=tampered_metadata,
+            MetadataDirective="REPLACE",
+        )
+
+        # 3. Decrypt with legacy enabled + CORRECT original context MUST still fail
+        s3ec_legacy = _make_client(
+            AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+            CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
+            enable_legacy_wrapping=True,
+        )
+        with pytest.raises((S3EncryptionClientError, Exception)):
+            s3ec_legacy.get_object(Bucket=bucket, Key=key, EncryptionContext=encryption_context)
+
     def test_v2_downgrade_wrap_alg_to_kms_mismatched_context(self):
         """Tampering x-amz-wrap-alg from 'kms+context' to 'kms' with wrong context.
 
         The KmsV1 wrapping algorithm does not support encryption context.
-        The client MUST reject when a caller provides encryption context
-        and the wrapping algorithm is 'kms'.
+        The client MUST reject when a caller provides mismatched encryption
+        context and the wrapping algorithm is 'kms'.
         """
         key = _unique_key("sec-v2-downgrade-")
         data = b"sensitive v2 data"
@@ -355,9 +440,6 @@ class TestCBCErrorIndistinguishability:
 
     def _encrypt_cbc(self, key, iv, plaintext):
         """Helper to encrypt with AES-CBC + PKCS7 padding."""
-        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-        from cryptography.hazmat.primitives.padding import PKCS7
-
         cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
         encryptor = cipher.encryptor()
         padder = PKCS7(128).padder()
@@ -366,11 +448,6 @@ class TestCBCErrorIndistinguishability:
 
     def _make_cbc_decryptor(self, key, iv, content_length):
         """Helper to create an AesCbcDecryptor."""
-        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-        from cryptography.hazmat.primitives.padding import PKCS7
-
-        from s3_encryption.decryptor import AesCbcDecryptor
-
         cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
         unpadder = PKCS7(128).unpadder()
         return AesCbcDecryptor(cipher.decryptor(), unpadder, content_length)
@@ -381,10 +458,6 @@ class TestCBCErrorIndistinguishability:
         Both cause PKCS7 unpadding to fail, but the error message and type
         MUST be the same so an attacker cannot distinguish between them.
         """
-        import os
-
-        from s3_encryption.exceptions import S3EncryptionClientSecurityError
-
         key = os.urandom(32)
         iv = os.urandom(16)
         ciphertext = self._encrypt_cbc(key, iv, b"test data for padding oracle check")
@@ -419,10 +492,6 @@ class TestCBCErrorIndistinguishability:
         cryptography library. The error message MUST be identical to prevent
         an attacker from distinguishing truncation from padding failure.
         """
-        import os
-
-        from s3_encryption.exceptions import S3EncryptionClientSecurityError
-
         key = os.urandom(32)
         iv = os.urandom(16)
         ciphertext = self._encrypt_cbc(key, iv, b"test data for truncation check")
@@ -451,90 +520,65 @@ class TestInstructionFileFormatConfusion:
 
     When a V3 object uses instruction files, the instruction file metadata
     is merged with object metadata. If an attacker injects V2-format keys
-    into the instruction file, the merged metadata may match is_v2_format()
-    before is_v3_format(), causing the V2 decryption path to execute and
-    bypassing V3 key-commitment verification.
-
-    The has_exclusive_key_collision() method exists to detect this but is
-    not called in any production code path.
+    into the instruction file (or directly into object metadata), the merged
+    metadata may contain keys from multiple format versions. The client
+    detects this via has_exclusive_key_collision() and the V2+V3 content
+    key coexistence check, rejecting the tampered metadata before format
+    dispatch.
     """
 
-    def test_v2_keys_in_instruction_file_cause_format_confusion(self):
-        """Injecting V2 keys into a V3 instruction file MUST be detected.
+    def test_v2_keys_injected_into_v3_metadata_rejected(self):
+        """Injecting V2 keys into V3 object metadata MUST be rejected.
 
-        After merging instruction file metadata (containing V2 keys) with
-        object metadata (containing V3 keys), the resulting ObjectMetadata
-        has V2 keys plus V3 content keys. is_v2_format() matches first
-        because it does not check for V3 key absence, causing the V2
-        decryption path to execute instead of V3.
+        Encrypt a V3 object, then tamper the S3 metadata to add V2 keys
+        alongside the existing V3 content keys. The client MUST reject
+        this because V2 and V3 keys should never coexist.
         """
-        from s3_encryption.metadata import ObjectMetadata
+        key = _unique_key("sec-v2-inject-v3-")
+        data = b"data for format confusion test"
+        encryption_context = {"project": "alpha"}
 
-        # Simulate V3 object metadata (stored on the S3 object).
-        # In V3 instruction file mode, the object metadata has content keys
-        # (x-amz-c, x-amz-d, x-amz-i) but NOT the EDK (x-amz-3).
-        v3_object_metadata = {
-            "x-amz-c": "115",  # V3 content cipher
-            "x-amz-d": "dGVzdA==",  # V3 key commitment
-            "x-amz-i": "bWVzc2FnZQ==",  # V3 message ID
-        }
+        # 1. Encrypt with V3 format
+        s3ec = _make_client(
+            AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+            CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+        )
+        s3ec.put_object(Bucket=bucket, Key=key, Body=data, EncryptionContext=encryption_context)
 
-        # Simulate attacker-crafted instruction file with V2 keys.
-        # Normally the instruction file would have x-amz-3, x-amz-w, x-amz-t
-        # for V3. The attacker replaces these with V2 keys.
-        attacker_instruction_file = {
-            "x-amz-key-v2": "YXR0YWNrZXJfa2V5",  # V2 encrypted data key
-            "x-amz-cek-alg": "AES/GCM/NoPadding",  # V2 content cipher
-            "x-amz-iv": "YXR0YWNrZXJfaXY=",  # V2 IV
-            "x-amz-wrap-alg": "kms+context",  # V2 wrapping algorithm
-            "x-amz-matdesc": '{"aws:x-amz-cek-alg": "AES/GCM/NoPadding"}',
-        }
+        # 2. Tamper: inject V2 keys alongside existing V3 metadata
+        plain_s3 = boto3.client("s3")
+        head = plain_s3.head_object(Bucket=bucket, Key=key)
+        tampered_metadata = head["Metadata"].copy()
 
-        # The forbidden-keys check only blocks V3-exclusive keys
-        v3_exclusive = {"x-amz-c", "x-amz-d", "x-amz-i"}
-        injected_keys = set(attacker_instruction_file.keys())
-        assert not (
-            injected_keys & v3_exclusive
-        ), "Test setup error: attacker keys should not overlap with V3 exclusive keys"
+        # Add V2 keys — the V3 keys (x-amz-c, x-amz-d, x-amz-i, x-amz-3, x-amz-w) remain
+        tampered_metadata["x-amz-key-v2"] = tampered_metadata.get("x-amz-3", "fake")
+        tampered_metadata["x-amz-cek-alg"] = "AES/GCM/NoPadding"
+        tampered_metadata["x-amz-iv"] = "AAAAAAAAAAAAAAAA"
+        tampered_metadata["x-amz-wrap-alg"] = "kms+context"
 
-        # Merge: instruction_metadata.update(encryption_metadata)
-        # This is the same merge order as pipelines.py line 297
-        merged = attacker_instruction_file.copy()
-        merged.update(v3_object_metadata)
+        plain_s3.copy_object(
+            Bucket=bucket,
+            Key=key,
+            CopySource={"Bucket": bucket, "Key": key},
+            Metadata=tampered_metadata,
+            MetadataDirective="REPLACE",
+        )
 
-        merged_metadata = ObjectMetadata.from_dict(merged)
-
-        # The merged metadata has V2 keys AND V3 content keys (x-amz-c, x-amz-d, x-amz-i)
-        # but NOT the V3 EDK (x-amz-3), since the attacker replaced it with V2 keys.
-        # is_v2_format() matches because it only checks for V2 key presence + V1 absence
-        assert (
-            merged_metadata.is_v2_format()
-        ), "is_v2_format() should match when V2 keys are injected alongside V3 content keys"
-        # is_v3_format() does NOT match because encrypted_data_key_v3 is None
-        # (the attacker didn't include x-amz-3) AND encrypted_data_key_v2 is not None
-        assert (
-            not merged_metadata.is_v3_format()
-        ), "is_v3_format() should NOT match when V2 EDK key is present"
-        # V3 content keys are present but ignored — format dispatch goes to V2
-        assert (
-            merged_metadata.content_cipher_v3 is not None
-        ), "V3 content cipher should still be present in merged metadata"
+        # 3. Decrypt MUST fail — metadata has both V2 and V3 keys
+        s3ec_legacy = _make_client(
+            AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+            CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT,
+            enable_legacy_wrapping=True,
+        )
+        with pytest.raises((S3EncryptionClientError, Exception)):
+            s3ec_legacy.get_object(Bucket=bucket, Key=key, EncryptionContext=encryption_context)
 
     def test_exclusive_key_collision_detected_during_decrypt(self):
         """The decrypt pipeline MUST reject metadata with exclusive key collisions.
 
         When merged metadata contains both V2 and V3 exclusive keys,
-        the pipeline should detect the collision and raise an error
-        rather than silently routing to the V2 decryption path.
+        the pipeline detects the collision and raises an error.
         """
-        import base64
-        import os
-        from unittest.mock import MagicMock
-
-        from s3_encryption.materials.crypto_materials_manager import DefaultCryptoMaterialsManager
-        from s3_encryption.materials.materials import CommitmentPolicy
-        from s3_encryption.pipelines import GetEncryptedObjectPipeline
-
         # Create a mock CMM that would return decryption materials
         mock_cmm = MagicMock(spec=DefaultCryptoMaterialsManager)
 
