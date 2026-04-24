@@ -106,3 +106,22 @@ class TestDeleteObject:
 
         # First call (object delete) should not contain InstructionFileSuffix
         assert mock_s3.delete_object.call_args_list[0] == call(Bucket="bucket", Key="key")
+
+    def test_instruction_file_not_deleted_when_disabled(self):
+        """delete_object skips instruction file deletion when disable_delete_object is True."""
+        from s3_encryption.instruction_file_config import InstructionFileConfig
+
+        mock_keyring = Mock(spec=S3Keyring)
+        mock_s3 = Mock()
+        mock_s3.meta.events = Mock()
+        config = S3EncryptionClientConfig(
+            keyring=mock_keyring,
+            instruction_file_config=InstructionFileConfig(disable_delete_object=True),
+        )
+        s3ec = S3EncryptionClient(wrapped_s3_client=mock_s3, config=config)
+
+        s3ec.delete_object(Bucket="bucket", Key="key")
+
+        # Only one call — the object itself, no instruction file delete
+        assert mock_s3.delete_object.call_count == 1
+        assert mock_s3.delete_object.call_args_list[0] == call(Bucket="bucket", Key="key")

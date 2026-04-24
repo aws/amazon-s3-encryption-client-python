@@ -291,3 +291,103 @@ def test_decrypt_large_v3_instruction_file_delayed_auth():
         total += len(chunk)
 
     assert total == LARGE_FILE_SIZE
+
+
+# --- InstructionFileConfig integration tests ---
+
+
+def test_instruction_file_config_disabled_raises_on_instruction_file_object():
+    """When instruction file get is disabled, decrypting an instruction-file object MUST fail."""
+    from s3_encryption.exceptions import S3EncryptionClientError
+    from s3_encryption.instruction_file_config import InstructionFileConfig
+
+    key = TEST_OBJECTS["v3_instruction_file"]
+
+    kms_client = boto3.client("kms", region_name=region)
+    keyring = KmsKeyring(kms_client, kms_key_id)
+    wrapped_client = boto3.client("s3")
+    config = S3EncryptionClientConfig(
+        keyring,
+        commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+        instruction_file_config=InstructionFileConfig(disable_get_object=True),
+    )
+    s3ec = S3EncryptionClient(wrapped_client, config)
+
+    with pytest.raises(
+        S3EncryptionClientError, match="Exception encountered while fetching Instruction File"
+    ):
+        s3ec.get_object(Bucket=bucket, Key=key)
+
+
+def test_instruction_file_config_enabled_still_decrypts():
+    """When instruction file get is explicitly enabled, decryption MUST succeed as before."""
+    from s3_encryption.instruction_file_config import InstructionFileConfig
+
+    key = TEST_OBJECTS["v3_instruction_file"]
+
+    kms_client = boto3.client("kms", region_name=region)
+    keyring = KmsKeyring(kms_client, kms_key_id)
+    wrapped_client = boto3.client("s3")
+    config = S3EncryptionClientConfig(
+        keyring,
+        commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+        instruction_file_config=InstructionFileConfig(disable_get_object=False),
+    )
+    s3ec = S3EncryptionClient(wrapped_client, config)
+
+    response = s3ec.get_object(Bucket=bucket, Key=key)
+    output = response["Body"].read().decode("utf-8")
+
+    assert output == "static-v3-instruction-file-from-java-v4"
+
+
+def test_instruction_file_config_disabled_allows_non_instruction_file_objects():
+    """When instruction file get is disabled, objects with metadata in headers MUST still decrypt."""
+    from s3_encryption.instruction_file_config import InstructionFileConfig
+
+    kms_client = boto3.client("kms", region_name=region)
+    keyring = KmsKeyring(kms_client, kms_key_id)
+    wrapped_client = boto3.client("s3")
+
+    # First, put an object using default config (metadata in object headers)
+    put_config = S3EncryptionClientConfig(keyring)
+    put_client = S3EncryptionClient(boto3.client("s3"), put_config)
+
+    test_key = f"instruction-file-config-test-{uuid.uuid4()}"
+    plaintext = b"hello from instruction file config test"
+    put_client.put_object(Bucket=bucket, Key=test_key, Body=plaintext)
+
+    try:
+        # Now decrypt with instruction file get disabled
+        config = S3EncryptionClientConfig(
+            keyring,
+            instruction_file_config=InstructionFileConfig(disable_get_object=True),
+        )
+        s3ec = S3EncryptionClient(wrapped_client, config)
+
+        response = s3ec.get_object(Bucket=bucket, Key=test_key)
+        output = response["Body"].read()
+
+        assert output == plaintext
+    finally:
+        wrapped_client.delete_object(Bucket=bucket, Key=test_key)
+
+
+def test_instruction_file_config_default_still_decrypts_instruction_files():
+    """Default InstructionFileConfig (no explicit config) MUST still decrypt instruction files."""
+    key = TEST_OBJECTS["v3_instruction_file"]
+
+    kms_client = boto3.client("kms", region_name=region)
+    keyring = KmsKeyring(kms_client, kms_key_id)
+    wrapped_client = boto3.client("s3")
+    # No instruction_file_config specified — should use default (enabled)
+    config = S3EncryptionClientConfig(
+        keyring,
+        commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+    )
+    s3ec = S3EncryptionClient(wrapped_client, config)
+
+    response = s3ec.get_object(Bucket=bucket, Key=key)
+    output = response["Body"].read().decode("utf-8")
+
+    assert output == "static-v3-instruction-file-from-java-v4"

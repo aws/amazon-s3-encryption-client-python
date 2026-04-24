@@ -186,3 +186,29 @@ class TestDeleteObjects:
                 ],
             },
         )
+
+    def test_instruction_files_not_deleted_when_disabled(self):
+        """delete_objects skips instruction file deletion when disable_delete_objects is True."""
+        from s3_encryption.instruction_file_config import InstructionFileConfig
+
+        mock_keyring = Mock(spec=S3Keyring)
+        mock_s3 = Mock()
+        mock_s3.meta.events = Mock()
+        mock_s3.delete_objects.return_value = {"Deleted": [{"Key": "key1"}, {"Key": "key2"}]}
+        config = S3EncryptionClientConfig(
+            keyring=mock_keyring,
+            instruction_file_config=InstructionFileConfig(disable_delete_objects=True),
+        )
+        s3ec = S3EncryptionClient(wrapped_s3_client=mock_s3, config=config)
+
+        s3ec.delete_objects(
+            Bucket="bucket",
+            Delete={"Objects": [{"Key": "key1"}, {"Key": "key2"}]},
+        )
+
+        # Only one call — the objects themselves, no instruction file delete
+        assert mock_s3.delete_objects.call_count == 1
+        assert mock_s3.delete_objects.call_args_list[0] == call(
+            Bucket="bucket",
+            Delete={"Objects": [{"Key": "key1"}, {"Key": "key2"}]},
+        )

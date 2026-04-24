@@ -11,6 +11,7 @@ from botocore.response import StreamingBody
 
 from .exceptions import S3EncryptionClientError
 from .instruction_file import parse_instruction_file
+from .instruction_file_config import InstructionFileConfig
 from .materials.crypto_materials_manager import (
     AbstractCryptoMaterialsManager,
     DefaultCryptoMaterialsManager,
@@ -57,6 +58,9 @@ class S3EncryptionClientConfig:
             before GCM tag verification. Defaults to False. Has no effect for
             CBC encrypted ciphertext, which is always streamed as there is no
             authentication tag.
+        instruction_file_config: Configuration for instruction file behavior.
+            Defaults to InstructionFileConfig() which enables instruction file
+            reads on GetObject.
 
     Raises:
         S3EncryptionClientError: If the encryption algorithm is legacy, or if
@@ -85,6 +89,8 @@ class S3EncryptionClientConfig:
     ##= type=implication
     ##% Delayed Authentication mode MUST be set to false by default.
     enable_delayed_authentication: bool = field(default=False)
+
+    instruction_file_config: InstructionFileConfig = field(factory=InstructionFileConfig)
 
     @cmm.default
     def _default_cmm_for_keyring(self):
@@ -248,6 +254,7 @@ class S3EncryptionClientPlugin:
             commitment_policy=self.config.commitment_policy,
             s3_client=getattr(self._context, _CTX_S3_CLIENT, None),
             enable_legacy_unauthenticated_modes=self.config.enable_legacy_unauthenticated_modes,
+            instruction_file_config=self.config.instruction_file_config,
         )
         decrypted_data = pipeline.decrypt(
             response,
@@ -428,8 +435,9 @@ class S3EncryptionClient:
             ##= type=implementation
             ##% - DeleteObject MUST delete the associated instruction file
             ##%   using the default instruction file suffix.
-            instruction_key = kwargs["Key"] + instruction_file_suffix
-            self.wrapped_s3_client.delete_object(Bucket=kwargs["Bucket"], Key=instruction_key)
+            if not self.config.instruction_file_config.disable_delete_object:
+                instruction_key = kwargs["Key"] + instruction_file_suffix
+                self.wrapped_s3_client.delete_object(Bucket=kwargs["Bucket"], Key=instruction_key)
 
             return response
         except S3EncryptionClientError:
@@ -469,12 +477,14 @@ class S3EncryptionClient:
             ##= type=implementation
             ##% - DeleteObjects MUST delete each of the corresponding instruction files
             ##%   using the default instruction file suffix.
-            instruction_objects = [
-                {"Key": obj["Key"] + instruction_file_suffix} for obj in kwargs["Delete"]["Objects"]
-            ]
-            self.wrapped_s3_client.delete_objects(
-                Bucket=kwargs["Bucket"], Delete={"Objects": instruction_objects}
-            )
+            if not self.config.instruction_file_config.disable_delete_objects:
+                instruction_objects = [
+                    {"Key": obj["Key"] + instruction_file_suffix}
+                    for obj in kwargs["Delete"]["Objects"]
+                ]
+                self.wrapped_s3_client.delete_objects(
+                    Bucket=kwargs["Bucket"], Delete={"Objects": instruction_objects}
+                )
 
             return response
         except S3EncryptionClientError:
