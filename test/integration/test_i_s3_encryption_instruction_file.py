@@ -422,9 +422,7 @@ def test_delete_object_skips_instruction_file_when_disabled():
     instr_key = test_key + ".instruction"
 
     # Put an encrypted object and a fake instruction file
-    default_client = S3EncryptionClient(
-        boto3.client("s3"), S3EncryptionClientConfig(keyring)
-    )
+    default_client = S3EncryptionClient(boto3.client("s3"), S3EncryptionClientConfig(keyring))
     default_client.put_object(Bucket=bucket, Key=test_key, Body=b"data")
     plain_s3.put_object(Bucket=bucket, Key=instr_key, Body=b"{}")
 
@@ -456,9 +454,7 @@ def test_delete_object_deletes_instruction_file_when_not_disabled():
     test_key = f"ifc-delete-obj-default-{uuid.uuid4()}"
     instr_key = test_key + ".instruction"
 
-    default_client = S3EncryptionClient(
-        boto3.client("s3"), S3EncryptionClientConfig(keyring)
-    )
+    default_client = S3EncryptionClient(boto3.client("s3"), S3EncryptionClientConfig(keyring))
     default_client.put_object(Bucket=bucket, Key=test_key, Body=b"data")
     plain_s3.put_object(Bucket=bucket, Key=instr_key, Body=b"{}")
 
@@ -485,9 +481,7 @@ def test_delete_objects_skips_instruction_files_when_disabled():
     keys = [f"ifc-delete-objs-skip-{uuid.uuid4()}" for _ in range(2)]
     instr_keys = [k + ".instruction" for k in keys]
 
-    default_client = S3EncryptionClient(
-        boto3.client("s3"), S3EncryptionClientConfig(keyring)
-    )
+    default_client = S3EncryptionClient(boto3.client("s3"), S3EncryptionClientConfig(keyring))
     for key in keys:
         default_client.put_object(Bucket=bucket, Key=key, Body=b"data")
     for instr_key in instr_keys:
@@ -526,9 +520,7 @@ def test_delete_objects_deletes_instruction_files_when_not_disabled():
     keys = [f"ifc-delete-objs-default-{uuid.uuid4()}" for _ in range(2)]
     instr_keys = [k + ".instruction" for k in keys]
 
-    default_client = S3EncryptionClient(
-        boto3.client("s3"), S3EncryptionClientConfig(keyring)
-    )
+    default_client = S3EncryptionClient(boto3.client("s3"), S3EncryptionClientConfig(keyring))
     for key in keys:
         default_client.put_object(Bucket=bucket, Key=key, Body=b"data")
     for instr_key in instr_keys:
