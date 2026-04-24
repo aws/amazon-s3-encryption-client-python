@@ -98,6 +98,11 @@ public class TestUtils {
     public static final Set<String> ENCRYPTION_CONTEXT_ON_ENCRYPT_UNSUPPORTED =
       Set.of(NET_V3_TRANSITION, NET_V4);
 
+    // Languages that reject caller-provided encryption context when the
+    // wrapping algorithm is KmsV1 ("kms").
+    public static final Set<String> KMSV1_ENCRYPTION_CONTEXT_UNSUPPORTED =
+      Set.of(PYTHON_V3);
+
     public static final Set<String> RE_ENCRYPT_SUPPORTED =
       Set.of(JAVA_V3_TRANSITION, JAVA_V4);
 
