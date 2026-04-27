@@ -316,6 +316,30 @@ class GetEncryptedObjectPipeline:
         # Determine the algorithm suite from the metadata
         algorithm_suite = self._determine_algorithm_suite(metadata)
 
+        # Reject metadata that contains keys from multiple format versions.
+        # This prevents format confusion attacks where an attacker injects
+        # V2 keys via an instruction file to bypass V3 key-commitment verification.
+        if metadata.has_exclusive_key_collision():
+            raise S3EncryptionClientError(
+                "Object metadata contains keys from multiple format versions. "
+                "The object or its instruction file may have been tampered with."
+            )
+
+        # Also reject V2 format metadata that contains V3 content keys.
+        # In the instruction file injection scenario, the attacker replaces
+        # V3 EDK keys with V2 keys, but V3 content keys (x-amz-c, x-amz-d,
+        # x-amz-i) remain from the object metadata. This combination is
+        # never produced by legitimate encryption.
+        if metadata.is_v2_format() and (
+            metadata.content_cipher_v3 is not None
+            or metadata.key_commitment_v3 is not None
+            or metadata.message_id_v3 is not None
+        ):
+            raise S3EncryptionClientError(  # pragma: no cover — only reachable via instruction file merge; covered by TestInstructionFileFormatConfusion
+                "Object metadata contains V2 format keys alongside V3 content keys. "
+                "The object or its instruction file may have been tampered with."
+            )
+
         # Determine which format we're dealing with and get decryption materials
         if metadata.is_v1_format():
             dec_materials = self._decrypt_v1(metadata, encryption_context)
@@ -590,7 +614,13 @@ class GetEncryptedObjectPipeline:
 
         # Map V3 compressed wrapping algorithm to canonical key_provider_info
         raw_wrap_alg = metadata.encrypted_data_key_algorithm_v3 or "12"
-        wrap_alg = self._V3_WRAP_ALG_MAP.get(raw_wrap_alg, raw_wrap_alg)
+        wrap_alg = self._V3_WRAP_ALG_MAP.get(raw_wrap_alg)
+        if wrap_alg is None:
+            raise S3EncryptionClientError(
+                f"Unknown V3 wrapping algorithm: '{raw_wrap_alg}'. "
+                f"Valid values are: {list(self._V3_WRAP_ALG_MAP.keys())}. "
+                f"The object metadata may have been tampered with."
+            )
 
         encrypted_data_key = EncryptedDataKey(
             key_provider_id=b"S3Keyring",
@@ -607,8 +637,13 @@ class GetEncryptedObjectPipeline:
         stored_context = {}
         if wrap_alg == "kms+context":
             raw_ctx = metadata.encryption_context_v3
-        else:
+        elif wrap_alg in ("AES/GCM", "RSA-OAEP-SHA1"):
             raw_ctx = metadata.mat_desc_v3
+        else:
+            raise S3EncryptionClientError(  # pragma: no cover — defense in depth, unreachable
+                f"Unexpected V3 wrapping algorithm for context selection: '{wrap_alg}'. "
+                f"The object metadata may have been tampered with."
+            )
 
         if raw_ctx is not None:
             if isinstance(raw_ctx, dict):

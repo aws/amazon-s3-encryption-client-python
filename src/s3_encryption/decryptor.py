@@ -72,8 +72,11 @@ class AesCbcDecryptor(Decryptor):
             plaintext = self._decryptor.update(data) if data else b""
             plaintext += self._decryptor.finalize()
             return self._unpadder.update(plaintext) + self._unpadder.finalize()
-        except Exception as e:
-            raise S3EncryptionClientSecurityError(f"Failed to decrypt CBC content: {e}") from e
+        except Exception:
+            # Use a fixed message for all CBC failures to prevent padding oracle attacks.
+            # Different failure modes (bad padding, truncated ciphertext, wrong key) MUST
+            # produce identical error responses so an attacker cannot distinguish them.
+            raise S3EncryptionClientSecurityError("Failed to decrypt CBC content.") from None
 
 
 @define

@@ -467,3 +467,58 @@ class TestKmsKeyringOnDecrypt:
             keyring.on_decrypt(dec_materials)
 
         assert exc_info.value is kms_exception
+
+    def test_on_decrypt_kms_v1_rejects_any_encryption_context(self):
+        """KmsV1 path must reject any caller-provided encryption context."""
+        mock_kms_client = MagicMock()
+        keyring = KmsKeyring(
+            mock_kms_client,
+            "arn:aws:kms:us-east-1:123456789012:key/test-key",
+            enable_legacy_wrapping_algorithms=True,
+        )
+
+        edk = EncryptedDataKey(
+            key_provider_id=b"S3Keyring",
+            key_provider_info="kms",
+            encrypted_data_key=b"encrypted-key",
+        )
+        dec_materials = DecryptionMaterials(
+            iv=b"initialization-vector",
+            encrypted_data_keys=[edk],
+            encryption_context_stored={"project": "alpha", "kms_cmk_id": "some-key"},
+            encryption_context_from_request={"project": "alpha"},
+        )
+
+        with pytest.raises(S3EncryptionClientError, match="not supported with the KmsV1"):
+            keyring.on_decrypt(dec_materials)
+
+        mock_kms_client.decrypt.assert_not_called()
+
+    def test_on_decrypt_kms_v1_rejects_mismatched_encryption_context(self):
+        """KmsV1 path must reject mismatched caller-provided encryption context."""
+        mock_kms_client = MagicMock()
+        keyring = KmsKeyring(
+            mock_kms_client,
+            "arn:aws:kms:us-east-1:123456789012:key/test-key",
+            enable_legacy_wrapping_algorithms=True,
+        )
+
+        edk = EncryptedDataKey(
+            key_provider_id=b"S3Keyring",
+            key_provider_info="kms",
+            encrypted_data_key=b"encrypted-key",
+        )
+        dec_materials = DecryptionMaterials(
+            iv=b"initialization-vector",
+            encrypted_data_keys=[edk],
+            encryption_context_stored={"project": "alpha", "kms_cmk_id": "some-key"},
+            encryption_context_from_request={"project": "beta"},
+        )
+
+        with pytest.raises(S3EncryptionClientError, match="not supported with the KmsV1"):
+            keyring.on_decrypt(dec_materials)
+
+        mock_kms_client.decrypt.assert_not_called()
+
+        # KMS should never be called when context doesn't match
+        mock_kms_client.decrypt.assert_not_called()

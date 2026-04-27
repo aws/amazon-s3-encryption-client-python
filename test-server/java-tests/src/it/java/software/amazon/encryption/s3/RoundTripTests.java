@@ -332,6 +332,10 @@ public class RoundTripTests {
     @ParameterizedTest(name = "{displayName} for Encrypt: Java, Decrypt: {0}")
     @MethodSource("software.amazon.encryption.s3.TestUtils#clientsForTest")
     public void kmsV1LegacyWithEncCtx(TestUtils.LanguageServerTarget language) {
+        if (KMSV1_ENCRYPTION_CONTEXT_UNSUPPORTED.contains(language.getLanguageName())) {
+            throw new TestAbortedException(
+                "KmsV1 with encryption context not supported for: " + language.getLanguageName());
+        }
         S3ECTestServerClient client = testServerClientFor(language);
         final String objectKey = appendTestSuffix("test-key-kms-v1-with-enc-ctx-" + language);
         final String input = "simple-test-input";
