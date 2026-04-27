@@ -20,6 +20,7 @@ from .buffered_decrypt import one_shot_decrypt
 from .decryptor import AesCbcDecryptor, AesGcmDecryptor
 from .exceptions import S3EncryptionClientError
 from .instruction_file import fetch_instruction_file
+from .instruction_file_config import InstructionFileConfig
 from .key_derivation import derive_keys, verify_commitment
 from .materials.crypto_materials_manager import AbstractCryptoMaterialsManager
 from .materials.encrypted_data_key import EncryptedDataKey
@@ -181,6 +182,7 @@ class GetEncryptedObjectPipeline:
     commitment_policy: CommitmentPolicy = field()
     s3_client: object = field(default=None)
     enable_legacy_unauthenticated_modes: bool = field(default=False)
+    instruction_file_config: InstructionFileConfig = field(factory=InstructionFileConfig)
 
     # Map content cipher metadata values to AlgorithmSuite
     _CONTENT_CIPHER_TO_ALGORITHM_SUITE = {
@@ -257,6 +259,14 @@ class GetEncryptedObjectPipeline:
 
         # Check if we need to fetch instruction file
         if metadata.should_use_instruction_file():
+
+            if self.instruction_file_config.disable_get_object:
+                raise S3EncryptionClientError(
+                    "Exception encountered while fetching Instruction File. "
+                    "Ensure the object you are attempting to decrypt has been encrypted "
+                    "using the S3 Encryption Client and instruction files are enabled. "
+                    f"bucket: {bucket}\n key: {key}"
+                )
 
             if self.s3_client is None:
                 raise S3EncryptionClientError("s3_client required to fetch instruction file")
