@@ -198,7 +198,7 @@ class S3EncryptionClientPlugin:
 
         params["body"] = encrypted_data
 
-        headers = params.get("headers", {})
+        headers = params.get("headers", {}) or {}
 
         # Add encryption metadata to headers
         if encryption_metadata:
@@ -244,7 +244,7 @@ class S3EncryptionClientPlugin:
         # Create a response dict that matches what the pipeline expects
         response = {
             "Body": parsed.get("Body"),
-            "Metadata": parsed.get("Metadata", {}),
+            "Metadata": parsed.get("Metadata", {}) or {},
             "ContentLength": content_length,
         }
 

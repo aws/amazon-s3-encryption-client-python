@@ -109,7 +109,7 @@ def fetch_instruction_file(s3_client, bucket: str, key: str) -> dict[str, Any]:
             s3_client._s3ec_plugin_context.instruction_file_mode = False
 
     # In plaintext mode, the event handler places parsed metadata in Metadata field
-    metadata = response.get("Metadata", {})
+    metadata = response.get("Metadata", {}) or {}
 
     # Verify metadata is not empty
     if not metadata:

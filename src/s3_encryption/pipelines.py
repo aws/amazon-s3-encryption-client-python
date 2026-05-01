@@ -250,7 +250,7 @@ class GetEncryptedObjectPipeline:
         # Convert the metadata dictionary to an ObjectMetadata instance
         streaming_body: StreamingBody = response.get("Body")
         content_length = response.get("ContentLength")
-        encryption_metadata = response.get("Metadata", {})
+        encryption_metadata = response.get("Metadata", {}) or {}
         metadata = ObjectMetadata.from_dict(encryption_metadata)
 
         # Use empty dict if encryption_context is None

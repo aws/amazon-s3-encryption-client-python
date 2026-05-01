@@ -232,7 +232,7 @@ class EncryptionMaterials:
             EncryptionMaterials: A new instance with fields populated from the dictionary
         """
         return cls(
-            encryption_context=materials_dict.get("encryption_context", {}),
+            encryption_context=materials_dict.get("encryption_context", {}) or {},
             encrypted_data_key=materials_dict.get("encrypted_data_key"),
             plaintext_data_key=materials_dict.get("plaintext_data_key"),
         )
@@ -292,10 +292,11 @@ class DecryptionMaterials:
         return cls(
             iv=materials_dict.get("iv"),
             encrypted_data_keys=materials_dict.get("encrypted_data_keys", []),
-            encryption_context_stored=materials_dict.get("encryption_context_stored", {}),
+            encryption_context_stored=materials_dict.get("encryption_context_stored", {}) or {},
             encryption_context_from_request=materials_dict.get(
                 "encryption_context_from_request", {}
-            ),
+            )
+            or {},
             plaintext_data_key=materials_dict.get("plaintext_data_key"),
         )
 

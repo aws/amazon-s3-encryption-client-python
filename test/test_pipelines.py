@@ -469,3 +469,48 @@ class TestGetEncryptedObjectPipelineInstructionFile:
 
         with pytest.raises(S3EncryptionClientError, match="multiple format versions"):
             pipeline.decrypt(mock_response, ".instruction", enable_delayed_authentication=False)
+
+
+class TestGetEncryptedObjectPipelineNoneMetadata:
+    """Tests that None Metadata in response is handled gracefully."""
+
+    def test_decrypt_with_none_metadata(self):
+        """Pipeline should not raise TypeError when Metadata is None."""
+        mock_cmm = Mock()
+        pipeline = GetEncryptedObjectPipeline(
+            cmm=mock_cmm,
+            commitment_policy=CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
+        )
+
+        response = {
+            "Body": BytesIO(b"test"),
+            "ContentLength": 4,
+            "Metadata": None,
+        }
+
+        with pytest.raises(S3EncryptionClientError):
+            pipeline.decrypt(
+                response,
+                instruction_suffix=".instruction",
+                enable_delayed_authentication=False,
+            )
+
+    def test_decrypt_with_missing_metadata(self):
+        """Pipeline should not raise TypeError when Metadata key is absent."""
+        mock_cmm = Mock()
+        pipeline = GetEncryptedObjectPipeline(
+            cmm=mock_cmm,
+            commitment_policy=CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
+        )
+
+        response = {
+            "Body": BytesIO(b"test"),
+            "ContentLength": 4,
+        }
+
+        with pytest.raises(S3EncryptionClientError):
+            pipeline.decrypt(
+                response,
+                instruction_suffix=".instruction",
+                enable_delayed_authentication=False,
+            )

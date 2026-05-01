@@ -74,7 +74,7 @@ class DefaultCryptoMaterialsManager(AbstractCryptoMaterialsManager):
         # Convert dictionary to EncryptionMaterials if needed
         if isinstance(enc_mats_request, dict):
             materials = EncryptionMaterials(
-                encryption_context=enc_mats_request.get("encryption_context", {})
+                encryption_context=enc_mats_request.get("encryption_context", {}) or {}
             )
         else:
             materials = enc_mats_request
