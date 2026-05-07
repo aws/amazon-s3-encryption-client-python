@@ -58,18 +58,15 @@ ALGORITHM_CONFIGS = [
 ]
 
 
-@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+@pytest.mark.parametrize(("algorithm_suite", "commitment_policy"), ALGORITHM_CONFIGS)
 def test_ranged_get_fails(algorithm_suite, commitment_policy):
-    """A ranged get on an encrypted object should fail because the client
-    cannot decrypt a partial ciphertext.
-    """
+    """Ranged gets are rejected with a clear error."""
     key = _unique_key("ranged-get-")
-    # Use a body large enough that a byte-range is meaningful
     data = b"A" * 1024
 
     s3ec = _make_client(algorithm_suite, commitment_policy)
     s3ec.put_object(Bucket=bucket, Key=key, Body=data)
 
     # Attempt a ranged get — should raise immediately with a clear message
-    with pytest.raises(S3EncryptionClientError, match="Ranged gets are not supported"):
+    with pytest.raises(S3EncryptionClientError, match="Ranged gets are currently not supported"):
         s3ec.get_object(Bucket=bucket, Key=key, Range="bytes=0-255")

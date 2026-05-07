@@ -514,7 +514,7 @@ class S3EncryptionClient:
         # Ranged gets are not supported — decryption requires the full ciphertext.
         if "Range" in kwargs:
             raise S3EncryptionClientError(
-                "Ranged gets are not supported by the S3 Encryption Client."
+                "Ranged gets are currently not supported by the S3 Encryption Client for Python."
             )
 
         # Extract EncryptionContext if provided (not a standard S3 parameter)
