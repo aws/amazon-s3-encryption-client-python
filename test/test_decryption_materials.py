@@ -85,3 +85,20 @@ class TestDecryptionMaterials:
         assert materials_dict["encryption_context_stored"] == {"key1": "value1"}
         assert materials_dict["encryption_context_from_request"] == {"key2": "value2"}
         assert materials_dict["plaintext_data_key"] == b"plaintext-data-key"
+
+    def test_from_dict_with_none_encryption_contexts(self):
+        """DecryptionMaterials.from_dict should handle None encryption contexts."""
+        materials_dict = {
+            "encryption_context_stored": None,
+            "encryption_context_from_request": None,
+        }
+        materials = DecryptionMaterials.from_dict(materials_dict)
+        assert materials.encryption_context_stored == {}
+        assert materials.encryption_context_from_request == {}
+
+    def test_from_dict_with_missing_encryption_contexts(self):
+        """DecryptionMaterials.from_dict should default to {} when context keys are missing."""
+        materials_dict = {}
+        materials = DecryptionMaterials.from_dict(materials_dict)
+        assert materials.encryption_context_stored == {}
+        assert materials.encryption_context_from_request == {}
