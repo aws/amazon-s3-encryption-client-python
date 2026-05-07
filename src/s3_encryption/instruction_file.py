@@ -11,6 +11,7 @@ from typing import Any
 
 from botocore.exceptions import ClientError
 
+from ._utils import safe_get_dict
 from .exceptions import S3EncryptionClientError
 from .metadata import VALID_S3EC_METADATA_KEYS
 
@@ -109,7 +110,7 @@ def fetch_instruction_file(s3_client, bucket: str, key: str) -> dict[str, Any]:
             s3_client._s3ec_plugin_context.instruction_file_mode = False
 
     # In plaintext mode, the event handler places parsed metadata in Metadata field
-    metadata = response.get("Metadata", {}) or {}
+    metadata = safe_get_dict(response, "Metadata")
 
     # Verify metadata is not empty
     if not metadata:

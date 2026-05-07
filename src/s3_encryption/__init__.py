@@ -9,6 +9,7 @@ from attrs import define, field
 from botocore.exceptions import ClientError
 from botocore.response import StreamingBody
 
+from ._utils import safe_get_dict
 from .exceptions import S3EncryptionClientError
 from .instruction_file import parse_instruction_file
 from .instruction_file_config import InstructionFileConfig
@@ -198,7 +199,7 @@ class S3EncryptionClientPlugin:
 
         params["body"] = encrypted_data
 
-        headers = params.get("headers", {}) or {}
+        headers = safe_get_dict(params, "headers")
 
         # Add encryption metadata to headers
         if encryption_metadata:
@@ -244,7 +245,7 @@ class S3EncryptionClientPlugin:
         # Create a response dict that matches what the pipeline expects
         response = {
             "Body": parsed.get("Body"),
-            "Metadata": parsed.get("Metadata", {}) or {},
+            "Metadata": safe_get_dict(parsed, "Metadata"),
             "ContentLength": content_length,
         }
 
@@ -286,8 +287,7 @@ class S3EncryptionClientPlugin:
             )
 
         # In plaintext mode, parse instruction file and append to metadata
-        # Metadata may be present but None, so `or {}` handles that case
-        existing_metadata = parsed.get("Metadata", {}) or {}
+        existing_metadata = safe_get_dict(parsed, "Metadata")
         instruction_data = body.read()
         instruction_metadata = parse_instruction_file(instruction_data, instruction_key)
 

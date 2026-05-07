@@ -16,6 +16,7 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.padding import PKCS7
 
+from ._utils import safe_get_dict
 from .buffered_decrypt import one_shot_decrypt
 from .decryptor import AesCbcDecryptor, AesGcmDecryptor
 from .exceptions import S3EncryptionClientError
@@ -250,7 +251,7 @@ class GetEncryptedObjectPipeline:
         # Convert the metadata dictionary to an ObjectMetadata instance
         streaming_body: StreamingBody = response.get("Body")
         content_length = response.get("ContentLength")
-        encryption_metadata = response.get("Metadata", {}) or {}
+        encryption_metadata = safe_get_dict(response, "Metadata")
         metadata = ObjectMetadata.from_dict(encryption_metadata)
 
         # Use empty dict if encryption_context is None

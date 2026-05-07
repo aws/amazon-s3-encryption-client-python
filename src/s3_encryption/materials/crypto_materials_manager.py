@@ -10,6 +10,7 @@ import abc
 
 from attrs import define
 
+from .._utils import safe_get_dict
 from .keyring import AbstractKeyring
 from .materials import DecryptionMaterials, EncryptionMaterials
 
@@ -74,7 +75,7 @@ class DefaultCryptoMaterialsManager(AbstractCryptoMaterialsManager):
         # Convert dictionary to EncryptionMaterials if needed
         if isinstance(enc_mats_request, dict):
             materials = EncryptionMaterials(
-                encryption_context=enc_mats_request.get("encryption_context", {}) or {}
+                encryption_context=safe_get_dict(enc_mats_request, "encryption_context")
             )
         else:
             materials = enc_mats_request
