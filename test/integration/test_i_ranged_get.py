@@ -7,6 +7,7 @@ requires the full ciphertext (IV, encrypted data, and auth tag). Passing
 a Range parameter retrieves only a slice of the ciphertext, which causes
 decryption to fail.
 """
+
 import os
 from datetime import datetime
 
@@ -60,7 +61,8 @@ ALGORITHM_CONFIGS = [
 @pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
 def test_ranged_get_fails(algorithm_suite, commitment_policy):
     """A ranged get on an encrypted object should fail because the client
-    cannot decrypt a partial ciphertext."""
+    cannot decrypt a partial ciphertext.
+    """
     key = _unique_key("ranged-get-")
     # Use a body large enough that a byte-range is meaningful
     data = b"A" * 1024
