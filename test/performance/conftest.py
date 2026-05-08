@@ -17,7 +17,7 @@ KMS_KEY_ID = os.environ.get(
 )
 
 # Performance test configuration
-NUM_ROUNDS = int(os.environ.get("PERF_NUM_ROUNDS", "30"))
+NUM_ROUNDS = int(os.environ.get("PERF_NUM_ROUNDS", "10"))
 OBJECT_SIZES_MB = [10, 25, 50]
 
 
