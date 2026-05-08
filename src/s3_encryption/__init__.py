@@ -511,6 +511,12 @@ class S3EncryptionClient:
         Raises:
             S3EncryptionClientError: If decryption fails or the object is not properly encrypted.
         """
+        # Ranged gets are not supported — decryption requires the full ciphertext.
+        if "Range" in kwargs:
+            raise S3EncryptionClientError(
+                "Ranged gets are currently not supported by the S3 Encryption Client for Python."
+            )
+
         # Extract EncryptionContext if provided (not a standard S3 parameter)
         encryption_context = kwargs.pop("EncryptionContext", None)
         _validate_encryption_context(encryption_context)
