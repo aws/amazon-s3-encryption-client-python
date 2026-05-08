@@ -9,20 +9,20 @@ license = {text = "Apache-2.0"}
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "boto3>=1.37.2",
-    "cryptography>=45.0.6",
-    "attrs>=25.1.0",
+    "boto3>=1.43.6",
+    "cryptography>=48.0.0",
+    "attrs>=26.1.0",
 ]
 
 [project.optional-dependencies]
 test = [
-    "pytest>=8.4.1",
-    "pytest-cov>=6.1.1",
+    "pytest>=9.0.3",
+    "pytest-cov>=7.1.0",
 ]
 dev = [
-    "black>=24.3.0,<27.0.0",
-    "ruff>=0.3.0",
-    "boto3-stubs~=1.42.49",
+    "black>=26.3.1",
+    "ruff>=0.15.12",
+    "boto3-stubs~=1.43.6",
 ]
 
 [build-system]
