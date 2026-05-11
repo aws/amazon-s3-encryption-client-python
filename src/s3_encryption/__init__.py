@@ -1,6 +1,6 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
-"""Top-level S3 Encryption Client v3 for Python package."""
+"""Top-level S3 Encryption Client v4 for Python package."""
 
 import io
 import threading

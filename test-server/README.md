@@ -28,8 +28,8 @@ make ci
 # Start Python and Java servers in parallel
 make start-servers
 
-# Start only the Python S3EC V3 server
-make start-python-v3-server
+# Start only the Python S3EC V4 server
+make start-python-v4-server
 
 # Run Java tests
 make run-tests

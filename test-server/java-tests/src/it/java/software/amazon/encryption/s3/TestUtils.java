@@ -65,8 +65,8 @@ public class TestUtils {
     public static final String JAVA_V3_TRANSITION = "Java-V3-Transition";
     public static final String JAVA_V4 = "Java-V4";
 
-    // No Python S3EC versions are released. Only test V3 as the "vN+1" version.
-    public static final String PYTHON_V3 = "Python-V3";
+    // No Python S3EC versions are released. Only test V4 as the "vN+1" version.
+    public static final String PYTHON_V4 = "Python-V4";
 
     public static final String GO_V3_TRANSITION = "Go-V3-Transition";
     public static final String GO_V4 = "Go-V4";
@@ -101,7 +101,7 @@ public class TestUtils {
     // Languages that reject caller-provided encryption context when the
     // wrapping algorithm is KmsV1 ("kms").
     public static final Set<String> KMSV1_ENCRYPTION_CONTEXT_UNSUPPORTED =
-      Set.of(PYTHON_V3);
+      Set.of(PYTHON_V4);
 
     public static final Set<String> RE_ENCRYPT_SUPPORTED =
       Set.of(JAVA_V3_TRANSITION, JAVA_V4);
@@ -131,11 +131,11 @@ public class TestUtils {
 
     // Go does not write with instruction files
     public static final Set<String> INSTRUCTION_FILE_PUT_UNSUPPORTED =
-      Set.of(GO_V3_TRANSITION, GO_V4, PYTHON_V3);
+      Set.of(GO_V3_TRANSITION, GO_V4, PYTHON_V4);
 
     // Not implemented yet in Python.
     public static final Set<String> INSTRUCTION_FILE_GET_UNSUPPORTED =
-      Set.of(PYTHON_V3);
+      Set.of(PYTHON_V4);
 
     // Languages that support custom instruction file suffix on GetObject
     // Only Java, Ruby, and PHP servers have been updated with this feature
@@ -163,7 +163,7 @@ public class TestUtils {
     public static final Set<String> IMPROVED_VERSIONS =
         Set.of(
             JAVA_V4,
-            PYTHON_V3,
+            PYTHON_V4,
             GO_V4,
             NET_V4,
             CPP_V3,
@@ -175,7 +175,7 @@ public class TestUtils {
 
     static {
         final Map<String, LanguageServerTarget> servers = new LinkedHashMap<>();
-        servers.put(PYTHON_V3, new LanguageServerTarget(PYTHON_V3, "8081"));
+        servers.put(PYTHON_V4, new LanguageServerTarget(PYTHON_V4, "8081"));
         servers.put(CPP_V2_TRANSITION, new LanguageServerTarget(CPP_V2_TRANSITION, "8097"));
         servers.put(CPP_V3, new LanguageServerTarget(CPP_V3, "8091"));
         servers.put(GO_V4, new LanguageServerTarget(GO_V4, "8089"));
@@ -367,13 +367,13 @@ public class TestUtils {
     }
 
     /**
-     * Get stream of arguments for the Python V3 client only.
+     * Get stream of arguments for the Python V4 client only.
      * Other languages can be added to this set as their commitment policy
      * validation is confirmed.
      */
-    public static Stream<Arguments> pythonV3ClientForTest() {
+    public static Stream<Arguments> pythonV4ClientForTest() {
         return serverMap.values().stream()
-            .filter(target -> PYTHON_V3.equals(target.getLanguageName()))
+            .filter(target -> PYTHON_V4.equals(target.getLanguageName()))
             .map(Arguments::of);
     }
 
