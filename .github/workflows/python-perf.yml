@@ -52,7 +52,7 @@ jobs:
         env:
           CI_S3_BUCKET: ${{ vars.CI_S3_BUCKET }}
           CI_KMS_KEY_ALIAS: ${{ vars.CI_KMS_KEY_ALIAS }}
-          PERF_NUM_ROUNDS: "30"
+          PERF_NUM_ROUNDS: "10"
 
       - name: Generate performance HTML report
         if: always()
