@@ -53,6 +53,11 @@ class KmsKeyring(S3Keyring):
     ##% The KmsV1 mode MUST be only enabled when legacy wrapping algorithms are enabled.
     enable_legacy_wrapping_algorithms: bool = field(default=False)
 
+    def __attrs_post_init__(self):  # noqa: D105
+        from .._utils import _USER_AGENT_SUFFIX, append_user_agent
+
+        append_user_agent(self.kms_client, _USER_AGENT_SUFFIX)
+
     def on_encrypt(self, enc_materials):
         """Process encryption materials using KMS.
 

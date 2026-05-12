@@ -9,7 +9,7 @@ from attrs import define, field
 from botocore.exceptions import ClientError
 from botocore.response import StreamingBody
 
-from ._utils import safe_get_dict
+from ._utils import _USER_AGENT_SUFFIX, append_user_agent, safe_get_dict
 from .exceptions import S3EncryptionClientError
 from .instruction_file import parse_instruction_file
 from .instruction_file_config import InstructionFileConfig
@@ -349,6 +349,8 @@ class S3EncryptionClient:
 
         # Expose plugin context on wrapped client for instruction file fetching
         self.wrapped_s3_client._s3ec_plugin_context = self._plugin._context
+
+        append_user_agent(self.wrapped_s3_client, _USER_AGENT_SUFFIX)
 
         # Register event handlers using boto3's event system
         event_system = self.wrapped_s3_client.meta.events
