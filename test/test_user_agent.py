@@ -1,6 +1,7 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 """Unit tests for user agent string injection."""
+
 import boto3
 
 from s3_encryption import S3EncryptionClient, S3EncryptionClientConfig
