@@ -55,10 +55,10 @@ jobs:
           aws-region: us-west-2
 
       - name: Run unit tests
-        run: uv run pytest test/ --ignore=test/integration/ --ignore=test/performance/ --verbose --cov=src/s3_encryption --cov-report=term-missing --cov-fail-under=89
+        run: uv run pytest test/ --ignore=test/integration/ --ignore=test/performance/ --verbose --cov=src/s3_encryption --cov-report=term-missing --cov-report=html:coverage-unit --cov-fail-under=89
 
       - name: Run integration tests
-        run: uv run pytest test/integration/ --verbose --cov=src/s3_encryption --cov-report=term-missing --cov-fail-under=83
+        run: uv run pytest test/integration/ --verbose --cov=src/s3_encryption --cov-report=term-missing --cov-report=html:coverage-integ --cov-fail-under=83
         env:
           CI_S3_BUCKET: ${{ vars.CI_S3_BUCKET }}
           CI_KMS_KEY_ALIAS: ${{ vars.CI_KMS_KEY_ALIAS }}
@@ -67,3 +67,17 @@ jobs:
 
       - name: Run examples
         run: make test-examples
+
+      - name: Upload unit test coverage report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-unit-py${{ matrix.python-version }}-${{ matrix.os }}
+          path: coverage-unit/
+
+      - name: Upload integration test coverage report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-integ-py${{ matrix.python-version }}-${{ matrix.os }}
+          path: coverage-integ/
