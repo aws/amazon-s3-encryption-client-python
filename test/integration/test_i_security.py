@@ -81,9 +81,9 @@ class TestWrappingAlgorithmDowngradeAttack:
         plain_s3 = boto3.client("s3")
         head = plain_s3.head_object(Bucket=bucket, Key=key)
         original_metadata = head["Metadata"]
-        assert (
-            original_metadata.get("x-amz-w") == "12"
-        ), f"Expected x-amz-w='12', got {original_metadata.get('x-amz-w')}"
+        assert original_metadata.get("x-amz-w") == "12", (
+            f"Expected x-amz-w='12', got {original_metadata.get('x-amz-w')}"
+        )
 
         tampered_metadata = original_metadata.copy()
         tampered_metadata["x-amz-w"] = "kms"
@@ -348,9 +348,9 @@ class TestV2WrappingAlgorithmDowngradeAttack:
         plain_s3 = boto3.client("s3")
         head = plain_s3.head_object(Bucket=bucket, Key=key)
         original_metadata = head["Metadata"]
-        assert (
-            original_metadata.get("x-amz-wrap-alg") == "kms+context"
-        ), f"Expected x-amz-wrap-alg='kms+context', got {original_metadata.get('x-amz-wrap-alg')}"
+        assert original_metadata.get("x-amz-wrap-alg") == "kms+context", (
+            f"Expected x-amz-wrap-alg='kms+context', got {original_metadata.get('x-amz-wrap-alg')}"
+        )
 
         tampered_metadata = original_metadata.copy()
         tampered_metadata["x-amz-wrap-alg"] = "kms"
@@ -476,14 +476,13 @@ class TestCBCErrorIndistinguishability:
 
         # Both MUST produce the same error message
         assert str(exc1.value) == str(exc2.value), (
-            f"Error messages differ: wrong_key={str(exc1.value)!r}, "
-            f"tampered={str(exc2.value)!r}"
+            f"Error messages differ: wrong_key={str(exc1.value)!r}, tampered={str(exc2.value)!r}"
         )
 
         # Neither message should contain details about the underlying failure
-        assert (
-            "padding" not in str(exc1.value).lower()
-        ), f"Error message leaks padding information: {str(exc1.value)!r}"
+        assert "padding" not in str(exc1.value).lower(), (
+            f"Error message leaks padding information: {str(exc1.value)!r}"
+        )
 
     def test_truncated_ciphertext_produces_same_error(self):
         """Truncated ciphertext MUST produce the same error as padding failure.

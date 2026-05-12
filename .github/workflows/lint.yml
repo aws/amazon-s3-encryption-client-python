@@ -25,4 +25,5 @@ jobs:
       - name: Install dependencies and run linting
         run: |
           make install
+          make format-check
           make lint

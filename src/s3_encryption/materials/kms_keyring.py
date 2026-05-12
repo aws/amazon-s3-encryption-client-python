@@ -164,8 +164,7 @@ class KmsKeyring(S3Keyring):
                 ##% context.
                 if KMS_CONTEXT_DEFAULT_KEY in encryption_context_from_request:
                     raise S3EncryptionClientError(
-                        f"{KMS_CONTEXT_DEFAULT_KEY} is a reserved key for the "
-                        f"S3 encryption client"
+                        f"{KMS_CONTEXT_DEFAULT_KEY} is a reserved key for the S3 encryption client"
                     )
 
                 ##= specification/s3-encryption/materials/s3-kms-keyring.md#kms-context
@@ -183,8 +182,7 @@ class KmsKeyring(S3Keyring):
                 if encryption_context_stored_copy != encryption_context_from_request:
                     # TODO: modeled error
                     raise S3EncryptionClientError(
-                        "Provided encryption context does not match information "
-                        "retrieved from S3"
+                        "Provided encryption context does not match information retrieved from S3"
                     )
 
             ##= specification/s3-encryption/materials/s3-kms-keyring.md#decryptdatakey
