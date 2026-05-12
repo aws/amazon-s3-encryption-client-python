@@ -462,11 +462,18 @@ class TestCBCErrorIndistinguishability:
         iv = os.urandom(16)
         ciphertext = self._encrypt_cbc(key, iv, b"test data for padding oracle check")
 
-        # Wrong key: decryption produces garbage, unpadding fails
-        wrong_key = os.urandom(32)
-        decryptor1 = self._make_cbc_decryptor(wrong_key, iv, len(ciphertext))
-        with pytest.raises(S3EncryptionClientSecurityError) as exc1:
-            decryptor1.finalize(ciphertext)
+        # Wrong key: decryption produces garbage, unpadding fails.
+        # ~1/256 chance random garbage has valid PKCS7 padding, so retry.
+        exc1 = None
+        for _ in range(10):
+            wrong_key = os.urandom(32)
+            decryptor1 = self._make_cbc_decryptor(wrong_key, iv, len(ciphertext))
+            try:
+                decryptor1.finalize(ciphertext)
+            except S3EncryptionClientSecurityError as e:
+                exc1 = e
+                break
+        assert exc1 is not None, "Wrong key did not produce padding error after 10 attempts"
 
         # Tampered ciphertext: last byte flipped, unpadding fails
         tampered = ciphertext[:-1] + bytes([ciphertext[-1] ^ 0x01])
@@ -475,15 +482,14 @@ class TestCBCErrorIndistinguishability:
             decryptor2.finalize(tampered)
 
         # Both MUST produce the same error message
-        assert str(exc1.value) == str(exc2.value), (
-            f"Error messages differ: wrong_key={str(exc1.value)!r}, "
-            f"tampered={str(exc2.value)!r}"
+        assert str(exc1) == str(exc2.value), (
+            f"Error messages differ: wrong_key={str(exc1)!r}, " f"tampered={str(exc2.value)!r}"
         )
 
         # Neither message should contain details about the underlying failure
         assert (
-            "padding" not in str(exc1.value).lower()
-        ), f"Error message leaks padding information: {str(exc1.value)!r}"
+            "padding" not in str(exc1).lower()
+        ), f"Error message leaks padding information: {str(exc1)!r}"
 
     def test_truncated_ciphertext_produces_same_error(self):
         """Truncated ciphertext MUST produce the same error as padding failure.
@@ -496,11 +502,17 @@ class TestCBCErrorIndistinguishability:
         iv = os.urandom(16)
         ciphertext = self._encrypt_cbc(key, iv, b"test data for truncation check")
 
-        # Padding failure (wrong key)
-        wrong_key = os.urandom(32)
-        decryptor1 = self._make_cbc_decryptor(wrong_key, iv, len(ciphertext))
-        with pytest.raises(S3EncryptionClientSecurityError) as exc1:
-            decryptor1.finalize(ciphertext)
+        # Padding failure (wrong key) — retry for same reason as above
+        exc1 = None
+        for _ in range(10):
+            wrong_key = os.urandom(32)
+            decryptor1 = self._make_cbc_decryptor(wrong_key, iv, len(ciphertext))
+            try:
+                decryptor1.finalize(ciphertext)
+            except S3EncryptionClientSecurityError as e:
+                exc1 = e
+                break
+        assert exc1 is not None, "Wrong key did not produce padding error after 10 attempts"
 
         # Truncated ciphertext (not block-aligned)
         truncated = ciphertext[:-3]
@@ -509,9 +521,8 @@ class TestCBCErrorIndistinguishability:
             decryptor2.finalize(truncated)
 
         # Both MUST produce the same error message
-        assert str(exc1.value) == str(exc2.value), (
-            f"Error messages differ: padding_fail={str(exc1.value)!r}, "
-            f"truncated={str(exc2.value)!r}"
+        assert str(exc1) == str(exc2.value), (
+            f"Error messages differ: padding_fail={str(exc1)!r}, " f"truncated={str(exc2.value)!r}"
         )
 
 
