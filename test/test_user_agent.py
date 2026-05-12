@@ -1,8 +1,6 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 """Unit tests for user agent string injection."""
-from unittest.mock import MagicMock, patch
-
 import boto3
 
 from s3_encryption import S3EncryptionClient, S3EncryptionClientConfig
@@ -12,7 +10,7 @@ from s3_encryption.materials.kms_keyring import KmsKeyring
 
 class TestUserAgent:
     def test_user_agent_suffix_format(self):
-        assert _USER_AGENT_SUFFIX == f"S3ECPy/{_PACKAGE_VERSION}"
+        assert f"S3ECPy/{_PACKAGE_VERSION}" == _USER_AGENT_SUFFIX
 
     def test_s3_client_gets_user_agent(self):
         s3 = boto3.client("s3", region_name="us-east-1")
