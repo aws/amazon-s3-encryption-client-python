@@ -260,7 +260,6 @@ class GetEncryptedObjectPipeline:
 
         # Check if we need to fetch instruction file
         if metadata.should_use_instruction_file():
-
             if self.instruction_file_config.disable_get_object:
                 raise S3EncryptionClientError(
                     "Exception encountered while fetching Instruction File. "
@@ -371,9 +370,7 @@ class GetEncryptedObjectPipeline:
         ##% [legacy unauthenticated algorithm suites](#legacy-decryption) is NOT enabled,
         ##% the S3EC MUST throw an error which details that client was
         ##% not configured to decrypt objects with ALG_AES_256_CBC_IV16_NO_KDF.
-        if (
-            algorithm_suite.is_legacy and not self.enable_legacy_unauthenticated_modes
-        ):  # noqa: SIM102
+        if algorithm_suite.is_legacy and not self.enable_legacy_unauthenticated_modes:  # noqa: SIM102
             ##= specification/s3-encryption/decryption.md#legacy-decryption
             ##= type=implementation
             ##% The S3EC MUST NOT decrypt objects encrypted using legacy unauthenticated algorithm suites

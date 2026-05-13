@@ -47,7 +47,7 @@ def parse_instruction_file(instruction_data: bytes, key: str) -> dict[str, Any]:
     # Validate that it's a dictionary
     if not isinstance(metadata, dict):
         raise S3EncryptionClientError(
-            f"Instruction file must contain a JSON object, " f"got {type(metadata).__name__}: {key}"
+            f"Instruction file must contain a JSON object, got {type(metadata).__name__}: {key}"
         )
 
     # Validate that all keys are S3EC metadata keys

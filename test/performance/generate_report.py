@@ -76,7 +76,7 @@ def _bar_chart_svg(chart_id, title, groups, sizes, width=700, bar_h=28, gap=6):
     lx = label_col_w
     for g in groups:
         svg.append(f'<rect x="{lx}" y="30" width="12" height="12" fill="{g["color"]}" rx="2"/>')
-        svg.append(f'<text x="{lx+16}" y="41" font-size="11" fill="#333">{g["label"]}</text>')
+        svg.append(f'<text x="{lx + 16}" y="41" font-size="11" fill="#333">{g["label"]}</text>')
         lx += len(g["label"]) * 7 + 30
 
     y = 58
@@ -150,7 +150,7 @@ def _histogram_svg(chart_id, title, series_list, width=700, height=220, n_bins=1
     lx = margin_l
     for s in series_list:
         svg.append(f'<rect x="{lx}" y="26" width="10" height="10" fill="{s["color"]}" rx="2"/>')
-        svg.append(f'<text x="{lx+14}" y="35" font-size="10" fill="#333">{s["label"]}</text>')
+        svg.append(f'<text x="{lx + 14}" y="35" font-size="10" fill="#333">{s["label"]}</text>')
         lx += len(s["label"]) * 6 + 24
 
     # Axes
@@ -302,14 +302,14 @@ def _build_table(results):
             durations_str = ", ".join(_fmt(v) for v in d)
             rows += f"""
             <tr>
-                <td>{r['test']}</td>
-                <td>{r['size_mb']} MB</td>
-                <td>{r['rounds']}</td>
+                <td>{r["test"]}</td>
+                <td>{r["size_mb"]} MB</td>
+                <td>{r["rounds"]}</td>
                 <td>{_fmt(med)}</td>
-                <td>{_fmt(r['mean_s'])}</td>
+                <td>{_fmt(r["mean_s"])}</td>
                 <td>{_fmt(p95)}</td>
-                <td>{_fmt(r['min_s'])}</td>
-                <td>{_fmt(r['max_s'])}</td>
+                <td>{_fmt(r["min_s"])}</td>
+                <td>{_fmt(r["max_s"])}</td>
                 <td class="durations">{durations_str}</td>
             </tr>"""
 
@@ -366,9 +366,9 @@ def generate_html(data: dict) -> str:
 <h1>S3 Encryption Client &mdash; Performance Report</h1>
 <div class="meta">
     Generated: {timestamp}<br>
-    Rounds per test: {config['num_rounds']} &middot;
-    Object sizes: {', '.join(str(s) + ' MB' for s in sizes)} &middot;
-    Bucket: {config['bucket']} &middot; Region: {config['region']}
+    Rounds per test: {config["num_rounds"]} &middot;
+    Object sizes: {", ".join(str(s) + " MB" for s in sizes)} &middot;
+    Bucket: {config["bucket"]} &middot; Region: {config["region"]}
 </div>
 
 <div class="visuals">
