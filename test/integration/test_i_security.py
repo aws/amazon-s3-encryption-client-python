@@ -482,13 +482,13 @@ class TestCBCErrorIndistinguishability:
             decryptor2.finalize(tampered)
 
         # Both MUST produce the same error message
-        assert str(exc1.value) == str(exc2.value), (
-            f"Error messages differ: wrong_key={str(exc1.value)!r}, tampered={str(exc2.value)!r}"
+        assert str(exc1) == str(exc2.value), (
+            f"Error messages differ: wrong_key={str(exc1)!r}, tampered={str(exc2.value)!r}"
         )
 
         # Neither message should contain details about the underlying failure
-        assert "padding" not in str(exc1.value).lower(), (
-            f"Error message leaks padding information: {str(exc1.value)!r}"
+        assert "padding" not in str(exc1).lower(), (
+            f"Error message leaks padding information: {str(exc1)!r}"
         )
 
     def test_truncated_ciphertext_produces_same_error(self):
