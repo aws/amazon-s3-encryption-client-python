@@ -522,7 +522,7 @@ class TestCBCErrorIndistinguishability:
 
         # Both MUST produce the same error message
         assert str(exc1) == str(exc2.value), (
-            f"Error messages differ: padding_fail={str(exc1)!r}, " f"truncated={str(exc2.value)!r}"
+            f"Error messages differ: padding_fail={str(exc1)!r}, truncated={str(exc2.value)!r}"
         )
 
 
