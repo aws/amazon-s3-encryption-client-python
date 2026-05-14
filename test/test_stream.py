@@ -218,14 +218,19 @@ class TestDelayedAuthCBCDecryption:
     def test_wrong_key_raises_error(self):
         plaintext = b"wrong key test!!"
         ciphertext, _key, iv = _encrypt_cbc(plaintext)
-        wrong_key = os.urandom(32)
-        stream = DecryptingStream(
-            _make_streaming_body(ciphertext),
-            _make_cbc_decryptor(wrong_key, iv, len(ciphertext)),
-            content_length=len(ciphertext),
-        )
-        with pytest.raises(S3EncryptionClientSecurityError, match="Failed to decrypt CBC content"):
-            stream.read()
+        # ~1/256 chance random garbage has valid PKCS7 padding, so retry
+        for _ in range(10):
+            wrong_key = os.urandom(32)
+            stream = DecryptingStream(
+                _make_streaming_body(ciphertext),
+                _make_cbc_decryptor(wrong_key, iv, len(ciphertext)),
+                content_length=len(ciphertext),
+            )
+            try:
+                stream.read()
+            except S3EncryptionClientSecurityError:
+                return  # test passes
+        pytest.fail("Wrong key did not produce CBC decryption error after 10 attempts")
 
     def test_empty_ciphertext(self):
         key = os.urandom(32)
