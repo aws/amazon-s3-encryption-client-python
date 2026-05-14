@@ -1,6 +1,6 @@
 # Amazon S3 Encryption Client for Python
 
-This library provides an S3 client that supports client-side encryption.
+This library provides an S3 client that supports client-side encryption. For more information and detailed instructions for how to use this library, refer to the [Amazon S3 Encryption Client Developer Guide](https://docs.aws.amazon.com/amazon-s3-encryption-client/latest/developerguide/python.html).
 
 ## Development
 
