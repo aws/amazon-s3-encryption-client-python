@@ -527,3 +527,135 @@ def test_multipart_user_metadata_preserved(algorithm_suite, commitment_policy):
     returned_metadata = response.get("Metadata", {})
     for k, v in user_metadata.items():
         assert returned_metadata.get(k) == v
+
+
+# ---------------------------------------------------------------------------
+# Upload part after final part
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_upload_part_after_final_part_fails(algorithm_suite, commitment_policy):
+    """Uploading a part after IsLastPart=True must fail."""
+    key = _unique_key("mpu-after-final-")
+
+    s3ec = _make_client(algorithm_suite, commitment_policy)
+
+    create_resp = s3ec.create_multipart_upload(Bucket=bucket, Key=key)
+    upload_id = create_resp["UploadId"]
+
+    try:
+        s3ec.upload_part(
+            Bucket=bucket,
+            Key=key,
+            UploadId=upload_id,
+            PartNumber=1,
+            Body=os.urandom(FIVE_MB),
+            IsLastPart=True,
+        )
+
+        with pytest.raises(S3EncryptionClientError):
+            s3ec.upload_part(
+                Bucket=bucket,
+                Key=key,
+                UploadId=upload_id,
+                PartNumber=2,
+                Body=os.urandom(1024),
+            )
+    finally:
+        s3ec.abort_multipart_upload(Bucket=bucket, Key=key, UploadId=upload_id)
+
+
+# ---------------------------------------------------------------------------
+# Empty body multipart
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_multipart_empty_final_part(algorithm_suite, commitment_policy):
+    """A multipart upload where the last part has an empty body should still work."""
+    key = _unique_key("mpu-empty-last-")
+    part1_data = os.urandom(FIVE_MB)
+
+    s3ec = _make_client(algorithm_suite, commitment_policy)
+
+    create_resp = s3ec.create_multipart_upload(Bucket=bucket, Key=key)
+    upload_id = create_resp["UploadId"]
+
+    try:
+        resp1 = s3ec.upload_part(
+            Bucket=bucket, Key=key, UploadId=upload_id, PartNumber=1, Body=part1_data
+        )
+        resp2 = s3ec.upload_part(
+            Bucket=bucket,
+            Key=key,
+            UploadId=upload_id,
+            PartNumber=2,
+            Body=b"",
+            IsLastPart=True,
+        )
+
+        s3ec.complete_multipart_upload(
+            Bucket=bucket,
+            Key=key,
+            UploadId=upload_id,
+            MultipartUpload={
+                "Parts": [
+                    {"PartNumber": 1, "ETag": resp1["ETag"]},
+                    {"PartNumber": 2, "ETag": resp2["ETag"]},
+                ]
+            },
+        )
+    except Exception:
+        s3ec.abort_multipart_upload(Bucket=bucket, Key=key, UploadId=upload_id)
+        raise
+
+    response = s3ec.get_object(Bucket=bucket, Key=key)
+    assert response["Body"].read() == part1_data
+
+
+# ---------------------------------------------------------------------------
+# Many parts (stress sequential cipher)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_multipart_many_parts(algorithm_suite, commitment_policy):
+    """Multipart upload with 10+ parts to stress the sequential cipher."""
+    key = _unique_key("mpu-many-parts-")
+    num_parts = 12
+    parts_data = [os.urandom(FIVE_MB) for _ in range(num_parts - 1)]
+    parts_data.append(os.urandom(1024))  # small last part
+    expected = b"".join(parts_data)
+
+    s3ec = _make_client(algorithm_suite, commitment_policy)
+
+    create_resp = s3ec.create_multipart_upload(Bucket=bucket, Key=key)
+    upload_id = create_resp["UploadId"]
+
+    try:
+        parts = []
+        for i, part_data in enumerate(parts_data, start=1):
+            is_last = i == num_parts
+            resp = s3ec.upload_part(
+                Bucket=bucket,
+                Key=key,
+                UploadId=upload_id,
+                PartNumber=i,
+                Body=part_data,
+                IsLastPart=is_last,
+            )
+            parts.append({"PartNumber": i, "ETag": resp["ETag"]})
+
+        s3ec.complete_multipart_upload(
+            Bucket=bucket,
+            Key=key,
+            UploadId=upload_id,
+            MultipartUpload={"Parts": parts},
+        )
+    except Exception:
+        s3ec.abort_multipart_upload(Bucket=bucket, Key=key, UploadId=upload_id)
+        raise
+
+    response = s3ec.get_object(Bucket=bucket, Key=key)
+    assert response["Body"].read() == expected

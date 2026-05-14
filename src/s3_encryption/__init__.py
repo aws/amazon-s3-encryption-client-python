@@ -350,7 +350,10 @@ class S3EncryptionClient:
     wrapped_s3_client = field()
     config: S3EncryptionClientConfig = field()
     _plugin: S3EncryptionClientPlugin = field(init=False)
+    # Each upload gets its own pipeline with independent cipher state, keyed by UploadId.
+    # Access is protected by a lock for thread safety across all Python runtimes.
     _multipart_uploads: dict = field(init=False, factory=dict)
+    _multipart_lock: threading.Lock = field(init=False, factory=threading.Lock)
 
     def __attrs_post_init__(self):
         """Install the encryption plugin on the wrapped client using boto3 events."""
@@ -611,7 +614,8 @@ class S3EncryptionClient:
             raise S3EncryptionClientError(f"Failed to create multipart upload: {e}") from e
 
         upload_id = response["UploadId"]
-        self._multipart_uploads[upload_id] = pipeline
+        with self._multipart_lock:
+            self._multipart_uploads[upload_id] = pipeline
         return response
 
     ##= specification/s3-encryption/client.md#optional-api-operations
@@ -639,7 +643,8 @@ class S3EncryptionClient:
             The response from S3 upload_part (includes ETag).
         """
         upload_id = kwargs.get("UploadId")
-        pipeline = self._multipart_uploads.get(upload_id)
+        with self._multipart_lock:
+            pipeline = self._multipart_uploads.get(upload_id)
         if pipeline is None:
             raise S3EncryptionClientError(
                 f"No multipart upload found for UploadId: {upload_id}. "
@@ -688,7 +693,8 @@ class S3EncryptionClient:
             The response from S3 complete_multipart_upload.
         """
         upload_id = kwargs.get("UploadId")
-        pipeline = self._multipart_uploads.get(upload_id)
+        with self._multipart_lock:
+            pipeline = self._multipart_uploads.get(upload_id)
         if pipeline is None:
             raise S3EncryptionClientError(f"No multipart upload found for UploadId: {upload_id}.")
 
@@ -705,7 +711,8 @@ class S3EncryptionClient:
         except Exception as e:
             raise S3EncryptionClientError(f"Failed to complete multipart upload: {e}") from e
         finally:
-            self._multipart_uploads.pop(upload_id, None)
+            with self._multipart_lock:
+                self._multipart_uploads.pop(upload_id, None)
 
     ##= specification/s3-encryption/client.md#optional-api-operations
     ##= type=implementation
@@ -721,7 +728,8 @@ class S3EncryptionClient:
             The response from S3 abort_multipart_upload.
         """
         upload_id = kwargs.get("UploadId")
-        self._multipart_uploads.pop(upload_id, None)
+        with self._multipart_lock:
+            self._multipart_uploads.pop(upload_id, None)
         return self.wrapped_s3_client.abort_multipart_upload(**kwargs)
 
     def upload_file(
