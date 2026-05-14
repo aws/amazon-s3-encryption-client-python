@@ -49,3 +49,24 @@ class TestS3EncryptionClientSecurityError:
     def test_can_be_caught_as_botocore_error(self):
         with pytest.raises(BotoCoreError):
             raise S3EncryptionClientSecurityError("test security error")
+
+
+from s3_encryption._utils import safe_get_dict
+
+
+class TestSafeGetDict:
+    def test_returns_value_when_present(self):
+        assert safe_get_dict({"key": {"a": 1}}, "key") == {"a": 1}
+
+    def test_returns_empty_dict_when_key_missing(self):
+        assert safe_get_dict({}, "key") == {}
+
+    def test_returns_empty_dict_when_value_is_none(self):
+        assert safe_get_dict({"key": None}, "key") == {}
+
+    def test_returns_empty_dict_for_empty_value(self):
+        assert safe_get_dict({"key": {}}, "key") == {}
+
+    def test_preserves_non_empty_dict(self):
+        data = {"x": "y", "z": "w"}
+        assert safe_get_dict({"meta": data}, "meta") == data

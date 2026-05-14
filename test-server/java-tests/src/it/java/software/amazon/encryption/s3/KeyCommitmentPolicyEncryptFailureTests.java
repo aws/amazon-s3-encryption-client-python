@@ -31,7 +31,7 @@ import software.amazon.encryption.s3.model.S3ECConfig;
  * with the commitment policy is rejected by the S3EC — either at client creation
  * or at PutObject time.
  *
- * Currently scoped to Python V3 only. Other languages can be enabled by
+ * Currently scoped to Python V4 only. Other languages can be enabled by
  * switching the MethodSource to a broader provider (e.g. improvedClientsForTest).
  */
 @DisplayName("Key Commitment Policy — Encrypt Failures")
@@ -42,7 +42,7 @@ public class KeyCommitmentPolicyEncryptFailureTests {
         .build();
 
     @ParameterizedTest(name = "{0}: REQUIRE_ENCRYPT_ALLOW_DECRYPT with non-committing GCM MUST fail to encrypt")
-    @MethodSource("software.amazon.encryption.s3.TestUtils#pythonV3ClientForTest")
+    @MethodSource("software.amazon.encryption.s3.TestUtils#pythonV4ClientForTest")
     void require_encrypt_allow_decrypt_with_non_committing_gcm_must_fail(
         TestUtils.LanguageServerTarget language
     ) {
@@ -58,7 +58,7 @@ public class KeyCommitmentPolicyEncryptFailureTests {
     }
 
     @ParameterizedTest(name = "{0}: REQUIRE_ENCRYPT_REQUIRE_DECRYPT with non-committing GCM MUST fail to encrypt")
-    @MethodSource("software.amazon.encryption.s3.TestUtils#pythonV3ClientForTest")
+    @MethodSource("software.amazon.encryption.s3.TestUtils#pythonV4ClientForTest")
     void require_encrypt_require_decrypt_with_non_committing_gcm_must_fail(
         TestUtils.LanguageServerTarget language
     ) {
@@ -74,7 +74,7 @@ public class KeyCommitmentPolicyEncryptFailureTests {
     }
 
     @ParameterizedTest(name = "{0}: FORBID_ENCRYPT_ALLOW_DECRYPT with committing GCM MUST fail to encrypt")
-    @MethodSource("software.amazon.encryption.s3.TestUtils#pythonV3ClientForTest")
+    @MethodSource("software.amazon.encryption.s3.TestUtils#pythonV4ClientForTest")
     void forbid_encrypt_allow_decrypt_with_committing_gcm_must_fail(
         TestUtils.LanguageServerTarget language
     ) {

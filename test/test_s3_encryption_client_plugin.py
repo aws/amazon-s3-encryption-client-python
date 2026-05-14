@@ -154,3 +154,17 @@ class TestS3EncryptionClientPlugin:
 
         with pytest.raises(S3EncryptionClientError, match="missing ContentLength.*Key: my-object"):
             plugin.on_get_object_after_call(parsed)
+
+    def test_put_object_rejects_instruction_file_mode(self):
+        """put_object MUST raise when instruction-file mode is active."""
+        mock_keyring = Mock(spec=S3Keyring)
+        config = S3EncryptionClientConfig(keyring=mock_keyring)
+        plugin = S3EncryptionClientPlugin(config)
+
+        # Activate instruction file mode
+        plugin._context.instruction_file_mode = True
+
+        params = {"body": b"test data", "headers": {}}
+
+        with pytest.raises(S3EncryptionClientError, match="not supported in put_object"):
+            plugin.on_put_object_before_call(params)

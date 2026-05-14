@@ -6,20 +6,20 @@ PID_FILE := server.pid
 PORT := 8081
 
 build-server:
-	@echo "Building Python V3 server..."
+	@echo "Building Python V4 server..."
 	python -m venv .venv
 	.venv/bin/python -m ensurepip
 	.venv/bin/python -m pip install -e .
 	.venv/bin/python -m pip install -e ../..
 
 start-server:
-	@echo "Starting Python V3 server..."
+	@echo "Starting Python V4 server..."
 	AWS_ACCESS_KEY_ID="$$AWS_ACCESS_KEY_ID" \
 	AWS_SECRET_ACCESS_KEY="$$AWS_SECRET_ACCESS_KEY" \
 	AWS_SESSION_TOKEN="$$AWS_SESSION_TOKEN" \
 	AWS_REGION="us-west-2" \
 	.venv/bin/python src/main.py > server.log 2>&1 & echo $$! > $(PID_FILE)
-	@echo "Python V3 server starting..."
+	@echo "Python V4 server starting..."
 
 stop-server:
 	@echo "Stopping server on port $(PORT)..."

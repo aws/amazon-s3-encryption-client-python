@@ -1,16 +1,19 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
-"""Top-level S3 Encryption Client v3 for Python package."""
+"""Top-level S3 Encryption Client v4 for Python package."""
 
 import io
 import os
 import threading
 
 from attrs import define, field
+from botocore.exceptions import ClientError
 from botocore.response import StreamingBody
 
+from ._utils import _USER_AGENT_SUFFIX, append_user_agent, safe_get_dict
 from .exceptions import S3EncryptionClientError
 from .instruction_file import parse_instruction_file
+from .instruction_file_config import InstructionFileConfig
 from .materials.crypto_materials_manager import (
     AbstractCryptoMaterialsManager,
     DefaultCryptoMaterialsManager,
@@ -35,10 +38,16 @@ _CTX_BUCKET = "bucket"
 _CTX_KEY = "key"
 _CTX_S3_CLIENT = "s3_client"
 _CTX_INSTRUCTION_FILE_MODE = "instruction_file_mode"
+_CTX_INSTRUCTION_FILE_SUFFIX = "instruction_file_suffix"
 
 # Attributes to clean up after get_object completes
 # (s3_client is intentionally excluded — it is not request-scoped)
-_GET_OBJECT_CLEANUP_ATTRS = (_CTX_ENCRYPTION_CONTEXT, _CTX_BUCKET, _CTX_KEY)
+_GET_OBJECT_CLEANUP_ATTRS = (
+    _CTX_ENCRYPTION_CONTEXT,
+    _CTX_BUCKET,
+    _CTX_KEY,
+    _CTX_INSTRUCTION_FILE_SUFFIX,
+)
 
 
 @define
@@ -55,12 +64,13 @@ class S3EncryptionClientConfig:
             encrypted with legacy CBC algorithm suites. Defaults to False.
         cmm: Crypto materials manager. Defaults to a DefaultCryptoMaterialsManager
             wrapping the provided keyring.
-        instruction_file_suffix: Suffix appended to the S3 object key when
-            fetching instruction files. Defaults to ".instruction".
         enable_delayed_authentication: If True, release plaintext from streams
             before GCM tag verification. Defaults to False. Has no effect for
             CBC encrypted ciphertext, which is always streamed as there is no
             authentication tag.
+        instruction_file_config: Configuration for instruction file behavior.
+            Defaults to InstructionFileConfig() which enables instruction file
+            reads on GetObject.
 
     Raises:
         S3EncryptionClientError: If the encryption algorithm is legacy, or if
@@ -80,16 +90,6 @@ class S3EncryptionClientConfig:
     ##% The option to enable legacy unauthenticated modes MUST be set to false by default.
     enable_legacy_unauthenticated_modes: bool = field(default=False)
     cmm: AbstractCryptoMaterialsManager = field()
-    ##= specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
-    ##= type=implementation
-    ##% The S3EC SHOULD support providing a custom Instruction File suffix
-    ##% on GetObject requests, regardless of whether or not re-encryption is supported.
-
-    ##= specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
-    ##= type=implementation
-    ##% The default Instruction File behavior uses the same S3 object key
-    ##% as its associated object suffixed with ".instruction".
-    instruction_file_suffix: str = field(default=".instruction")
 
     ##= specification/s3-encryption/client.md#enable-delayed-authentication
     ##= type=implementation
@@ -99,6 +99,8 @@ class S3EncryptionClientConfig:
     ##= type=implication
     ##% Delayed Authentication mode MUST be set to false by default.
     enable_delayed_authentication: bool = field(default=False)
+
+    instruction_file_config: InstructionFileConfig = field(factory=InstructionFileConfig)
 
     @cmm.default
     def _default_cmm_for_keyring(self):
@@ -206,7 +208,7 @@ class S3EncryptionClientPlugin:
 
         params["body"] = encrypted_data
 
-        headers = params.get("headers", {})
+        headers = safe_get_dict(params, "headers")
 
         # Add encryption metadata to headers
         if encryption_metadata:
@@ -234,6 +236,11 @@ class S3EncryptionClientPlugin:
         # Get encryption context from thread-local storage (set by get_object wrapper)
         encryption_context = getattr(self._context, _CTX_ENCRYPTION_CONTEXT, None)
 
+        # If Body is None, the S3 request failed (e.g., NoSuchKey).
+        # Return early and let boto3 raise the original error.
+        if parsed.get("Body", None) is None:
+            return
+
         # The parsed response already has the Body as a StreamingBody
         # We need to read it, decrypt it, and replace it
 
@@ -247,7 +254,7 @@ class S3EncryptionClientPlugin:
         # Create a response dict that matches what the pipeline expects
         response = {
             "Body": parsed.get("Body"),
-            "Metadata": parsed.get("Metadata", {}),
+            "Metadata": safe_get_dict(parsed, "Metadata"),
             "ContentLength": content_length,
         }
 
@@ -257,10 +264,11 @@ class S3EncryptionClientPlugin:
             commitment_policy=self.config.commitment_policy,
             s3_client=getattr(self._context, _CTX_S3_CLIENT, None),
             enable_legacy_unauthenticated_modes=self.config.enable_legacy_unauthenticated_modes,
+            instruction_file_config=self.config.instruction_file_config,
         )
         decrypted_data = pipeline.decrypt(
             response,
-            instruction_suffix=self.config.instruction_file_suffix,
+            instruction_suffix=getattr(self._context, _CTX_INSTRUCTION_FILE_SUFFIX, ".instruction"),
             enable_delayed_authentication=self.config.enable_delayed_authentication,
             encryption_context=encryption_context,
             bucket=getattr(self._context, _CTX_BUCKET, None),
@@ -281,9 +289,15 @@ class S3EncryptionClientPlugin:
         """
         instruction_key = getattr(self._context, _CTX_KEY, None)
 
+        body = parsed.get("Body", None)
+        if body is None:
+            raise S3EncryptionClientError(
+                f"Instruction file body is empty for key: {instruction_key}"
+            )
+
         # In plaintext mode, parse instruction file and append to metadata
-        existing_metadata = parsed.get("Metadata", {})
-        instruction_data = parsed.get("Body").read()
+        existing_metadata = safe_get_dict(parsed, "Metadata")
+        instruction_data = body.read()
         instruction_metadata = parse_instruction_file(instruction_data, instruction_key)
 
         # Append parsed instruction file content to existing metadata
@@ -294,6 +308,32 @@ class S3EncryptionClientPlugin:
         stream = io.BytesIO(b"")
         streaming_body = StreamingBody(stream, 0)
         parsed["Body"] = streaming_body
+
+
+def _validate_encryption_context(encryption_context):
+    """Validate that all encryption context keys and values are US-ASCII.
+
+    S3 applies double-encoding to non-ASCII metadata values that SDKs do not
+    automatically decode, which causes decryption to fail because the stored
+    encryption context won't match the original.
+
+    Raises:
+        S3EncryptionClientError: If any key or value contains non-ASCII characters.
+    """
+    if encryption_context is None:
+        return
+    if not isinstance(encryption_context, dict):
+        raise S3EncryptionClientError("EncryptionContext must be a dictionary")
+    for k, v in encryption_context.items():
+        if not isinstance(k, str) or not isinstance(v, str):
+            raise S3EncryptionClientError("EncryptionContext keys and values must be strings")
+        if not k.isascii() or not v.isascii():
+            raise S3EncryptionClientError(
+                f"EncryptionContext keys and values must contain only US-ASCII characters. "
+                f"Non-ASCII characters in S3 metadata are encoded by the server "
+                f"and will cause decryption to fail. "
+                f"First offending entry: {repr(k)}: {repr(v)}"
+            )
 
 
 @define
@@ -320,10 +360,21 @@ class S3EncryptionClient:
         # Expose plugin context on wrapped client for instruction file fetching
         self.wrapped_s3_client._s3ec_plugin_context = self._plugin._context
 
+        append_user_agent(self.wrapped_s3_client, _USER_AGENT_SUFFIX)
+
         # Register event handlers using boto3's event system
         event_system = self.wrapped_s3_client.meta.events
         event_system.register("before-call.s3.PutObject", self._plugin.on_put_object_before_call)
         event_system.register("after-call.s3.GetObject", self._plugin.on_get_object_after_call)
+
+    def __getattr__(self, name):
+        """Proxy unrecognized attributes to the wrapped S3 client.
+
+        This allows the S3EncryptionClient to be used like a regular boto3 S3
+        client for operations it doesn't intercept (e.g. copy_object,
+        list_objects_v2, etc.).
+        """
+        return getattr(self.wrapped_s3_client, name)
 
     def put_object(self, **kwargs):
         """Encrypt and upload an object to S3.
@@ -346,6 +397,7 @@ class S3EncryptionClient:
         """
         # Extract EncryptionContext if provided (not a standard S3 parameter)
         encryption_context = kwargs.pop("EncryptionContext", None)
+        _validate_encryption_context(encryption_context)
 
         # Store encryption context in thread-local storage for the event handler
         self._plugin._context.encryption_context = encryption_context
@@ -362,6 +414,96 @@ class S3EncryptionClient:
             if hasattr(self._plugin._context, _CTX_ENCRYPTION_CONTEXT):
                 delattr(self._plugin._context, _CTX_ENCRYPTION_CONTEXT)
 
+    ##= specification/s3-encryption/client.md#required-api-operations
+    ##% - DeleteObject MUST be implemented by the S3EC.
+    def delete_object(self, **kwargs):
+        """Delete an object and its associated instruction file from S3.
+
+        Args:
+            **kwargs: Arguments to pass to the S3 client's delete_object method.
+                      Must include Bucket and Key parameters.
+                      May include InstructionFileSuffix to override the default
+                      ".instruction" suffix for instruction file deletion.
+
+        Returns:
+            The response from the S3 client's delete_object call for the object.
+
+        Raises:
+            S3EncryptionClientError: If the delete operation fails.
+        """
+        ##= specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
+        ##= type=implementation
+        ##% The default Instruction File behavior uses the same S3 object key
+        ##% as its associated object suffixed with ".instruction".
+        instruction_file_suffix = kwargs.pop("InstructionFileSuffix", ".instruction")
+
+        try:
+            ##= specification/s3-encryption/client.md#required-api-operations
+            ##= type=implementation
+            ##% - DeleteObject MUST delete the given object key.
+            response = self.wrapped_s3_client.delete_object(**kwargs)
+
+            ##= specification/s3-encryption/client.md#required-api-operations
+            ##= type=implementation
+            ##% - DeleteObject MUST delete the associated instruction file
+            ##%   using the default instruction file suffix.
+            if not self.config.instruction_file_config.disable_delete_object:
+                instruction_key = kwargs["Key"] + instruction_file_suffix
+                self.wrapped_s3_client.delete_object(Bucket=kwargs["Bucket"], Key=instruction_key)
+
+            return response
+        except S3EncryptionClientError:
+            raise
+        except Exception as e:
+            raise S3EncryptionClientError(f"Failed to delete object: {str(e)}") from e
+
+    ##= specification/s3-encryption/client.md#required-api-operations
+    ##% - DeleteObjects MUST be implemented by the S3EC.
+    def delete_objects(self, **kwargs):
+        """Delete multiple objects and their associated instruction files from S3.
+
+        2 requests are issued, one for the objects, and one for the instruction files.
+        If either requests fail, the operation fails, and maybe tried again to clean up any missed files.
+
+        Args:
+            **kwargs: Arguments to pass to the S3 client's delete_objects method.
+                      Must include Bucket and Delete (with Objects list) parameters.
+                      May include InstructionFileSuffix to override the default
+                      ".instruction" suffix for instruction file deletion.
+
+        Returns:
+            The response from the S3 client's delete_objects call for the objects.
+
+        Raises:
+            S3EncryptionClientError: If either delete operations fails.
+        """
+        instruction_file_suffix = kwargs.pop("InstructionFileSuffix", ".instruction")
+
+        try:
+            ##= specification/s3-encryption/client.md#required-api-operations
+            ##= type=implementation
+            ##% - DeleteObjects MUST delete each of the given objects.
+            response = self.wrapped_s3_client.delete_objects(**kwargs)
+
+            ##= specification/s3-encryption/client.md#required-api-operations
+            ##= type=implementation
+            ##% - DeleteObjects MUST delete each of the corresponding instruction files
+            ##%   using the default instruction file suffix.
+            if not self.config.instruction_file_config.disable_delete_objects:
+                instruction_objects = [
+                    {"Key": obj["Key"] + instruction_file_suffix}
+                    for obj in kwargs["Delete"]["Objects"]
+                ]
+                self.wrapped_s3_client.delete_objects(
+                    Bucket=kwargs["Bucket"], Delete={"Objects": instruction_objects}
+                )
+
+            return response
+        except S3EncryptionClientError:
+            raise
+        except Exception as e:
+            raise S3EncryptionClientError(f"Failed to delete objects: {str(e)}") from e
+
     def get_object(self, **kwargs):
         """Download and decrypt an object from S3.
 
@@ -371,6 +513,8 @@ class S3EncryptionClient:
         Args:
             **kwargs: Arguments to pass to the S3 client's get_object method.
                       May include EncryptionContext if it was used during encryption.
+                      May include InstructionFileSuffix to override the default
+                      ".instruction" suffix for instruction file lookups.
 
         Returns:
             The response from the S3 client's get_object method with the Body
@@ -379,11 +523,29 @@ class S3EncryptionClient:
         Raises:
             S3EncryptionClientError: If decryption fails or the object is not properly encrypted.
         """
+        # Ranged gets are not supported — decryption requires the full ciphertext.
+        if "Range" in kwargs:
+            raise S3EncryptionClientError(
+                "Ranged gets are currently not supported by the S3 Encryption Client for Python."
+            )
+
         # Extract EncryptionContext if provided (not a standard S3 parameter)
         encryption_context = kwargs.pop("EncryptionContext", None)
+        _validate_encryption_context(encryption_context)
+        ##= specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
+        ##= type=implementation
+        ##% The S3EC SHOULD support providing a custom Instruction File suffix
+        ##% on GetObject requests, regardless of whether or not re-encryption is supported.
+
+        ##= specification/s3-encryption/data-format/metadata-strategy.md#instruction-file
+        ##= type=implementation
+        ##% The default Instruction File behavior uses the same S3 object key
+        ##% as its associated object suffixed with ".instruction".
+        instruction_file_suffix = kwargs.pop("InstructionFileSuffix", ".instruction")
 
         # Store encryption context in thread-local storage for the event handler
         setattr(self._plugin._context, _CTX_ENCRYPTION_CONTEXT, encryption_context)
+        setattr(self._plugin._context, _CTX_INSTRUCTION_FILE_SUFFIX, instruction_file_suffix)
         # Store wrapped client in thread-local storage for
         # the event handler to fetch instruction files
         setattr(self._plugin._context, _CTX_S3_CLIENT, self.wrapped_s3_client)
@@ -395,9 +557,16 @@ class S3EncryptionClient:
         except S3EncryptionClientError:
             # Re-raise our own exceptions without wrapping
             raise
+        except ClientError as e:
+            # Wrap S3 service errors (e.g., NoSuchKey) with context
+            raise S3EncryptionClientError(
+                f"Failed to retrieve and/or decrypt object: {str(e)}"
+            ) from e
         except Exception as e:
             # Wrap any unexpected errors during decryption
-            raise S3EncryptionClientError(f"Failed to decrypt object: {str(e)}") from e
+            raise S3EncryptionClientError(
+                f"Failed to retrieve and/or decrypt object: {str(e)}"
+            ) from e
         finally:
             # Clean up thread-local storage;
             # do not clean up the client as it is not thread local only

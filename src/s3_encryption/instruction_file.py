@@ -9,6 +9,9 @@ that contain encryption metadata for S3 objects.
 import json
 from typing import Any
 
+from botocore.exceptions import ClientError
+
+from ._utils import safe_get_dict
 from .exceptions import S3EncryptionClientError
 from .metadata import VALID_S3EC_METADATA_KEYS
 
@@ -44,7 +47,7 @@ def parse_instruction_file(instruction_data: bytes, key: str) -> dict[str, Any]:
     # Validate that it's a dictionary
     if not isinstance(metadata, dict):
         raise S3EncryptionClientError(
-            f"Instruction file must contain a JSON object, " f"got {type(metadata).__name__}: {key}"
+            f"Instruction file must contain a JSON object, got {type(metadata).__name__}: {key}"
         )
 
     # Validate that all keys are S3EC metadata keys
@@ -95,13 +98,19 @@ def fetch_instruction_file(s3_client, bucket: str, key: str) -> dict[str, Any]:
 
     try:
         response = s3_client.get_object(Bucket=bucket, Key=key)
+    except ClientError as e:
+        raise S3EncryptionClientError(
+            f"Exception encountered while fetching Instruction File. "
+            f"Ensure the object you are attempting to decrypt has been encrypted using the S3 Encryption Client. "
+            f"Instruction key: {key}"
+        ) from e
     finally:
         # Clear the flags after the call
         if hasattr(s3_client, "_s3ec_plugin_context"):
             s3_client._s3ec_plugin_context.instruction_file_mode = False
 
     # In plaintext mode, the event handler places parsed metadata in Metadata field
-    metadata = response.get("Metadata", {})
+    metadata = safe_get_dict(response, "Metadata")
 
     # Verify metadata is not empty
     if not metadata:

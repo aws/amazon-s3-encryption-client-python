@@ -124,7 +124,6 @@ class TestBufferedWithholdsUntilVerification:
 
 
 class TestDelayedAuthCBCDecryption:
-
     def test_roundtrip(self):
         plaintext = b"hello world, this is a CBC test!!"
         ciphertext, key, iv = _encrypt_cbc(plaintext)
@@ -242,7 +241,6 @@ class TestDelayedAuthCBCDecryption:
 
 
 class TestBufferedDecryptingStream:
-
     def test_full_read(self):
         plaintext = os.urandom(1024)
         ct, key, nonce = _encrypt_gcm(plaintext)
@@ -379,7 +377,6 @@ class TestBufferedDecryptingStream:
 
 
 class TestDelayedAuthGCMDecryption:
-
     def test_full_read(self):
         plaintext = os.urandom(1024)
         ct, key, nonce = _encrypt_gcm(plaintext)
@@ -511,7 +508,6 @@ EDGE_CASE_LENGTHS = [0, 1, 8, 15, 16, 17, 31, 32, 33, 47, 48, 49, 300]
 
 
 class TestEdgeCasePlaintextLengths:
-
     @pytest.mark.parametrize("length", EDGE_CASE_LENGTHS)
     def test_buffered_gcm(self, length):
         plaintext = os.urandom(length)

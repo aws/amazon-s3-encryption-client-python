@@ -16,10 +16,12 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.padding import PKCS7
 
+from ._utils import safe_get_dict
 from .buffered_decrypt import one_shot_decrypt
 from .decryptor import AesCbcDecryptor, AesGcmDecryptor
 from .exceptions import S3EncryptionClientError
 from .instruction_file import fetch_instruction_file
+from .instruction_file_config import InstructionFileConfig
 from .key_derivation import derive_keys, verify_commitment
 from .materials.crypto_materials_manager import AbstractCryptoMaterialsManager
 from .materials.encrypted_data_key import EncryptedDataKey
@@ -302,6 +304,7 @@ class GetEncryptedObjectPipeline:
     commitment_policy: CommitmentPolicy = field()
     s3_client: object = field(default=None)
     enable_legacy_unauthenticated_modes: bool = field(default=False)
+    instruction_file_config: InstructionFileConfig = field(factory=InstructionFileConfig)
 
     # Map content cipher metadata values to AlgorithmSuite
     _CONTENT_CIPHER_TO_ALGORITHM_SUITE = {
@@ -369,7 +372,7 @@ class GetEncryptedObjectPipeline:
         # Convert the metadata dictionary to an ObjectMetadata instance
         streaming_body: StreamingBody = response.get("Body")
         content_length = response.get("ContentLength")
-        encryption_metadata = response.get("Metadata", {})
+        encryption_metadata = safe_get_dict(response, "Metadata")
         metadata = ObjectMetadata.from_dict(encryption_metadata)
 
         # Use empty dict if encryption_context is None
@@ -378,6 +381,13 @@ class GetEncryptedObjectPipeline:
 
         # Check if we need to fetch instruction file
         if metadata.should_use_instruction_file():
+            if self.instruction_file_config.disable_get_object:
+                raise S3EncryptionClientError(
+                    "Exception encountered while fetching Instruction File. "
+                    "Ensure the object you are attempting to decrypt has been encrypted "
+                    "using the S3 Encryption Client and instruction files are enabled. "
+                    f"bucket: {bucket}\n key: {key}"
+                )
 
             if self.s3_client is None:
                 raise S3EncryptionClientError("s3_client required to fetch instruction file")
@@ -437,6 +447,30 @@ class GetEncryptedObjectPipeline:
         # Determine the algorithm suite from the metadata
         algorithm_suite = self._determine_algorithm_suite(metadata)
 
+        # Reject metadata that contains keys from multiple format versions.
+        # This prevents format confusion attacks where an attacker injects
+        # V2 keys via an instruction file to bypass V3 key-commitment verification.
+        if metadata.has_exclusive_key_collision():
+            raise S3EncryptionClientError(
+                "Object metadata contains keys from multiple format versions. "
+                "The object or its instruction file may have been tampered with."
+            )
+
+        # Also reject V2 format metadata that contains V3 content keys.
+        # In the instruction file injection scenario, the attacker replaces
+        # V3 EDK keys with V2 keys, but V3 content keys (x-amz-c, x-amz-d,
+        # x-amz-i) remain from the object metadata. This combination is
+        # never produced by legitimate encryption.
+        if metadata.is_v2_format() and (
+            metadata.content_cipher_v3 is not None
+            or metadata.key_commitment_v3 is not None
+            or metadata.message_id_v3 is not None
+        ):
+            raise S3EncryptionClientError(  # pragma: no cover — only reachable via instruction file merge; covered by TestInstructionFileFormatConfusion
+                "Object metadata contains V2 format keys alongside V3 content keys. "
+                "The object or its instruction file may have been tampered with."
+            )
+
         # Determine which format we're dealing with and get decryption materials
         if metadata.is_v1_format():
             dec_materials = self._decrypt_v1(metadata, encryption_context)
@@ -457,9 +491,7 @@ class GetEncryptedObjectPipeline:
         ##% [legacy unauthenticated algorithm suites](#legacy-decryption) is NOT enabled,
         ##% the S3EC MUST throw an error which details that client was
         ##% not configured to decrypt objects with ALG_AES_256_CBC_IV16_NO_KDF.
-        if (
-            algorithm_suite.is_legacy and not self.enable_legacy_unauthenticated_modes
-        ):  # noqa: SIM102
+        if algorithm_suite.is_legacy and not self.enable_legacy_unauthenticated_modes:  # noqa: SIM102
             ##= specification/s3-encryption/decryption.md#legacy-decryption
             ##= type=implementation
             ##% The S3EC MUST NOT decrypt objects encrypted using legacy unauthenticated algorithm suites
@@ -591,8 +623,9 @@ class GetEncryptedObjectPipeline:
         ##% When disabled the S3EC MUST NOT release plaintext from a stream which has not been authenticated.
         return one_shot_decrypt(streaming_body, decryptor)
 
+    @staticmethod
     def _decrypt_kc_gcm_streaming(
-        self, dec_materials, metadata, streaming_body, enable_delayed_authentication, content_length
+        dec_materials, metadata, streaming_body, enable_delayed_authentication, content_length
     ):
         """Decrypt content encrypted with ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY.
 
@@ -710,7 +743,13 @@ class GetEncryptedObjectPipeline:
 
         # Map V3 compressed wrapping algorithm to canonical key_provider_info
         raw_wrap_alg = metadata.encrypted_data_key_algorithm_v3 or "12"
-        wrap_alg = self._V3_WRAP_ALG_MAP.get(raw_wrap_alg, raw_wrap_alg)
+        wrap_alg = self._V3_WRAP_ALG_MAP.get(raw_wrap_alg)
+        if wrap_alg is None:
+            raise S3EncryptionClientError(
+                f"Unknown V3 wrapping algorithm: '{raw_wrap_alg}'. "
+                f"Valid values are: {list(self._V3_WRAP_ALG_MAP.keys())}. "
+                f"The object metadata may have been tampered with."
+            )
 
         encrypted_data_key = EncryptedDataKey(
             key_provider_id=b"S3Keyring",
@@ -727,8 +766,13 @@ class GetEncryptedObjectPipeline:
         stored_context = {}
         if wrap_alg == "kms+context":
             raw_ctx = metadata.encryption_context_v3
-        else:
+        elif wrap_alg in ("AES/GCM", "RSA-OAEP-SHA1"):
             raw_ctx = metadata.mat_desc_v3
+        else:
+            raise S3EncryptionClientError(  # pragma: no cover — defense in depth, unreachable
+                f"Unexpected V3 wrapping algorithm for context selection: '{wrap_alg}'. "
+                f"The object metadata may have been tampered with."
+            )
 
         if raw_ctx is not None:
             if isinstance(raw_ctx, dict):

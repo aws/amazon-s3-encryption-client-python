@@ -90,3 +90,19 @@ class TestEncryptionMaterialsIntegration:
         assert result.encryption_context == {"key1": "value1"}
         assert result.encrypted_data_key is not None
         assert result.plaintext_data_key is not None
+
+    def test_cmm_get_encryption_materials_with_none_encryption_context(self):
+        """DefaultCryptoMaterialsManager handles None encryption_context in dict request."""
+        keyring = MagicMock()
+        keyring.on_encrypt.return_value = EncryptionMaterials(
+            encryption_context={},
+            plaintext_data_key=b"key",
+        )
+        cmm = DefaultCryptoMaterialsManager(keyring=keyring)
+
+        # Pass a dict with None encryption_context — should not raise TypeError
+        cmm.get_encryption_materials({"encryption_context": None})
+
+        # Keyring should receive empty dict, not None
+        call_args = keyring.on_encrypt.call_args[0][0]
+        assert call_args.encryption_context == {}

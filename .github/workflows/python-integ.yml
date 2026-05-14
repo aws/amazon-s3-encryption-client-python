@@ -4,14 +4,19 @@ on:
   workflow_call:
     inputs:
       python-version:
-        description: "Python version to use"
+        description: "Python version to use (ignored when matrix is used)"
         default: "3.11"
         required: false
         type: string
 
 jobs:
   python-integ:
-    runs-on: macos-14-large
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     permissions:
       id-token: write
       contents: read
@@ -25,14 +30,16 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: ${{ inputs.python-version || '3.11' }}
-      
+          python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
+
       - name: Cache uv dependencies
         uses: actions/cache@v5
         with:
           path: ~/.cache/uv
-          key: ${{ runner.os }}-uv-${{ hashFiles('./test-server/python-v3-server/**/pyproject.toml') }}
+          key: ${{ runner.os }}-uv-py${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
           restore-keys: |
+            ${{ runner.os }}-uv-py${{ matrix.python-version }}-
             ${{ runner.os }}-uv-
 
       - name: Install Uv
@@ -48,31 +55,29 @@ jobs:
           aws-region: us-west-2
 
       - name: Run unit tests
-        run: make test-unit
+        run: uv run pytest test/ --ignore=test/integration/ --ignore=test/performance/ --verbose --cov=src/s3_encryption --cov-report=term-missing --cov-report=html:coverage-unit --cov-fail-under=89
 
       - name: Run integration tests
-        run: make test-integration
+        run: uv run pytest test/integration/ --verbose --cov=src/s3_encryption --cov-report=term-missing --cov-report=html:coverage-integ --cov-fail-under=83
         env:
           CI_S3_BUCKET: ${{ vars.CI_S3_BUCKET }}
           CI_KMS_KEY_ALIAS: ${{ vars.CI_KMS_KEY_ALIAS }}
+          CI_MRK_KEY_ID_PRIMARY: ${{ vars.CI_MRK_KEY_ID_PRIMARY }}
+          CI_MRK_KEY_ID_REPLICA: ${{ vars.CI_MRK_KEY_ID_REPLICA }}
 
-      - name: Generate coverage HTML report
-        if: always()
-        run: uv run coverage html -d coverage-report
+      - name: Run examples
+        run: make test-examples
 
-      - name: Upload coverage report
+      - name: Upload unit test coverage report
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: coverage-report
-          path: coverage-report/
+          name: coverage-unit-py${{ matrix.python-version }}-${{ matrix.os }}
+          path: coverage-unit/
 
-      - name: Check coverage threshold
-        run: |
-          THRESHOLD=93
-          ACTUAL=$(uv run coverage report --format=total)
-          echo "Coverage: ${ACTUAL}% (threshold: ${THRESHOLD}%)"
-          if [ "$ACTUAL" -gt "$THRESHOLD" ]; then
-            echo "::warning::Coverage is ${ACTUAL}%, consider updating --fail-under to ${ACTUAL} in python-integ.yml"
-          fi
-          uv run coverage report --fail-under=$THRESHOLD
+      - name: Upload integration test coverage report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-integ-py${{ matrix.python-version }}-${{ matrix.os }}
+          path: coverage-integ/
