@@ -1,4 +1,4 @@
-# Amazon S3 Encryption Client Python
+# Amazon S3 Encryption Client for Python
 
 This library provides an S3 client that supports client-side encryption.
 
@@ -6,7 +6,7 @@ This library provides an S3 client that supports client-side encryption.
 
 ### Prerequisites
 
-- Python 3.11 or higher
+- Python 3.10 or higher
 - [uv](https://github.com/astral-sh/uv) for package and project management
 
 ### Setup
@@ -19,7 +19,7 @@ make install
 
 ### Testing
 
-Run all tests:
+Run all tests (unit + integration + examples):
 
 ```bash
 make test
@@ -39,47 +39,38 @@ make test-integration
 
 ### Code Quality
 
-This project uses [Black](https://black.readthedocs.io/) for code formatting, [isort](https://pycqa.github.io/isort/) for import sorting, and [Flake8](https://flake8.pycqa.org/) for linting.
+This project uses [Ruff](https://docs.astral.sh/ruff/) for linting and formatting.
 
-Check code quality:
+Check formatting:
+
+```bash
+make format-check
+```
+
+Run linter:
 
 ```bash
 make lint
 ```
 
-Format code with Black and isort:
+Format code and auto-fix lint issues:
 
 ```bash
 make format
 ```
 
-Clean up cache files:
+### Integration Test Resources
 
-```bash
-make clean
-```
+Integration tests require AWS credentials and the following resources. The tests use environment variables to override CI defaults:
 
-#### Linting Standards
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `CI_S3_BUCKET` | S3 bucket for read/write tests | `s3ec-python-github-test-bucket` |
+| `CI_AWS_REGION` | Primary AWS region | `us-west-2` |
+| `CI_KMS_KEY_ALIAS` | KMS key ARN or alias for encryption | `arn:aws:kms:us-west-2:370957321024:alias/S3EC-Python-Github-KMS-Key` |
+| `CI_MRK_KEY_ID_PRIMARY` | Multi-region key ARN (primary region) | `arn:aws:kms:us-west-2:370957321024:key/mrk-cea4cf67c6a046ba829f61f69db5c191` |
+| `CI_MRK_KEY_ID_REPLICA` | Multi-region key ARN (replica region) | `arn:aws:kms:us-east-1:370957321024:key/mrk-cea4cf67c6a046ba829f61f69db5c191` |
+| `CI_S3_STATIC_TEST_BUCKET` | Bucket with pre-existing test objects for instruction file tests | `s3ec-static-test-objects` |
+| `CI_KMS_KEY_STATIC_TESTS` | KMS key used for static test objects | `arn:aws:kms:us-west-2:370957321024:key/a3889cd9-99eb-4138-a93a-aea9d52ec2ef` |
 
-The project is configured with Black, isort, and Flake8 to enforce consistent code style and quality. Currently, Flake8 is set to report issues but not fail the build, allowing for gradual adoption of linting standards.
-
-Common Flake8 issues in the codebase include:
-
-- **Missing docstrings** (D100-D104): Add docstrings to modules, classes, and functions
-- **Docstring formatting** (D200, D212, D415): Follow Google docstring style
-- **Line length** (E501): Keep lines under 100 characters
-- **Unused imports** (F401): Remove unused imports
-- **Unused variables** (F841): Remove or use assigned variables
-- **Code complexity** (C901): Refactor complex functions
-
-When contributing to this project, please try to fix linting issues in the files you modify.
-
-### Pull Request Command
-While this project is in development,
-it is useful to use `gh pr` to create the pull-requests,
-so they can be associated with the GitHub project.
-
-```sh
-gh pr create -B staging -p "S3EC-Python" -f 
-```
-
+To run integration tests locally, configure AWS credentials with access to these resources (or your own equivalents) and set the environment variables accordingly.
