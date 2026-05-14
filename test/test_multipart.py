@@ -1,8 +1,9 @@
 # Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 """Unit tests for multipart upload encryption pipeline and client methods."""
+
 import os
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -11,7 +12,6 @@ from s3_encryption.exceptions import S3EncryptionClientError
 from s3_encryption.materials.materials import (
     AlgorithmSuite,
     CommitmentPolicy,
-    EncryptionMaterials,
 )
 from s3_encryption.pipelines import MultipartUploadPipeline
 
@@ -55,10 +55,12 @@ def _make_client(algorithm_suite=None, commitment_policy=None):
 class TestMultipartUploadPipeline:
     """Unit tests for the MultipartUploadPipeline cipher logic."""
 
-    @pytest.fixture(params=[
-        AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
-        AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
-    ])
+    @pytest.fixture(
+        params=[
+            AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+            AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+        ]
+    )
     def pipeline(self, request):
         from s3_encryption.materials.crypto_materials_manager import DefaultCryptoMaterialsManager
 
@@ -104,7 +106,7 @@ class TestMultipartUploadPipeline:
 
     def test_string_body_converted(self, pipeline):
         ct = pipeline.encrypt_part(1, "hello", is_last=True)
-        assert len(ct) == len("hello".encode()) + 16
+        assert len(ct) == len(b"hello") + 16
 
 
 class TestS3EncryptionClientMultipart:
@@ -140,7 +142,12 @@ class TestS3EncryptionClientMultipart:
 
         s3ec.create_multipart_upload(Bucket="bucket", Key="key")
         resp = s3ec.upload_part(
-            Bucket="bucket", Key="key", UploadId="uid-1", PartNumber=1, Body=b"data", IsLastPart=True
+            Bucket="bucket",
+            Key="key",
+            UploadId="uid-1",
+            PartNumber=1,
+            Body=b"data",
+            IsLastPart=True,
         )
 
         assert resp["ETag"] == '"abc123"'
@@ -178,7 +185,12 @@ class TestS3EncryptionClientMultipart:
 
         s3ec.create_multipart_upload(Bucket="bucket", Key="key")
         s3ec.upload_part(
-            Bucket="bucket", Key="key", UploadId="uid-3", PartNumber=1, Body=b"x" * 1024, IsLastPart=True
+            Bucket="bucket",
+            Key="key",
+            UploadId="uid-3",
+            PartNumber=1,
+            Body=b"x" * 1024,
+            IsLastPart=True,
         )
         resp = s3ec.complete_multipart_upload(
             Bucket="bucket",
@@ -224,9 +236,7 @@ class TestS3EncryptionClientMultipart:
             "Key": "key",
         }
 
-        s3ec.create_multipart_upload(
-            Bucket="bucket", Key="key", EncryptionContext={"env": "test"}
-        )
+        s3ec.create_multipart_upload(Bucket="bucket", Key="key", EncryptionContext={"env": "test"})
 
         # EncryptionContext should not be passed to S3 (it's consumed by the pipeline)
         call_kwargs = s3ec.wrapped_s3_client.create_multipart_upload.call_args[1]
@@ -286,7 +296,9 @@ class TestUploadFileAndFileobj:
         f = tmp_path / "large.bin"
         f.write_bytes(os.urandom(2048))
 
-        s3ec.upload_file(str(f), "bucket", "key", multipart_threshold=1024, multipart_chunksize=1024)
+        s3ec.upload_file(
+            str(f), "bucket", "key", multipart_threshold=1024, multipart_chunksize=1024
+        )
 
         s3ec.wrapped_s3_client.create_multipart_upload.assert_called_once()
         assert s3ec.wrapped_s3_client.upload_part.call_count >= 2
