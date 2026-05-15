@@ -21,9 +21,9 @@ This table describes the current support status of each major version of the Ama
       - Current status
       - Next status
       - Next status date
-    * - 3.x
-      - Pre-Release
+    * - 4.x
       - Generally Available
+      -
       -
 
 .. _AWS SDKs and Tools Maintenance Policy: https://docs.aws.amazon.com/sdkref/latest/guide/maint-policy.html#version-life-cycle
