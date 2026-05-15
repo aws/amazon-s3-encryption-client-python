@@ -2,6 +2,32 @@
 
 This library provides an S3 client that supports client-side encryption. For more information and detailed instructions for how to use this library, refer to the [Amazon S3 Encryption Client Developer Guide](https://docs.aws.amazon.com/amazon-s3-encryption-client/latest/developerguide/python.html).
 
+## Getting Started
+
+Requires Python 3.10 or greater. An AWS account is required; standard S3 and KMS charges apply.
+
+The S3 Encryption Client wraps a standard boto3 S3 client and uses a KMS keyring to manage data key encryption. Objects are encrypted before upload and decrypted after download transparently. By default, the client uses AES-GCM with key commitment for content encryption.
+
+```python
+import boto3
+from s3_encryption import S3EncryptionClient, S3EncryptionClientConfig
+from s3_encryption.materials.kms_keyring import KmsKeyring
+
+kms_client = boto3.client("kms", region_name="us-west-2")
+keyring = KmsKeyring(kms_client, "arn:aws:kms:us-west-2:123456789012:alias/my-key")
+
+s3_client = boto3.client("s3")
+config = S3EncryptionClientConfig(keyring=keyring)
+s3ec = S3EncryptionClient(s3_client, config)
+
+# Encrypt and upload
+s3ec.put_object(Bucket="my-bucket", Key="my-object", Body=b"secret data")
+
+# Download and decrypt
+response = s3ec.get_object(Bucket="my-bucket", Key="my-object")
+plaintext = response["Body"].read()
+```
+
 ## Development
 
 ### Prerequisites
