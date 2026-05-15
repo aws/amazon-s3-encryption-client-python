@@ -9,6 +9,7 @@ and decrypting objects after they are retrieved from S3.
 import base64
 import json
 import os
+import threading
 
 from attrs import define, field
 from botocore.response import StreamingBody
@@ -171,22 +172,21 @@ class PutEncryptedObjectPipeline:
         return encrypted_data, metadata.to_dict()
 
 
+##= specification/s3-encryption/client.md#optional-api-operations
+##= type=implementation
+##% UploadPart MUST encrypt each part.
+##= specification/s3-encryption/client.md#optional-api-operations
+##= type=implementation
+##% Each part MUST be encrypted in sequence.
+##= specification/s3-encryption/client.md#optional-api-operations
+##= type=implementation
+##% Each part MUST be encrypted using the same cipher instance for each part.
 @define
 class MultipartUploadPipeline:
     """Pipeline for encrypting multipart uploads.
 
     Manages a single AES-GCM cipher instance shared across all parts.
     Parts MUST be uploaded in sequence (1, 2, 3, ...).
-
-    ##= specification/s3-encryption/client.md#optional-api-operations
-    ##= type=implementation
-    ##% UploadPart MUST encrypt each part.
-    ##= specification/s3-encryption/client.md#optional-api-operations
-    ##= type=implementation
-    ##% Each part MUST be encrypted in sequence.
-    ##= specification/s3-encryption/client.md#optional-api-operations
-    ##= type=implementation
-    ##% Each part MUST be encrypted using the same cipher instance for each part.
     """
 
     cmm: AbstractCryptoMaterialsManager = field()
@@ -196,6 +196,11 @@ class MultipartUploadPipeline:
     _metadata: dict = field(init=False, factory=dict)
     _next_part: int = field(init=False, default=1)
     _has_final_part_been_seen: bool = field(init=False, default=False)
+    _lock: threading.Lock = field(init=False, factory=threading.Lock)
+    # Cached ciphertext for the most recently encrypted part, enabling retries
+    # if the S3 upload_part call fails after encryption has already advanced.
+    _last_encrypted_part: int = field(init=False, default=0)
+    _last_encrypted_ciphertext: bytes | None = field(init=False, default=None)
 
     def __attrs_post_init__(self):
         """Obtain encryption materials and initialize the streaming cipher."""
@@ -263,6 +268,9 @@ class MultipartUploadPipeline:
     def encrypt_part(self, part_number, data, is_last=False):
         """Encrypt a single part. Parts must be sequential starting from 1.
 
+        If called with the same part_number as the most recently encrypted part,
+        returns the cached ciphertext (enabling retries after upload failures).
+
         Args:
             part_number: The 1-based part number.
             data: The plaintext bytes for this part.
@@ -271,25 +279,33 @@ class MultipartUploadPipeline:
         Returns:
             The encrypted ciphertext bytes for this part.
         """
-        if self._has_final_part_been_seen:
-            raise S3EncryptionClientError("Cannot encrypt more parts after the final part.")
-        if part_number != self._next_part:
-            raise S3EncryptionClientError(
-                f"Parts must be uploaded in sequence. Expected part {self._next_part}, "
-                f"got {part_number}."
-            )
-        if isinstance(data, str):
-            data = data.encode("utf-8")
-        self._next_part += 1
+        with self._lock:
+            # Allow retry of the last encrypted part
+            if part_number == self._last_encrypted_part:
+                return self._last_encrypted_ciphertext
 
-        ciphertext = self._encryptor.update(data)
+            if self._has_final_part_been_seen:
+                raise S3EncryptionClientError("Cannot encrypt more parts after the final part.")
+            if part_number != self._next_part:
+                raise S3EncryptionClientError(
+                    f"Parts must be uploaded in sequence. Expected part {self._next_part}, "
+                    f"got {part_number}."
+                )
+            if isinstance(data, str):
+                data = data.encode("utf-8")
+            self._next_part += 1
 
-        if is_last:
-            self._encryptor.finalize()
-            ciphertext += self._encryptor.tag
-            self._has_final_part_been_seen = True
+            ciphertext = self._encryptor.update(data)
 
-        return ciphertext
+            if is_last:
+                self._encryptor.finalize()
+                ciphertext += self._encryptor.tag
+                self._has_final_part_been_seen = True
+
+            self._last_encrypted_part = part_number
+            self._last_encrypted_ciphertext = ciphertext
+
+            return ciphertext
 
 
 @define

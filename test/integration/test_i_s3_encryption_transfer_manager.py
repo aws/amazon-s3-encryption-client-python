@@ -287,3 +287,117 @@ def test_upload_file_decrypt_delayed_auth(algorithm_suite, commitment_policy):
         assert result == data
     finally:
         os.unlink(tmp)
+
+
+# ---------------------------------------------------------------------------
+# Parameter validation: zero/negative threshold and chunksize
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_upload_file_zero_threshold_raises(algorithm_suite, commitment_policy, tmp_path):
+    """upload_file with multipart_threshold=0 must raise."""
+    from s3_encryption.exceptions import S3EncryptionClientError
+
+    s3ec = _make_client(algorithm_suite, commitment_policy)
+    f = tmp_path / "test.bin"
+    f.write_bytes(os.urandom(1024))
+
+    with pytest.raises(S3EncryptionClientError, match="multipart_threshold must be a positive"):
+        s3ec.upload_file(str(f), bucket, "unused-key", multipart_threshold=0)
+
+
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_upload_file_zero_chunksize_raises(algorithm_suite, commitment_policy, tmp_path):
+    """upload_file with multipart_chunksize=0 must raise."""
+    from s3_encryption.exceptions import S3EncryptionClientError
+
+    s3ec = _make_client(algorithm_suite, commitment_policy)
+    f = tmp_path / "test.bin"
+    f.write_bytes(os.urandom(1024))
+
+    with pytest.raises(S3EncryptionClientError, match="multipart_chunksize must be a positive"):
+        s3ec.upload_file(str(f), bucket, "unused-key", multipart_chunksize=0)
+
+
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_upload_fileobj_zero_chunksize_raises(algorithm_suite, commitment_policy):
+    """upload_fileobj with multipart_chunksize=0 must raise."""
+    from s3_encryption.exceptions import S3EncryptionClientError
+
+    s3ec = _make_client(algorithm_suite, commitment_policy)
+
+    with pytest.raises(S3EncryptionClientError, match="multipart_chunksize must be a positive"):
+        s3ec.upload_fileobj(io.BytesIO(b"data"), bucket, "unused-key", multipart_chunksize=0)
+
+
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_upload_file_chunksize_below_5mb_raises(algorithm_suite, commitment_policy, tmp_path):
+    """upload_file with chunksize below S3's 5 MB minimum must raise."""
+    from s3_encryption.exceptions import S3EncryptionClientError
+
+    s3ec = _make_client(algorithm_suite, commitment_policy)
+    f = tmp_path / "test.bin"
+    f.write_bytes(os.urandom(1024))
+
+    with pytest.raises(S3EncryptionClientError, match="at least.*5 MB"):
+        s3ec.upload_file(str(f), bucket, "unused-key", multipart_chunksize=1024 * 1024)
+
+
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_upload_fileobj_chunksize_below_5mb_raises(algorithm_suite, commitment_policy):
+    """upload_fileobj with chunksize below S3's 5 MB minimum must raise."""
+    from s3_encryption.exceptions import S3EncryptionClientError
+
+    s3ec = _make_client(algorithm_suite, commitment_policy)
+
+    with pytest.raises(S3EncryptionClientError, match="at least.*5 MB"):
+        s3ec.upload_fileobj(io.BytesIO(b"data"), bucket, "unused-key", multipart_chunksize=4 * ONE_MB)
+
+
+# ---------------------------------------------------------------------------
+# S3 parameters forwarded through upload_file to create_multipart_upload
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_upload_file_forwards_content_type(algorithm_suite, commitment_policy, tmp_path):
+    """upload_file must forward ContentType to the multipart upload."""
+    key = _unique_key("tm-content-type-")
+    data = os.urandom(9 * ONE_MB)
+    tmp = _write_temp_file(data)
+
+    try:
+        s3ec = _make_client(algorithm_suite, commitment_policy)
+        s3ec.upload_file(tmp, bucket, key, ContentType="application/octet-stream")
+
+        # Verify ContentType was set on the object
+        plain_s3 = boto3.client("s3")
+        head = plain_s3.head_object(Bucket=bucket, Key=key)
+        assert head["ContentType"] == "application/octet-stream"
+
+        # Verify data round-trips
+        assert s3ec.get_object(Bucket=bucket, Key=key)["Body"].read() == data
+    finally:
+        os.unlink(tmp)
+
+
+# ---------------------------------------------------------------------------
+# upload_fileobj does not close the caller's file object
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_upload_fileobj_does_not_close_caller_stream(algorithm_suite, commitment_policy):
+    """upload_fileobj must not close the caller's file-like object."""
+    key = _unique_key("tm-no-close-")
+    data = os.urandom(9 * ONE_MB)
+    buf = io.BytesIO(data)
+
+    s3ec = _make_client(algorithm_suite, commitment_policy)
+    s3ec.upload_fileobj(buf, bucket, key)
+
+    assert not buf.closed
+
+    # Verify the upload worked
+    assert s3ec.get_object(Bucket=bucket, Key=key)["Body"].read() == data

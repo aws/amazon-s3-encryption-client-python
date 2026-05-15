@@ -31,6 +31,7 @@ S3_METADATA_PREFIX = "x-amz-meta-"
 # Default multipart threshold and chunk size (same as boto3 defaults)
 _DEFAULT_MULTIPART_THRESHOLD = 8 * 1024 * 1024  # 8 MB
 _DEFAULT_MULTIPART_CHUNKSIZE = 8 * 1024 * 1024  # 8 MB
+_MIN_MULTIPART_PART_SIZE = 5 * 1024 * 1024  # 5 MB — S3 minimum for non-final parts
 
 # Thread-local context attribute names
 _CTX_ENCRYPTION_CONTEXT = "encryption_context"
@@ -580,7 +581,6 @@ class S3EncryptionClient:
     ##= specification/s3-encryption/client.md#optional-api-operations
     ##= type=implementation
     ##% CreateMultipartUpload MAY be implemented by the S3EC.
-    ##% If implemented, CreateMultipartUpload MUST initiate a multipart upload.
     def create_multipart_upload(self, **kwargs):
         """Initiate an encrypted multipart upload.
 
@@ -596,6 +596,7 @@ class S3EncryptionClient:
             The response from S3 create_multipart_upload.
         """
         encryption_context = kwargs.pop("EncryptionContext", None)
+        _validate_encryption_context(encryption_context)
 
         pipeline = MultipartUploadPipeline(
             cmm=self.config.cmm,
@@ -604,10 +605,13 @@ class S3EncryptionClient:
         )
 
         # Merge encryption metadata into user-provided Metadata
-        user_metadata = kwargs.get("Metadata", {})
+        user_metadata = dict(kwargs.get("Metadata", {}))
         user_metadata.update(pipeline.metadata)
         kwargs["Metadata"] = user_metadata
 
+        ##= specification/s3-encryption/client.md#optional-api-operations
+        ##= type=implementation
+        ##% If implemented, CreateMultipartUpload MUST initiate a multipart upload.
         try:
             response = self.wrapped_s3_client.create_multipart_upload(**kwargs)
         except Exception as e:
@@ -666,13 +670,8 @@ class S3EncryptionClient:
         except Exception as e:
             raise S3EncryptionClientError(f"Failed to encrypt part {part_number}: {e}") from e
 
-        return self.wrapped_s3_client.upload_part(
-            Bucket=kwargs["Bucket"],
-            Key=kwargs["Key"],
-            UploadId=upload_id,
-            PartNumber=part_number,
-            Body=ciphertext,
-        )
+        kwargs["Body"] = ciphertext
+        return self.wrapped_s3_client.upload_part(**kwargs)
 
     ##= specification/s3-encryption/client.md#optional-api-operations
     ##= type=implementation
@@ -705,14 +704,15 @@ class S3EncryptionClient:
             )
 
         try:
-            return self.wrapped_s3_client.complete_multipart_upload(**kwargs)
+            response = self.wrapped_s3_client.complete_multipart_upload(**kwargs)
         except S3EncryptionClientError:
             raise
         except Exception as e:
             raise S3EncryptionClientError(f"Failed to complete multipart upload: {e}") from e
-        finally:
+        else:
             with self._multipart_lock:
                 self._multipart_uploads.pop(upload_id, None)
+            return response
 
     ##= specification/s3-encryption/client.md#optional-api-operations
     ##= type=implementation
@@ -748,8 +748,17 @@ class S3EncryptionClient:
             multipart_chunksize: Size of each part (default 8MB).
             **kwargs: Additional arguments (e.g. EncryptionContext, Metadata).
         """
-        threshold = multipart_threshold or _DEFAULT_MULTIPART_THRESHOLD
-        chunksize = multipart_chunksize or _DEFAULT_MULTIPART_CHUNKSIZE
+        threshold = _DEFAULT_MULTIPART_THRESHOLD if multipart_threshold is None else multipart_threshold
+        chunksize = _DEFAULT_MULTIPART_CHUNKSIZE if multipart_chunksize is None else multipart_chunksize
+        if threshold <= 0:
+            raise S3EncryptionClientError("multipart_threshold must be a positive integer.")
+        if chunksize <= 0:
+            raise S3EncryptionClientError("multipart_chunksize must be a positive integer.")
+        if chunksize < _MIN_MULTIPART_PART_SIZE:
+            raise S3EncryptionClientError(
+                f"multipart_chunksize must be at least {_MIN_MULTIPART_PART_SIZE} bytes (5 MB). "
+                f"S3 requires all non-final parts to be at least 5 MB."
+            )
         file_size = os.path.getsize(filename)
 
         if file_size < threshold:
@@ -760,11 +769,14 @@ class S3EncryptionClient:
                 return self.put_object(**kwargs)
 
         return self._multipart_upload_from_readable(
-            open(filename, "rb"), bucket, key, chunksize, **kwargs
+            open(filename, "rb"), bucket, key, chunksize, owns_readable=True, **kwargs
         )
 
     def upload_fileobj(self, fileobj, bucket, key, multipart_chunksize=None, **kwargs):
         """Encrypt and upload a file-like object to S3 via multipart upload.
+
+        The caller retains ownership of fileobj — it will not be closed
+        by this method.
 
         Args:
             fileobj: A file-like object with a read() method.
@@ -773,16 +785,40 @@ class S3EncryptionClient:
             multipart_chunksize: Size of each part (default 8MB).
             **kwargs: Additional arguments (e.g. EncryptionContext, Metadata).
         """
-        chunksize = multipart_chunksize or _DEFAULT_MULTIPART_CHUNKSIZE
-        return self._multipart_upload_from_readable(fileobj, bucket, key, chunksize, **kwargs)
+        chunksize = _DEFAULT_MULTIPART_CHUNKSIZE if multipart_chunksize is None else multipart_chunksize
+        if chunksize <= 0:
+            raise S3EncryptionClientError("multipart_chunksize must be a positive integer.")
+        if chunksize < _MIN_MULTIPART_PART_SIZE:
+            raise S3EncryptionClientError(
+                f"multipart_chunksize must be at least {_MIN_MULTIPART_PART_SIZE} bytes (5 MB). "
+                f"S3 requires all non-final parts to be at least 5 MB."
+            )
+        return self._multipart_upload_from_readable(
+            fileobj, bucket, key, chunksize, owns_readable=False, **kwargs
+        )
 
-    def _multipart_upload_from_readable(self, readable, bucket, key, chunksize, **kwargs):
-        """Perform an encrypted multipart upload from a readable source."""
+    def _multipart_upload_from_readable(
+        self, readable, bucket, key, chunksize, *, owns_readable=False, **kwargs
+    ):
+        """Perform an encrypted multipart upload from a readable source.
+
+        Args:
+            readable: File-like object to read from.
+            bucket: Target S3 bucket.
+            key: Target S3 object key.
+            chunksize: Size of each part in bytes.
+            owns_readable: If True, close readable when done. If False,
+                the caller is responsible for closing it.
+            **kwargs: Additional S3 parameters forwarded to create_multipart_upload.
+        """
+        # EncryptionContext is consumed by our pipeline, not S3
         create_kwargs = {"Bucket": bucket, "Key": key}
         if "EncryptionContext" in kwargs:
             create_kwargs["EncryptionContext"] = kwargs.pop("EncryptionContext")
         if "Metadata" in kwargs:
             create_kwargs["Metadata"] = kwargs.pop("Metadata")
+        # Forward remaining kwargs (ACL, ContentType, Tagging, etc.) to create_multipart_upload
+        create_kwargs.update(kwargs)
 
         create_resp = self.create_multipart_upload(**create_kwargs)
         upload_id = create_resp["UploadId"]
@@ -817,5 +853,5 @@ class S3EncryptionClient:
             self.abort_multipart_upload(Bucket=bucket, Key=key, UploadId=upload_id)
             raise
         finally:
-            if hasattr(readable, "close"):
+            if owns_readable and hasattr(readable, "close"):
                 readable.close()

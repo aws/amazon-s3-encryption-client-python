@@ -659,3 +659,310 @@ def test_multipart_many_parts(algorithm_suite, commitment_policy):
 
     response = s3ec.get_object(Bucket=bucket, Key=key)
     assert response["Body"].read() == expected
+
+
+# ---------------------------------------------------------------------------
+# Non-ASCII encryption context rejected on multipart
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_multipart_non_ascii_encryption_context_rejected(algorithm_suite, commitment_policy):
+    """Non-ASCII encryption context must be rejected on create_multipart_upload."""
+    key = _unique_key("mpu-non-ascii-ec-")
+    non_ascii_contexts = [
+        {"department": "ingeniería"},
+        {"部門": "engineering"},
+        {"emoji": "🔑"},
+    ]
+
+    s3ec = _make_client(algorithm_suite, commitment_policy)
+
+    for ec in non_ascii_contexts:
+        with pytest.raises(S3EncryptionClientError, match="US-ASCII"):
+            s3ec.create_multipart_upload(Bucket=bucket, Key=key, EncryptionContext=ec)
+
+
+# ---------------------------------------------------------------------------
+# Caller metadata dict not mutated
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_multipart_caller_metadata_not_mutated(algorithm_suite, commitment_policy):
+    """create_multipart_upload must not mutate the caller's Metadata dict."""
+    key = _unique_key("mpu-no-mutate-")
+    caller_metadata = {"author": "test"}
+    original_keys = set(caller_metadata.keys())
+
+    s3ec = _make_client(algorithm_suite, commitment_policy)
+
+    create_resp = s3ec.create_multipart_upload(
+        Bucket=bucket, Key=key, Metadata=caller_metadata
+    )
+    upload_id = create_resp["UploadId"]
+
+    # Clean up
+    s3ec.abort_multipart_upload(Bucket=bucket, Key=key, UploadId=upload_id)
+
+    assert set(caller_metadata.keys()) == original_keys
+
+
+# ---------------------------------------------------------------------------
+# Per-upload lock does not block independent uploads
+# ---------------------------------------------------------------------------
+
+
+def test_per_upload_lock_independent_uploads():
+    """Per-upload locks must not block concurrent uploads to different objects."""
+    import threading
+
+    s3ec = _make_client(
+        AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+        CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+    )
+
+    barrier = threading.Barrier(2)
+    results = {}
+    errors = []
+
+    def do_upload(thread_id):
+        try:
+            key = _unique_key(f"mpu-lock-{thread_id}-")
+            data = os.urandom(FIVE_MB + 512)
+
+            create_resp = s3ec.create_multipart_upload(Bucket=bucket, Key=key)
+            upload_id = create_resp["UploadId"]
+
+            try:
+                # Sync so both threads call upload_part simultaneously
+                barrier.wait(timeout=30)
+
+                resp1 = s3ec.upload_part(
+                    Bucket=bucket,
+                    Key=key,
+                    UploadId=upload_id,
+                    PartNumber=1,
+                    Body=data[:FIVE_MB],
+                )
+
+                barrier.wait(timeout=30)
+
+                resp2 = s3ec.upload_part(
+                    Bucket=bucket,
+                    Key=key,
+                    UploadId=upload_id,
+                    PartNumber=2,
+                    Body=data[FIVE_MB:],
+                    IsLastPart=True,
+                )
+
+                s3ec.complete_multipart_upload(
+                    Bucket=bucket,
+                    Key=key,
+                    UploadId=upload_id,
+                    MultipartUpload={
+                        "Parts": [
+                            {"PartNumber": 1, "ETag": resp1["ETag"]},
+                            {"PartNumber": 2, "ETag": resp2["ETag"]},
+                        ]
+                    },
+                )
+            except Exception:
+                s3ec.abort_multipart_upload(Bucket=bucket, Key=key, UploadId=upload_id)
+                raise
+
+            response = s3ec.get_object(Bucket=bucket, Key=key)
+            assert response["Body"].read() == data
+            results[thread_id] = True
+
+        except Exception as e:
+            errors.append(f"Thread {thread_id}: {e}")
+
+    t1 = threading.Thread(target=do_upload, args=(0,))
+    t2 = threading.Thread(target=do_upload, args=(1,))
+    t1.start()
+    t2.start()
+    t1.join(timeout=120)
+    t2.join(timeout=120)
+
+    if errors:
+        raise AssertionError(
+            f"Per-upload lock test failed:\n" + "\n".join(f"  - {e}" for e in errors)
+        )
+    assert len(results) == 2
+
+
+# ---------------------------------------------------------------------------
+# Extra kwargs forwarded through upload_part
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_upload_part_forwards_expected_bucket_owner(algorithm_suite, commitment_policy):
+    """upload_part must forward ExpectedBucketOwner to S3 without error."""
+    key = _unique_key("mpu-fwd-kwargs-")
+    data = os.urandom(FIVE_MB + 512)
+
+    s3ec = _make_client(algorithm_suite, commitment_policy)
+
+    # Get the account ID that owns the bucket (same account we're authed as)
+    sts = boto3.client("sts")
+    account_id = sts.get_caller_identity()["Account"]
+
+    create_resp = s3ec.create_multipart_upload(Bucket=bucket, Key=key)
+    upload_id = create_resp["UploadId"]
+
+    try:
+        resp1 = s3ec.upload_part(
+            Bucket=bucket,
+            Key=key,
+            UploadId=upload_id,
+            PartNumber=1,
+            Body=data[:FIVE_MB],
+            ExpectedBucketOwner=account_id,
+        )
+        resp2 = s3ec.upload_part(
+            Bucket=bucket,
+            Key=key,
+            UploadId=upload_id,
+            PartNumber=2,
+            Body=data[FIVE_MB:],
+            IsLastPart=True,
+            ExpectedBucketOwner=account_id,
+        )
+
+        s3ec.complete_multipart_upload(
+            Bucket=bucket,
+            Key=key,
+            UploadId=upload_id,
+            MultipartUpload={
+                "Parts": [
+                    {"PartNumber": 1, "ETag": resp1["ETag"]},
+                    {"PartNumber": 2, "ETag": resp2["ETag"]},
+                ]
+            },
+        )
+    except Exception:
+        s3ec.abort_multipart_upload(Bucket=bucket, Key=key, UploadId=upload_id)
+        raise
+
+    response = s3ec.get_object(Bucket=bucket, Key=key)
+    assert response["Body"].read() == data
+
+
+# ---------------------------------------------------------------------------
+# Complete failure preserves state for retry
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_complete_retryable_after_failure(algorithm_suite, commitment_policy):
+    """If complete_multipart_upload fails, the upload can be retried."""
+    key = _unique_key("mpu-retry-complete-")
+    data = os.urandom(FIVE_MB + 512)
+
+    s3ec = _make_client(algorithm_suite, commitment_policy)
+
+    create_resp = s3ec.create_multipart_upload(Bucket=bucket, Key=key)
+    upload_id = create_resp["UploadId"]
+
+    try:
+        resp1 = s3ec.upload_part(
+            Bucket=bucket, Key=key, UploadId=upload_id, PartNumber=1, Body=data[:FIVE_MB]
+        )
+        resp2 = s3ec.upload_part(
+            Bucket=bucket,
+            Key=key,
+            UploadId=upload_id,
+            PartNumber=2,
+            Body=data[FIVE_MB:],
+            IsLastPart=True,
+        )
+
+        parts = [
+            {"PartNumber": 1, "ETag": resp1["ETag"]},
+            {"PartNumber": 2, "ETag": resp2["ETag"]},
+        ]
+
+        # First attempt: deliberately pass bad parts to trigger S3 error
+        try:
+            s3ec.complete_multipart_upload(
+                Bucket=bucket,
+                Key=key,
+                UploadId=upload_id,
+                MultipartUpload={"Parts": [{"PartNumber": 99, "ETag": '"bogus"'}]},
+            )
+        except S3EncryptionClientError:
+            pass  # Expected failure
+
+        # Retry with correct parts should succeed (state preserved)
+        s3ec.complete_multipart_upload(
+            Bucket=bucket,
+            Key=key,
+            UploadId=upload_id,
+            MultipartUpload={"Parts": parts},
+        )
+    except Exception:
+        s3ec.abort_multipart_upload(Bucket=bucket, Key=key, UploadId=upload_id)
+        raise
+
+    response = s3ec.get_object(Bucket=bucket, Key=key)
+    assert response["Body"].read() == data
+
+
+# ---------------------------------------------------------------------------
+# Retry upload_part with same part number
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
+def test_upload_part_retry_same_part_number(algorithm_suite, commitment_policy):
+    """Calling upload_part twice with the same part number returns cached ciphertext and decrypts."""
+    key = _unique_key("mpu-retry-part-")
+    part1_data = os.urandom(FIVE_MB)
+    part2_data = os.urandom(1024)
+    expected = part1_data + part2_data
+
+    s3ec = _make_client(algorithm_suite, commitment_policy)
+
+    create_resp = s3ec.create_multipart_upload(Bucket=bucket, Key=key)
+    upload_id = create_resp["UploadId"]
+
+    try:
+        # Upload part 1 twice (simulating a retry after transient failure)
+        resp1_first = s3ec.upload_part(
+            Bucket=bucket, Key=key, UploadId=upload_id, PartNumber=1, Body=part1_data
+        )
+        resp1_retry = s3ec.upload_part(
+            Bucket=bucket, Key=key, UploadId=upload_id, PartNumber=1, Body=part1_data
+        )
+        # Both should produce the same ETag (same ciphertext uploaded)
+        assert resp1_first["ETag"] == resp1_retry["ETag"]
+
+        resp2 = s3ec.upload_part(
+            Bucket=bucket,
+            Key=key,
+            UploadId=upload_id,
+            PartNumber=2,
+            Body=part2_data,
+            IsLastPart=True,
+        )
+
+        s3ec.complete_multipart_upload(
+            Bucket=bucket,
+            Key=key,
+            UploadId=upload_id,
+            MultipartUpload={
+                "Parts": [
+                    {"PartNumber": 1, "ETag": resp1_retry["ETag"]},
+                    {"PartNumber": 2, "ETag": resp2["ETag"]},
+                ]
+            },
+        )
+    except Exception:
+        s3ec.abort_multipart_upload(Bucket=bucket, Key=key, UploadId=upload_id)
+        raise
+
+    response = s3ec.get_object(Bucket=bucket, Key=key)
+    assert response["Body"].read() == expected

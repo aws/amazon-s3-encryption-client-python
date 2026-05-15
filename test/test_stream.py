@@ -228,8 +228,9 @@ class TestDelayedAuthCBCDecryption:
             )
             try:
                 stream.read()
-            except S3EncryptionClientSecurityError:
-                return  # test passes
+            except S3EncryptionClientSecurityError as e:
+                assert "Failed to decrypt CBC content" in str(e)
+                return
         pytest.fail("Wrong key did not produce CBC decryption error after 10 attempts")
 
     def test_empty_ciphertext(self):
