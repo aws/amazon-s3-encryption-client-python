@@ -697,9 +697,7 @@ def test_multipart_caller_metadata_not_mutated(algorithm_suite, commitment_polic
 
     s3ec = _make_client(algorithm_suite, commitment_policy)
 
-    create_resp = s3ec.create_multipart_upload(
-        Bucket=bucket, Key=key, Metadata=caller_metadata
-    )
+    create_resp = s3ec.create_multipart_upload(Bucket=bucket, Key=key, Metadata=caller_metadata)
     upload_id = create_resp["UploadId"]
 
     # Clean up
@@ -788,7 +786,7 @@ def test_per_upload_lock_independent_uploads():
 
     if errors:
         raise AssertionError(
-            f"Per-upload lock test failed:\n" + "\n".join(f"  - {e}" for e in errors)
+            "Per-upload lock test failed:\n" + "\n".join(f"  - {e}" for e in errors)
         )
     assert len(results) == 2
 

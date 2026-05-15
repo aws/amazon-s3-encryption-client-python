@@ -331,7 +331,11 @@ class TestUploadFileAndFileobj:
 
         with pytest.raises(Exception):
             s3ec.upload_file(
-                str(f), "bucket", "key", multipart_threshold=1024, multipart_chunksize=5 * 1024 * 1024
+                str(f),
+                "bucket",
+                "key",
+                multipart_threshold=1024,
+                multipart_chunksize=5 * 1024 * 1024,
             )
 
         s3ec.wrapped_s3_client.abort_multipart_upload.assert_called_once()
@@ -411,7 +415,6 @@ class TestMultipartEncryptionContextValidation:
         )
         assert resp["UploadId"] == "uid-ascii"
 
-
     def test_caller_metadata_dict_not_mutated(self):
         s3ec = _make_client()
         s3ec.wrapped_s3_client.create_multipart_upload.return_value = {
@@ -484,7 +487,6 @@ class TestMultipartPipelineLock:
             assert len(results[1]) == 1024
             assert len(results[2]) == 512 + 16
 
-
     def test_upload_part_forwards_extra_kwargs(self):
         """upload_part must forward extra S3 parameters (e.g. RequestPayer) to the S3 client."""
         s3ec = _make_client()
@@ -535,7 +537,6 @@ class TestMultipartPipelineLock:
 
         call_kwargs = s3ec.wrapped_s3_client.upload_part.call_args[1]
         assert "IsLastPart" not in call_kwargs
-
 
     def test_complete_failure_preserves_state_for_retry(self):
         """If complete_multipart_upload fails, the upload state is preserved for retry."""
@@ -633,7 +634,6 @@ class TestUploadFileValidation:
         with pytest.raises(S3EncryptionClientError, match="multipart_chunksize must be a positive"):
             s3ec.upload_fileobj(io.BytesIO(b"data"), "bucket", "key", multipart_chunksize=-1)
 
-
     def test_chunksize_below_5mb_raises(self, tmp_path):
         s3ec = _make_client()
         f = tmp_path / "test.bin"
@@ -646,8 +646,9 @@ class TestUploadFileValidation:
 
         s3ec = _make_client()
         with pytest.raises(S3EncryptionClientError, match="at least.*5 MB"):
-            s3ec.upload_fileobj(io.BytesIO(b"data"), "bucket", "key", multipart_chunksize=4 * 1024 * 1024)
-
+            s3ec.upload_fileobj(
+                io.BytesIO(b"data"), "bucket", "key", multipart_chunksize=4 * 1024 * 1024
+            )
 
     def test_upload_file_forwards_s3_params_to_create(self, tmp_path):
         """upload_file must forward S3 params like ContentType to create_multipart_upload."""

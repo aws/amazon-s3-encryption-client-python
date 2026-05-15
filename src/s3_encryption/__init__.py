@@ -748,8 +748,12 @@ class S3EncryptionClient:
             multipart_chunksize: Size of each part (default 8MB).
             **kwargs: Additional arguments (e.g. EncryptionContext, Metadata).
         """
-        threshold = _DEFAULT_MULTIPART_THRESHOLD if multipart_threshold is None else multipart_threshold
-        chunksize = _DEFAULT_MULTIPART_CHUNKSIZE if multipart_chunksize is None else multipart_chunksize
+        threshold = (
+            _DEFAULT_MULTIPART_THRESHOLD if multipart_threshold is None else multipart_threshold
+        )
+        chunksize = (
+            _DEFAULT_MULTIPART_CHUNKSIZE if multipart_chunksize is None else multipart_chunksize
+        )
         if threshold <= 0:
             raise S3EncryptionClientError("multipart_threshold must be a positive integer.")
         if chunksize <= 0:
@@ -785,7 +789,9 @@ class S3EncryptionClient:
             multipart_chunksize: Size of each part (default 8MB).
             **kwargs: Additional arguments (e.g. EncryptionContext, Metadata).
         """
-        chunksize = _DEFAULT_MULTIPART_CHUNKSIZE if multipart_chunksize is None else multipart_chunksize
+        chunksize = (
+            _DEFAULT_MULTIPART_CHUNKSIZE if multipart_chunksize is None else multipart_chunksize
+        )
         if chunksize <= 0:
             raise S3EncryptionClientError("multipart_chunksize must be a positive integer.")
         if chunksize < _MIN_MULTIPART_PART_SIZE:

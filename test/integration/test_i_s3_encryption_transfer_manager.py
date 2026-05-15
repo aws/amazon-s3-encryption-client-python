@@ -352,7 +352,9 @@ def test_upload_fileobj_chunksize_below_5mb_raises(algorithm_suite, commitment_p
     s3ec = _make_client(algorithm_suite, commitment_policy)
 
     with pytest.raises(S3EncryptionClientError, match="at least.*5 MB"):
-        s3ec.upload_fileobj(io.BytesIO(b"data"), bucket, "unused-key", multipart_chunksize=4 * ONE_MB)
+        s3ec.upload_fileobj(
+            io.BytesIO(b"data"), bucket, "unused-key", multipart_chunksize=4 * ONE_MB
+        )
 
 
 # ---------------------------------------------------------------------------
