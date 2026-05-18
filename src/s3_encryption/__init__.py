@@ -396,8 +396,8 @@ class S3EncryptionClient:
             The response from the S3 client's put_object method.
 
         Raises:
-            S3EncryptionClientError: Any problem with encryption, including if the Body parameter
-            has an invalid type.
+            S3EncryptionClientError: Any problem with encryption, including if
+                the Body parameter has an invalid type.
         """
         # Extract EncryptionContext if provided (not a standard S3 parameter)
         encryption_context = kwargs.pop("EncryptionContext", None)

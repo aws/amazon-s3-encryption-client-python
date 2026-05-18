@@ -1,4 +1,4 @@
-.PHONY: lint format test test-unit test-integration test-perf install
+.PHONY: lint format format-check test test-unit test-integration test-perf install docs
 
 # Default target
 all: lint test duvet
@@ -56,3 +56,12 @@ duvet-report:
 duvet-view-report-mac:
 	open .duvet/reports/report.html
 
+
+# Build docs locally
+docs:
+	uv pip install -e ".[docs]"
+	uv run sphinx-build -b html docs/ docs/_build/html
+	@echo "Docs built at docs/_build/html/index.html"
+
+docs-open: docs
+	open docs/_build/html/index.html

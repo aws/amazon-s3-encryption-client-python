@@ -1,0 +1,230 @@
+name: Release to PyPI
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_override:
+        description: "Manual version override (leave empty to use semantic-release)"
+        required: false
+        type: string
+      dry_run:
+        description: "Dry run (determine version only, do not publish)"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  determine-version:
+    name: Determine Version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "26"
+      - name: Install semantic-release
+        run: npm install -g semantic-release @semantic-release/commit-analyzer @semantic-release/release-notes-generator @semantic-release/changelog @semantic-release/exec @semantic-release/git @semantic-release/github conventional-changelog-conventionalcommits
+      - name: Determine next version
+        id: version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -n "${{ inputs.version_override }}" ]; then
+            echo "version=${{ inputs.version_override }}" >> "$GITHUB_OUTPUT"
+            echo "Using manual override: ${{ inputs.version_override }}"
+          else
+            # Run semantic-release in dry-run to get the next version
+            VERSION=$(npx semantic-release --dry-run 2>&1 | grep -oP 'The next release version is \K[0-9]+\.[0-9]+\.[0-9]+' || true)
+            if [ -z "$VERSION" ]; then
+              echo "No release needed based on commits"
+              echo "version=" >> "$GITHUB_OUTPUT"
+            else
+              echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+              echo "Semantic release determined version: $VERSION"
+            fi
+          fi
+
+  test:
+    name: Run Tests
+    needs: determine-version
+    if: needs.determine-version.outputs.version != ''
+    uses: ./.github/workflows/python-integ.yml
+    permissions:
+      id-token: write
+      contents: read
+    secrets: inherit
+
+  build:
+    name: Build Package
+    needs: [determine-version, test]
+    if: needs.determine-version.outputs.version != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+      - run: pip install build
+      - name: Set version in pyproject.toml
+        run: sed -i "s/^version = .*/version = \"${{ needs.determine-version.outputs.version }}\"/" pyproject.toml
+      - name: Verify version
+        run: |
+          grep "version = \"${{ needs.determine-version.outputs.version }}\"" pyproject.toml
+      - run: python -m build
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+
+  publish-testpypi:
+    name: Publish to TestPyPI
+    if: ${{ !inputs.dry_run && needs.determine-version.outputs.version != '' }}
+    needs: [determine-version, build]
+    runs-on: ubuntu-latest
+    environment: testpypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+
+  validate-testpypi:
+    name: Validate TestPyPI Package
+    needs: [determine-version, publish-testpypi]
+    if: needs.determine-version.outputs.version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: release-validation
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::370957321024:role/S3EC-Python-Github-test-role
+          aws-region: us-west-2
+      - name: Wait for TestPyPI availability
+        run: |
+          for i in $(seq 1 30); do
+            if pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ "amazon-s3-encryption-client-python==${{ needs.determine-version.outputs.version }}" 2>/dev/null; then
+              echo "Package available on TestPyPI"
+              exit 0
+            fi
+            echo "Waiting for package to appear on TestPyPI ($i/30)..."
+            sleep 10
+          done
+          echo "Package not found on TestPyPI after 5 minutes"
+          exit 1
+      - name: Run validation
+        run: python release-validation/validate.py
+        env:
+          CI_S3_BUCKET: ${{ vars.CI_S3_BUCKET }}
+          CI_KMS_KEY_ALIAS: ${{ vars.CI_KMS_KEY_ALIAS }}
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: [determine-version, validate-testpypi]
+    if: needs.determine-version.outputs.version != ''
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  validate-pypi:
+    name: Validate PyPI Package
+    needs: [determine-version, publish-pypi]
+    if: needs.determine-version.outputs.version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: release-validation
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::370957321024:role/S3EC-Python-Github-test-role
+          aws-region: us-west-2
+      - name: Wait for PyPI availability
+        run: |
+          for i in $(seq 1 30); do
+            if pip install "amazon-s3-encryption-client-python==${{ needs.determine-version.outputs.version }}" 2>/dev/null; then
+              echo "Package available on PyPI"
+              exit 0
+            fi
+            echo "Waiting for package to appear on PyPI ($i/30)..."
+            sleep 10
+          done
+          echo "Package not found on PyPI after 5 minutes"
+          exit 1
+      - name: Run validation
+        run: python release-validation/validate.py
+        env:
+          CI_S3_BUCKET: ${{ vars.CI_S3_BUCKET }}
+          CI_KMS_KEY_ALIAS: ${{ vars.CI_KMS_KEY_ALIAS }}
+
+  create-release:
+    name: Create GitHub Release
+    if: ${{ !inputs.dry_run && needs.determine-version.outputs.version != '' }}
+    needs: [determine-version, validate-pypi]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "26"
+      - name: Install semantic-release
+        run: npm install -g semantic-release @semantic-release/commit-analyzer @semantic-release/release-notes-generator @semantic-release/changelog @semantic-release/exec @semantic-release/git @semantic-release/github conventional-changelog-conventionalcommits
+      - name: Create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ needs.determine-version.outputs.version }}"
+          if [ -n "${{ inputs.version_override }}" ]; then
+            # Manual override: commit the version bump and create a GitHub release
+            sed -i "s/^version = .*/version = \"${VERSION}\"/" pyproject.toml
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add pyproject.toml
+            git commit -m "chore(release): ${VERSION} [skip ci]" || true
+            git tag "v${VERSION}"
+            git push --follow-tags
+            gh release create "v${VERSION}" \
+              --title "v${VERSION}" \
+              --generate-notes \
+              --draft
+          else
+            npx semantic-release
+          fi
