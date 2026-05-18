@@ -8,6 +8,7 @@ instance across multiple threads.
 """
 
 import os
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 
@@ -314,3 +315,108 @@ def test_multithreaded_mixed_with_and_without_context():
 
     print("Success! Mixed threads (with and without encryption context) completed successfully.")
     print("Thread-local storage properly isolated context between threads.")
+
+
+def test_concurrent_multipart_uploads():
+    """Test that multiple multipart uploads can run concurrently on the same client.
+
+    Uses a barrier to ensure upload_part calls for different objects are
+    interleaved, exercising the per-upload cipher isolation under contention.
+    """
+    kms_client = boto3.client("kms", region_name=region)
+    keyring = KmsKeyring(kms_client, kms_key_id)
+    wrapped_client = boto3.client("s3")
+    config = S3EncryptionClientConfig(
+        keyring,
+        encryption_algorithm=AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+        commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
+    )
+    s3ec = S3EncryptionClient(wrapped_client, config)
+
+    num_uploads = 5
+    five_mb = 5 * 1024 * 1024
+    errors = []
+
+    # Barrier ensures all threads hit upload_part at roughly the same time
+    barrier = threading.Barrier(num_uploads)
+
+    def multipart_worker(thread_id):
+        """Create upload, sync at barrier, then upload parts interleaved with other threads."""
+        try:
+            key = f"concurrent-mpu-{thread_id}-{datetime.now().strftime('%Y%m%d-%H%M%S-%f')}"
+            part1_data = os.urandom(five_mb)
+            part2_data = os.urandom(1024)
+            expected = part1_data + part2_data
+
+            create_resp = s3ec.create_multipart_upload(Bucket=bucket, Key=key)
+            upload_id = create_resp["UploadId"]
+
+            try:
+                # All threads wait here, then upload_part calls interleave
+                barrier.wait(timeout=30)
+
+                resp1 = s3ec.upload_part(
+                    Bucket=bucket,
+                    Key=key,
+                    UploadId=upload_id,
+                    PartNumber=1,
+                    Body=part1_data,
+                )
+
+                # Second barrier to interleave part 2 as well
+                barrier.wait(timeout=30)
+
+                resp2 = s3ec.upload_part(
+                    Bucket=bucket,
+                    Key=key,
+                    UploadId=upload_id,
+                    PartNumber=2,
+                    Body=part2_data,
+                    IsLastPart=True,
+                )
+
+                s3ec.complete_multipart_upload(
+                    Bucket=bucket,
+                    Key=key,
+                    UploadId=upload_id,
+                    MultipartUpload={
+                        "Parts": [
+                            {"PartNumber": 1, "ETag": resp1["ETag"]},
+                            {"PartNumber": 2, "ETag": resp2["ETag"]},
+                        ]
+                    },
+                )
+            except Exception:
+                s3ec.abort_multipart_upload(Bucket=bucket, Key=key, UploadId=upload_id)
+                raise
+
+            response = s3ec.get_object(Bucket=bucket, Key=key)
+            decrypted = response["Body"].read()
+
+            if decrypted != expected:
+                return {
+                    "thread_id": thread_id,
+                    "success": False,
+                    "error": f"Data mismatch: expected {len(expected)} bytes, got {len(decrypted)}",
+                }
+
+            return {"thread_id": thread_id, "success": True}
+
+        except Exception as e:
+            return {"thread_id": thread_id, "success": False, "error": str(e)}
+
+    with ThreadPoolExecutor(max_workers=num_uploads) as executor:
+        futures = [executor.submit(multipart_worker, i) for i in range(num_uploads)]
+
+        for future in as_completed(futures):
+            result = future.result()
+            if not result["success"]:
+                errors.append(
+                    f"Thread {result['thread_id']}: {result.get('error', 'Unknown error')}"
+                )
+
+    if errors:
+        raise RuntimeError(
+            f"{len(errors)} concurrent multipart upload(s) failed:\n"
+            + "\n".join(f"  - {e}" for e in errors)
+        )
