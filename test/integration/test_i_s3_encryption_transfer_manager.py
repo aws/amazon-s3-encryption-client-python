@@ -298,7 +298,6 @@ def test_upload_file_decrypt_delayed_auth(algorithm_suite, commitment_policy):
 @pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
 def test_upload_file_zero_threshold_raises(algorithm_suite, commitment_policy, tmp_path):
     """upload_file with multipart_threshold=0 must raise."""
-
     s3ec = _make_client(algorithm_suite, commitment_policy)
     f = tmp_path / "test.bin"
     f.write_bytes(os.urandom(1024))
@@ -310,7 +309,6 @@ def test_upload_file_zero_threshold_raises(algorithm_suite, commitment_policy, t
 @pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
 def test_upload_file_zero_chunksize_raises(algorithm_suite, commitment_policy, tmp_path):
     """upload_file with multipart_chunksize=0 must raise."""
-
     s3ec = _make_client(algorithm_suite, commitment_policy)
     f = tmp_path / "test.bin"
     f.write_bytes(os.urandom(1024))
@@ -322,7 +320,6 @@ def test_upload_file_zero_chunksize_raises(algorithm_suite, commitment_policy, t
 @pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
 def test_upload_fileobj_zero_chunksize_raises(algorithm_suite, commitment_policy):
     """upload_fileobj with multipart_chunksize=0 must raise."""
-
     s3ec = _make_client(algorithm_suite, commitment_policy)
 
     with pytest.raises(S3EncryptionClientError, match="multipart_chunksize must be a positive"):
@@ -332,7 +329,6 @@ def test_upload_fileobj_zero_chunksize_raises(algorithm_suite, commitment_policy
 @pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
 def test_upload_file_chunksize_below_5mb_raises(algorithm_suite, commitment_policy, tmp_path):
     """upload_file with chunksize below S3's 5 MB minimum must raise."""
-
     s3ec = _make_client(algorithm_suite, commitment_policy)
     f = tmp_path / "test.bin"
     f.write_bytes(os.urandom(1024))
@@ -344,7 +340,6 @@ def test_upload_file_chunksize_below_5mb_raises(algorithm_suite, commitment_poli
 @pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
 def test_upload_fileobj_chunksize_below_5mb_raises(algorithm_suite, commitment_policy):
     """upload_fileobj with chunksize below S3's 5 MB minimum must raise."""
-
     s3ec = _make_client(algorithm_suite, commitment_policy)
 
     with pytest.raises(S3EncryptionClientError, match="at least.*5 MB"):

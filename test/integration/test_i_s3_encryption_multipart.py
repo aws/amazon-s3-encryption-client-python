@@ -717,7 +717,6 @@ def test_multipart_caller_metadata_not_mutated(algorithm_suite, commitment_polic
 
 def test_per_upload_lock_independent_uploads():
     """Per-upload locks must not block concurrent uploads to different objects."""
-
     s3ec = _make_client(
         AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
         CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,

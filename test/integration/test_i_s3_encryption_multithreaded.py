@@ -323,7 +323,6 @@ def test_concurrent_multipart_uploads():
     Uses a barrier to ensure upload_part calls for different objects are
     interleaved, exercising the per-upload cipher isolation under contention.
     """
-
     kms_client = boto3.client("kms", region_name=region)
     keyring = KmsKeyring(kms_client, kms_key_id)
     wrapped_client = boto3.client("s3")

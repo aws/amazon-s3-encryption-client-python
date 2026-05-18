@@ -438,8 +438,6 @@ class TestMultipartPipelineLock:
 
     def test_concurrent_encrypt_part_same_pipeline_serialized(self):
         """Concurrent calls to encrypt_part on the same pipeline are serialized by the lock."""
-
-
         keyring, _ = _mock_keyring()
         cmm = DefaultCryptoMaterialsManager(keyring)
         pipeline = MultipartUploadPipeline(
