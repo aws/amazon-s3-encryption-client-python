@@ -58,3 +58,6 @@ smithy-java-core/out
 .coverage
 coverage-report/
 perf-results/
+
+# Sphinx docs build output
+docs/_build/
