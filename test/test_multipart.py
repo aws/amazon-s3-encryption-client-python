@@ -2,13 +2,17 @@
 # SPDX-License-Identifier: Apache-2.0
 """Unit tests for multipart upload encryption pipeline and client methods."""
 
+import io
 import os
+import threading
 from unittest.mock import MagicMock
 
 import pytest
 
 from s3_encryption import S3EncryptionClient, S3EncryptionClientConfig
 from s3_encryption.exceptions import S3EncryptionClientError
+from s3_encryption.materials.crypto_materials_manager import DefaultCryptoMaterialsManager
+from s3_encryption.materials.encrypted_data_key import EncryptedDataKey
 from s3_encryption.materials.materials import (
     AlgorithmSuite,
     CommitmentPolicy,
@@ -22,7 +26,6 @@ def _mock_keyring():
     keyring = MagicMock()
 
     def on_encrypt(mats):
-        from s3_encryption.materials.encrypted_data_key import EncryptedDataKey
 
         mats.plaintext_data_key = key
         mats.encrypted_data_key = EncryptedDataKey(
@@ -62,7 +65,6 @@ class TestMultipartUploadPipeline:
         ]
     )
     def pipeline(self, request):
-        from s3_encryption.materials.crypto_materials_manager import DefaultCryptoMaterialsManager
 
         keyring, _ = _mock_keyring()
         cmm = DefaultCryptoMaterialsManager(keyring)
@@ -305,7 +307,6 @@ class TestUploadFileAndFileobj:
         s3ec.wrapped_s3_client.complete_multipart_upload.assert_called_once()
 
     def test_upload_fileobj_uses_multipart(self):
-        import io
 
         s3ec = self._setup_client()
         data = os.urandom(2048)
@@ -437,9 +438,7 @@ class TestMultipartPipelineLock:
 
     def test_concurrent_encrypt_part_same_pipeline_serialized(self):
         """Concurrent calls to encrypt_part on the same pipeline are serialized by the lock."""
-        import threading
 
-        from s3_encryption.materials.crypto_materials_manager import DefaultCryptoMaterialsManager
 
         keyring, _ = _mock_keyring()
         cmm = DefaultCryptoMaterialsManager(keyring)
@@ -621,14 +620,12 @@ class TestUploadFileValidation:
             s3ec.upload_file(str(f), "bucket", "key", multipart_chunksize=-1)
 
     def test_upload_fileobj_zero_chunksize_raises(self):
-        import io
 
         s3ec = _make_client()
         with pytest.raises(S3EncryptionClientError, match="multipart_chunksize must be a positive"):
             s3ec.upload_fileobj(io.BytesIO(b"data"), "bucket", "key", multipart_chunksize=0)
 
     def test_upload_fileobj_negative_chunksize_raises(self):
-        import io
 
         s3ec = _make_client()
         with pytest.raises(S3EncryptionClientError, match="multipart_chunksize must be a positive"):
@@ -642,7 +639,6 @@ class TestUploadFileValidation:
             s3ec.upload_file(str(f), "bucket", "key", multipart_chunksize=1024 * 1024)
 
     def test_upload_fileobj_chunksize_below_5mb_raises(self):
-        import io
 
         s3ec = _make_client()
         with pytest.raises(S3EncryptionClientError, match="at least.*5 MB"):
@@ -694,7 +690,6 @@ class TestFileobjLifecycle:
         return s3ec
 
     def test_upload_fileobj_does_not_close_caller_stream(self):
-        import io
 
         s3ec = self._setup_client()
         buf = io.BytesIO(os.urandom(1024))
@@ -725,7 +720,6 @@ class TestMultipartPartRetry:
 
     @pytest.fixture
     def pipeline(self):
-        from s3_encryption.materials.crypto_materials_manager import DefaultCryptoMaterialsManager
 
         keyring, _ = _mock_keyring()
         cmm = DefaultCryptoMaterialsManager(keyring)

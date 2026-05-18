@@ -9,6 +9,7 @@ and the high-level upload_file / upload_fileobj convenience methods.
 """
 
 import os
+import threading
 from datetime import datetime
 
 import boto3
@@ -64,23 +65,6 @@ def _unique_key(prefix):
 # ---------------------------------------------------------------------------
 
 
-##= specification/s3-encryption/client.md#optional-api-operations
-##= type=test
-##% CreateMultipartUpload MAY be implemented by the S3EC.
-##% If implemented, CreateMultipartUpload MUST initiate a multipart upload.
-##= specification/s3-encryption/client.md#optional-api-operations
-##= type=test
-##% UploadPart MUST encrypt each part.
-##= specification/s3-encryption/client.md#optional-api-operations
-##= type=test
-##% Each part MUST be encrypted in sequence.
-##= specification/s3-encryption/client.md#optional-api-operations
-##= type=test
-##% Each part MUST be encrypted using the same cipher instance for each part.
-##= specification/s3-encryption/client.md#optional-api-operations
-##= type=test
-##% CompleteMultipartUpload MAY be implemented by the S3EC.
-##% CompleteMultipartUpload MUST complete the multipart upload.
 @pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
 def test_multipart_two_parts_roundtrip(algorithm_suite, commitment_policy):
     """Encrypt two 5 MB parts via multipart upload, then decrypt with get_object."""
@@ -91,15 +75,23 @@ def test_multipart_two_parts_roundtrip(algorithm_suite, commitment_policy):
 
     s3ec = _make_client(algorithm_suite, commitment_policy)
 
-    # Create
+    ##= specification/s3-encryption/client.md#optional-api-operations
+    ##= type=test
+    ##% CreateMultipartUpload MAY be implemented by the S3EC.
+    ##% If implemented, CreateMultipartUpload MUST initiate a multipart upload.
     create_resp = s3ec.create_multipart_upload(Bucket=bucket, Key=key)
     upload_id = create_resp["UploadId"]
 
     try:
-        # Upload parts
+        ##= specification/s3-encryption/client.md#optional-api-operations
+        ##= type=test
+        ##% UploadPart MAY be implemented by the S3EC.
         resp1 = s3ec.upload_part(
             Bucket=bucket, Key=key, UploadId=upload_id, PartNumber=1, Body=part1_data
         )
+        ##= specification/s3-encryption/client.md#optional-api-operations
+        ##= type=test
+        ##% Each part MUST be encrypted in sequence.
         resp2 = s3ec.upload_part(
             Bucket=bucket,
             Key=key,
@@ -109,7 +101,9 @@ def test_multipart_two_parts_roundtrip(algorithm_suite, commitment_policy):
             IsLastPart=True,
         )
 
-        # Complete
+        ##= specification/s3-encryption/client.md#optional-api-operations
+        ##= type=test
+        ##% CompleteMultipartUpload MUST complete the multipart upload.
         s3ec.complete_multipart_upload(
             Bucket=bucket,
             Key=key,
@@ -125,9 +119,19 @@ def test_multipart_two_parts_roundtrip(algorithm_suite, commitment_policy):
         s3ec.abort_multipart_upload(Bucket=bucket, Key=key, UploadId=upload_id)
         raise
 
-    # Decrypt
+    ##= specification/s3-encryption/client.md#optional-api-operations
+    ##= type=test
+    ##% Each part MUST be encrypted using the same cipher instance for each part.
     response = s3ec.get_object(Bucket=bucket, Key=key)
     assert response["Body"].read() == expected
+
+    ##= specification/s3-encryption/client.md#optional-api-operations
+    ##= type=test
+    ##% UploadPart MUST encrypt each part.
+    plain_s3 = boto3.client("s3")
+    raw_response = plain_s3.get_object(Bucket=bucket, Key=key)
+    raw_content = raw_response["Body"].read()
+    assert raw_content != expected
 
 
 @pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
@@ -713,7 +717,6 @@ def test_multipart_caller_metadata_not_mutated(algorithm_suite, commitment_polic
 
 def test_per_upload_lock_independent_uploads():
     """Per-upload locks must not block concurrent uploads to different objects."""
-    import threading
 
     s3ec = _make_client(
         AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,

@@ -624,6 +624,9 @@ class S3EncryptionClient:
 
     ##= specification/s3-encryption/client.md#optional-api-operations
     ##= type=implementation
+    ##% UploadPart MAY be implemented by the S3EC.
+    ##= specification/s3-encryption/client.md#optional-api-operations
+    ##= type=implementation
     ##% UploadPart MUST encrypt each part.
     ##= specification/s3-encryption/client.md#optional-api-operations
     ##= type=implementation

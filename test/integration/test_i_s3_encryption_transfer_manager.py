@@ -23,6 +23,7 @@ import boto3
 import pytest
 
 from s3_encryption import S3EncryptionClient, S3EncryptionClientConfig
+from s3_encryption.exceptions import S3EncryptionClientError
 from s3_encryption.materials.kms_keyring import KmsKeyring
 from s3_encryption.materials.materials import AlgorithmSuite, CommitmentPolicy
 
@@ -297,7 +298,6 @@ def test_upload_file_decrypt_delayed_auth(algorithm_suite, commitment_policy):
 @pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
 def test_upload_file_zero_threshold_raises(algorithm_suite, commitment_policy, tmp_path):
     """upload_file with multipart_threshold=0 must raise."""
-    from s3_encryption.exceptions import S3EncryptionClientError
 
     s3ec = _make_client(algorithm_suite, commitment_policy)
     f = tmp_path / "test.bin"
@@ -310,7 +310,6 @@ def test_upload_file_zero_threshold_raises(algorithm_suite, commitment_policy, t
 @pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
 def test_upload_file_zero_chunksize_raises(algorithm_suite, commitment_policy, tmp_path):
     """upload_file with multipart_chunksize=0 must raise."""
-    from s3_encryption.exceptions import S3EncryptionClientError
 
     s3ec = _make_client(algorithm_suite, commitment_policy)
     f = tmp_path / "test.bin"
@@ -323,7 +322,6 @@ def test_upload_file_zero_chunksize_raises(algorithm_suite, commitment_policy, t
 @pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
 def test_upload_fileobj_zero_chunksize_raises(algorithm_suite, commitment_policy):
     """upload_fileobj with multipart_chunksize=0 must raise."""
-    from s3_encryption.exceptions import S3EncryptionClientError
 
     s3ec = _make_client(algorithm_suite, commitment_policy)
 
@@ -334,7 +332,6 @@ def test_upload_fileobj_zero_chunksize_raises(algorithm_suite, commitment_policy
 @pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
 def test_upload_file_chunksize_below_5mb_raises(algorithm_suite, commitment_policy, tmp_path):
     """upload_file with chunksize below S3's 5 MB minimum must raise."""
-    from s3_encryption.exceptions import S3EncryptionClientError
 
     s3ec = _make_client(algorithm_suite, commitment_policy)
     f = tmp_path / "test.bin"
@@ -347,7 +344,6 @@ def test_upload_file_chunksize_below_5mb_raises(algorithm_suite, commitment_poli
 @pytest.mark.parametrize("algorithm_suite,commitment_policy", ALGORITHM_CONFIGS)
 def test_upload_fileobj_chunksize_below_5mb_raises(algorithm_suite, commitment_policy):
     """upload_fileobj with chunksize below S3's 5 MB minimum must raise."""
-    from s3_encryption.exceptions import S3EncryptionClientError
 
     s3ec = _make_client(algorithm_suite, commitment_policy)
 
