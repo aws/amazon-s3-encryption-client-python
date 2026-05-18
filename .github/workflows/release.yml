@@ -28,7 +28,7 @@ jobs:
           persist-credentials: true
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "26"
       - name: Install semantic-release
         run: npm install -g semantic-release @semantic-release/commit-analyzer @semantic-release/release-notes-generator @semantic-release/changelog @semantic-release/exec @semantic-release/git @semantic-release/github conventional-changelog-conventionalcommits
       - name: Determine next version
@@ -44,47 +44,27 @@ jobs:
             VERSION=$(npx semantic-release --dry-run 2>&1 | grep -oP 'The next release version is \K[0-9]+\.[0-9]+\.[0-9]+' || true)
             if [ -z "$VERSION" ]; then
               echo "No release needed based on commits"
-              exit 1
+              echo "version=" >> "$GITHUB_OUTPUT"
+            else
+              echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+              echo "Semantic release determined version: $VERSION"
             fi
-            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-            echo "Semantic release determined version: $VERSION"
           fi
 
   test:
     name: Run Tests
     needs: determine-version
-    runs-on: ubuntu-latest
+    if: needs.determine-version.outputs.version != ''
+    uses: ./.github/workflows/python-integ.yml
     permissions:
       id-token: write
       contents: read
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.10"
-      - run: pip install uv
-      - run: make install
-      - uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: arn:aws:iam::370957321024:role/S3EC-Python-Github-test-role
-          aws-region: us-west-2
-      - name: Unit tests
-        run: make test-unit
-      - name: Integration tests
-        run: make test-integration
-        env:
-          CI_S3_BUCKET: ${{ vars.CI_S3_BUCKET }}
-          CI_KMS_KEY_ALIAS: ${{ vars.CI_KMS_KEY_ALIAS }}
-          CI_MRK_KEY_ID_PRIMARY: ${{ vars.CI_MRK_KEY_ID_PRIMARY }}
-          CI_MRK_KEY_ID_REPLICA: ${{ vars.CI_MRK_KEY_ID_REPLICA }}
-          CI_S3_STATIC_TEST_BUCKET: ${{ vars.CI_S3_STATIC_TEST_BUCKET }}
-          CI_KMS_KEY_STATIC_TESTS: ${{ vars.CI_KMS_KEY_STATIC_TESTS }}
-      - name: Example tests
-        run: make test-examples
+    secrets: inherit
 
   build:
     name: Build Package
     needs: [determine-version, test]
+    if: needs.determine-version.outputs.version != ''
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -105,7 +85,7 @@ jobs:
 
   publish-testpypi:
     name: Publish to TestPyPI
-    if: ${{ !inputs.dry_run }}
+    if: ${{ !inputs.dry_run && needs.determine-version.outputs.version != '' }}
     needs: [determine-version, build]
     runs-on: ubuntu-latest
     environment: testpypi
@@ -119,10 +99,12 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
 
   validate-testpypi:
     name: Validate TestPyPI Package
     needs: [determine-version, publish-testpypi]
+    if: needs.determine-version.outputs.version != ''
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -159,6 +141,7 @@ jobs:
   publish-pypi:
     name: Publish to PyPI
     needs: [determine-version, validate-testpypi]
+    if: needs.determine-version.outputs.version != ''
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -173,6 +156,7 @@ jobs:
   validate-pypi:
     name: Validate PyPI Package
     needs: [determine-version, publish-pypi]
+    if: needs.determine-version.outputs.version != ''
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -208,7 +192,7 @@ jobs:
 
   create-release:
     name: Create GitHub Release
-    if: ${{ !inputs.dry_run }}
+    if: ${{ !inputs.dry_run && needs.determine-version.outputs.version != '' }}
     needs: [determine-version, validate-pypi]
     runs-on: ubuntu-latest
     permissions:
@@ -220,18 +204,27 @@ jobs:
           persist-credentials: true
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "26"
       - name: Install semantic-release
         run: npm install -g semantic-release @semantic-release/commit-analyzer @semantic-release/release-notes-generator @semantic-release/changelog @semantic-release/exec @semantic-release/git @semantic-release/github conventional-changelog-conventionalcommits
       - name: Create release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          VERSION="${{ needs.determine-version.outputs.version }}"
           if [ -n "${{ inputs.version_override }}" ]; then
-            # Manual override: create a simple GitHub release
-            gh release create "v${{ needs.determine-version.outputs.version }}" \
-              --title "v${{ needs.determine-version.outputs.version }}" \
-              --generate-notes
+            # Manual override: commit the version bump and create a GitHub release
+            sed -i "s/^version = .*/version = \"${VERSION}\"/" pyproject.toml
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add pyproject.toml
+            git commit -m "chore(release): ${VERSION} [skip ci]" || true
+            git tag "v${VERSION}"
+            git push --follow-tags
+            gh release create "v${VERSION}" \
+              --title "v${VERSION}" \
+              --generate-notes \
+              --draft
           else
             npx semantic-release
           fi
