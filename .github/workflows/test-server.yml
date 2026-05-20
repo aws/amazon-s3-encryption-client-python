@@ -102,6 +102,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
+          special-characters-workaround: "true"
           role-to-assume: arn:aws:iam::370957321024:role/S3EC-Python-Github-test-role
           aws-region: us-west-2
 

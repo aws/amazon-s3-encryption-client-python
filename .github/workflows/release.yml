@@ -118,6 +118,7 @@ jobs:
           python-version: "3.10"
       - uses: aws-actions/configure-aws-credentials@v6
         with:
+          special-characters-workaround: "true"
           role-to-assume: arn:aws:iam::370957321024:role/S3EC-Python-Github-test-role
           aws-region: us-west-2
       - name: Wait for TestPyPI availability
@@ -170,6 +171,7 @@ jobs:
           python-version: "3.10"
       - uses: aws-actions/configure-aws-credentials@v6
         with:
+          special-characters-workaround: "true"
           role-to-assume: arn:aws:iam::370957321024:role/S3EC-Python-Github-test-role
           aws-region: us-west-2
       - name: Wait for PyPI availability
