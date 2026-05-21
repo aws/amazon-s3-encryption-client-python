@@ -1,0 +1,40 @@
+name: duvet on the local S3EC-Python
+
+on:
+  workflow_call:
+    # Optional inputs that can be provided when calling this workflow
+
+jobs:
+  test:
+    runs-on: ubuntu-slim
+    permissions:
+      id-token: write
+      contents: read
+      pages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Checkout specific specification
+        run: git submodule update --init --recursive specification
+
+      - name: Setup Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Install duvet
+        run: |
+          cargo install duvet --locked
+
+      - name: Run duvet
+        run: make duvet
+
+      - name: Upload duvet reports
+        uses: actions/upload-artifact@v7
+        with:
+          name: reports
+          include-hidden-files: true
+          path: .duvet/reports/report.html
+          

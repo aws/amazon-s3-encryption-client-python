@@ -1,0 +1,151 @@
+name: Run TestServer Tests
+
+on:
+  workflow_call:
+    # Optional inputs that can be provided when calling this workflow
+    inputs:
+      python-version:
+        description: "Python version to use"
+        default: "3.11"
+        required: false
+        type: string
+
+jobs:
+  test-server:
+    runs-on: macos-14-large
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          submodules: false
+          token: ${{ secrets.PAT_FOR_SPEC }}
+
+      # There are a lot of submodules here
+      # This initializes the checkouts in parallel (--jobs)
+      # rather than in series the way actions/checkout@v6 does it.
+
+      - name: Get CPU count
+        id: cpu-count
+        run: echo "count=$(node -p 'require("os").cpus().length')" >> $GITHUB_OUTPUT
+
+      - name: Setup git submodules with PAT
+        run: |
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git config --global credential.helper store
+          echo "https://x-token-auth:${{ secrets.PAT_FOR_SPEC }}@github.com" > ~/.git-credentials
+
+      - name: Optimize git for performance
+        run: |
+          git config --global fetch.parallel ${{ steps.cpu-count.outputs.count }}
+          git config --global submodule.fetchJobs ${{ steps.cpu-count.outputs.count }}
+          git config --global remote.origin.tagOpt --no-tags
+
+      - name: Checkout submodules with --jobs
+        run: |
+          git submodule update --init --depth 1 --single-branch --jobs ${{ steps.cpu-count.outputs.count }} test-server/
+
+      - name: Update cpp submodules recursively with --jobs
+        run: |
+          git submodule update --init --recursive \
+            --depth 1 --single-branch \
+            --jobs ${{ steps.cpu-count.outputs.count }} \
+            --force \
+            test-server/cpp-v2-transition-server/aws-sdk-cpp \
+            test-server/cpp-v3-server/aws-sdk-cpp
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4.7"
+          bundler-cache: true
+
+      - name: Set up PHP with Composer
+        uses: shivammathur/setup-php@verbose
+        with:
+          php-version: "8.1"
+
+      - name: Install PHP V2 Transition dependencies
+        working-directory: ./test-server/php-v2-transition-server
+        shell: bash
+        run: composer install
+
+      - name: Install PHP V3 dependencies
+        working-directory: ./test-server/php-v3-server
+        shell: bash
+        run: composer install
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.25
+
+      - name: Install C++ dependencies
+        run: |
+          brew install libmicrohttpd nlohmann-json ossp-uuid
+
+      # Cache Gradle dependencies and build outputs
+      - name: Cache Gradle packages
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            test-server/java-tests/.gradle
+          key: ${{ runner.os }}-gradle-${{ hashFiles('test-server/java-tests/**/gradle-wrapper.properties', 'test-server/java-tests/**/*.gradle*') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          special-characters-workaround: "true"
+          role-to-assume: arn:aws:iam::370957321024:role/S3EC-Python-Github-test-role
+          aws-region: us-west-2
+
+      - name: Build the servers
+        run: cd test-server && make build-all-servers
+        env:
+          MAKEFLAGS: -j${{ steps.cpu-count.outputs.count }}
+          AWS_REGION: us-west-2
+
+      - name: Start the servers
+        run: cd test-server && make start-all-servers
+        env:
+          AWS_REGION: us-west-2
+          TEST_SERVER_S3_BUCKET: ${{ vars.TEST_SERVER_S3_BUCKET }}
+          TEST_SERVER_KMS_KEY_ARN: ${{ vars.TEST_SERVER_KMS_KEY_ARN }}
+
+      - name: Wait for servers to start
+        run: cd test-server && make wait-all-servers
+        env:
+          MAKEFLAGS: -j${{ steps.cpu-count.outputs.count }}
+
+      - name: Run run-tests
+        run: cd test-server && make test-servers-run-tests
+        env:
+          AWS_REGION: us-west-2
+          TEST_SERVER_S3_BUCKET: ${{ vars.TEST_SERVER_S3_BUCKET }}
+          TEST_SERVER_KMS_KEY_ARN: ${{ vars.TEST_SERVER_KMS_KEY_ARN }}
+          GRADLE_OPTS: "-Dorg.gradle.daemon=true -Dorg.gradle.parallel=true -Dorg.gradle.caching=true"
+
+      - name: Upload server logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: server-logs
+          path: |
+            test-server/*/server.log
+
+      - name: Stop the servers
+        run: cd test-server && make test-servers-stop
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: results
+          path: test-server/java-tests/build/reports/tests/integ

@@ -1,0 +1,241 @@
+import * as cdk from 'aws-cdk-lib';
+import { Construct } from 'constructs';
+import {
+  Alias,
+  Key
+} from "aws-cdk-lib/aws-kms";
+import {
+  Effect,
+  Role,
+  PolicyDocument,
+  PolicyStatement,
+  FederatedPrincipal,
+  ArnPrincipal,
+  CompositePrincipal,
+  ManagedPolicy,
+} from "aws-cdk-lib/aws-iam";
+import { 
+  BlockPublicAccess,
+  BlockPublicAccessOptions,
+  Bucket,
+} from 'aws-cdk-lib/aws-s3';
+
+export class S3ECPythonGithub extends cdk.Stack {
+  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+    super(scope, id, props);
+    
+    // KMS Keys - default policy is fine,
+    // we use IAM to manage key permissions
+    const S3ECGithubKMSKey = new Key(
+      this,
+      "S3ECGithubKMSKey",
+      {
+        enableKeyRotation: true,
+        description: "KMS Key for GitHub Action Workflow",
+      }
+    )
+
+    // KMS alias
+    const S3ECGithubKMSKeyAlias = new Alias(
+      this,
+      "S3ECGithubKMSKeyAlias",
+      {
+        aliasName: "alias/S3EC-Python-Github-KMS-Key",
+        targetKey: S3ECGithubKMSKey
+      }
+    )
+    
+    // KMS Key for test-server
+    const S3ECTestServerKMSKey = new Key(
+      this,
+      "S3ECTestServerKMSKey",
+      {
+        enableKeyRotation: true,
+        description: "KMS Key for Test Server GitHub Action Workflow",
+      }
+    )
+
+    // KMS alias for test-server
+    const S3ECTestServerKMSKeyAlias = new Alias(
+      this,
+      "S3ECTestServerKMSKeyAlias",
+      {
+        aliasName: "alias/S3EC-Test-Server-Github-KMS-Key",
+        targetKey: S3ECTestServerKMSKey
+      }
+    )
+
+    // Multi-Region Key (MRK) for cross-region testing.
+    // The primary key is created here in the stack's region (us-west-2).
+    // A replica MUST be created manually in us-east-1 via the AWS Console
+    // or a separate CDK stack, since CDK cannot create cross-region replicas
+    // within a single stack.
+    const S3ECMRKPrimaryKey = new Key(
+      this,
+      "S3ECMRKPrimaryKey",
+      {
+        enableKeyRotation: true,
+        description: "Multi-Region primary key for S3EC cross-region testing",
+        // multiRegion is not a direct CDK L2 prop; use cfnOptions override
+      }
+    );
+    // Override to enable multi-region on the underlying CloudFormation resource
+    const cfnMrkKey = S3ECMRKPrimaryKey.node.defaultChild as cdk.aws_kms.CfnKey;
+    cfnMrkKey.addPropertyOverride("MultiRegion", true);
+
+    const S3ECMRKPrimaryKeyAlias = new Alias(
+      this,
+      "S3ECMRKPrimaryKeyAlias",
+      {
+        aliasName: "alias/S3EC-Python-MRK-Primary",
+        targetKey: S3ECMRKPrimaryKey,
+      }
+    );
+
+    // S3 buckets
+    const AccessConfiguration: BlockPublicAccessOptions = {
+      blockPublicAcls: false,
+      blockPublicPolicy: false,
+      ignorePublicAcls: false,
+      restrictPublicBuckets: false
+    }
+    const S3ECGithubTestS3Bucket = new Bucket(
+      this,
+      "S3ECGithubTestS3Bucket",
+      {
+        bucketName: "s3ec-python-github-test-bucket",
+        blockPublicAccess: new BlockPublicAccess(AccessConfiguration)
+      }
+    )
+    
+    // New bucket for test-server
+    const S3ECTestServerGithubBucket = new Bucket(
+      this,
+      "S3ECTestServerGithubBucket",
+      {
+        bucketName: "s3ec-test-server-github-bucket",
+        blockPublicAccess: new BlockPublicAccess(AccessConfiguration)
+      }
+    )
+
+    // New bucket for static test objects
+    const S3ECStaticTestObjectsBucket = new Bucket(
+      this,
+      "S3ECStaticTestObjectsBucket",
+      {
+        bucketName: "s3ec-static-test-objects",
+        blockPublicAccess: new BlockPublicAccess(AccessConfiguration)
+      }
+    )
+
+    // S3 bucket policy
+    const S3ECGithubS3BucketPolicy = new ManagedPolicy(
+      this,
+      "S3EC-Python-Github-S3-Bucket-Policy",
+      {
+        document: new PolicyDocument({
+          statements: [
+            new PolicyStatement({
+              effect: Effect.ALLOW,
+              actions: [
+                "s3:HeadObject", // Only get object metadata
+                "s3:PutObject",
+                "s3:GetObject",
+                "s3:DeleteObject",
+                "s3:DeleteObjectVersion" // For S3EC-NET repo
+              ],
+              resources: [
+                S3ECGithubTestS3Bucket.bucketArn + "/*", // object-level permissions need this extra path
+                S3ECTestServerGithubBucket.bucketArn + "/*", // Add permissions for the new test-server bucket
+                S3ECStaticTestObjectsBucket.bucketArn + "/*", // Add permissions for static test objects bucket
+                "arn:aws:s3:::aws-net-sdk-*/*" // permission for object inside S3EC .net bucket. For S3EC-NET repo
+              ],
+            }),
+            new PolicyStatement({
+              effect: Effect.ALLOW,
+              actions: [
+                "s3:CreateBucket", // For S3EC-NET repo
+                "s3:DeleteBucket", // For S3EC-NET repo
+                "s3:ListBucket",
+                "s3:ListBucketVersions", // For S3EC-NET repo
+                "s3:GetBucketAcl" // For S3EC-NET repo
+              ],
+              resources: [
+                S3ECGithubTestS3Bucket.bucketArn,
+                S3ECTestServerGithubBucket.bucketArn, // Add permissions for the new test-server bucket
+                S3ECStaticTestObjectsBucket.bucketArn, // Add permissions for static test objects bucket
+                "arn:aws:s3:::aws-net-sdk-*", // permission for S3EC .net bucket. For S3EC-NET repo
+              ],
+            }),
+          ]
+        }),
+      }
+    );
+
+    // KMS key policy
+    const S3ECGithubKMSKeyPolicy = new ManagedPolicy(
+      this,
+      "S3EC-Python-Github-KMS-Key-Policy",
+      {
+        document: new PolicyDocument({
+          statements: [
+            new PolicyStatement({
+              effect: Effect.ALLOW,
+              actions: [
+                "kms:Decrypt",
+                "kms:GenerateDataKey",
+                "kms:GenerateDataKeyPair"
+              ],
+              resources: [
+                S3ECGithubKMSKey.keyArn,
+                S3ECTestServerKMSKey.keyArn, // Add access to the test-server KMS key
+                S3ECMRKPrimaryKey.keyArn, // MRK primary key
+                // MRK replica in us-east-1 — ARN must use wildcard account
+                // since the replica shares the same key ID but different region
+                `arn:aws:kms:us-east-1:${this.account}:key/${S3ECMRKPrimaryKey.keyId}`,
+              ]
+            })
+          ]
+        }),
+      }
+    )
+
+    // IAM role 
+    const GithubActionsPrincipal = new FederatedPrincipal(
+      "arn:aws:iam::" + this.account + ":oidc-provider/token.actions.githubusercontent.com",
+      {
+        "StringEquals": {
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+        },
+        "StringLike": {
+          "token.actions.githubusercontent.com:sub": [
+            "repo:aws/amazon-s3-encryption-client-python:*",
+            "repo:aws/private-amazon-s3-encryption-client-dotnet-staging:*" // For S3EC-NET repo
+          ]
+        }
+      },
+      "sts:AssumeRoleWithWebIdentity"
+    )
+    
+    // ToolsDevelopment role principal
+    const ToolsDevelopmentPrincipal = new ArnPrincipal("arn:aws:iam::" + this.account + ":role/ToolsDevelopment")
+    
+    // Composite principal to allow both GitHub Actions and ToolsDevelopment to assume the role
+    const CompositePrincipalForRole = new CompositePrincipal(
+      GithubActionsPrincipal,
+      ToolsDevelopmentPrincipal
+    )
+    
+    const S3ECGithubTestRole = new Role(
+      this,
+      "s3-github-test-role",
+      {
+        assumedBy: CompositePrincipalForRole,
+        roleName: "S3EC-Python-Github-test-role",
+        description: " Grant GitHub S3 put and get and KMS encrypt, decrypt, and generate access for testing",
+        path: "/",
+        managedPolicies: [S3ECGithubS3BucketPolicy, S3ECGithubKMSKeyPolicy]
+      }
+    );
+  }
+}

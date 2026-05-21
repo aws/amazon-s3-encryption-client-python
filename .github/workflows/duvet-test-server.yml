@@ -1,0 +1,121 @@
+name: Generate Duvet Report for TestServer
+
+on:
+  workflow_call:
+    # Optional inputs that can be provided when calling this workflow
+
+jobs:
+  duvet:
+    runs-on: macos-latest
+    permissions:
+      id-token: write
+      contents: read
+      pages: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # There are a lot of submodules here
+      # This initializes the checkouts in parallel (--jobs)
+      # rather than in series the way actions/checkout@v6 does it.
+
+      - name: Get CPU count
+        id: cpu-count
+        run: echo "count=$(node -p 'require("os").cpus().length')" >> $GITHUB_OUTPUT
+
+      - name: Setup git submodules with PAT
+        run: |
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git config --global credential.helper store
+          echo "https://x-token-auth:${{ secrets.PAT_FOR_SPEC }}@github.com" > ~/.git-credentials
+
+      - name: Optimize git for performance
+        run: |
+          git config --global fetch.parallel ${{ steps.cpu-count.outputs.count }}
+          git config --global submodule.fetchJobs ${{ steps.cpu-count.outputs.count }}
+          git config --global remote.origin.tagOpt --no-tags
+
+      - name: Checkout submodules with --jobs
+        run: |
+          git submodule update --init --depth 1 --single-branch --jobs ${{ steps.cpu-count.outputs.count }} test-server/
+        
+      
+      - name: Checkout CPP code cpp-v3
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+          repository: aws/aws-sdk-cpp
+          ref: main
+          path: test-server/cpp-v3-server/aws-sdk-cpp/
+
+      - name: Setup Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Build and install duvet
+        run: |
+          cargo install duvet --locked
+
+      - name: Run duvet
+        if: always()
+        run: cd test-server && make duvet
+
+      - name: Upload duvet reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-server-reports
+          include-hidden-files: true
+          path: test-server/*-server/.duvet/reports/report.html
+
+      - name: Generate compliance dashboard
+        if: always()
+        run: |
+          cd test-server/spec-compliance-dashboard
+          python generate_compliance_dashboard.py
+
+      - name: Create dashboard redirect index.html
+        if: always()
+        run: |
+          cat > test-server/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta http-equiv="refresh" content="0; url=spec-compliance-dashboard/compliance_homepage.html">
+              <title>Redirecting to Compliance Dashboard...</title>
+          </head>
+          <body>
+              <p>Redirecting to <a href="spec-compliance-dashboard/compliance_homepage.html">Compliance Dashboard</a>...</p>
+          </body>
+          </html>
+          EOF
+
+      - name: Upload compliance dashboard
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: compliance-dashboard
+          include-hidden-files: true
+          path: |
+            test-server/spec-compliance-dashboard/compliance_homepage.html
+            test-server/*/compliance_summary_report.html
+            test-server/*/.duvet/reports/report.html
+            test-server/spec-compliance-dashboard/templates/*
+            test-server/index.html
+
+      - name: Setup Pages
+        if: always() && (github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/fireegg-test-servers') && github.event_name == 'push'
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        if: always() && (github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/fireegg-test-servers') && github.event_name == 'push'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: test-server/
+
+      - name: Deploy to GitHub Pages
+        if: always() && (github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/fireegg-test-servers') && github.event_name == 'push'
+        uses: actions/deploy-pages@v4

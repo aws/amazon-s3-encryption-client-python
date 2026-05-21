@@ -1,0 +1,21 @@
+# Ignore Gradle project-specific cache directory
+.gradle
+
+# Ignore kotlin cache dir
+.kotlin
+
+# Ignore Gradle build output directory
+build
+
+# Ignore intellij files
+.idea
+
+#Ignore mac files
+.DS_Store
+
+# Intellij stuff
+.classpath
+.project
+.settings
+
+smithy-java-core/out

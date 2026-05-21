@@ -1,0 +1,84 @@
+name: Python Integration Tests
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: "Python version to use (ignored when matrix is used)"
+        default: "3.11"
+        required: false
+        type: string
+
+jobs:
+  python-integ:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          submodules: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
+
+      - name: Cache uv dependencies
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-py${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-py${{ matrix.python-version }}-
+            ${{ runner.os }}-uv-
+
+      - name: Install Uv
+        run: pip install uv
+
+      - name: Install dependencies
+        run: make install
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          special-characters-workaround: "true"
+          role-to-assume: arn:aws:iam::370957321024:role/S3EC-Python-Github-test-role
+          aws-region: us-west-2
+
+      - name: Run unit tests
+        run: uv run pytest test/ --ignore=test/integration/ --ignore=test/performance/ --verbose --cov=src/s3_encryption --cov-report=term-missing --cov-report=html:coverage-unit --cov-fail-under=89
+
+      - name: Run integration tests
+        run: uv run pytest test/integration/ --verbose --cov=src/s3_encryption --cov-report=term-missing --cov-report=html:coverage-integ --cov-fail-under=83
+        env:
+          CI_S3_BUCKET: ${{ vars.CI_S3_BUCKET }}
+          CI_KMS_KEY_ALIAS: ${{ vars.CI_KMS_KEY_ALIAS }}
+          CI_MRK_KEY_ID_PRIMARY: ${{ vars.CI_MRK_KEY_ID_PRIMARY }}
+          CI_MRK_KEY_ID_REPLICA: ${{ vars.CI_MRK_KEY_ID_REPLICA }}
+
+      - name: Run examples
+        run: make test-examples
+
+      - name: Upload unit test coverage report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-unit-py${{ matrix.python-version }}-${{ matrix.os }}
+          path: coverage-unit/
+
+      - name: Upload integration test coverage report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-integ-py${{ matrix.python-version }}-${{ matrix.os }}
+          path: coverage-integ/

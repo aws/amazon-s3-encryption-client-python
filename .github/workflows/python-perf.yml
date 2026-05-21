@@ -1,0 +1,67 @@
+name: Python Performance Tests
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: "Python version to use"
+        default: "3.11"
+        required: false
+        type: string
+
+jobs:
+  python-perf:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          submodules: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ inputs.python-version || '3.11' }}
+
+      - name: Cache uv dependencies
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      - name: Install Uv
+        run: pip install uv
+
+      - name: Install dependencies
+        run: make install
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          special-characters-workaround: "true"
+          role-to-assume: arn:aws:iam::370957321024:role/S3EC-Python-Github-test-role
+          aws-region: us-west-2
+
+      - name: Run performance tests
+        run: make test-perf
+        env:
+          CI_S3_BUCKET: ${{ vars.CI_S3_BUCKET }}
+          CI_KMS_KEY_ALIAS: ${{ vars.CI_KMS_KEY_ALIAS }}
+          PERF_NUM_ROUNDS: "10"
+
+      - name: Generate performance HTML report
+        if: always()
+        run: uv run python test/performance/generate_report.py
+
+      - name: Upload performance report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: performance-report
+          path: perf-results/

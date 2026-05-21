@@ -1,0 +1,29 @@
+name: Lint
+
+on:
+  push:
+    branches: [ main ]
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: macos-15
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          
+      - name: Install Uv
+        run: pip install uv
+          
+      - name: Install dependencies and run linting
+        run: |
+          make install
+          make format-check
+          make lint
