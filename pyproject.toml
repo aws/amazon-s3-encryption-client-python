@@ -1,6 +1,6 @@
 [project]
 name = "amazon-s3-encryption-client-python"
-version = "3.0.0"
+version = "4.0.0"
 description = "This library provides an S3 client that supports client-side encryption."
 authors = [
     {name = "AWS Crypto Tools", email = "aws-crypto-tools@amazon.com"}
