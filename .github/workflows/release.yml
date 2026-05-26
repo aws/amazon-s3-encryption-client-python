@@ -124,7 +124,7 @@ jobs:
       - name: Wait for TestPyPI availability
         run: |
           for i in $(seq 1 30); do
-            if pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ "amazon-s3-encryption-client-python==${{ needs.determine-version.outputs.version }}" 2>/dev/null; then
+            if pip install --force-reinstall --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ "amazon-s3-encryption-client-python==${{ needs.determine-version.outputs.version }}" 2>/dev/null; then
               echo "Package available on TestPyPI"
               exit 0
             fi
@@ -177,7 +177,7 @@ jobs:
       - name: Wait for PyPI availability
         run: |
           for i in $(seq 1 30); do
-            if pip install "amazon-s3-encryption-client-python==${{ needs.determine-version.outputs.version }}" 2>/dev/null; then
+            if pip install --force-reinstall "amazon-s3-encryption-client-python==${{ needs.determine-version.outputs.version }}" 2>/dev/null; then
               echo "Package available on PyPI"
               exit 0
             fi
