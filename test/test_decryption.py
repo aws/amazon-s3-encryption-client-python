@@ -170,7 +170,6 @@ class TestCBCDecryption:
 
         plaintext = b"hello world, this is a CBC test!!"
         real_key = os.urandom(32)
-        wrong_key = os.urandom(32)
         iv = os.urandom(16)
 
         padder = PKCS7(128).padder()
@@ -185,21 +184,29 @@ class TestCBCDecryption:
             "x-amz-matdesc": '{"kms_cmk_id": "key-id"}',
         }
 
-        dec_mats = DecryptionMaterials(
-            iv=iv,
-            plaintext_data_key=wrong_key,
-            algorithm_suite=AlgorithmSuite.ALG_AES_256_CBC_IV16_NO_KDF,
-        )
-        pipeline = _make_pipeline(
-            enable_legacy=True,
-            commitment_policy=CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
-            keyring_return=dec_mats,
-        )
-
-        with pytest.raises(S3EncryptionClientSecurityError, match="Failed to decrypt CBC content"):
-            pipeline.decrypt(
-                _response(metadata, ciphertext), ".instruction", enable_delayed_authentication=False
-            ).read()
+        # ~1/256 chance random garbage has valid PKCS7 padding, so retry
+        for _ in range(10):
+            wrong_key = os.urandom(32)
+            dec_mats = DecryptionMaterials(
+                iv=iv,
+                plaintext_data_key=wrong_key,
+                algorithm_suite=AlgorithmSuite.ALG_AES_256_CBC_IV16_NO_KDF,
+            )
+            pipeline = _make_pipeline(
+                enable_legacy=True,
+                commitment_policy=CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
+                keyring_return=dec_mats,
+            )
+            try:
+                pipeline.decrypt(
+                    _response(metadata, ciphertext),
+                    ".instruction",
+                    enable_delayed_authentication=False,
+                ).read()
+            except S3EncryptionClientSecurityError as e:
+                assert "Failed to decrypt CBC content" in str(e)
+                return
+        pytest.fail("Wrong key did not produce CBC decryption error after 10 attempts")
 
 
 # ---------------------------------------------------------------------------
