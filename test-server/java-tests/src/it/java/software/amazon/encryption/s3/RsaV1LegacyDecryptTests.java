@@ -59,7 +59,7 @@ public class RsaV1LegacyDecryptTests {
         // Encrypt with Java V1 client: RSA PKCS#1v1.5 key wrap + AES-GCM content
         v1ObjectKey = appendTestSuffix("rsa-v1-legacy-decrypt");
         AmazonS3Encryption v1Client = AmazonS3EncryptionClient.encryptionBuilder()
-                .withCryptoConfiguration(new CryptoConfiguration(CryptoMode.EncryptionOnly)
+                .withCryptoConfiguration(new CryptoConfiguration(CryptoMode.AuthenticatedEncryption)
                         .withStorageMode(CryptoStorageMode.ObjectMetadata))
                 .withEncryptionMaterials(new StaticEncryptionMaterialsProvider(
                         new EncryptionMaterials(rsaKeyPair)))
