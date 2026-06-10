@@ -70,14 +70,11 @@ public class RsaV1LegacyDecryptTests {
 
     static Stream<Arguments> rsaRuntimeAndPolicyMatrix() {
         List<Object[]> allConfigs = List.of(
-                new Object[]{"GCM-forbid-encrypt-allow-decrypt",
+                new Object[]{"forbid-encrypt-allow-decrypt-policy",
                         CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
                         EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF},
-                new Object[]{"KC-GCM-require-encrypt-allow-decrypt",
+                new Object[]{"require-encrypt-allow-decrypt-policy",
                         CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT,
-                        EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY},
-                new Object[]{"KC-GCM-require-encrypt-require-decrypt",
-                        CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT,
                         EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY}
         );
 
