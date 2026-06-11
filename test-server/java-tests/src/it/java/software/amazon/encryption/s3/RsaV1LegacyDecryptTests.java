@@ -39,7 +39,7 @@ import software.amazon.encryption.s3.model.S3ECConfig;
  * Verifies that V1 RSA-encrypted objects can be
  * successfully decrypted by all RSA-capable runtimes with legacy wrapping enabled.
  *
- * Encrypt: Java V1 client (RSA PKCS#1v1.5 wrap + AES-GCM content encryption)
+ * Encrypt: Java V1 client (RSA PKCS#1v1.5 wrap + AES-CBC content encryption)
  * Decrypt: Each RSA-capable runtime × commitment policy matrix
  */
 public class RsaV1LegacyDecryptTests {
