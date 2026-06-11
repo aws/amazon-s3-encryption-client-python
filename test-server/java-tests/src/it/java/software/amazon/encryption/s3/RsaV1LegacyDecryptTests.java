@@ -27,6 +27,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import software.amazon.encryption.s3.TestUtils.LanguageServerTarget;
 import software.amazon.encryption.s3.client.S3ECTestServerClient;
 import software.amazon.encryption.s3.model.CommitmentPolicy;
 import software.amazon.encryption.s3.model.CreateClientInput;
@@ -35,6 +36,7 @@ import software.amazon.encryption.s3.model.GetObjectInput;
 import software.amazon.encryption.s3.model.GetObjectOutput;
 import software.amazon.encryption.s3.model.KeyMaterial;
 import software.amazon.encryption.s3.model.S3ECConfig;
+import software.amazon.encryption.s3.model.S3EncryptionClientError;
 
 /**
  * Verifies that V1 RSA-encrypted objects can be
@@ -141,7 +143,7 @@ public class RsaV1LegacyDecryptTests {
                         .build())
                 .build()).getClientId();
 
-        assertThrows(Exception.class, () ->
+        assertThrows(S3EncryptionClientError.class, () ->
             client.getObject(GetObjectInput.builder()
                 .clientID(clientId)
                 .bucket(BUCKET)
