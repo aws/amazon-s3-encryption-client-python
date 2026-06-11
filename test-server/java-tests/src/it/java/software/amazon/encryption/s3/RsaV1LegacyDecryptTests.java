@@ -6,6 +6,7 @@
 package software.amazon.encryption.s3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static software.amazon.encryption.s3.TestUtils.*;
 
 import java.nio.charset.StandardCharsets;
