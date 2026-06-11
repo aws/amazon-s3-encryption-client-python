@@ -138,7 +138,7 @@ public class RsaV1LegacyDecryptTests {
                         .keyMaterial(rsaKeyMaterial)
                         .commitmentPolicy(policy)
                         .encryptionAlgorithm(algo)
-                        .enableLegacyUnauthenticatedModes(true)
+                        .enableLegacyUnauthenticatedModes(false)
                         .enableLegacyWrappingAlgorithms(false)
                         .build())
                 .build()).getClientId();
