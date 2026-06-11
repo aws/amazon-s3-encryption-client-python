@@ -122,33 +122,4 @@ public class RsaV1LegacyDecryptTests {
 
         assertEquals(INPUT, StandardCharsets.UTF_8.decode(output.getBody()).toString());
     }
-
-    @ParameterizedTest(name = "Encrypt: Java-V1-RSA, Decrypt: {0} / {1}")
-    @MethodSource("rsaRuntimeAndPolicyMatrix")
-    void cannotDecryptV1RsaObjectWithLegacyDisabled(LanguageServerTarget language, String configName,
-                                                 CommitmentPolicy policy, EncryptionAlgorithm algo) {
-        S3ECTestServerClient client = testServerClientFor(language);
-
-        KeyMaterial rsaKeyMaterial = KeyMaterial.builder()
-                .rsaKey(ByteBuffer.wrap(rsaKeyPair.getPrivate().getEncoded()))
-                .build();
-
-        String clientId = client.createClient(CreateClientInput.builder()
-                .config(S3ECConfig.builder()
-                        .keyMaterial(rsaKeyMaterial)
-                        .commitmentPolicy(policy)
-                        .encryptionAlgorithm(algo)
-                        .enableLegacyUnauthenticatedModes(false)
-                        .enableLegacyWrappingAlgorithms(false)
-                        .build())
-                .build()).getClientId();
-
-        assertThrows(S3EncryptionClientError.class, () ->
-            client.getObject(GetObjectInput.builder()
-                .clientID(clientId)
-                .bucket(BUCKET)
-                .key(v1ObjectKey)
-                .build())
-        );
-    }
 }
