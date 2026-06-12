@@ -6,7 +6,8 @@
 package software.amazon.encryption.s3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static software.amazon.encryption.s3.TestUtils.*;
 
 import java.nio.charset.StandardCharsets;
@@ -121,5 +122,54 @@ public class RsaV1LegacyDecryptTests {
                 .build());
 
         assertEquals(INPUT, StandardCharsets.UTF_8.decode(output.getBody()).toString());
+    }
+
+    @ParameterizedTest(name = "Encrypt: Java-V1-RSA, Decrypt: {0} / {1}")
+    @MethodSource("rsaRuntimeAndPolicyMatrix")
+    void cannotDecryptV1RsaObjectWithLegacyDisabled(LanguageServerTarget language, String configName,
+                                                 CommitmentPolicy policy, EncryptionAlgorithm algo) {
+        S3ECTestServerClient client = testServerClientFor(language);
+
+        KeyMaterial rsaKeyMaterial = KeyMaterial.builder()
+                .rsaKey(ByteBuffer.wrap(rsaKeyPair.getPrivate().getEncoded()))
+                .build();
+        String clientId;
+        // Some languages use a single SecurityProfile toggle, so both must be false
+        if (LANGUAGES_WITH_SECURITY_PROFILE.contains(language.getLanguageName())) {
+                clientId = client.createClient(CreateClientInput.builder()
+                        .config(S3ECConfig.builder()
+                                .keyMaterial(rsaKeyMaterial)
+                                .commitmentPolicy(policy)
+                                .encryptionAlgorithm(algo)
+                                .enableLegacyUnauthenticatedModes(false)
+                                .enableLegacyWrappingAlgorithms(false)
+                                .build())
+                        .build()).getClientId();  
+        } else {
+              clientId = client.createClient(CreateClientInput.builder()
+                        .config(S3ECConfig.builder()
+                                .keyMaterial(rsaKeyMaterial)
+                                .commitmentPolicy(policy)
+                                .encryptionAlgorithm(algo)
+                                .enableLegacyUnauthenticatedModes(true)
+                                .enableLegacyWrappingAlgorithms(false)
+                                .build())
+                        .build()).getClientId();
+        }
+        
+        try {
+            client.getObject(GetObjectInput.builder()
+                .clientID(clientId)
+                .bucket(BUCKET)
+                .key(v1ObjectKey)
+                .build());
+            fail("Expected exception!");
+        } catch (S3EncryptionClientError e) {
+            if (LANGUAGES_WITH_SECURITY_PROFILE.contains(language.getLanguageName())) {
+                assertTrue(e.getMessage().contains("The requested object is encrypted with V1 encryption schemas that have been disabled by client configuration"), "Actual error: " + e.getMessage());
+            } else {
+                assertTrue(e.getMessage().contains("Enable legacy wrapping algorithms to use legacy key wrapping algorithm: RSA"), "Actual error: " + e.getMessage());
+            }
+        }
     }
 }

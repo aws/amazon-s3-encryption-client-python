@@ -150,6 +150,22 @@ public class TestUtils {
         PHP_V3
       );
 
+    // Languages that use a single SecurityProfile toggle instead of separate
+    // enableLegacyUnauthenticatedModes / enableLegacyWrappingAlgorithms flags.
+    public static final Set<String> LANGUAGES_WITH_SECURITY_PROFILE =
+      Set.of(
+        RUBY_V2_TRANSITION,
+        RUBY_V3,
+        PHP_V2_TRANSITION,
+        PHP_V3,
+        CPP_V2_TRANSITION,
+        CPP_V3,
+        GO_V3_TRANSITION,
+        GO_V4,
+        NET_V3_TRANSITION,
+        NET_V4
+      );
+
     public static final Set<String> TRANSITION_VERSIONS =
         Set.of(
             JAVA_V3_TRANSITION,
