@@ -99,12 +99,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
         with:
-          role-to-assume: arn:aws:iam::${{ secrets.CI_AWS_ACCOUNT_ID }}:role/service-role/${{ vars.CI_AWS_ROLE }}
-          role-session-name: S3EC-Github-CI-Tests
-          aws-region: ${{ vars.CI_AWS_REGION }}
+          special-characters-workaround: "true"
+          role-to-assume: arn:aws:iam::370957321024:role/S3EC-Python-Github-test-role
+          aws-region: us-west-2
 
       - name: Build the servers
         run: cd test-server && make build-all-servers
