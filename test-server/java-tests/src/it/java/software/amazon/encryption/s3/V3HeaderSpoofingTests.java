@@ -229,6 +229,7 @@ public class V3HeaderSpoofingTests {
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
                     .keyMaterial(kmsKeyArn)
+                    .commitmentPolicy(CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT)
                     .build())
                 .build());
             String S3ECId = clientOutput.getClientId();
