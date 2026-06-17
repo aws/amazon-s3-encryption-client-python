@@ -28,16 +28,16 @@
 	branch = fire-egg-staging
 [submodule "test-server/net-v4-server/s3ec-net-v4-improved"]
     path = test-server/net-v4-server/s3ec-net-v4-improved
-	url = https://github.com/rishav-karanjit/amazon-s3-encryption-client-dotnet.git
-	branch = s3ecv4-fix
+	url = https://github.com/aws/amazon-s3-encryption-client-dotnet.git
+	branch = dev
 [submodule "test-server/go-v3-transition-server/local-go-s3ec"]
 	path = test-server/go-v3-transition-server/local-go-s3ec
 	url = https://github.com/aws/amazon-s3-encryption-client-go
 	branch = main
 [submodule "test-server/net-v3-transition-server/s3ec-v3-transition-branch"]
 	path = test-server/net-v3-transition-server/s3ec-v3-transition-branch
-	url = https://github.com/rishav-karanjit/amazon-s3-encryption-client-dotnet.git
-	branch = v4sdk-fix-Bleichenbacher-for-public
+	url = https://github.com/aws/amazon-s3-encryption-client-dotnet.git
+	branch = v4sdk-development
 [submodule "test-server/cpp-v2-transition-server/aws-sdk-cpp"]
 	path = test-server/cpp-v2-transition-server/aws-sdk-cpp
 	url = git@github.com:aws/aws-sdk-cpp.git
