@@ -38,71 +38,63 @@ import software.amazon.encryption.s3.model.S3ECConfig;
 /**
  * V3 Header Spoofing Tests
  *
- * This suite validates that S3 Encryption Client runtimes correctly reject decryption
- * when V2 envelope headers (x-amz-key-v2, x-amz-cek-alg, x-amz-iv, x-amz-wrap-alg,
- * x-amz-matdesc, x-amz-tag-len) are injected into V3-committed objects.
+ * This suite validates that S3EC runtimes correctly reject decryption when V3 key
+ * commitment headers (x-amz-c, x-amz-d, x-amz-i) are injected into V2-encrypted objects.
+ * This simulates an upgrade spoofing attack where an adversary adds fake V3 commitment
+ * headers to a legitimate V2 object (which has NO real key commitment).
  *
- * This simulates a downgrade attack where an adversary injects fake V2 metadata to
- * trick the client into the V2 decryption path, bypassing key commitment validation.
- *
- * Phases:
- * 1. EncryptTests - Encrypts V3 committed objects, then injects spoofed V2 headers
- * 2. DecryptTests - Waits for encrypt phase to complete, then verifies decryption rejection
+ * Execution order:
+ * 1. EncryptTests - Encrypts V2 objects and injects spoofed V3 headers in @AfterAll
+ * 2. DecryptTests - Waits for encrypt phase, then verifies decryption rejection
  *
  * Coordination is achieved using a CountDownLatch that EncryptTests signals upon completion
  * and DecryptTests awaits before proceeding.
  */
 public class V3HeaderSpoofingTests {
-    // Synchronization latch - released when encrypt phase and header spoofing completes
+    // Synchronization latch - released when encrypt phase completes
     private static final CountDownLatch encryptPhaseComplete = new CountDownLatch(1);
 
     // Suffix appended to create spoofed object keys
-    private static final String SUFFIX_SPOOFED = "-spoofed";
+    private static final String SUFFIX_V3_SPOOFED = "-v3spoofed";
 
     /**
      * Encryption Tests - Encrypt Phase
      *
-     * These tests encrypt V3 committed objects using KMS key material.
-     * After all encrypt tests complete, @AfterAll injects spoofed V2 headers
-     * onto the encrypted objects and signals the latch.
+     * These tests encrypt V2 objects (no key commitment) across improved language servers.
+     * After all encrypt tests complete, @AfterAll injects V3 headers into the V2 metadata
+     * and uploads spoofed copies to S3.
      */
     @Nested
     @DisplayName("V3HeaderSpoofingTests - Encrypt")
     class EncryptTests {
-        private static final String sharedObjectKeyBase = "test-v3-spoof";
+        private static final String sharedObjectKeyBase = "test-v3-header-spoof";
         private static KeyMaterial kmsKeyArn = KeyMaterial.builder()
             .kmsKeyId(TestUtils.KMS_KEY_ARN)
             .build();
 
-        // Thread-safe list for storing encrypted V3 object keys
+        // Thread-safe lists for storing object keys
         private static final List<String> crossLanguageObjects =
             Collections.synchronizedList(new ArrayList<>());
-
-        // Thread-safe list for storing spoofed object keys after manipulation
         private static final List<String> spoofedObjectKeys =
             Collections.synchronizedList(new ArrayList<>());
 
-        /**
-         * Returns a defensive copy of the encrypted V3 object keys.
-         */
         static List<String> getCrossLanguageObjects() {
             return new ArrayList<>(crossLanguageObjects);
         }
 
-        /**
-         * Returns a defensive copy of the spoofed object keys.
-         */
         static List<String> getSpoofedObjectKeys() {
             return new ArrayList<>(spoofedObjectKeys);
         }
 
-        @ParameterizedTest(name = "{0}: Encrypt V3 committed object for spoofing test")
+        @ParameterizedTest(name = "{0}: Encrypt V2 object for V3 header spoofing test")
         @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
-        void encrypt_v3_committed(TestUtils.LanguageServerTarget language) {
+        void encrypt_v2_object(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
                     .keyMaterial(kmsKeyArn)
+                    .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+                    .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
                     .build())
                 .build());
             String S3ECId = clientOutput.getClientId();
@@ -112,21 +104,19 @@ public class V3HeaderSpoofingTests {
                 S3ECId,
                 appendTestSuffix(sharedObjectKeyBase + "-" + language.getLanguageName()),
                 crossLanguageObjects,
-                EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+                EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF
             );
         }
 
         /**
-         * Injects spoofed V2 headers onto each V3 committed object.
-         * Uses a plaintext S3 client to read each V3 object, add fake V2 envelope
-         * headers to the metadata, and upload a spoofed copy.
+         * Reads each V2 object, injects fake V3 key commitment headers into the
+         * existing V2 metadata, and uploads spoofed copies to S3.
          */
-        static void spoofV2Headers() {
+        static void spoofV3Headers() {
             SecureRandom random = new SecureRandom();
-
             try (S3Client ptS3Client = S3Client.create()) {
                 for (String objectKey : crossLanguageObjects) {
-                    // Read the original V3 committed object
+                    // Read the V2 encrypted object
                     ResponseBytes<GetObjectResponse> encryptedObject = ptS3Client.getObjectAsBytes(builder -> builder
                         .bucket(TestUtils.BUCKET)
                         .key(objectKey)
@@ -134,26 +124,22 @@ public class V3HeaderSpoofingTests {
 
                     Map<String, String> originalMetadata = encryptedObject.response().metadata();
 
-                    // Construct spoofed metadata: original V3 metadata + injected V2 headers
+                    // Construct spoofed metadata: preserve all V2 headers and inject V3 headers
                     Map<String, String> spoofedMetadata = new HashMap<>(originalMetadata);
 
-                    // Inject fake V2 envelope headers to simulate downgrade attack
-                    byte[] fakeEdk = new byte[32];
-                    random.nextBytes(fakeEdk);
-                    spoofedMetadata.put("x-amz-key-v2", Base64.getEncoder().encodeToString(fakeEdk));
+                    // Generate random bytes for fake V3 commitment values
+                    byte[] fakeKeyCommitment = new byte[32];
+                    random.nextBytes(fakeKeyCommitment);
+                    byte[] fakeMessageId = new byte[28];
+                    random.nextBytes(fakeMessageId);
 
-                    spoofedMetadata.put("x-amz-cek-alg", "AES/GCM/NoPadding");
+                    // Inject V3 headers
+                    spoofedMetadata.put("x-amz-c", "115");  // V3 algorithm suite ID (KC-GCM)
+                    spoofedMetadata.put("x-amz-d", Base64.getEncoder().encodeToString(fakeKeyCommitment));  // Fake key commitment
+                    spoofedMetadata.put("x-amz-i", Base64.getEncoder().encodeToString(fakeMessageId));  // Fake message ID
 
-                    byte[] fakeIv = new byte[12];
-                    random.nextBytes(fakeIv);
-                    spoofedMetadata.put("x-amz-iv", Base64.getEncoder().encodeToString(fakeIv));
-
-                    spoofedMetadata.put("x-amz-wrap-alg", "kms+context");
-                    spoofedMetadata.put("x-amz-matdesc", "{}");
-                    spoofedMetadata.put("x-amz-tag-len", "128");
-
-                    // Upload spoofed copy with original ciphertext body
-                    String spoofedKey = objectKey + SUFFIX_SPOOFED;
+                    // Upload spoofed copy with original ciphertext body and modified metadata
+                    String spoofedKey = objectKey + SUFFIX_V3_SPOOFED;
                     ptS3Client.putObject(builder -> builder
                         .bucket(TestUtils.BUCKET)
                         .key(spoofedKey)
@@ -168,9 +154,9 @@ public class V3HeaderSpoofingTests {
 
         @AfterAll
         static void signalEncryptionComplete() {
-            spoofV2Headers();
+            spoofV3Headers();
 
-            // Signal that all encryption tests and header spoofing have completed
+            // Signal that all encryption tests and metadata manipulation have completed
             encryptPhaseComplete.countDown();
         }
     }
@@ -178,9 +164,11 @@ public class V3HeaderSpoofingTests {
     /**
      * Decryption Tests - Decrypt Phase
      *
-     * These tests verify that all language servers reject decryption of spoofed objects
-     * (V3 committed objects with injected V2 headers) across all commitment policies.
-     * Also verifies that unmodified V3 objects still decrypt successfully.
+     * These tests verify that all S3EC runtimes reject decryption of spoofed objects
+     * (V2 objects with injected V3 headers) across all commitment policies.
+     * A control test confirms unmodified V2 objects still decrypt successfully.
+     *
+     * Execution waits for EncryptTests to complete via CountDownLatch.
      */
     @Nested
     @DisplayName("V3HeaderSpoofingTests - Decrypt")
@@ -191,7 +179,7 @@ public class V3HeaderSpoofingTests {
 
         @BeforeAll
         static void setup() throws InterruptedException {
-            // Wait for all encryption tests and header spoofing to complete
+            // Wait for all encryption tests and metadata manipulation to complete
             encryptPhaseComplete.await();
 
             // Import object keys from the encrypt phase
@@ -201,20 +189,17 @@ public class V3HeaderSpoofingTests {
                 .kmsKeyId(TestUtils.KMS_KEY_ARN)
                 .build();
 
-            // Verify we have objects to test
+            // Verify we have objects to decrypt
             if (spoofedObjectKeys.isEmpty()) {
                 throw new IllegalStateException(
-                    "No spoofed objects found. Ensure EncryptTests runs first and at least one server is available.");
+                    "No spoofed objects found. Ensure EncryptTests runs first and spoofV3Headers() succeeds.");
             }
             if (originalObjectKeys.isEmpty()) {
                 throw new IllegalStateException(
-                    "No original V3 objects found. Ensure EncryptTests runs first and at least one server is available.");
+                    "No original V2 objects found. Ensure EncryptTests runs first.");
             }
         }
 
-        /**
-         * Provides both improved and transition language servers for decrypt tests.
-         */
         public static Stream<Arguments> improvedAndTransitionClients() {
             return Stream.concat(
                 TestUtils.improvedClientsForTest(),
@@ -222,8 +207,8 @@ public class V3HeaderSpoofingTests {
             );
         }
 
-        @ParameterizedTest(name = "{0}: Reject spoofed V2 headers with REQUIRE_ENCRYPT_REQUIRE_DECRYPT")
-        @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
+        @ParameterizedTest(name = "{0}: Reject spoofed V3 headers with REQUIRE_ENCRYPT_REQUIRE_DECRYPT")
+        @MethodSource("software.amazon.encryption.s3.V3HeaderSpoofingTests$DecryptTests#improvedAndTransitionClients")
         void reject_spoofed_require_encrypt_require_decrypt(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
@@ -238,12 +223,12 @@ public class V3HeaderSpoofingTests {
                 client,
                 S3ECId,
                 spoofedObjectKeys,
-                EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+                EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF
             );
         }
 
-        @ParameterizedTest(name = "{0}: Reject spoofed V2 headers with REQUIRE_ENCRYPT_ALLOW_DECRYPT")
-        @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
+        @ParameterizedTest(name = "{0}: Reject spoofed V3 headers with REQUIRE_ENCRYPT_ALLOW_DECRYPT")
+        @MethodSource("software.amazon.encryption.s3.V3HeaderSpoofingTests$DecryptTests#improvedAndTransitionClients")
         void reject_spoofed_require_encrypt_allow_decrypt(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
@@ -258,11 +243,11 @@ public class V3HeaderSpoofingTests {
                 client,
                 S3ECId,
                 spoofedObjectKeys,
-                EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+                EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF
             );
         }
 
-        @ParameterizedTest(name = "{0}: Reject spoofed V2 headers with FORBID_ENCRYPT_ALLOW_DECRYPT")
+        @ParameterizedTest(name = "{0}: Reject spoofed V3 headers with FORBID_ENCRYPT_ALLOW_DECRYPT")
         @MethodSource("software.amazon.encryption.s3.V3HeaderSpoofingTests$DecryptTests#improvedAndTransitionClients")
         void reject_spoofed_forbid_encrypt_allow_decrypt(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
@@ -270,7 +255,6 @@ public class V3HeaderSpoofingTests {
                 .config(S3ECConfig.builder()
                     .keyMaterial(kmsKeyArn)
                     .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
-                    .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
                     .build())
                 .build());
             String S3ECId = clientOutput.getClientId();
@@ -279,17 +263,18 @@ public class V3HeaderSpoofingTests {
                 client,
                 S3ECId,
                 spoofedObjectKeys,
-                EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+                EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF
             );
         }
 
-        @ParameterizedTest(name = "{0}: Original V3 committed objects decrypt successfully")
+        @ParameterizedTest(name = "{0}: Original V2 objects decrypt successfully")
         @MethodSource("software.amazon.encryption.s3.V3HeaderSpoofingTests$DecryptTests#improvedAndTransitionClients")
-        void original_v3_decrypts_successfully(TestUtils.LanguageServerTarget language) {
+        void original_v2_decrypts_successfully(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
                 .config(S3ECConfig.builder()
                     .keyMaterial(kmsKeyArn)
+                    .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
                     .build())
                 .build());
             String S3ECId = clientOutput.getClientId();
@@ -298,7 +283,7 @@ public class V3HeaderSpoofingTests {
                 client,
                 S3ECId,
                 originalObjectKeys,
-                EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+                EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF
             );
         }
     }
