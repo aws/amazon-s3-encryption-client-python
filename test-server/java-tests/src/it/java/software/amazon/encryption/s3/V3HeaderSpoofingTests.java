@@ -223,7 +223,7 @@ public class V3HeaderSpoofingTests {
         }
 
         @ParameterizedTest(name = "{0}: Reject spoofed V2 headers with REQUIRE_ENCRYPT_REQUIRE_DECRYPT")
-        @MethodSource("software.amazon.encryption.s3.V3HeaderSpoofingTests$DecryptTests#improvedAndTransitionClients")
+        @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
         void reject_spoofed_require_encrypt_require_decrypt(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
@@ -243,7 +243,7 @@ public class V3HeaderSpoofingTests {
         }
 
         @ParameterizedTest(name = "{0}: Reject spoofed V2 headers with REQUIRE_ENCRYPT_ALLOW_DECRYPT")
-        @MethodSource("software.amazon.encryption.s3.V3HeaderSpoofingTests$DecryptTests#improvedAndTransitionClients")
+        @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
         void reject_spoofed_require_encrypt_allow_decrypt(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = TestUtils.testServerClientFor(language);
             CreateClientOutput clientOutput = client.createClient(CreateClientInput.builder()
