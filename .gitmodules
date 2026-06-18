@@ -27,9 +27,9 @@
 	url = git@github.com:awslabs/private-aws-encryption-sdk-specification-staging.git
 	branch = fire-egg-staging
 [submodule "test-server/net-v4-server/s3ec-net-v4-improved"]
-        path = test-server/net-v4-server/s3ec-net-v4-improved
-        url = https://github.com/aws/amazon-s3-encryption-client-dotnet.git
-        branch = main
+    path = test-server/net-v4-server/s3ec-net-v4-improved
+	url = https://github.com/aws/amazon-s3-encryption-client-dotnet.git
+	branch = dev
 [submodule "test-server/go-v3-transition-server/local-go-s3ec"]
 	path = test-server/go-v3-transition-server/local-go-s3ec
 	url = https://github.com/aws/amazon-s3-encryption-client-go
