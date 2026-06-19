@@ -18,9 +18,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.TestClassOrder;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import org.opentest4j.TestAbortedException;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -47,6 +50,7 @@ import software.amazon.encryption.s3.model.S3ECConfig;
  * V3 headers in @AfterAll. DecryptTests (@Order(2)) verifies decryption rejection.
  */
 @TestClassOrder(ClassOrderer.OrderAnnotation.class)
+@Execution(ExecutionMode.SAME_THREAD)
 public class V3HeaderSpoofingTests {
 
     private static final String SUFFIX_V3_SPOOFED = "-v3spoofed";
@@ -78,11 +82,15 @@ public class V3HeaderSpoofingTests {
         }
 
         @ParameterizedTest(name = "{0}: Encrypt V2 object for V3 header spoofing test")
-        @MethodSource("software.amazon.encryption.s3.TestUtils#transitionClientsForTest")
+        @MethodSource("software.amazon.encryption.s3.TestUtils#clientsForTest")
         void encryptV2Object(TestUtils.LanguageServerTarget language) {
             S3ECTestServerClient client = testServerClientFor(language);
             String clientId = client.createClient(CreateClientInput.builder()
-                .config(S3ECConfig.builder().keyMaterial(KMS_KEY).build())
+                .config(S3ECConfig.builder()
+                    .keyMaterial(KMS_KEY)
+                    .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+                    .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
+                    .build())
                 .build()).getClientId();
 
             Encrypt(
@@ -148,8 +156,12 @@ public class V3HeaderSpoofingTests {
         }
 
         @ParameterizedTest(name = "{0}: Reject spoofed V3 headers with REQUIRE_ENCRYPT_REQUIRE_DECRYPT")
-        @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
+        @MethodSource("software.amazon.encryption.s3.TestUtils#clientsForTest")
         void rejectSpoofedRequireEncryptRequireDecrypt(TestUtils.LanguageServerTarget language) {
+            if (!TestUtils.IMPROVED_VERSIONS.contains(language.getLanguageName())) {
+                throw new TestAbortedException(
+                    "REQUIRE_ENCRYPT_REQUIRE_DECRYPT not supported by: " + language.getLanguageName());
+            }
             String clientId = createClient(language, CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT, null);
 
             // Expected algorithm is V3 committed because spoofed x-amz-c makes
@@ -163,11 +175,11 @@ public class V3HeaderSpoofingTests {
         }
 
         @ParameterizedTest(name = "{0}: Original V2 objects decrypt successfully")
-        @MethodSource("software.amazon.encryption.s3.TestUtils#improvedClientsForTest")
+        @MethodSource("software.amazon.encryption.s3.TestUtils#clientsForTest")
         void originalV2DecryptsSuccessfully(TestUtils.LanguageServerTarget language) {
-            // REQUIRE_ENCRYPT_ALLOW_DECRYPT allows decrypting non-committed V2 objects
+            // FORBID_ENCRYPT_ALLOW_DECRYPT allows decrypting non-committed V2 objects
             String clientId = createClient(language,
-                CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT,
+                CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT,
                 EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF);
 
             Decrypt(
