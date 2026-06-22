@@ -24,8 +24,8 @@
 	branch = main
 [submodule "test-server/specification"]
 	path = test-server/specification
-	url = git@github.com:awslabs/private-aws-encryption-sdk-specification-staging.git
-	branch = fire-egg-staging
+	url = https://github.com/awslabs/aws-encryption-sdk-specification.git
+	branch = master
 [submodule "test-server/net-v4-server/s3ec-net-v4-improved"]
     path = test-server/net-v4-server/s3ec-net-v4-improved
 	url = https://github.com/aws/amazon-s3-encryption-client-dotnet.git
