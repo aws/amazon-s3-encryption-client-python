@@ -113,12 +113,14 @@ public class MaterialDescriptionTamperTests {
             EncryptionAlgorithm.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY);
     }
 
-    // This policy lets every language read both objects, so decryption reaches the decoder.
+    // Pin a non-committing suite so FORBID_ENCRYPT_ALLOW_DECRYPT is a valid client
+    // configuration on every server; ALLOW_DECRYPT still reads the committed V3 object.
     private static String decryptClientId(LanguageServerTarget language) {
         return testServerClientFor(language).createClient(CreateClientInput.builder()
             .config(S3ECConfig.builder()
                 .keyMaterial(KMS_KEY)
                 .commitmentPolicy(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT)
+                .encryptionAlgorithm(EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF)
                 .build())
             .build()).getClientId();
     }
