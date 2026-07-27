@@ -34,8 +34,10 @@ import software.amazon.encryption.s3.model.S3ECConfig;
 /**
  * Every language must reject an object with tampered metadata cleanly, not crash.
  *
- * Encrypt one object, corrupt its metadata, then confirm every language returns
- * an error instead of blowing up. Done for both message formats, V2 and V3.
+ * The tampering swaps the object's material description for a corrupt value that
+ * an unhardened decoder can choke on. Encrypt one object, corrupt its metadata,
+ * then confirm every language returns an error instead of blowing up. Done for
+ * both message formats, V2 and V3.
  */
 public class MaterialDescriptionTamperTests {
 
@@ -122,11 +124,13 @@ public class MaterialDescriptionTamperTests {
     }
 
     private static List<String> writeTamperedCopies(S3Client s3, String baseKey, String header) {
+        // Read the encrypted object once, then reupload one corrupt copy per bad value.
         ResponseBytes<GetObjectResponse> encrypted = s3.getObjectAsBytes(b -> b
             .bucket(BUCKET)
             .key(baseKey));
         List<String> tampered = new ArrayList<>();
         for (Map.Entry<String, String> payload : MALICIOUS_MATERIAL_DESCRIPTIONS.entrySet()) {
+            // Overwrite only the material description; the ciphertext stays intact.
             Map<String, String> metadata = new HashMap<>(encrypted.response().metadata());
             metadata.put(header, payload.getValue());
             String tamperedKey = baseKey + "-" + payload.getKey();
