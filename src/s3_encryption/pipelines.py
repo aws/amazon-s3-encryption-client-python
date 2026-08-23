@@ -35,6 +35,23 @@ from .materials.materials import (
 from .metadata import ObjectMetadata
 from .stream import DecryptingStream
 
+##= specification/s3-encryption/data-format/content-metadata.md#v3-only
+##% The V3 format uses compression here such that each wrapping algorithm is represented by a two digit string.
+##= specification/s3-encryption/data-format/content-metadata.md#v3-only
+##% - The wrapping algorithm value "02" MUST be translated to AES/GCM upon retrieval, and vice versa on write.
+##= specification/s3-encryption/data-format/content-metadata.md#v3-only
+##% - The wrapping algorithm value "12" MUST be translated to kms+context upon retrieval, and vice versa on write.
+##= specification/s3-encryption/data-format/content-metadata.md#v3-only
+##% - The wrapping algorithm value "22" MUST be translated to RSA-OAEP-SHA1 upon retrieval, and vice versa on write.
+# Maps a keyring's canonical wrapping-algorithm identifier (EncryptedDataKey.key_provider_info)
+# to its two-digit V3 compressed code, and vice versa.
+_V3_WRAP_ALG_TO_CODE = {
+    "AES/GCM": "02",
+    "kms+context": "12",
+    "RSA-OAEP-SHA1": "22",
+}
+_V3_CODE_TO_WRAP_ALG = {code: alg for alg, code in _V3_WRAP_ALG_TO_CODE.items()}
+
 
 @define
 class PutEncryptedObjectPipeline:
@@ -107,7 +124,7 @@ class PutEncryptedObjectPipeline:
         ##% The generated IV or Message ID MUST be set or returned from the encryption
         metadata = ObjectMetadata(
             encrypted_data_key_v2=b64_edk,
-            encrypted_data_key_algorithm="kms+context",
+            encrypted_data_key_algorithm=enc_mats.encrypted_data_key.key_provider_info,
             content_iv=b64_iv,
             content_cipher="AES/GCM/NoPadding",
             encrypted_data_key_context=enc_mats.encryption_context,
@@ -150,6 +167,14 @@ class PutEncryptedObjectPipeline:
         b64_message_id = base64.b64encode(message_id).decode("utf-8")
         b64_commit_key = base64.b64encode(commit_key).decode("utf-8")
 
+        wrap_alg = enc_mats.encrypted_data_key.key_provider_info
+        wrap_alg_code = _V3_WRAP_ALG_TO_CODE.get(wrap_alg)
+        if wrap_alg_code is None:
+            raise S3EncryptionClientError(
+                f"Unknown wrapping algorithm '{wrap_alg}' returned by keyring. "
+                f"Valid values are: {list(_V3_WRAP_ALG_TO_CODE)}."
+            )
+
         ##= specification/s3-encryption/encryption.md#content-encryption
         ##= type=implementation
         ##% The generated IV or Message ID MUST be set or returned from the encryption
@@ -158,15 +183,18 @@ class PutEncryptedObjectPipeline:
         ##= type=implementation
         ##% The derived key commitment value MUST be set or returned from the encryption
         ##% process such that it can be included in the content metadata.
+        ##= specification/s3-encryption/data-format/content-metadata.md#v3-only
+        ##% The Encryption Context value MUST be used for wrapping algorithm `kms+context` or `12`.
+        ##% The Material Description MUST be used for wrapping algorithms `AES/GCM` (`02`) and `RSA-OAEP-SHA1` (`22`).
+        metadata_context = enc_mats.encryption_context if enc_mats.encryption_context else None
         metadata = ObjectMetadata(
             content_cipher_v3=str(algorithm_suite.suite_id),
-            encrypted_data_key_algorithm_v3="12",
+            encrypted_data_key_algorithm_v3=wrap_alg_code,
             encrypted_data_key_v3=b64_edk,
             message_id_v3=b64_message_id,
             key_commitment_v3=b64_commit_key,
-            encryption_context_v3=(
-                enc_mats.encryption_context if enc_mats.encryption_context else None
-            ),
+            encryption_context_v3=metadata_context if wrap_alg == "kms+context" else None,
+            mat_desc_v3=metadata_context if wrap_alg != "kms+context" else None,
         )
 
         return encrypted_data, metadata.to_dict()
@@ -227,7 +255,7 @@ class MultipartUploadPipeline:
         self._encryptor = cipher.encryptor()
         self._metadata = ObjectMetadata(
             encrypted_data_key_v2=base64.b64encode(edk_bytes).decode("utf-8"),
-            encrypted_data_key_algorithm="kms+context",
+            encrypted_data_key_algorithm=enc_mats.encrypted_data_key.key_provider_info,
             content_iv=base64.b64encode(iv).decode("utf-8"),
             content_cipher="AES/GCM/NoPadding",
             encrypted_data_key_context=enc_mats.encryption_context,
@@ -244,15 +272,24 @@ class MultipartUploadPipeline:
         )
         self._encryptor = cipher.encryptor()
         self._encryptor.authenticate_additional_data(algorithm_suite.suite_id_bytes)
+
+        wrap_alg = enc_mats.encrypted_data_key.key_provider_info
+        wrap_alg_code = _V3_WRAP_ALG_TO_CODE.get(wrap_alg)
+        if wrap_alg_code is None:
+            raise S3EncryptionClientError(
+                f"Unknown wrapping algorithm '{wrap_alg}' returned by keyring. "
+                f"Valid values are: {list(_V3_WRAP_ALG_TO_CODE)}."
+            )
+
+        metadata_context = enc_mats.encryption_context if enc_mats.encryption_context else None
         self._metadata = ObjectMetadata(
             content_cipher_v3=str(algorithm_suite.suite_id),
-            encrypted_data_key_algorithm_v3="12",
+            encrypted_data_key_algorithm_v3=wrap_alg_code,
             encrypted_data_key_v3=base64.b64encode(edk_bytes).decode("utf-8"),
             message_id_v3=base64.b64encode(message_id).decode("utf-8"),
             key_commitment_v3=base64.b64encode(commit_key).decode("utf-8"),
-            encryption_context_v3=(
-                enc_mats.encryption_context if enc_mats.encryption_context else None
-            ),
+            encryption_context_v3=metadata_context if wrap_alg == "kms+context" else None,
+            mat_desc_v3=metadata_context if wrap_alg != "kms+context" else None,
         ).to_dict()
 
     @property
@@ -739,31 +776,17 @@ class GetEncryptedObjectPipeline:
 
         return self.cmm.decrypt_materials(dec_materials)
 
-    ##= specification/s3-encryption/data-format/content-metadata.md#v3-only
-    ##% The V3 format uses compression here such that each wrapping algorithm is represented by a two digit string.
-    ##= specification/s3-encryption/data-format/content-metadata.md#v3-only
-    ##% - The wrapping algorithm value "02" MUST be translated to AES/GCM upon retrieval, and vice versa on write.
-    ##= specification/s3-encryption/data-format/content-metadata.md#v3-only
-    ##% - The wrapping algorithm value "12" MUST be translated to kms+context upon retrieval, and vice versa on write.
-    ##= specification/s3-encryption/data-format/content-metadata.md#v3-only
-    ##% - The wrapping algorithm value "22" MUST be translated to RSA-OAEP-SHA1 upon retrieval, and vice versa on write.
-    _V3_WRAP_ALG_MAP = {
-        "02": "AES/GCM",
-        "12": "kms+context",
-        "22": "RSA-OAEP-SHA1",
-    }
-
     def _decrypt_v3(self, metadata, encryption_context) -> DecryptionMaterials:
         """Prepare V3 decryption materials."""
         edk_bytes = base64.b64decode(metadata.encrypted_data_key_v3)
 
         # Map V3 compressed wrapping algorithm to canonical key_provider_info
         raw_wrap_alg = metadata.encrypted_data_key_algorithm_v3 or "12"
-        wrap_alg = self._V3_WRAP_ALG_MAP.get(raw_wrap_alg)
+        wrap_alg = _V3_CODE_TO_WRAP_ALG.get(raw_wrap_alg)
         if wrap_alg is None:
             raise S3EncryptionClientError(
                 f"Unknown V3 wrapping algorithm: '{raw_wrap_alg}'. "
-                f"Valid values are: {list(self._V3_WRAP_ALG_MAP.keys())}. "
+                f"Valid values are: {list(_V3_CODE_TO_WRAP_ALG.keys())}. "
                 f"The object metadata may have been tampered with."
             )
 
