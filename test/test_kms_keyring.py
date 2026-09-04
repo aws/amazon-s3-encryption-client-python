@@ -9,7 +9,11 @@ import pytest
 from src.s3_encryption.exceptions import S3EncryptionClientError
 from src.s3_encryption.materials.encrypted_data_key import EncryptedDataKey
 from src.s3_encryption.materials.kms_keyring import KmsKeyring
-from src.s3_encryption.materials.materials import DecryptionMaterials, EncryptionMaterials
+from src.s3_encryption.materials.materials import (
+    AlgorithmSuite,
+    DecryptionMaterials,
+    EncryptionMaterials,
+)
 
 
 class TestKmsKeyringInitialization:
@@ -181,6 +185,7 @@ class TestKmsKeyringOnDecrypt:
             encrypted_data_keys=[edk],
             encryption_context_stored={"aws:x-amz-cek-alg": "AES/GCM/NoPadding"},
             encryption_context_from_request={},
+            algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
         )
 
         result = keyring.on_decrypt(dec_materials)
@@ -210,6 +215,7 @@ class TestKmsKeyringOnDecrypt:
             encrypted_data_keys=[edk],
             encryption_context_stored={"aws:x-amz-cek-alg": "AES/GCM/NoPadding"},
             encryption_context_from_request={},
+            algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
         )
 
         result = keyring.on_decrypt(dec_materials)
@@ -239,6 +245,7 @@ class TestKmsKeyringOnDecrypt:
                 "custom-key": "custom-value",
             },
             encryption_context_from_request={"custom-key": "custom-value"},
+            algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
         )
 
         result = keyring.on_decrypt(dec_materials)
@@ -401,6 +408,7 @@ class TestKmsKeyringOnDecrypt:
             encrypted_data_keys=[edk],
             encryption_context_stored=encryption_context_stored,
             encryption_context_from_request={},
+            algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
         )
 
         keyring.on_decrypt(dec_materials)
@@ -461,6 +469,7 @@ class TestKmsKeyringOnDecrypt:
             encrypted_data_keys=[edk],
             encryption_context_stored={"aws:x-amz-cek-alg": "AES/GCM/NoPadding"},
             encryption_context_from_request={},
+            algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
         )
 
         with pytest.raises(Exception, match="KMS decrypt error") as exc_info:
@@ -522,3 +531,148 @@ class TestKmsKeyringOnDecrypt:
 
         # KMS should never be called when context doesn't match
         mock_kms_client.decrypt.assert_not_called()
+
+    ##= specification/s3-encryption/materials/s3-kms-keyring.md#kms-context
+    ##= type=test
+    ##% When decrypting using Kms+Context mode, the KmsKeyring MUST validate that the
+    ##% content encryption algorithm in the KMS-authenticated encryption context matches
+    ##% the algorithm suite selected for decryption.
+    def test_on_decrypt_rejects_committing_v3_downgraded_to_cbc(self):
+        """Test that on_decrypt rejects a V3 object downgraded to legacy CBC."""
+        mock_kms_client = MagicMock()
+
+        keyring = KmsKeyring(kms_client=mock_kms_client, kms_key_id="test-key-id")
+        edk = EncryptedDataKey(
+            key_provider_id=b"S3Keyring",
+            key_provider_info="kms+context",
+            encrypted_data_key=b"encrypted-key",
+        )
+        dec_materials = DecryptionMaterials(
+            iv=b"initialization-vector",
+            encrypted_data_keys=[edk],
+            encryption_context_stored={"aws:x-amz-cek-alg": "115"},
+            encryption_context_from_request={},
+            algorithm_suite=AlgorithmSuite.ALG_AES_256_CBC_IV16_NO_KDF,
+        )
+
+        with pytest.raises(S3EncryptionClientError) as exc_info:
+            keyring.on_decrypt(dec_materials)
+
+        assert "does not match" in str(exc_info.value)
+        mock_kms_client.decrypt.assert_not_called()
+
+    ##= specification/s3-encryption/materials/s3-kms-keyring.md#kms-context
+    ##= type=test
+    ##% When decrypting using Kms+Context mode, the KmsKeyring MUST validate that the
+    ##% content encryption algorithm in the KMS-authenticated encryption context matches
+    ##% the algorithm suite selected for decryption.
+    def test_on_decrypt_rejects_gcm_v2_downgraded_to_cbc(self):
+        """Test that on_decrypt rejects a GCM V2 object downgraded to legacy CBC."""
+        mock_kms_client = MagicMock()
+
+        keyring = KmsKeyring(kms_client=mock_kms_client, kms_key_id="test-key-id")
+        edk = EncryptedDataKey(
+            key_provider_id=b"S3Keyring",
+            key_provider_info="kms+context",
+            encrypted_data_key=b"encrypted-key",
+        )
+        dec_materials = DecryptionMaterials(
+            iv=b"initialization-vector",
+            encrypted_data_keys=[edk],
+            encryption_context_stored={"aws:x-amz-cek-alg": "AES/GCM/NoPadding"},
+            encryption_context_from_request={},
+            algorithm_suite=AlgorithmSuite.ALG_AES_256_CBC_IV16_NO_KDF,
+        )
+
+        with pytest.raises(S3EncryptionClientError) as exc_info:
+            keyring.on_decrypt(dec_materials)
+
+        assert "does not match" in str(exc_info.value)
+        mock_kms_client.decrypt.assert_not_called()
+
+    ##= specification/s3-encryption/materials/s3-kms-keyring.md#kms-context
+    ##= type=test
+    ##% When decrypting using Kms+Context mode, the KmsKeyring MUST validate that the
+    ##% content encryption algorithm in the KMS-authenticated encryption context matches
+    ##% the algorithm suite selected for decryption.
+    def test_on_decrypt_rejects_committing_v3_downgraded_to_gcm_v2(self):
+        """Test that on_decrypt rejects a V3 object downgraded to V2 non-committing GCM object."""
+        mock_kms_client = MagicMock()
+
+        keyring = KmsKeyring(kms_client=mock_kms_client, kms_key_id="test-key-id")
+        edk = EncryptedDataKey(
+            key_provider_id=b"S3Keyring",
+            key_provider_info="kms+context",
+            encrypted_data_key=b"encrypted-key",
+        )
+        dec_materials = DecryptionMaterials(
+            iv=b"initialization-vector",
+            encrypted_data_keys=[edk],
+            encryption_context_stored={"aws:x-amz-cek-alg": "115"},
+            encryption_context_from_request={},
+            algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+        )
+
+        with pytest.raises(S3EncryptionClientError) as exc_info:
+            keyring.on_decrypt(dec_materials)
+
+        assert "does not match" in str(exc_info.value)
+        mock_kms_client.decrypt.assert_not_called()
+
+    ##= specification/s3-encryption/materials/s3-kms-keyring.md#kms-context
+    ##= type=test
+    ##% When decrypting using Kms+Context mode, the KmsKeyring MUST validate that the
+    ##% content encryption algorithm in the KMS-authenticated encryption context matches
+    ##% the algorithm suite selected for decryption.
+    def test_on_decrypt_allows_untampered_committing_v3(self):
+        """Test that on_decrypt succeeds when the object's stored algorithm matches the algorithm suite used to decrypt it."""
+        mock_kms_client = MagicMock()
+        mock_kms_client.decrypt.return_value = {"Plaintext": b"plaintext-key"}
+
+        keyring = KmsKeyring(kms_client=mock_kms_client, kms_key_id="test-key-id")
+        edk = EncryptedDataKey(
+            key_provider_id=b"S3Keyring",
+            key_provider_info="kms+context",
+            encrypted_data_key=b"encrypted-key",
+        )
+        dec_materials = DecryptionMaterials(
+            iv=b"initialization-vector",
+            encrypted_data_keys=[edk],
+            encryption_context_stored={"aws:x-amz-cek-alg": "115"},
+            encryption_context_from_request={},
+            algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+        )
+
+        result = keyring.on_decrypt(dec_materials)
+
+        assert result.plaintext_data_key == b"plaintext-key"
+        mock_kms_client.decrypt.assert_called_once()
+
+    ##= specification/s3-encryption/materials/s3-kms-keyring.md#kms-context
+    ##= type=test
+    ##% When decrypting using Kms+Context mode, the KmsKeyring MUST validate that the
+    ##% content encryption algorithm in the KMS-authenticated encryption context matches
+    ##% the algorithm suite selected for decryption.
+    def test_on_decrypt_allows_untampered_gcm_v2(self):
+        """Test that on_decrypt succeeds when the object's stored algorithm matches the algorithm suite used to decrypt it."""
+        mock_kms_client = MagicMock()
+        mock_kms_client.decrypt.return_value = {"Plaintext": b"plaintext-key"}
+
+        keyring = KmsKeyring(kms_client=mock_kms_client, kms_key_id="test-key-id")
+        edk = EncryptedDataKey(
+            key_provider_id=b"S3Keyring",
+            key_provider_info="kms+context",
+            encrypted_data_key=b"encrypted-key",
+        )
+        dec_materials = DecryptionMaterials(
+            iv=b"initialization-vector",
+            encrypted_data_keys=[edk],
+            encryption_context_stored={"aws:x-amz-cek-alg": "AES/GCM/NoPadding"},
+            encryption_context_from_request={},
+            algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+        )
+
+        result = keyring.on_decrypt(dec_materials)
+
+        assert result.plaintext_data_key == b"plaintext-key"
+        mock_kms_client.decrypt.assert_called_once()
