@@ -44,7 +44,7 @@ import software.amazon.encryption.s3.model.S3ECConfig;
 
 /**
  * Verifies the content-encryption algorithm in the object metadata matches
- * the KMS-authenticated encryption context one on decrypt:
+ * the KMS-authenticated encryption context on decrypt:
  * an attacker with S3 write access who rewrites the unauthenticated
  * x-amz-cek-alg (V2) or x-amz-c (V3) header to downgrade a GCM or
  * committing-suite object to unauthenticated AES-CBC must be rejected.
@@ -208,7 +208,6 @@ public class CekAlgBindingVerificationTests {
 
         @BeforeAll
         static void setup() {
-            // Snapshot the object keys EncryptTests produced before running the decrypt assertions
             v2Objects = new ArrayList<>(EncryptTests.v2Objects);
             v3Objects = new ArrayList<>(EncryptTests.v3Objects);
             tamperedV2ToCbc = new ArrayList<>(EncryptTests.tamperedV2ToCbc);
@@ -226,7 +225,8 @@ public class CekAlgBindingVerificationTests {
             // Even under the legacy + ALLOW_DECRYPT config, the CBC-downgraded object must be rejected
             requireImproved(language);
             String clientId = createClient(language,
-                CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT, true, null);
+                CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT, true,
+                EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF);
 
             Decrypt_fails(
                 testServerClientFor(language),
@@ -246,7 +246,8 @@ public class CekAlgBindingVerificationTests {
                     "Improved client " + language.getLanguageName() + " produced no V3 objects to test.");
             }
             String clientId = createClient(language,
-                CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT, true, null);
+                CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT, true,
+                EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF);
 
             Decrypt_fails(
                 testServerClientFor(language),
