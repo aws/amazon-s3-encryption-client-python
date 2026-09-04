@@ -176,7 +176,7 @@ class KmsKeyring(S3Keyring):
                 ##= type=implementation
                 ##% The stored encryption context with the two reserved keys removed MUST match
                 ##% the provided encryption context.
-                encryption_context_stored_copy = encryption_context_stored.copy()
+                encryption_context_stored_copy = encryption_context_stored.copy() 
                 encryption_context_stored_copy.pop(KMS_V1_DEFAULT_KEY, None)
                 encryption_context_stored_copy.pop(KMS_CONTEXT_DEFAULT_KEY, None)
 
@@ -188,6 +188,22 @@ class KmsKeyring(S3Keyring):
                     # TODO: modeled error
                     raise S3EncryptionClientError(
                         "Provided encryption context does not match information retrieved from S3"
+                    )  
+                
+                ##= specification/s3-encryption/materials/s3-kms-keyring.md#kms-context
+                ##= type=implementation
+                ##% When decrypting using Kms+Context mode, the KmsKeyring MUST validate that the
+                ##% content encryption algorithm in the KMS-authenticated encryption context matches
+                ##% the algorithm suite selected for decryption.
+                kms_authenticated_algorithm = encryption_context_stored.get(KMS_CONTEXT_DEFAULT_KEY)
+                if dec_materials.algorithm_suite.supports_key_commitment:
+                    decryption_cek_algorithm = str(dec_materials.algorithm_suite.suite_id)
+                else:
+                    decryption_cek_algorithm = dec_materials.algorithm_suite.cipher_name
+
+                if kms_authenticated_algorithm != decryption_cek_algorithm:
+                    raise S3EncryptionClientError(
+                        "The content encryption algorithm used at encryption time does not match the algorithm stored for decryption time"
                     )
 
             ##= specification/s3-encryption/materials/s3-kms-keyring.md#decryptdatakey
