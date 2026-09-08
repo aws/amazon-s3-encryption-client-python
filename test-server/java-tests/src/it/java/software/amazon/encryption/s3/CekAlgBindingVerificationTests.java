@@ -173,15 +173,13 @@ public class CekAlgBindingVerificationTests {
             return objectMetadata;
         }
 
-        // Modifies a V3 object's metadata to look like a V2 kms+context CBC object.
+        // Modifies a V3 object's metadata to look like a well-formed V2 kms+context CBC object.
         // The V3 encrypted data key (x-amz-3) and KMS-authenticated context (x-amz-t) are
         // copied into their respective V2 header names, then the V2 wrap algorithm, content
         // algorithm, and IV headers are set.
         //
-        // These four V3 headers (x-amz-3, x-amz-c, x-amz-d, x-amz-i) MUST be removed
-        // or the object is rejected before decryption.
-        //
-        // The remaining V3 headers (x-amz-w, x-amz-t, x-amz-m) can be omitted.
+        // These seven V3 headers (x-amz-3, x-amz-c, x-amz-d, x-amz-i, x-amz-w, x-amz-t, x-amz-m)
+        // MUST be removed or the object is rejected before decryption.
         private static Map<String, String> modifyV3MetadataToV2Cbc(Map<String, String> original) {
             Map<String, String> objectMetadata = new HashMap<>(original);
             objectMetadata.put("x-amz-key-v2", original.get("x-amz-3"));
@@ -193,6 +191,9 @@ public class CekAlgBindingVerificationTests {
             objectMetadata.remove("x-amz-c");
             objectMetadata.remove("x-amz-d");
             objectMetadata.remove("x-amz-i");
+            objectMetadata.remove("x-amz-w");
+            objectMetadata.remove("x-amz-t");
+            objectMetadata.remove("x-amz-m");
             return objectMetadata;
         }
     }
@@ -223,7 +224,6 @@ public class CekAlgBindingVerificationTests {
         @MethodSource("software.amazon.encryption.s3.TestUtils#clientsForTest")
         void rejectV2GcmToCbcDowngrade(TestUtils.LanguageServerTarget language) {
             // Even under the legacy + ALLOW_DECRYPT config, the CBC-downgraded object must be rejected
-            requireImproved(language);
             String clientId = createClient(language,
                 CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT, true,
                 EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF);

@@ -27,6 +27,7 @@ from .key_derivation import derive_keys, verify_commitment
 from .materials.crypto_materials_manager import AbstractCryptoMaterialsManager
 from .materials.encrypted_data_key import EncryptedDataKey
 from .materials.materials import (
+    CONTENT_CIPHER_TO_ALGORITHM_SUITE,
     AlgorithmSuite,
     CommitmentPolicy,
     DecryptionMaterials,
@@ -322,13 +323,6 @@ class GetEncryptedObjectPipeline:
     enable_legacy_unauthenticated_modes: bool = field(default=False)
     instruction_file_config: InstructionFileConfig = field(factory=InstructionFileConfig)
 
-    # Map content cipher metadata values to AlgorithmSuite
-    _CONTENT_CIPHER_TO_ALGORITHM_SUITE = {
-        "AES/CBC/PKCS5Padding": AlgorithmSuite.ALG_AES_256_CBC_IV16_NO_KDF,
-        "AES/GCM/NoPadding": AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
-        "115": AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
-    }
-
     def _determine_algorithm_suite(self, metadata) -> AlgorithmSuite:
         """Determine the algorithm suite from object metadata.
 
@@ -347,7 +341,7 @@ class GetEncryptedObjectPipeline:
                 raise S3EncryptionClientError(
                     "V2 format object missing required x-amz-cek-alg metadata."
                 )
-            suite = self._CONTENT_CIPHER_TO_ALGORITHM_SUITE.get(cek_alg)
+            suite = CONTENT_CIPHER_TO_ALGORITHM_SUITE.get(cek_alg)
             if suite is None:
                 raise S3EncryptionClientError(f"Unknown content encryption algorithm: {cek_alg}")
             return suite
@@ -356,7 +350,7 @@ class GetEncryptedObjectPipeline:
             cek_alg = metadata.content_cipher_v3
             if cek_alg is None:
                 raise S3EncryptionClientError("V3 format object missing required x-amz-c metadata.")
-            suite = self._CONTENT_CIPHER_TO_ALGORITHM_SUITE.get(cek_alg)
+            suite = CONTENT_CIPHER_TO_ALGORITHM_SUITE.get(cek_alg)
             if suite is None:
                 raise S3EncryptionClientError(f"Unknown content encryption algorithm: {cek_alg}")
             return suite

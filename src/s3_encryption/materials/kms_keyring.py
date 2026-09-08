@@ -10,7 +10,7 @@ from attrs import define, field
 from botocore import client
 
 from ..exceptions import S3EncryptionClientError
-from ..materials.materials import AlgorithmSuite
+from ..materials.materials import ALGORITHM_SUITE_TO_CONTENT_CIPHER, AlgorithmSuite
 from .encrypted_data_key import EncryptedDataKey
 from .keyring import S3Keyring
 
@@ -176,7 +176,7 @@ class KmsKeyring(S3Keyring):
                 ##= type=implementation
                 ##% The stored encryption context with the two reserved keys removed MUST match
                 ##% the provided encryption context.
-                encryption_context_stored_copy = encryption_context_stored.copy() 
+                encryption_context_stored_copy = encryption_context_stored.copy()
                 encryption_context_stored_copy.pop(KMS_V1_DEFAULT_KEY, None)
                 encryption_context_stored_copy.pop(KMS_CONTEXT_DEFAULT_KEY, None)
 
@@ -188,18 +188,21 @@ class KmsKeyring(S3Keyring):
                     # TODO: modeled error
                     raise S3EncryptionClientError(
                         "Provided encryption context does not match information retrieved from S3"
-                    )  
-                
+                    )
+
                 ##= specification/s3-encryption/materials/s3-kms-keyring.md#kms-context
                 ##= type=implementation
                 ##% When decrypting using Kms+Context mode, the KmsKeyring MUST validate that the
                 ##% content encryption algorithm in the KMS-authenticated encryption context matches
                 ##% the algorithm suite selected for decryption.
                 kms_authenticated_algorithm = encryption_context_stored.get(KMS_CONTEXT_DEFAULT_KEY)
-                if dec_materials.algorithm_suite.supports_key_commitment:
-                    decryption_cek_algorithm = str(dec_materials.algorithm_suite.suite_id)
-                else:
-                    decryption_cek_algorithm = dec_materials.algorithm_suite.cipher_name
+                decryption_cek_algorithm = ALGORITHM_SUITE_TO_CONTENT_CIPHER.get(
+                    dec_materials.algorithm_suite
+                )
+
+                # Fail closed: no suite means we cannot validate the binding.
+                if decryption_cek_algorithm is None:
+                    raise S3EncryptionClientError("No algorithm suite selected for decryption")
 
                 if kms_authenticated_algorithm != decryption_cek_algorithm:
                     raise S3EncryptionClientError(

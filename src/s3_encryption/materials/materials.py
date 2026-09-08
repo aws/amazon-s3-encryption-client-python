@@ -194,6 +194,18 @@ class AlgorithmSuite(Enum):
         return self._cipher_tag_length_bits // 8
 
 
+# Map content cipher metadata values to AlgorithmSuite
+CONTENT_CIPHER_TO_ALGORITHM_SUITE = {
+    "AES/CBC/PKCS5Padding": AlgorithmSuite.ALG_AES_256_CBC_IV16_NO_KDF,
+    "AES/GCM/NoPadding": AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
+    "115": AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
+}
+
+ALGORITHM_SUITE_TO_CONTENT_CIPHER = {
+    suite: cek_alg for cek_alg, suite in CONTENT_CIPHER_TO_ALGORITHM_SUITE.items()
+}
+
+
 class CommitmentPolicy(Enum):
     """Commitment policies controlling key-commitment behavior."""
 
