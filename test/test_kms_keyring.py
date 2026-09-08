@@ -624,7 +624,7 @@ class TestKmsKeyringOnDecrypt:
     ##% When decrypting using Kms+Context mode, the KmsKeyring MUST validate that the
     ##% content encryption algorithm in the KMS-authenticated encryption context matches
     ##% the algorithm suite selected for decryption.
-    def test_on_decrypt_allows_untampered_committing_v3(self):
+    def test_on_decrypt_accepts_untampered_committing_v3(self):
         """Test that on_decrypt succeeds when the object's stored algorithm matches the algorithm suite used to decrypt it."""
         mock_kms_client = MagicMock()
         mock_kms_client.decrypt.return_value = {"Plaintext": b"plaintext-key"}
@@ -653,7 +653,7 @@ class TestKmsKeyringOnDecrypt:
     ##% When decrypting using Kms+Context mode, the KmsKeyring MUST validate that the
     ##% content encryption algorithm in the KMS-authenticated encryption context matches
     ##% the algorithm suite selected for decryption.
-    def test_on_decrypt_allows_untampered_gcm_v2(self):
+    def test_on_decrypt_accepts_untampered_gcm_v2(self):
         """Test that on_decrypt succeeds when the object's stored algorithm matches the algorithm suite used to decrypt it."""
         mock_kms_client = MagicMock()
         mock_kms_client.decrypt.return_value = {"Plaintext": b"plaintext-key"}
