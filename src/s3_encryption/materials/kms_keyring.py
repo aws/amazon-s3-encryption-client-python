@@ -200,7 +200,6 @@ class KmsKeyring(S3Keyring):
                     dec_materials.algorithm_suite
                 )
 
-                # Fail closed: no suite means we cannot validate the binding.
                 if decryption_cek_algorithm is None:
                     raise S3EncryptionClientError("No algorithm suite selected for decryption")
 
