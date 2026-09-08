@@ -201,6 +201,7 @@ CONTENT_CIPHER_TO_ALGORITHM_SUITE = {
     "115": AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
 }
 
+# Map AlgorithmSuite to content cipher metadata values
 ALGORITHM_SUITE_TO_CONTENT_CIPHER = {
     suite: cek_alg for cek_alg, suite in CONTENT_CIPHER_TO_ALGORITHM_SUITE.items()
 }
