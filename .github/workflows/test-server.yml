@@ -12,7 +12,7 @@ on:
 
 jobs:
   test-server:
-    runs-on: macos-14-large
+    runs-on: macos-14-xlarge
     permissions:
       id-token: write
       contents: read
