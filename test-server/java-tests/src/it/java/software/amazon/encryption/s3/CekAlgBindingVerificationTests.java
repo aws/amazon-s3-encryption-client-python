@@ -44,10 +44,10 @@ import software.amazon.encryption.s3.model.S3ECConfig;
 
 /**
  * Verifies the content-encryption algorithm in the object metadata matches
- * the KMS-authenticated encryption context on decrypt:
- * an attacker with S3 write access who rewrites the unauthenticated
- * x-amz-cek-alg (V2) or x-amz-c (V3) header to downgrade a GCM or
- * committing-suite object to unauthenticated AES-CBC must be rejected.
+ * the KMS-authenticated encryption context on decrypt: an object whose
+ * unauthenticated x-amz-cek-alg (V2) or x-amz-c (V3) header has been rewritten
+ * to downgrade a GCM or committing-suite object to unauthenticated AES-CBC
+ * must be rejected.
  */
 @TestClassOrder(ClassOrderer.OrderAnnotation.class)
 @Execution(ExecutionMode.SAME_THREAD)
@@ -74,8 +74,8 @@ public class CekAlgBindingVerificationTests {
 
         private static final List<String> v2Objects = Collections.synchronizedList(new ArrayList<>());
         private static final List<String> v3Objects = Collections.synchronizedList(new ArrayList<>());
-        private static final List<String> tamperedV2ToCbc = Collections.synchronizedList(new ArrayList<>());
-        private static final List<String> tamperedV3ToCbc = Collections.synchronizedList(new ArrayList<>());
+        private static final List<String> modifiedV2ToCbc = Collections.synchronizedList(new ArrayList<>());
+        private static final List<String> modifiedV3ToCbc = Collections.synchronizedList(new ArrayList<>());
 
         @BeforeAll
         static void setup() {
@@ -130,7 +130,7 @@ public class CekAlgBindingVerificationTests {
             );
         }
 
-        // Simulates the attack: uses a raw S3 client to rewrite the CEK-algorithm in each object's
+        // Uses a raw S3 client to rewrite the CEK-algorithm in each object's
         // metadata to CBC while leaving the ciphertext and KMS-authenticated context intact.
         @AfterAll
         static void modifyCekAlgToCbc() {
@@ -145,7 +145,7 @@ public class CekAlgBindingVerificationTests {
                     s3.putObject(
                         b -> b.bucket(TestUtils.BUCKET).key(modifiedObjectKey).metadata(objectMetadata),
                         RequestBody.fromBytes(storedObject.asByteArray()));
-                    tamperedV2ToCbc.add(modifiedObjectKey);
+                    modifiedV2ToCbc.add(modifiedObjectKey);
                 }
 
                 for (String objectKey : v3Objects) {
@@ -158,7 +158,7 @@ public class CekAlgBindingVerificationTests {
                     s3.putObject(
                         b -> b.bucket(TestUtils.BUCKET).key(modifiedObjectKey).metadata(objectMetadata),
                         RequestBody.fromBytes(storedObject.asByteArray()));
-                    tamperedV3ToCbc.add(modifiedObjectKey);
+                    modifiedV3ToCbc.add(modifiedObjectKey);
                 }
             }
         }
@@ -204,19 +204,19 @@ public class CekAlgBindingVerificationTests {
     class DecryptTests {
         private static List<String> v2Objects;
         private static List<String> v3Objects;
-        private static List<String> tamperedV2ToCbc;
-        private static List<String> tamperedV3ToCbc;
+        private static List<String> modifiedV2ToCbc;
+        private static List<String> modifiedV3ToCbc;
 
         @BeforeAll
         static void setup() {
             v2Objects = new ArrayList<>(EncryptTests.v2Objects);
             v3Objects = new ArrayList<>(EncryptTests.v3Objects);
-            tamperedV2ToCbc = new ArrayList<>(EncryptTests.tamperedV2ToCbc);
-            tamperedV3ToCbc = new ArrayList<>(EncryptTests.tamperedV3ToCbc);
+            modifiedV2ToCbc = new ArrayList<>(EncryptTests.modifiedV2ToCbc);
+            modifiedV3ToCbc = new ArrayList<>(EncryptTests.modifiedV3ToCbc);
 
-            if (tamperedV2ToCbc.isEmpty()) {
+            if (modifiedV2ToCbc.isEmpty()) {
                 throw new IllegalStateException(
-                    "No V2 tampered objects: EncryptTests.modifyCekAlgToCbc() did not run.");
+                    "No V2 modified objects: EncryptTests.modifyCekAlgToCbc() did not run.");
             }
         }
 
@@ -231,7 +231,7 @@ public class CekAlgBindingVerificationTests {
             Decrypt_fails(
                 testServerClientFor(language),
                 clientId,
-                tamperedV2ToCbc,
+                modifiedV2ToCbc,
                 EncryptionAlgorithm.ALG_AES_256_CBC_IV16_NO_KDF
             );
         }
@@ -241,7 +241,7 @@ public class CekAlgBindingVerificationTests {
         void rejectV3CommittedToCbcDowngrade(TestUtils.LanguageServerTarget language) {
             // A committing object rewritten into a V2 CBC downgraded object must be rejected
             requireImproved(language);
-            if (tamperedV3ToCbc.isEmpty()) {
+            if (modifiedV3ToCbc.isEmpty()) {
                 throw new AssertionError(
                     "Improved client " + language.getLanguageName() + " produced no V3 objects to test.");
             }
@@ -252,15 +252,15 @@ public class CekAlgBindingVerificationTests {
             Decrypt_fails(
                 testServerClientFor(language),
                 clientId,
-                tamperedV3ToCbc,
+                modifiedV3ToCbc,
                 EncryptionAlgorithm.ALG_AES_256_CBC_IV16_NO_KDF
             );
         }
 
-        @ParameterizedTest(name = "{0}: Untampered V2 GCM object still decrypts")
+        @ParameterizedTest(name = "{0}: Unmodified V2 GCM object still decrypts")
         @MethodSource("software.amazon.encryption.s3.TestUtils#clientsForTest")
         void originalV2ObjectDecryptsSuccessfully(TestUtils.LanguageServerTarget language) {
-            // An untampered V2 GCM object must still decrypt
+            // An unmodified V2 GCM object must still decrypt
             String clientId = createClient(language,
                 CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT, false,
                 EncryptionAlgorithm.ALG_AES_256_GCM_IV12_TAG16_NO_KDF);
@@ -273,10 +273,10 @@ public class CekAlgBindingVerificationTests {
             );
         }
 
-        @ParameterizedTest(name = "{0}: Untampered V3 committed object still decrypts")
+        @ParameterizedTest(name = "{0}: Unmodified V3 committed object still decrypts")
         @MethodSource("software.amazon.encryption.s3.TestUtils#clientsForTest")
         void originalV3ObjectDecryptsSuccessfully(TestUtils.LanguageServerTarget language) {
-            // An untampered V3 committing object must still decrypt
+            // An unmodified V3 committing object must still decrypt
             requireImproved(language);
             if (v3Objects.isEmpty()) {
                 throw new AssertionError(

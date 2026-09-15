@@ -10,7 +10,7 @@ from attrs import define, field
 from botocore import client
 
 from ..exceptions import S3EncryptionClientError
-from ..materials.materials import ALGORITHM_SUITE_TO_CONTENT_CIPHER, AlgorithmSuite
+from ..materials.materials import AlgorithmSuite
 from .encrypted_data_key import EncryptedDataKey
 from .keyring import S3Keyring
 
@@ -196,16 +196,16 @@ class KmsKeyring(S3Keyring):
                 ##% content encryption algorithm in the KMS-authenticated encryption context matches
                 ##% the algorithm suite selected for decryption.
                 kms_authenticated_algorithm = encryption_context_stored.get(KMS_CONTEXT_DEFAULT_KEY)
-                decryption_cek_algorithm = ALGORITHM_SUITE_TO_CONTENT_CIPHER.get(
-                    dec_materials.algorithm_suite
-                )
-
-                if decryption_cek_algorithm is None:
+                algorithm_suite = dec_materials.algorithm_suite
+                if algorithm_suite is None:
                     raise S3EncryptionClientError("No algorithm suite selected for decryption")
+                decryption_cek_algorithm = algorithm_suite.content_cipher
 
                 if kms_authenticated_algorithm != decryption_cek_algorithm:
                     raise S3EncryptionClientError(
-                        "The content encryption algorithm used at encryption time does not match the algorithm stored for decryption time"
+                        f"The content encryption algorithm in the KMS-authenticated encryption context "
+                        f"'{kms_authenticated_algorithm}' does not match the algorithm suite selected "
+                        f"for decryption '{decryption_cek_algorithm}'."
                     )
 
             ##= specification/s3-encryption/materials/s3-kms-keyring.md#decryptdatakey

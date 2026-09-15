@@ -27,7 +27,6 @@ from .key_derivation import derive_keys, verify_commitment
 from .materials.crypto_materials_manager import AbstractCryptoMaterialsManager
 from .materials.encrypted_data_key import EncryptedDataKey
 from .materials.materials import (
-    CONTENT_CIPHER_TO_ALGORITHM_SUITE,
     AlgorithmSuite,
     CommitmentPolicy,
     DecryptionMaterials,
@@ -341,7 +340,7 @@ class GetEncryptedObjectPipeline:
                 raise S3EncryptionClientError(
                     "V2 format object missing required x-amz-cek-alg metadata."
                 )
-            suite = CONTENT_CIPHER_TO_ALGORITHM_SUITE.get(cek_alg)
+            suite = AlgorithmSuite.from_content_cipher(cek_alg)
             if suite is None:
                 raise S3EncryptionClientError(f"Unknown content encryption algorithm: {cek_alg}")
             return suite
@@ -350,7 +349,7 @@ class GetEncryptedObjectPipeline:
             cek_alg = metadata.content_cipher_v3
             if cek_alg is None:
                 raise S3EncryptionClientError("V3 format object missing required x-amz-c metadata.")
-            suite = CONTENT_CIPHER_TO_ALGORITHM_SUITE.get(cek_alg)
+            suite = AlgorithmSuite.from_content_cipher(cek_alg)
             if suite is None:
                 raise S3EncryptionClientError(f"Unknown content encryption algorithm: {cek_alg}")
             return suite

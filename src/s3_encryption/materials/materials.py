@@ -25,7 +25,8 @@ class AlgorithmSuite(Enum):
         (id, is_legacy, data_key_algorithm, data_key_length_bits,
          cipher_name, cipher_block_size_bits, cipher_iv_length_bits,
          cipher_tag_length_bits, is_committing, commitment_length_bits,
-         commitment_nonce_length_bits, kdf_hash_algorithm, suite_id_bytes)
+         commitment_nonce_length_bits, kdf_hash_algorithm, suite_id_bytes,
+         content_cipher)
     """
 
     ALG_AES_256_CBC_IV16_NO_KDF = (
@@ -42,6 +43,7 @@ class AlgorithmSuite(Enum):
         0,  # commitment_nonce_length_bits
         None,  # kdf_hash_algorithm
         b"",  # suite_id_bytes
+        "AES/CBC/PKCS5Padding",  # content_cipher (x-amz-cek-alg metadata value)
     )
 
     ALG_AES_256_GCM_IV12_TAG16_NO_KDF = (
@@ -58,6 +60,7 @@ class AlgorithmSuite(Enum):
         0,  # commitment_nonce_length_bits
         None,  # kdf_hash_algorithm
         b"",  # suite_id_bytes
+        "AES/GCM/NoPadding",  # content_cipher (x-amz-cek-alg metadata value)
     )
 
     ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY = (
@@ -74,6 +77,7 @@ class AlgorithmSuite(Enum):
         224,  # commitment_nonce_length_bits (28 bytes = message_id)
         "sha512",  # kdf_hash_algorithm
         b"\x00\x73",  # suite_id_bytes
+        "115",  # content_cipher (x-amz-cek-alg metadata value)
     )
 
     def __init__(
@@ -91,6 +95,7 @@ class AlgorithmSuite(Enum):
         commitment_nonce_length_bits: int,
         kdf_hash_algorithm: str | None,
         suite_id_bytes: bytes,
+        content_cipher: str,
     ):
         """Initialize algorithm suite parameters from the enum tuple."""
         self._id = suite_id
@@ -106,6 +111,7 @@ class AlgorithmSuite(Enum):
         self._commitment_nonce_length_bits = commitment_nonce_length_bits
         self._kdf_hash_algorithm = kdf_hash_algorithm
         self._suite_id_bytes = suite_id_bytes
+        self._content_cipher = content_cipher
 
     # --- Convenience properties ---
 
@@ -133,6 +139,23 @@ class AlgorithmSuite(Enum):
     def cipher_name(self) -> str:
         """Cipher transformation string (e.g. 'AES/GCM/NoPadding')."""
         return self._cipher_name
+
+    @property
+    def content_cipher(self) -> str:
+        """Content cipher identifier stored in the x-amz-cek-alg object metadata."""
+        return self._content_cipher
+
+    @classmethod
+    def from_content_cipher(cls, content_cipher: str) -> "AlgorithmSuite | None":
+        """Return the AlgorithmSuite for a content cipher identifier.
+
+        The content cipher identifier is the value stored in the x-amz-cek-alg
+        object metadata. Returns None if the identifier is unknown.
+        """
+        for suite in cls:
+            if suite._content_cipher == content_cipher:
+                return suite
+        return None
 
     @property
     def cipher_iv_length_bytes(self) -> int:
@@ -194,19 +217,6 @@ class AlgorithmSuite(Enum):
         return self._cipher_tag_length_bits // 8
 
 
-# Map content cipher metadata values to AlgorithmSuite
-CONTENT_CIPHER_TO_ALGORITHM_SUITE = {
-    "AES/CBC/PKCS5Padding": AlgorithmSuite.ALG_AES_256_CBC_IV16_NO_KDF,
-    "AES/GCM/NoPadding": AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
-    "115": AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
-}
-
-# Map AlgorithmSuite to content cipher metadata values
-ALGORITHM_SUITE_TO_CONTENT_CIPHER = {
-    suite: cek_alg for cek_alg, suite in CONTENT_CIPHER_TO_ALGORITHM_SUITE.items()
-}
-
-
 class CommitmentPolicy(Enum):
     """Commitment policies controlling key-commitment behavior."""
 
@@ -223,6 +233,7 @@ class EncryptionMaterials:
     with fields corresponding to the data needed for encryption operations.
 
     Attributes:
+        encryption_algorithm (AlgorithmSuite): The algorithm suite selected for encryption
         encryption_context (Dict[str, str]): Context information for encryption
         encrypted_data_key (Optional[EncryptedDataKey]): The encrypted data key
         plaintext_data_key (Optional[bytes]): The plaintext data key
@@ -246,6 +257,9 @@ class EncryptionMaterials:
             EncryptionMaterials: A new instance with fields populated from the dictionary
         """
         return cls(
+            encryption_algorithm=materials_dict.get(
+                "encryption_algorithm", AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
+            ),
             encryption_context=safe_get_dict(materials_dict, "encryption_context"),
             encrypted_data_key=materials_dict.get("encrypted_data_key"),
             plaintext_data_key=materials_dict.get("plaintext_data_key"),
@@ -258,6 +272,8 @@ class EncryptionMaterials:
             Dict[str, Any]: Dictionary containing encryption materials
         """
         result = {}
+
+        result["encryption_algorithm"] = self.encryption_algorithm
 
         if self.encryption_context:
             result["encryption_context"] = self.encryption_context
@@ -284,6 +300,7 @@ class DecryptionMaterials:
         encryption_context_stored (Dict[str, str]): Encryption context stored with the object
         encryption_context_from_request (Dict[str, str]): Encryption context provided in the request
         plaintext_data_key (Optional[bytes]): The plaintext data key
+        algorithm_suite (Optional[AlgorithmSuite]): The algorithm suite selected for decryption
     """
 
     iv: bytes | None = field(default=None)
@@ -311,6 +328,7 @@ class DecryptionMaterials:
                 materials_dict, "encryption_context_from_request"
             ),
             plaintext_data_key=materials_dict.get("plaintext_data_key"),
+            algorithm_suite=materials_dict.get("algorithm_suite"),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -335,5 +353,8 @@ class DecryptionMaterials:
 
         if self.plaintext_data_key is not None:
             result["plaintext_data_key"] = self.plaintext_data_key
+
+        if self.algorithm_suite is not None:
+            result["algorithm_suite"] = self.algorithm_suite
 
         return result
