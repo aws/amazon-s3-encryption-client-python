@@ -205,7 +205,7 @@ class KmsKeyring(S3Keyring):
                     raise S3EncryptionClientError(
                         f"The content encryption algorithm in the KMS-authenticated encryption context "
                         f"'{kms_authenticated_algorithm}' does not match the algorithm suite selected "
-                        f"for decryption '{decryption_cek_algorithm}'."
+                        f"for decryption '{decryption_cek_algorithm}'"
                     )
 
             ##= specification/s3-encryption/materials/s3-kms-keyring.md#decryptdatakey
