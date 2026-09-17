@@ -11,10 +11,12 @@ from .encrypted_data_key import EncryptedDataKey
 from .keyring import AbstractKeyring
 from .kms_keyring import KmsKeyring
 from .materials import AlgorithmSuite, CommitmentPolicy, EncryptionMaterials
+from .raw_aes_keyring import RawAesKeyring
 
 __all__ = [
     "AbstractKeyring",
     "KmsKeyring",
+    "RawAesKeyring",
     "AbstractCryptoMaterialsManager",
     "DefaultCryptoMaterialsManager",
     "EncryptedDataKey",
