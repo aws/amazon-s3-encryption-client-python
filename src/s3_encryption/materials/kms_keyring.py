@@ -10,7 +10,6 @@ from attrs import define, field
 from botocore import client
 
 from ..exceptions import S3EncryptionClientError
-from ..materials.materials import AlgorithmSuite
 from .encrypted_data_key import EncryptedDataKey
 from .keyring import S3Keyring
 
@@ -84,18 +83,10 @@ class KmsKeyring(S3Keyring):
             ##% The KmsKeyring MUST NOT support encryption using KmsV1 mode.
             # For committing algorithm suites (V3), the encryption context algorithm
             # value is the algorithm suite ID as a string ("115"), not the cipher name.
-            # For non-committing suites (V2), use the cipher name ("AES/GCM/NoPadding").
-            if (
-                enc_materials.encryption_algorithm
-                == AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY
-            ):
-                encryption_context["aws:x-amz-cek-alg"] = str(
-                    enc_materials.encryption_algorithm.suite_id
-                )
-            else:
-                encryption_context["aws:x-amz-cek-alg"] = (
-                    enc_materials.encryption_algorithm.cipher_name
-                )
+            # For non-committing suites (V2), it is the cipher name ("AES/GCM/NoPadding").
+            encryption_context["aws:x-amz-cek-alg"] = (
+                enc_materials.encryption_algorithm.content_cipher
+            )
 
             # Python implementation uses KMS GenerateDataKey instead of the spec's
             # EncryptDataKey pattern
@@ -188,6 +179,24 @@ class KmsKeyring(S3Keyring):
                     # TODO: modeled error
                     raise S3EncryptionClientError(
                         "Provided encryption context does not match information retrieved from S3"
+                    )
+
+                ##= specification/s3-encryption/materials/s3-kms-keyring.md#kms-context
+                ##= type=implementation
+                ##% When decrypting using Kms+Context mode, the KmsKeyring MUST validate that the
+                ##% content encryption algorithm in the KMS-authenticated encryption context matches
+                ##% the algorithm suite selected for decryption.
+                kms_authenticated_algorithm = encryption_context_stored.get(KMS_CONTEXT_DEFAULT_KEY)
+                algorithm_suite = dec_materials.algorithm_suite
+                if algorithm_suite is None:
+                    raise S3EncryptionClientError("No algorithm suite selected for decryption")
+                decryption_cek_algorithm = algorithm_suite.content_cipher
+
+                if kms_authenticated_algorithm != decryption_cek_algorithm:
+                    raise S3EncryptionClientError(
+                        f"The content encryption algorithm in the KMS-authenticated encryption context "
+                        f"'{kms_authenticated_algorithm}' does not match the algorithm suite selected "
+                        f"for decryption '{decryption_cek_algorithm}'"
                     )
 
             ##= specification/s3-encryption/materials/s3-kms-keyring.md#decryptdatakey

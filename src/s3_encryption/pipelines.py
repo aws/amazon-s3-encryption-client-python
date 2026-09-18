@@ -322,13 +322,6 @@ class GetEncryptedObjectPipeline:
     enable_legacy_unauthenticated_modes: bool = field(default=False)
     instruction_file_config: InstructionFileConfig = field(factory=InstructionFileConfig)
 
-    # Map content cipher metadata values to AlgorithmSuite
-    _CONTENT_CIPHER_TO_ALGORITHM_SUITE = {
-        "AES/CBC/PKCS5Padding": AlgorithmSuite.ALG_AES_256_CBC_IV16_NO_KDF,
-        "AES/GCM/NoPadding": AlgorithmSuite.ALG_AES_256_GCM_IV12_TAG16_NO_KDF,
-        "115": AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
-    }
-
     def _determine_algorithm_suite(self, metadata) -> AlgorithmSuite:
         """Determine the algorithm suite from object metadata.
 
@@ -347,7 +340,7 @@ class GetEncryptedObjectPipeline:
                 raise S3EncryptionClientError(
                     "V2 format object missing required x-amz-cek-alg metadata."
                 )
-            suite = self._CONTENT_CIPHER_TO_ALGORITHM_SUITE.get(cek_alg)
+            suite = AlgorithmSuite.from_content_cipher(cek_alg)
             if suite is None:
                 raise S3EncryptionClientError(f"Unknown content encryption algorithm: {cek_alg}")
             return suite
@@ -356,7 +349,7 @@ class GetEncryptedObjectPipeline:
             cek_alg = metadata.content_cipher_v3
             if cek_alg is None:
                 raise S3EncryptionClientError("V3 format object missing required x-amz-c metadata.")
-            suite = self._CONTENT_CIPHER_TO_ALGORITHM_SUITE.get(cek_alg)
+            suite = AlgorithmSuite.from_content_cipher(cek_alg)
             if suite is None:
                 raise S3EncryptionClientError(f"Unknown content encryption algorithm: {cek_alg}")
             return suite
@@ -489,17 +482,15 @@ class GetEncryptedObjectPipeline:
 
         # Determine which format we're dealing with and get decryption materials
         if metadata.is_v1_format():
-            dec_materials = self._decrypt_v1(metadata, encryption_context)
+            dec_materials = self._decrypt_v1(metadata, encryption_context, algorithm_suite)
         elif metadata.is_v2_format():
-            dec_materials = self._decrypt_v2(metadata, encryption_context)
+            dec_materials = self._decrypt_v2(metadata, encryption_context, algorithm_suite)
         elif metadata.is_v3_format():
-            dec_materials = self._decrypt_v3(metadata, encryption_context)
+            dec_materials = self._decrypt_v3(metadata, encryption_context, algorithm_suite)
         else:
             raise S3EncryptionClientError(
                 "Unable to determine S3 Encryption Client message format."
             )
-
-        dec_materials.algorithm_suite = algorithm_suite
 
         ##= specification/s3-encryption/decryption.md#cbc-decryption
         ##= type=implementation
@@ -697,7 +688,7 @@ class GetEncryptedObjectPipeline:
         ##% When disabled the S3EC MUST NOT release plaintext from a stream which has not been authenticated.
         return one_shot_decrypt(streaming_body, decryptor)
 
-    def _decrypt_v2(self, metadata, encryption_context) -> DecryptionMaterials:
+    def _decrypt_v2(self, metadata, encryption_context, algorithm_suite) -> DecryptionMaterials:
         """Prepare V2 decryption materials."""
         return self._decrypt_v1_v2(
             iv_b64=metadata.content_iv,
@@ -705,9 +696,10 @@ class GetEncryptedObjectPipeline:
             wrap_alg=metadata.encrypted_data_key_algorithm,
             stored_context=metadata.encrypted_data_key_context or {},
             encryption_context=encryption_context,
+            algorithm_suite=algorithm_suite,
         )
 
-    def _decrypt_v1(self, metadata, encryption_context) -> DecryptionMaterials:
+    def _decrypt_v1(self, metadata, encryption_context, algorithm_suite) -> DecryptionMaterials:
         """Prepare V1 decryption materials."""
         return self._decrypt_v1_v2(
             iv_b64=metadata.content_iv,
@@ -715,10 +707,11 @@ class GetEncryptedObjectPipeline:
             wrap_alg=metadata.encrypted_data_key_algorithm,
             stored_context=metadata.encrypted_data_key_context or {},
             encryption_context=encryption_context,
+            algorithm_suite=algorithm_suite,
         )
 
     def _decrypt_v1_v2(
-        self, iv_b64, edk_b64, wrap_alg, stored_context, encryption_context
+        self, iv_b64, edk_b64, wrap_alg, stored_context, encryption_context, algorithm_suite
     ) -> DecryptionMaterials:
         """Shared logic for preparing V1/V2 decryption materials."""
         iv_bytes = base64.b64decode(iv_b64)
@@ -735,6 +728,7 @@ class GetEncryptedObjectPipeline:
             encrypted_data_keys=[encrypted_data_key],
             encryption_context_stored=stored_context,
             encryption_context_from_request=encryption_context,
+            algorithm_suite=algorithm_suite,
         )
 
         return self.cmm.decrypt_materials(dec_materials)
@@ -753,7 +747,7 @@ class GetEncryptedObjectPipeline:
         "22": "RSA-OAEP-SHA1",
     }
 
-    def _decrypt_v3(self, metadata, encryption_context) -> DecryptionMaterials:
+    def _decrypt_v3(self, metadata, encryption_context, algorithm_suite) -> DecryptionMaterials:
         """Prepare V3 decryption materials."""
         edk_bytes = base64.b64decode(metadata.encrypted_data_key_v3)
 
@@ -800,6 +794,7 @@ class GetEncryptedObjectPipeline:
             encrypted_data_keys=[encrypted_data_key],
             encryption_context_stored=stored_context,
             encryption_context_from_request=encryption_context,
+            algorithm_suite=algorithm_suite,
         )
 
         return self.cmm.decrypt_materials(dec_materials)
