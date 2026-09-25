@@ -224,6 +224,8 @@ class S3EncryptionClientPlugin:
         """Event handler for after-call.s3.GetObject.
 
         This handler decrypts the body after the response is received from S3.
+        Note that the response's ContentLength remains the length of the encrypted
+        ciphertext in S3, which includes the authentication tag or cipher padding.
 
         Args:
             parsed: Dictionary containing the parsed response
@@ -523,6 +525,14 @@ class S3EncryptionClient:
         Returns:
             The response from the S3 client's get_object method with the Body
             replaced with a StreamingBody containing the decrypted data.
+
+        Note:
+            The ``ContentLength`` in the response represents the length of the
+            encrypted ciphertext stream in S3, which includes the cryptographic
+            authentication tag (or padding for CBC). Consequently, ``ContentLength``
+            is greater than the decrypted plaintext length. Callers must read the
+            entire stream (e.g., ``response["Body"].read()``) to complete decryption
+            and authentication verification.
 
         Raises:
             S3EncryptionClientError: If decryption fails or the object is not properly encrypted.

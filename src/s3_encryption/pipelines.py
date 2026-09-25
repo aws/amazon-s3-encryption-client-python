@@ -376,7 +376,10 @@ class GetEncryptedObjectPipeline:
             key (str, optional): S3 object key (required for instruction file)
 
         Returns:
-            A botocore.response.StreamingBody of plain-text
+            A botocore.response.StreamingBody of plain-text. Note that the
+            ``ContentLength`` in the response reflects the ciphertext stream
+            length (including the authentication tag or cipher padding), which
+            is greater than the decrypted plaintext length.
         """
         # Convert the metadata dictionary to an ObjectMetadata instance
         streaming_body: StreamingBody = response.get("Body")
