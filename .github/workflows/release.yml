@@ -16,7 +16,7 @@ on:
 jobs:
   determine-version:
     name: Determine Version
-    runs-on: ubuntu-latest
+    runs-on: codebuild-CryptoToolsCI-linux-amazon-s3-encryption-client-python-${{ github.run_id }}-${{ github.run_attempt }}
     permissions:
       contents: write
     outputs:
@@ -65,7 +65,7 @@ jobs:
     name: Build Package
     needs: [determine-version, test]
     if: needs.determine-version.outputs.version != ''
-    runs-on: ubuntu-latest
+    runs-on: codebuild-CryptoToolsCI-linux-amazon-s3-encryption-client-python-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -87,6 +87,7 @@ jobs:
     name: Publish to TestPyPI
     if: ${{ !inputs.dry_run && needs.determine-version.outputs.version != '' }}
     needs: [determine-version, build]
+    # pypa/gh-action-pypi-publish is a Docker container action.
     runs-on: ubuntu-latest
     environment: testpypi
     permissions:
@@ -105,7 +106,7 @@ jobs:
     name: Validate TestPyPI Package
     needs: [determine-version, publish-testpypi]
     if: needs.determine-version.outputs.version != ''
-    runs-on: ubuntu-latest
+    runs-on: codebuild-CryptoToolsCI-linux-amazon-s3-encryption-client-python-${{ github.run_id }}-${{ github.run_attempt }}
     permissions:
       id-token: write
       contents: read
@@ -143,6 +144,7 @@ jobs:
     name: Publish to PyPI
     needs: [determine-version, validate-testpypi]
     if: needs.determine-version.outputs.version != ''
+    # pypa/gh-action-pypi-publish is a Docker container action.
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -158,7 +160,7 @@ jobs:
     name: Validate PyPI Package
     needs: [determine-version, publish-pypi]
     if: needs.determine-version.outputs.version != ''
-    runs-on: ubuntu-latest
+    runs-on: codebuild-CryptoToolsCI-linux-amazon-s3-encryption-client-python-${{ github.run_id }}-${{ github.run_attempt }}
     permissions:
       id-token: write
       contents: read
@@ -196,7 +198,7 @@ jobs:
     name: Create GitHub Release
     if: ${{ !inputs.dry_run && needs.determine-version.outputs.version != '' }}
     needs: [determine-version, validate-pypi]
-    runs-on: ubuntu-latest
+    runs-on: codebuild-CryptoToolsCI-linux-amazon-s3-encryption-client-python-${{ github.run_id }}-${{ github.run_attempt }}
     permissions:
       contents: write
     steps:
