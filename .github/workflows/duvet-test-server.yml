@@ -24,11 +24,9 @@ jobs:
         id: cpu-count
         run: echo "count=$(node -p 'require("os").cpus().length')" >> $GITHUB_OUTPUT
 
-      - name: Setup git submodules with PAT
+      - name: Rewrite SSH submodule URLs to HTTPS
         run: |
           git config --global url."https://github.com/".insteadOf "git@github.com:"
-          git config --global credential.helper store
-          echo "https://x-token-auth:${{ secrets.PAT_FOR_SPEC }}@github.com" > ~/.git-credentials
 
       - name: Optimize git for performance
         run: |
