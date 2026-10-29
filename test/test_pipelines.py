@@ -11,7 +11,11 @@ import pytest
 from s3_encryption.exceptions import S3EncryptionClientError, S3EncryptionClientSecurityError
 from s3_encryption.materials.crypto_materials_manager import DefaultCryptoMaterialsManager
 from s3_encryption.materials.keyring import S3Keyring
-from s3_encryption.materials.materials import CommitmentPolicy, DecryptionMaterials
+from s3_encryption.materials.materials import (
+    AlgorithmSuite,
+    CommitmentPolicy,
+    DecryptionMaterials,
+)
 from s3_encryption.pipelines import GetEncryptedObjectPipeline
 
 
@@ -201,6 +205,7 @@ class TestGetEncryptedObjectPipelineInstructionFile:
             encrypted_data_keys=[],
             encryption_context_stored={},
             encryption_context_from_request={},
+            algorithm_suite=AlgorithmSuite.ALG_AES_256_GCM_HKDF_SHA512_COMMIT_KEY,
         )
         mock_dec_materials.plaintext_data_key = plaintext_data_key
 
