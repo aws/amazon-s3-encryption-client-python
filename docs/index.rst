@@ -34,6 +34,19 @@ Getting Started
    response = s3ec.get_object(Bucket="my-bucket", Key="my-object")
    plaintext = response["Body"].read()
 
+.. note::
+
+   **Stream Length vs. Plaintext Length**
+
+   The ``ContentLength`` field in the response dictionary returned by ``get_object``
+   reflects the length of the ciphertext stream stored in S3, which includes
+   the cryptographic authentication tag (or padding in the case of CBC). Consequently,
+   the stream's ``ContentLength`` is greater than the decrypted plaintext length.
+   Callers must read the entire stream (e.g. ``response["Body"].read()``) to complete
+   decryption and authentication verification rather than relying on ``ContentLength``
+   as the plaintext length.
+
+
 Indices and tables
 ------------------
 

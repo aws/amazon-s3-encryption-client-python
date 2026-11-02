@@ -28,6 +28,11 @@ response = s3ec.get_object(Bucket="my-bucket", Key="my-object")
 plaintext = response["Body"].read()
 ```
 
+> [!NOTE]
+> **Stream Length vs. Plaintext Length:**
+> The `ContentLength` in the response returned by `get_object` reflects the size of the encrypted ciphertext stream stored in S3, which includes the authentication tag (e.g. 16 bytes for AES-GCM) or cipher padding (for CBC mode). Consequently, `response["ContentLength"]` will be larger than the decrypted plaintext length. You should always read the entire stream (`response["Body"].read()`) to complete decryption and authentication verification rather than limiting reads to the expected plaintext length.
+
+
 ## Development
 
 ### Prerequisites
