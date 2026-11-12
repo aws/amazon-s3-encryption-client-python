@@ -177,11 +177,7 @@ function createDefaultClientTuple(): array
         'version' => 'latest',
         'http' => [
             'debug' => false,
-            'verify' => true,
-            'curl' => [
-                CURLOPT_VERBOSE => false,
-                CURLOPT_NOPROGRESS => true
-            ]
+            'verify' => true
         ]
     ]);
     $encryptionClient = new S3EncryptionClientV2($s3Client);
@@ -191,11 +187,7 @@ function createDefaultClientTuple(): array
         'version' => 'latest',
         'http' => [
             'debug' => false,
-            'verify' => true,
-            'curl' => [
-                CURLOPT_VERBOSE => false,
-                CURLOPT_NOPROGRESS => true
-            ]
+            'verify' => true
         ]
     ]);
     $materialsProvider = new KmsMaterialsProviderV2($kmsClient, 'arn:aws:kms:us-west-2:370957321024:alias/S3EC-Test-Server-Github-KMS-Key');

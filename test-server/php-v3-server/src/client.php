@@ -41,11 +41,7 @@ function handleCreateClient()
             'version' => 'latest',
             'http' => [
                 'debug' => false,
-                'verify' => true,
-                'curl' => [
-                    CURLOPT_VERBOSE => false,
-                    CURLOPT_NOPROGRESS => true
-                ]
+                'verify' => true
             ]
         ],
         'kmsConfig' => [
@@ -53,11 +49,7 @@ function handleCreateClient()
             'version' => 'latest',
             'http' => [
                 'debug' => false,
-                'verify' => true,
-                'curl' => [
-                    CURLOPT_VERBOSE => false,
-                    CURLOPT_NOPROGRESS => true
-                ]
+                'verify' => true
             ]
         ],
         'kmsKeyId' => $kmsKeyId,
