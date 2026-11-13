@@ -314,6 +314,22 @@ def test_inaccessible_kms_key_raises_access_denied():
     assert cause.response["Error"]["Code"] == "AccessDeniedException"
 
 
+##= specification/s3-encryption/materials/s3-kms-keyring.md#initialization
+##= type=test
+##% The KmsKeyring MAY validate that the AWS KMS key identifier is not null or empty.
+# Spec typo: in the quote below, "is not null or empty" should read "is null or empty".
+##= specification/s3-encryption/materials/s3-kms-keyring.md#initialization
+##= type=test
+##% If the KmsKeyring validates that the AWS KMS key identifier is not null or empty, then it MUST throw an exception.
+@pytest.mark.parametrize("invalid_kms_key_id", [None, ""], ids=["null", "empty"])
+def test_null_or_empty_kms_key_id_raises_at_keyring_creation(invalid_kms_key_id):
+    """A null or empty KMS key ID MUST be rejected when the KmsKeyring is created."""
+    kms_client = boto3.client("kms", region_name=region)
+
+    with pytest.raises(S3EncryptionClientError, match="Kms Key ID cannot be empty or null"):
+        KmsKeyring(kms_client, invalid_kms_key_id)
+
+
 def test_get_nonexistent_object_raises_no_such_key():
     """get_object for a key that doesn't exist MUST surface NoSuchKey."""
     from botocore.exceptions import ClientError
