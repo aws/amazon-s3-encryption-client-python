@@ -52,6 +52,18 @@ class KmsKeyring(S3Keyring):
     ##% The KmsV1 mode MUST be only enabled when legacy wrapping algorithms are enabled.
     enable_legacy_wrapping_algorithms: bool = field(default=False)
 
+    ##= specification/s3-encryption/materials/s3-kms-keyring.md#initialization
+    ##= type=implementation
+    ##% The KmsKeyring MAY validate that the AWS KMS key identifier is not null or empty.
+    # Spec typo: in the quote below, "is not null or empty" should read "is null or empty".
+    ##= specification/s3-encryption/materials/s3-kms-keyring.md#initialization
+    ##= type=implementation
+    ##% If the KmsKeyring validates that the AWS KMS key identifier is not null or empty, then it MUST throw an exception.
+    @kms_key_id.validator
+    def _validate_kms_key_id(self, attribute, value):
+        if value is None or value == "":
+            raise S3EncryptionClientError("Kms Key ID cannot be empty or null")
+
     def __attrs_post_init__(self):  # noqa: D105
         from .._utils import _USER_AGENT_SUFFIX, append_user_agent
 
