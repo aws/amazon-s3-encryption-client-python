@@ -22,22 +22,6 @@ The Python S3 Encryption Client implementation takes a pragmatic approach that:
 
 ##= specification/s3-encryption/materials/s3-kms-keyring.md#initialization
 ##= type=exception
-##% The KmsKeyring MAY validate that the AWS KMS key identifier is not null or empty.
-
-Justification: This validation is not implemented. The Python implementation relies on attrs field validation and KMS SDK to catch invalid key identifiers. 
-
----
-
-##= specification/s3-encryption/materials/s3-kms-keyring.md#initialization
-##= type=exception
-##% If the KmsKeyring validates that the AWS KMS key identifier is not null or empty, then it MUST throw an exception.
-
-Justification: Not applicable since the MAY validation above is not implemented. If we don't validate, we don't need to throw an exception for validation failure.
-
----
-
-##= specification/s3-encryption/materials/s3-kms-keyring.md#initialization
-##= type=exception
 ##% The KmsKeyring MAY validate that the AWS KMS key identifier is [a valid AWS KMS Key identifier](../../framework/aws-kms/aws-kms-key-arn.md#a-valid-aws-kms-identifier).
 
 Justification: This validation is not implemented. The Python implementation defers validation to the AWS KMS SDK, which will return an error if the key identifier is invalid. 
