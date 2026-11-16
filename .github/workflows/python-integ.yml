@@ -16,7 +16,14 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
         os: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+        include:
+          - os: ubuntu-latest
+            runner: codebuild-CryptoToolsCI-linux-amazon-s3-encryption-client-python-${{ github.run_id }}-${{ github.run_attempt }}
+          - os: macos-latest
+            runner: macos-latest
+          - os: windows-latest
+            runner: windows-latest
+    runs-on: ${{ matrix.runner }}
     permissions:
       id-token: write
       contents: read
