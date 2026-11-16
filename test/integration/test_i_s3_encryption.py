@@ -317,7 +317,6 @@ def test_inaccessible_kms_key_raises_access_denied():
 ##= specification/s3-encryption/materials/s3-kms-keyring.md#initialization
 ##= type=test
 ##% The KmsKeyring MAY validate that the AWS KMS key identifier is not null or empty.
-# Spec typo: in the quote below, "is not null or empty" should read "is null or empty".
 ##= specification/s3-encryption/materials/s3-kms-keyring.md#initialization
 ##= type=test
 ##% If the KmsKeyring validates that the AWS KMS key identifier is not null or empty, then it MUST throw an exception.

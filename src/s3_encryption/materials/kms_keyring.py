@@ -55,7 +55,6 @@ class KmsKeyring(S3Keyring):
     ##= specification/s3-encryption/materials/s3-kms-keyring.md#initialization
     ##= type=implementation
     ##% The KmsKeyring MAY validate that the AWS KMS key identifier is not null or empty.
-    # Spec typo: in the quote below, "is not null or empty" should read "is null or empty".
     ##= specification/s3-encryption/materials/s3-kms-keyring.md#initialization
     ##= type=implementation
     ##% If the KmsKeyring validates that the AWS KMS key identifier is not null or empty, then it MUST throw an exception.
