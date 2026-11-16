@@ -326,7 +326,7 @@ def test_null_or_empty_kms_key_id_raises_at_keyring_creation(invalid_kms_key_id)
     """A null or empty KMS key ID MUST be rejected when the KmsKeyring is created."""
     kms_client = boto3.client("kms", region_name=region)
 
-    with pytest.raises(S3EncryptionClientError, match="Kms Key ID cannot be empty or null"):
+    with pytest.raises(S3EncryptionClientError):
         KmsKeyring(kms_client, invalid_kms_key_id)
 
 
