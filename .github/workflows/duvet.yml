@@ -6,7 +6,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-slim
+    runs-on: codebuild-CryptoToolsCI-linux-amazon-s3-encryption-client-python-${{ github.run_id }}-${{ github.run_attempt }}
     permissions:
       id-token: write
       contents: read

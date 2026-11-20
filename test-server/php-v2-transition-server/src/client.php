@@ -46,7 +46,7 @@ function handleCreateClient()
             'version' => 'latest',
             'http' => [
                 'debug' => false,
-                'verify' => true,
+                'verify' => true
             ]
         ],
         'kmsConfig' => [
@@ -54,7 +54,7 @@ function handleCreateClient()
             'version' => 'latest',
             'http' => [
                 'debug' => false,
-                'verify' => true,
+                'verify' => true
             ]
         ],
         'kmsKeyId' => $kmsKeyId,
